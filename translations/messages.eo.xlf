@@ -12263,1795 +12263,1795 @@
       </trans-unit>
             <trans-unit id="pp7bz6p" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
-        <target></target>
+        <target>~Predetermina AI-asistanto</target>
       </trans-unit>
       <trans-unit id="xsmv3fn" resname="Select the AI that will be selected by default when editing iDevices.">
         <source>Select the AI that will be selected by default when editing iDevices.</source>
-        <target></target>
+        <target>~Elekti la AI kiu estos uzata defaŭlte kiam vi redaktas iDevices.</target>
       </trans-unit>
       <trans-unit id="khvxyu5" resname="Hide page title">
         <source>Hide page title</source>
-        <target></target>
+        <target>~Kaŝi paĝtitolon</target>
       </trans-unit>
       <trans-unit id="3syvmd8" resname="Include MathJax (advanced features)">
         <source>Include MathJax (advanced features)</source>
-        <target></target>
+        <target>~Inkluzivi MathJax (avancaj funkcioj)</target>
       </trans-unit>
       <trans-unit id="e56lo4u" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.</source>
-        <target></target>
+        <target>~La formuloj estas montrataj kvankam ĉi tiu opcio estas malŝaltita. Aktivigu ĉi tiun opcion por inkluzivi la plenan bibliotekon de MathJax en la eksportadoj (ĉirkaŭ 8 MB) por progresaj funkcioj kiel alirebleco-ilo kaj kontekstmenuoj.</target>
       </trans-unit>
       <trans-unit id="d170frz" resname="Global font">
         <source>Global font</source>
-        <target></target>
+        <target>~Ĝenerala tipografio</target>
       </trans-unit>
       <trans-unit id="9rpted1" resname="Apply a global font to all content. Useful for accessibility and early literacy.">
         <source>Apply a global font to all content. Useful for accessibility and early literacy.</source>
-        <target></target>
+        <target>~Apliki tipografion al ĉiuj enhavoj. Utila por alirebleco kaj komenca legado.</target>
       </trans-unit>
       <trans-unit id="sieaa4p" resname="Style default">
         <source>Style default</source>
-        <target></target>
+        <target>~Defaŭlta stilo</target>
       </trans-unit>
       <trans-unit id="xxvcir4" resname="HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...">
         <source>HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...</source>
-        <target></target>
+        <target>~HTML por aldoni ĉe la fino de HEAD: LINK, META, SCRIPT, STYLE...</target>
       </trans-unit>
       <trans-unit id="d20klyz" resname="Access denied">
         <source>Access denied</source>
-        <target></target>
+        <target>~Aksesado malpermesita</target>
       </trans-unit>
       <trans-unit id="a3z8nqk" resname="Create new project">
         <source>Create new project</source>
-        <target></target>
+        <target>~Krei novan projekton</target>
       </trans-unit>
       <trans-unit id="j4og7iq" resname="Back to login">
         <source>Back to login</source>
-        <target></target>
+        <target>~Reiri al ensalutpaĝo</target>
       </trans-unit>
       <trans-unit id="4teersl" resname="You don&apos;t have permission to access this project.">
         <source>You don't have permission to access this project.</source>
-        <target></target>
+        <target>~Vi ne havas permeson aliri ĉi tiun projekton.</target>
       </trans-unit>
       <trans-unit id="c6fi29x" resname="Page not found">
         <source>Page not found</source>
-        <target></target>
+        <target>~Paĝo ne trovita</target>
       </trans-unit>
       <trans-unit id="q166608" resname="Server error">
         <source>Server error</source>
-        <target></target>
+        <target>~Servila eraro</target>
       </trans-unit>
       <trans-unit id="fntkzuk" resname="Sorry, but the page cannot be displayed.">
         <source>Sorry, but the page cannot be displayed.</source>
-        <target></target>
+        <target>~Ni bedaŭras, la paĝo ne povas esti montrata.</target>
       </trans-unit>
       <trans-unit id="2dbar6n" resname="The server encountered an error and could not complete your request. Please try again later.">
         <source>The server encountered an error and could not complete your request. Please try again later.</source>
-        <target></target>
+        <target>~La servo renkontis eraron kaj ne povis kompletigi vian peton. Bonvolu provi denove pli poste.</target>
       </trans-unit>
       <trans-unit id="eeb00dc" resname="Search files...">
         <source>Search files...</source>
-        <target></target>
+        <target>~Serĉi dosierojn...</target>
       </trans-unit>
       <trans-unit id="3biioia" resname="New folder">
         <source>New folder</source>
-        <target></target>
+        <target>~Nova dosierujo</target>
       </trans-unit>
       <trans-unit id="mxchkhf" resname="Grid view">
         <source>Grid view</source>
-        <target></target>
+        <target>~Vidi en rektangula skatolo</target>
       </trans-unit>
       <trans-unit id="d8u7zkl" resname="List view">
         <source>List view</source>
-        <target></target>
+        <target>~Vidi liston</target>
       </trans-unit>
       <trans-unit id="sspj9hl" resname="Name A-Z">
         <source>Name A-Z</source>
-        <target></target>
+        <target>~Nomo A-Z</target>
       </trans-unit>
       <trans-unit id="bqepwhw" resname="Name Z-A">
         <source>Name Z-A</source>
-        <target></target>
+        <target>~Nomo Z-A</target>
       </trans-unit>
       <trans-unit id="wfrva8y" resname="Newest first">
         <source>Newest first</source>
-        <target></target>
+        <target>~Plej lastaj unue</target>
       </trans-unit>
       <trans-unit id="87i28jw" resname="Oldest first">
         <source>Oldest first</source>
-        <target></target>
+        <target>~Plej malnovaj unue</target>
       </trans-unit>
       <trans-unit id="qhhkmof" resname="Largest first">
         <source>Largest first</source>
-        <target></target>
+        <target>~Plej grandaj unue</target>
       </trans-unit>
       <trans-unit id="zqtst1r" resname="Smallest first">
         <source>Smallest first</source>
-        <target></target>
+        <target>~Plej malgrandaj unue</target>
       </trans-unit>
       <trans-unit id="rp66by6" resname="Type A-Z">
         <source>Type A-Z</source>
-        <target></target>
+        <target>~Tipo A-Z</target>
       </trans-unit>
       <trans-unit id="uq4mhlm" resname="Type Z-A">
         <source>Type Z-A</source>
-        <target></target>
+        <target>~Tipo Z-A</target>
       </trans-unit>
       <trans-unit id="llx1ior" resname="Show references">
         <source>Show references</source>
-        <target></target>
+        <target>~Montri referencojn</target>
       </trans-unit>
       <trans-unit id="u6lscno" resname="files">
         <source>files</source>
-        <target></target>
+        <target>~dosieroj</target>
       </trans-unit>
       <trans-unit id="eloc769" resname="Go to root">
         <source>Go to root</source>
-        <target></target>
+        <target>~Radika dosiero</target>
       </trans-unit>
       <trans-unit id="q450nk0" resname="Search results for">
         <source>Search results for</source>
-        <target></target>
+        <target>~Serĉrezultatoj por</target>
       </trans-unit>
       <trans-unit id="qg7z7db" resname="No media files yet">
         <source>No media files yet</source>
-        <target></target>
+        <target>~Ankaŭ ne estas multmedialoj</target>
       </trans-unit>
       <trans-unit id="dsrajzj" resname="Click &quot;Add files&quot; or drop files here to upload">
         <source>Click "Add files" or drop files here to upload</source>
-        <target></target>
+        <target>~Klaku "Aldoni dosierojn" aŭ malŝarĝu dosierojn ĉi tie por alŝuti</target>
       </trans-unit>
       <trans-unit id="3ld4ms1" resname="Loading assets...">
         <source>Loading assets...</source>
-        <target></target>
+        <target>~Ŝarĝante rimedojn...</target>
       </trans-unit>
       <trans-unit id="vacsaeh" resname="Location">
         <source>Location</source>
-        <target></target>
+        <target>~Loko</target>
       </trans-unit>
       <trans-unit id="brfqcci" resname="Select an item to view details">
         <source>Select an item to view details</source>
-        <target></target>
+        <target>~Elektu elementon por vidi detalojn</target>
       </trans-unit>
       <trans-unit id="naapyq6" resname="Size:">
         <source>Size:</source>
-        <target></target>
+        <target>~Grandeco:</target>
       </trans-unit>
       <trans-unit id="ab16rqz" resname="Dimensions:">
         <source>Dimensions:</source>
-        <target></target>
+        <target>~Dimensioj:</target>
       </trans-unit>
       <trans-unit id="ma68r3l" resname="Date:">
         <source>Date:</source>
-        <target></target>
+        <target>~Dato:</target>
       </trans-unit>
       <trans-unit id="8he8jti" resname="Usage:">
         <source>Usage:</source>
-        <target></target>
+        <target>~Uzo:</target>
       </trans-unit>
       <trans-unit id="52eq37k" resname="Location:">
         <source>Location:</source>
-        <target></target>
+        <target>~Loko:</target>
       </trans-unit>
       <trans-unit id="muxipoz" resname="Open containing folder">
         <source>Open containing folder</source>
-        <target></target>
+        <target>~Malfermi dosierujon</target>
       </trans-unit>
       <trans-unit id="16nubwe" resname="Copy URL">
         <source>Copy URL</source>
-        <target></target>
+        <target>~Kopii URL-on</target>
       </trans-unit>
       <trans-unit id="ym01hdx" resname="Duplicate">
         <source>Duplicate</source>
-        <target></target>
+        <target>~Duobligi</target>
       </trans-unit>
       <trans-unit id="1jrcwep" resname="Extract ZIP">
         <source>Extract ZIP</source>
-        <target></target>
+        <target>~Elŝuti ZIP-on</target>
       </trans-unit>
       <trans-unit id="6cv3d89" resname="View full size">
         <source>View full size</source>
-        <target></target>
+        <target>~Vidi plenan grandecon</target>
       </trans-unit>
       <trans-unit id="67xl42b" resname="Move to folder">
         <source>Move to folder</source>
-        <target></target>
+        <target>~Movi al dosierujo</target>
       </trans-unit>
       <trans-unit id="7u2x423" resname="Move here">
         <source>Move here</source>
-        <target></target>
+        <target>~Movi ĉi tien</target>
       </trans-unit>
       <trans-unit id="ff8m81d" resname="Search pages and content...">
         <source>Search pages and content...</source>
-        <target></target>
+        <target>~Serĉi paĝojn kaj enhavon...</target>
       </trans-unit>
       <trans-unit id="5nwa7wz" resname="Search results">
         <source>Search results</source>
-        <target></target>
+        <target>~Serĉrezultoj</target>
       </trans-unit>
       <trans-unit id="u3uirop" resname="No results found">
         <source>No results found</source>
-        <target></target>
+        <target>~Neniuj rezultoj trovitaj</target>
       </trans-unit>
       <trans-unit id="qucbdww" resname="Navigate">
         <source>Navigate</source>
-        <target></target>
+        <target>~Navigi</target>
       </trans-unit>
       <trans-unit id="iv7uc49" resname="Loading project images...">
         <source>Loading project images...</source>
-        <target></target>
+        <target>~Ŝarĝante projekto-ojn...</target>
       </trans-unit>
       <trans-unit id="k49s46p" resname="No PNG or JPEG images found in this project.">
         <source>No PNG or JPEG images found in this project.</source>
-        <target></target>
+        <target>~Neniuj PNG aŭ JPEG bildoj trovitaj en ĉi tiu projekto.</target>
       </trans-unit>
       <trans-unit id="imv740g" resname="Preset">
         <source>Preset</source>
-        <target></target>
+        <target>~Defaŭlta</target>
       </trans-unit>
       <trans-unit id="upqexb5" resname="Strong">
         <source>Strong</source>
-        <target></target>
+        <target>~Forta</target>
       </trans-unit>
       <trans-unit id="rsw8ex4" resname="JPEG Quality">
         <source>JPEG Quality</source>
-        <target></target>
+        <target>~JPEG-kvalito</target>
       </trans-unit>
       <trans-unit id="7guelro" resname="Deselect All">
         <source>Deselect All</source>
-        <target></target>
+        <target>~Malakcepti ĉion</target>
       </trans-unit>
       <trans-unit id="krx9fxy" resname="Select/Deselect All">
         <source>Select/Deselect All</source>
-        <target></target>
+        <target>~Elekti/neelekti ĉion</target>
       </trans-unit>
       <trans-unit id="0oxug2u" resname="Filename">
         <source>Filename</source>
-        <target></target>
+        <target>~Nomo de dosiero</target>
       </trans-unit>
       <trans-unit id="jkt7m5j" resname="Original">
         <source>Original</source>
-        <target></target>
+        <target>~Originalo</target>
       </trans-unit>
       <trans-unit id="i8ouv4o" resname="Estimated">
         <source>Estimated</source>
-        <target></target>
+        <target>~Kare</target>
       </trans-unit>
       <trans-unit id="3bcxnjk" resname="Savings">
         <source>Savings</source>
-        <target></target>
+        <target>~Ŝparo</target>
       </trans-unit>
       <trans-unit id="a3tk7h5" resname="Selected">
         <source>Selected</source>
-        <target></target>
+        <target>~Elektita</target>
       </trans-unit>
       <trans-unit id="3go7ln3" resname="Warning:">
         <source>Warning:</source>
-        <target></target>
+        <target>~Averto:</target>
       </trans-unit>
       <trans-unit id="t6715y9" resname="Optimizing images may reduce quality. This action cannot be undone.">
         <source>Optimizing images may reduce quality. This action cannot be undone.</source>
-        <target></target>
+        <target>~La optimumigo de bildoj povas redukti la kvaliton. Tiu ago ne povas esti malkonsekvata.</target>
       </trans-unit>
       <trans-unit id="9guj6ya" resname="Do you want to optimize the selected images?">
         <source>Do you want to optimize the selected images?</source>
-        <target></target>
+        <target>~Ĉu vi volas optimumigi la elektitajn bildojn?</target>
       </trans-unit>
       <trans-unit id="ll5448n" resname="Optimizing...">
         <source>Optimizing...</source>
-        <target></target>
+        <target>~Optimumigante...</target>
       </trans-unit>
       <trans-unit id="bj1p0ao" resname="Optimize">
         <source>Optimize</source>
-        <target></target>
+        <target>~Optimiĝi</target>
       </trans-unit>
       <trans-unit id="hmnh876" resname="Third party libraries">
         <source>Third party libraries</source>
-        <target></target>
+        <target>~Triaj bibliotekoj</target>
       </trans-unit>
       <trans-unit id="sd46ai1" resname="Opens in new window">
         <source>Opens in new window</source>
-        <target></target>
+        <target>~Malfermiĝas en nova fenestro</target>
       </trans-unit>
       <trans-unit id="47958fd" resname="Send email">
         <source>Send email</source>
-        <target></target>
+        <target>~Sendi retpoŝton</target>
       </trans-unit>
       <trans-unit id="vhk2xwe" resname="Add people by email">
         <source>Add people by email</source>
-        <target></target>
+        <target>~Aldoni uzantojn per retpoŝto</target>
       </trans-unit>
       <trans-unit id="t5rbxgu" resname="Invite">
         <source>Invite</source>
-        <target></target>
+        <target>~Inviti</target>
       </trans-unit>
       <trans-unit id="vera2eg" resname="People with access">
         <source>People with access</source>
-        <target></target>
+        <target>~Havantoj kun aliro</target>
       </trans-unit>
       <trans-unit id="gkvgh2w" resname="General access">
         <source>General access</source>
-        <target></target>
+        <target>~Ĝenerala aliro</target>
       </trans-unit>
       <trans-unit id="46p14w1" resname="Restricted (Private)">
         <source>Restricted (Private)</source>
-        <target></target>
+        <target>~Restriktita (Private)</target>
       </trans-unit>
       <trans-unit id="v1pds98" resname="Anyone with the link (Public)">
         <source>Anyone with the link (Public)</source>
-        <target></target>
+        <target>~Ĉiuj kun la ligilo (Publika)</target>
       </trans-unit>
       <trans-unit id="71qdwgy" resname="Anyone who has the link can view and edit in real time">
         <source>Anyone who has the link can view and edit in real time</source>
-        <target></target>
+        <target>~Ĉiu persono kun la ligo povas vidi kaj redakti en tempo real</target>
       </trans-unit>
       <trans-unit id="ck26cxi" resname="Print preview">
         <source>Print preview</source>
-        <target></target>
+        <target>~Antaŭrigardo de presado</target>
       </trans-unit>
       <trans-unit id="7rs6377" resname="Return to work area">
         <source>Return to work area</source>
-        <target></target>
+        <target>~Reiri al labora areo</target>
       </trans-unit>
       <trans-unit id="rv4ida8" resname="Return to login">
         <source>Return to login</source>
-        <target></target>
+        <target>~Reiri al ensalutado</target>
       </trans-unit>
       <trans-unit id="hq80qvz" resname="Under maintenance">
         <source>Under maintenance</source>
-        <target></target>
+        <target>~Ĉi tio estas en prizorgado</target>
       </trans-unit>
       <trans-unit id="c465wuf" resname="This application is currently under maintenance. Please try again later.">
         <source>This application is currently under maintenance. Please try again later.</source>
-        <target></target>
+        <target>~Ĉi tiu aplikaĵo estas nuntempe en prizorgado. Bonvolu provi denove pli poste.</target>
       </trans-unit>
       <trans-unit id="1mykynd" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target></target>
+        <target>~Nevalida nomo de dosierujo. Evitu specialajn signojn kiel / \\ : * ? " < > |</target>
       </trans-unit>
       <trans-unit id="yl4dp1z" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
-        <target></target>
+        <target>~Ĉu vi certas ke vi volas forigi la dosierujon "%1" kaj ĉiujn %2 dosierojn, kiuj ĝi enhavas?</target>
       </trans-unit>
       <trans-unit id="ynpy9q1" resname="Are you sure you want to delete the empty folder &quot;%1&quot;?">
         <source>Are you sure you want to delete the empty folder "%1"?</source>
-        <target></target>
+        <target>~Ĉu vi certas ke vi volas forigi la malplenan dosierujon "%1"?</target>
       </trans-unit>
       <trans-unit id="m1b0muk" resname="Delete &quot;%1&quot;?">
         <source>Delete "%1"?</source>
-        <target></target>
+        <target>~Ĉu forigi "%1"?</target>
       </trans-unit>
       <trans-unit id="cqk7z62" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target></target>
+        <target>~Nomo de dosiero ne valida. Evitu specialajn signojn kiel / \\ : * ? " < > |</target>
       </trans-unit>
       <trans-unit id="sva1lkb" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
-        <target></target>
+        <target>~Dividi "{title}"</target>
       </trans-unit>
       <trans-unit id="t1w87ga" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
-        <target></target>
+        <target>~ Skribu la ĝustan vorton aŭ frazon kaj alklaku la butonon "Respondi".</target>
       </trans-unit>
       <trans-unit id="84avriw" resname="Timeout">
         <source>Timeout</source>
-        <target></target>
+        <target>~Tempa limdato elĉerpita</target>
       </trans-unit>
       <trans-unit id="iml7r85" resname="Network error">
         <source>Network error</source>
-        <target></target>
+        <target>~Retera eraro</target>
       </trans-unit>
       <trans-unit id="u6ftl4b" resname="Invalid URL">
         <source>Invalid URL</source>
-        <target></target>
+        <target>~Nevalida URL</target>
       </trans-unit>
       <trans-unit id="x4yfmx9" resname="Session Expired">
         <source>Session Expired</source>
-        <target></target>
+        <target>~Sesio eksvalidiĝis</target>
       </trans-unit>
       <trans-unit id="mc2zfiv" resname="Your session has expired. Please log in again.">
         <source>Your session has expired. Please log in again.</source>
-        <target></target>
+        <target>~Via sesio finiĝis. Bonvolu ensaluti denove.</target>
       </trans-unit>
       <trans-unit id="wobypf1" resname="Access Denied">
         <source>Access Denied</source>
-        <target></target>
+        <target>~Alirpermeso malebligita</target>
       </trans-unit>
       <trans-unit id="k9yfacn" resname="You no longer have access to this project.">
         <source>You no longer have access to this project.</source>
-        <target></target>
+        <target>~Vi ne plu havas aliron al ĉi tiu projekto.</target>
       </trans-unit>
       <trans-unit id="rr77dxr" resname="Changelog not available">
         <source>Changelog not available</source>
-        <target></target>
+        <target>~Nealire de ŝanĝoj ne disponeblas</target>
       </trans-unit>
       <trans-unit id="nxck0vf" resname="Information not available">
         <source>Information not available</source>
-        <target></target>
+        <target>~Informo ne disponeblas</target>
       </trans-unit>
       <trans-unit id="qyv3t7k" resname="Hidden from export">
         <source>Hidden from export</source>
-        <target></target>
+        <target>~Kaŝita en la eksportado</target>
       </trans-unit>
       <trans-unit id="rolwi4c" resname="Another user">
         <source>Another user</source>
-        <target></target>
+        <target>~Alia uzanto</target>
       </trans-unit>
       <trans-unit id="mzf05sp" resname="Clone iDevice">
         <source>Clone iDevice</source>
-        <target></target>
+        <target>~Klonu iAparaton</target>
       </trans-unit>
       <trans-unit id="7t04qkf" resname="Move to page">
         <source>Move to page</source>
-        <target></target>
+        <target>~Movi al paĝo</target>
       </trans-unit>
       <trans-unit id="31m93o8" resname="Export iDevice">
         <source>Export iDevice</source>
-        <target></target>
+        <target>~Eksporti iAparaton</target>
       </trans-unit>
       <trans-unit id="2a7nugl" resname="iDevice locked">
         <source>iDevice locked</source>
-        <target></target>
+        <target>~iAparato blokita</target>
       </trans-unit>
       <trans-unit id="mfsj3l8" resname="This iDevice is being edited by">
         <source>This iDevice is being edited by</source>
-        <target></target>
+        <target>~Ĉi tiun iAparaton estas redaktanta</target>
       </trans-unit>
       <trans-unit id="xpj0m3f" resname="Also delete associated box">
         <source>Also delete associated box</source>
-        <target></target>
+        <target>~Forigi ankaŭ la ligitan blokon</target>
       </trans-unit>
       <trans-unit id="ogcnc49" resname="Failed to export iDevice">
         <source>Failed to export iDevice</source>
-        <target></target>
+        <target>~Eraro dum eksporti iDevice</target>
       </trans-unit>
       <trans-unit id="taus2oi" resname="Being edited by">
         <source>Being edited by</source>
-        <target></target>
+        <target>~Redaktita de</target>
       </trans-unit>
       <trans-unit id="mm11ghp" resname="Content will appear when saved">
         <source>Content will appear when saved</source>
-        <target></target>
+        <target>~La enhavo aperos kiam vi konservos</target>
       </trans-unit>
       <trans-unit id="08uptod" resname="An error occurred while removing the component">
         <source>An error occurred while removing the component</source>
-        <target></target>
+        <target>~Eraro dum forigi la komponanton</target>
       </trans-unit>
       <trans-unit id="j326w9b" resname="An error occurred while cloning the component">
         <source>An error occurred while cloning the component</source>
-        <target></target>
+        <target>~Eraro dum kloni la komponanton</target>
       </trans-unit>
       <trans-unit id="1nsgq1t" resname="Clone box">
         <source>Clone box</source>
-        <target></target>
+        <target>~Kloni skatolon</target>
       </trans-unit>
       <trans-unit id="is8pqzu" resname="Export box">
         <source>Export box</source>
-        <target></target>
+        <target>~Eksporti skatolon</target>
       </trans-unit>
       <trans-unit id="uc63vgu" resname="An iDevice in this box is being edited by another user">
         <source>An iDevice in this box is being edited by another user</source>
-        <target></target>
+        <target>~Alia uzanto redaktas iDevice de ĉi tiu skatolo</target>
       </trans-unit>
       <trans-unit id="qn8k0ee" resname="iDevices in this box are being edited by other users">
         <source>iDevices in this box are being edited by other users</source>
-        <target></target>
+        <target>~Aliaj uzantoj redaktas iDevice de ĉi tiu skatolo</target>
       </trans-unit>
       <trans-unit id="b7za5vn" resname="Their changes may be lost if you delete this box.">
         <source>Their changes may be lost if you delete this box.</source>
-        <target></target>
+        <target>~Viaj ŝanĝoj povas perdiĝi se vi forigas ĉi tiun skatolon.</target>
       </trans-unit>
       <trans-unit id="43k6was" resname="Do you want to delete this box?">
         <source>Do you want to delete this box?</source>
-        <target></target>
+        <target>~Ĉu vi volas forigi ĉi tiun keston?</target>
       </trans-unit>
       <trans-unit id="k4zt6bj" resname="Move box to page">
         <source>Move box to page</source>
-        <target></target>
+        <target>~Movi keston al paĝo</target>
       </trans-unit>
       <trans-unit id="fif8ham" resname="Failed to export box">
         <source>Failed to export box</source>
-        <target></target>
+        <target>~Eraro dum eksportado de la kesto</target>
       </trans-unit>
       <trans-unit id="q7rrd9g" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
-        <target></target>
+        <target>~Eraro dum klonado de la kesto</target>
       </trans-unit>
       <trans-unit id="8obh827" resname="Being edited by">
         <source>Being edited by</source>
-        <target></target>
+        <target>~Redaktita de</target>
       </trans-unit>
       <trans-unit id="cku1tvg" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>
-        <target></target>
+        <target>~Eraro dum kreado de la paĝo</target>
       </trans-unit>
       <trans-unit id="ll18vvv" resname="An error occurred while cloning the page">
         <source>An error occurred while cloning the page</source>
-        <target></target>
+        <target>~Eraro dum klonado de la paĝo</target>
       </trans-unit>
       <trans-unit id="nwu9zpq" resname="An error occurred while renaming the page">
         <source>An error occurred while renaming the page</source>
-        <target></target>
+        <target>~Eraro dum renomado de la paĝo</target>
       </trans-unit>
       <trans-unit id="6bybt0k" resname="An error occurred while removing the page">
         <source>An error occurred while removing the page</source>
-        <target></target>
+        <target>~Eraro dum forigado de la paĝo</target>
       </trans-unit>
       <trans-unit id="moov7cy" resname="An error occurred while reordering the page. Please try again.">
         <source>An error occurred while reordering the page. Please try again.</source>
-        <target></target>
+        <target>~Eraro dum reordigo de la paĝo. Bonvolu, provu denove.</target>
       </trans-unit>
       <trans-unit id="7zee713" resname="An error occurred while saving page properties">
         <source>An error occurred while saving page properties</source>
-        <target></target>
+        <target>~Eraro dum konservi la propraĵojn de la paĝo</target>
       </trans-unit>
       <trans-unit id="jml83dg" resname="Importing...">
         <source>Importing...</source>
-        <target></target>
+        <target>~Importado...</target>
       </trans-unit>
       <trans-unit id="pzg87vc" resname="Importing project...">
         <source>Importing project...</source>
-        <target></target>
+        <target>~Importado de projekto...</target>
       </trans-unit>
       <trans-unit id="dw9z626" resname="Import Error">
         <source>Import Error</source>
-        <target></target>
+        <target>~Eraro en importado</target>
       </trans-unit>
       <trans-unit id="dtl10pm" resname="Failed to import the project: ">
         <source>Failed to import the project: </source>
-        <target></target>
+        <target>~Eraro dum importi la projekton: </target>
       </trans-unit>
       <trans-unit id="i8m89hx" resname="Untitled">
         <source>Untitled</source>
-        <target></target>
+        <target>~Sen titolo</target>
       </trans-unit>
       <trans-unit id="ou2l9o7" resname="Media library not available">
         <source>Media library not available</source>
-        <target></target>
+        <target>~Medialibro ne disponebla</target>
       </trans-unit>
       <trans-unit id="lima8i2" resname="Failed to load assets">
         <source>Failed to load assets</source>
-        <target></target>
+        <target>~Eraro dum ŝarĝado de la rimedoj</target>
       </trans-unit>
       <trans-unit id="0trl38r" resname="Enter folder name:">
         <source>Enter folder name:</source>
-        <target></target>
+        <target>~Enmetu la nomon de la dosierujo:</target>
       </trans-unit>
       <trans-unit id="oxa698p" resname="A folder with this name already exists.">
         <source>A folder with this name already exists.</source>
-        <target></target>
+        <target>~Jam ekzistas dosierujo kun tiu nomo.</target>
       </trans-unit>
       <trans-unit id="a4htn2l" resname="items">
         <source>items</source>
-        <target></target>
+        <target>~elementoj</target>
       </trans-unit>
       <trans-unit id="f13h6qc" resname="Videos">
         <source>Videos</source>
-        <target></target>
+        <target>~Videoj</target>
       </trans-unit>
       <trans-unit id="t5x9s56" resname="PDF">
         <source>PDF</source>
-        <target></target>
+        <target>~PDF</target>
       </trans-unit>
       <trans-unit id="n3odhaf" resname="Other">
         <source>Other</source>
-        <target></target>
+        <target>~Aliaj</target>
       </trans-unit>
       <trans-unit id="nrgx1ax" resname="%1 files selected">
         <source>%1 files selected</source>
-        <target></target>
+        <target>~%1 dosieroj elektitaj</target>
       </trans-unit>
       <trans-unit id="zjllex2" resname="Multiple files">
         <source>Multiple files</source>
-        <target></target>
+        <target>~Multnombraj dosieroj</target>
       </trans-unit>
       <trans-unit id="i47lgzs" resname="Failed to delete folder">
         <source>Failed to delete folder</source>
-        <target></target>
+        <target>~Eraro okazis dum forigi la dosieron</target>
       </trans-unit>
       <trans-unit id="ky6fe20" resname="This asset is referenced in %1 iDevices.">
         <source>This asset is referenced in %1 iDevices.</source>
-        <target></target>
+        <target>~Ĉi tiu rimedo estas referencita en %1 iDevices.</target>
       </trans-unit>
       <trans-unit id="kztv355" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target></target>
+        <target>~Ĉu forigi %1 elektitajn dosierojn?</target>
       </trans-unit>
       <trans-unit id="c9khhl4" resname="Failed to delete file">
         <source>Failed to delete file</source>
-        <target></target>
+        <target>~Eraro okazis dum forigado de la dosiero</target>
       </trans-unit>
       <trans-unit id="3fcip0w" resname="Rename folder">
         <source>Rename folder</source>
-        <target></target>
+        <target>~Renomi kartejon</target>
       </trans-unit>
       <trans-unit id="ia7n28t" resname="Enter new folder name:">
         <source>Enter new folder name:</source>
-        <target></target>
+        <target>~Enmetu la novan nomon de la kartejo:</target>
       </trans-unit>
       <trans-unit id="dt1tve1" resname="Failed to rename folder">
         <source>Failed to rename folder</source>
-        <target></target>
+        <target>~Eraro dum renomi la kartejon</target>
       </trans-unit>
       <trans-unit id="jkjo14a" resname="Rename file">
         <source>Rename file</source>
-        <target></target>
+        <target>~Renomi dosieron</target>
       </trans-unit>
       <trans-unit id="opydgao" resname="Enter new filename:">
         <source>Enter new filename:</source>
-        <target></target>
+        <target>~Enmetu la novan nomon de la dosiero:</target>
       </trans-unit>
       <trans-unit id="0h8zlfs" resname="Failed to rename file">
         <source>Failed to rename file</source>
-        <target></target>
+        <target>~Eraro dum renomi la dosieron</target>
       </trans-unit>
       <trans-unit id="emedea7" resname="copy">
         <source>copy</source>
-        <target></target>
+        <target>~kopio</target>
       </trans-unit>
       <trans-unit id="f0d0gm9" resname="Could not read file">
         <source>Could not read file</source>
-        <target></target>
+        <target>~Ne eblis legi la dosieron</target>
       </trans-unit>
       <trans-unit id="b7vl97m" resname="Duplicate file">
         <source>Duplicate file</source>
-        <target></target>
+        <target>~Duobli dosieron</target>
       </trans-unit>
       <trans-unit id="wducud7" resname="Enter name for the duplicate:">
         <source>Enter name for the duplicate:</source>
-        <target></target>
+        <target>~Enmetu la nomon por la duobla dosiero:</target>
       </trans-unit>
       <trans-unit id="2haqmat" resname="Please enter a valid filename">
         <source>Please enter a valid filename</source>
-        <target></target>
+        <target>~Enmetu validan dosieron nomon de dosiero</target>
       </trans-unit>
       <trans-unit id="oiwfnoq" resname="A file with this name already exists in this folder">
         <source>A file with this name already exists in this folder</source>
-        <target></target>
+        <target>~La dosierujo jam havas dosieron kun tiu nomo</target>
       </trans-unit>
       <trans-unit id="2gjx0hs" resname="Failed to duplicate file">
         <source>Failed to duplicate file</source>
-        <target></target>
+        <target>~Eraro dum duobligo de la dosiero</target>
       </trans-unit>
       <trans-unit id="wtk57oh" resname="current">
         <source>current</source>
-        <target></target>
+        <target>~nun</target>
       </trans-unit>
       <trans-unit id="oi9w93q" resname="Please select a destination folder">
         <source>Please select a destination folder</source>
-        <target></target>
+        <target>~Elektu cel-dosierujon</target>
       </trans-unit>
       <trans-unit id="ax9g956" resname="Folder is already in this location">
         <source>Folder is already in this location</source>
-        <target></target>
+        <target>~La dosierujo jam estas en tiu loko</target>
       </trans-unit>
       <trans-unit id="pq8sxvg" resname="A folder with this name already exists in the destination.">
         <source>A folder with this name already exists in the destination.</source>
-        <target></target>
+        <target>~Jam ekzistas dosierujo kun tiu nomo en la celo.</target>
       </trans-unit>
       <trans-unit id="fmc6rhw" resname="Failed to move folder">
         <source>Failed to move folder</source>
-        <target></target>
+        <target>~Eraro dum movi la dosierujon</target>
       </trans-unit>
       <trans-unit id="utf2lg4" resname="Selected files are already in this folder">
         <source>Selected files are already in this folder</source>
-        <target></target>
+        <target>~La elektitaj dosieroj jam estas en ĉi tiu dosierujo</target>
       </trans-unit>
       <trans-unit id="b01gliu" resname="File is already in this folder">
         <source>File is already in this folder</source>
-        <target></target>
+        <target>~La dosiero jam estas en ĉi tiu dosierujo</target>
       </trans-unit>
       <trans-unit id="237n7wx" resname="Failed to move file">
         <source>Failed to move file</source>
-        <target></target>
+        <target>~Eraro dum movei la dosiero</target>
       </trans-unit>
       <trans-unit id="9tn8mqq" resname="Asset URL copied to clipboard">
         <source>Asset URL copied to clipboard</source>
-        <target></target>
+        <target>~URL kopiiĝis al la tonkarto</target>
       </trans-unit>
       <trans-unit id="qzuq84m" resname="Extract to folder (the internal folder structure of the ZIP will be preserved):">
         <source>Extract to folder (the internal folder structure of the ZIP will be preserved):</source>
-        <target></target>
+        <target>~Elŝuti al dosierujo (la interna strukturo de la ZIP restos):</target>
       </trans-unit>
       <trans-unit id="yvymt11" resname="Extract">
         <source>Extract</source>
-        <target></target>
+        <target>~Elŝuti</target>
       </trans-unit>
       <trans-unit id="2qjvt20" resname="Could not read ZIP file">
         <source>Could not read ZIP file</source>
-        <target></target>
+        <target>~Ne eblas legi la ZIP-dosieron</target>
       </trans-unit>
       <trans-unit id="g8xy9et" resname="ZIP extraction is not available">
         <source>ZIP extraction is not available</source>
-        <target></target>
+        <target>~La ZIP-eldonado ne estas disponebla</target>
       </trans-unit>
       <trans-unit id="4dfotl3" resname="Extraction complete">
         <source>Extraction complete</source>
-        <target></target>
+        <target>~Eldonado finita</target>
       </trans-unit>
       <trans-unit id="hxn6od7" resname="Extracted %1 files. %2 files were skipped.">
         <source>Extracted %1 files. %2 files were skipped.</source>
-        <target></target>
+        <target>~%1 dosieroj estis elŝutitaj. %2 dosieroj estis preterlasitaj.</target>
       </trans-unit>
       <trans-unit id="wu36334" resname="Extracted %1 files successfully.">
         <source>Extracted %1 files successfully.</source>
-        <target></target>
+        <target>~%1 dosieroj estis elŝutitaj ĝuste.</target>
       </trans-unit>
       <trans-unit id="0eacrbn" resname="No files were extracted from the ZIP.">
         <source>No files were extracted from the ZIP.</source>
-        <target></target>
+        <target>~Neniuj dosieroj estis elŝutitaj de la ZIP.</target>
       </trans-unit>
       <trans-unit id="4sbhj14" resname="Failed to extract ZIP file">
         <source>Failed to extract ZIP file</source>
-        <target></target>
+        <target>~Eraro dumprenante la enhavon de la ZIP</target>
       </trans-unit>
       <trans-unit id="ifmkpuo" resname="Drop files here to upload">
         <source>Drop files here to upload</source>
-        <target></target>
+        <target>~Ĝetu dosierojn ĉi tie por alŝuti ilin</target>
       </trans-unit>
       <trans-unit id="612r18s" resname="Validating">
         <source>Validating</source>
-        <target></target>
+        <target>~Validiĝas</target>
       </trans-unit>
       <trans-unit id="182dvl4" resname="Valid">
         <source>Valid</source>
-        <target></target>
+        <target>~Valida</target>
       </trans-unit>
       <trans-unit id="ax72aik" resname="Validating links...">
         <source>Validating links...</source>
-        <target></target>
+        <target>~Validiĝas ligoj...</target>
       </trans-unit>
       <trans-unit id="gsfi0af" resname="broken">
         <source>broken</source>
-        <target></target>
+        <target>~rompita</target>
       </trans-unit>
       <trans-unit id="g0er7ut" resname="No broken links">
         <source>No broken links</source>
-        <target></target>
+        <target>~Sen rompaj ligoj</target>
       </trans-unit>
       <trans-unit id="iqll651" resname="No links found in content">
         <source>No links found in content</source>
-        <target></target>
+        <target>~Neniuj ligoj troviĝis en la enhavo</target>
       </trans-unit>
       <trans-unit id="rvchdwq" resname="Link Validation">
         <source>Link Validation</source>
-        <target></target>
+        <target>~Ligiloj validiĝas</target>
       </trans-unit>
       <trans-unit id="tbkygy8" resname="Error validating links">
         <source>Error validating links</source>
-        <target></target>
+        <target>~Eraro dum validiĝo de la ligoj</target>
       </trans-unit>
       <trans-unit id="3e5lsew" resname="No broken links to export">
         <source>No broken links to export</source>
-        <target></target>
+        <target>~Sen rompitaj ne-eksporteblaj ligiloj</target>
       </trans-unit>
       <trans-unit id="v69fwx3" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
-        <target></target>
+        <target>~Klaku por malfermi la rimedon en nova fenestro</target>
       </trans-unit>
       <trans-unit id="vanjxkv" resname="Cannot open resource: Asset manager not available">
         <source>Cannot open resource: Asset manager not available</source>
-        <target></target>
+        <target>~Ne povas malfermi la rimedon: rimedadministrilo ne disponeblas</target>
       </trans-unit>
       <trans-unit id="d7y1ly5" resname="Cannot open resource: Asset not found">
         <source>Cannot open resource: Asset not found</source>
-        <target></target>
+        <target>~Ne povas malfermi la rimedon: rimedo ne trovita</target>
       </trans-unit>
       <trans-unit id="wufg9mg" resname="Error opening resource">
         <source>Error opening resource</source>
-        <target></target>
+        <target>~Eraro dum malfermado de la rimedo</target>
       </trans-unit>
       <trans-unit id="ymzxnxq" resname="No resources to export">
         <source>No resources to export</source>
-        <target></target>
+        <target>~Sen rimedoj por eksporti</target>
       </trans-unit>
       <trans-unit id="r4qshhj" resname="Failed to download the style">
         <source>Failed to download the style</source>
-        <target></target>
+        <target>~Eraro dum elŝuto de la stilo</target>
       </trans-unit>
       <trans-unit id="bt2amt0" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
         <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
-        <target></target>
+        <target>~La dosiera grandeco ({fileSize}) superas la maksimuman permesitan grandecon ({maxSize}).</target>
       </trans-unit>
       <trans-unit id="cd8vvn3" resname="File too large">
         <source>File too large</source>
-        <target></target>
+        <target>~La dosiero estas tro granda</target>
       </trans-unit>
       <trans-unit id="jqkfbaq" resname="My Projects">
         <source>My Projects</source>
-        <target></target>
+        <target>~Miaj projektoj</target>
       </trans-unit>
       <trans-unit id="y61n5ls" resname="Shared with me">
         <source>Shared with me</source>
-        <target></target>
+        <target>~Kunhavigitaj kun mi</target>
       </trans-unit>
       <trans-unit id="9ieg17m" resname="No projects have been shared with you yet.">
         <source>No projects have been shared with you yet.</source>
-        <target></target>
+        <target>~Ankaŭ ne estas projektoj kunhavigitaj al vi.</target>
       </trans-unit>
       <trans-unit id="zzbu56j" resname="Shared by">
         <source>Shared by</source>
-        <target></target>
+        <target>~Kunhavigita de</target>
       </trans-unit>
       <trans-unit id="1xukxtx" resname="Clone to my projects">
         <source>Clone to my projects</source>
-        <target></target>
+        <target>~Konservi kopion en miaj projektoj</target>
       </trans-unit>
       <trans-unit id="6vaf8rx" resname="Select all">
         <source>Select all</source>
-        <target></target>
+        <target>~Elekti ĉiujn</target>
       </trans-unit>
       <trans-unit id="bcinoqc" resname="Delete this project?">
         <source>Delete this project?</source>
-        <target></target>
+        <target>~Ĉu vi volas forigi ĉi tiun projekton?</target>
       </trans-unit>
       <trans-unit id="ibnpyzw" resname="Deleting...">
         <source>Deleting...</source>
-        <target></target>
+        <target>~Forigante...</target>
       </trans-unit>
       <trans-unit id="hmmh852" resname="An error occurred while duplicating the project.">
         <source>An error occurred while duplicating the project.</source>
-        <target></target>
+        <target>~Eraro dum duobligo de la projekto.</target>
       </trans-unit>
       <trans-unit id="dp4sojz" resname="An error occurred while opening the file.">
         <source>An error occurred while opening the file.</source>
-        <target></target>
+        <target>~Eraro dum malfermi dosieron.</target>
       </trans-unit>
       <trans-unit id="91oao44" resname="Are you sure you want to delete this project?">
         <source>Are you sure you want to delete this project?</source>
-        <target></target>
+        <target>~Ĉu vi certas ke vi volas forigi ĉi tiun projekton?</target>
       </trans-unit>
       <trans-unit id="3wwantr" resname="Are you sure you want to delete %s projects?">
         <source>Are you sure you want to delete %s projects?</source>
-        <target></target>
+        <target>~Ĉu vi certas, ke vi volas forigi %s projektojn?</target>
       </trans-unit>
       <trans-unit id="gpuubgn" resname="Delete projects">
         <source>Delete projects</source>
-        <target></target>
+        <target>~Forigi projektojn</target>
       </trans-unit>
       <trans-unit id="t6x0eae" resname="This action cannot be undone.">
         <source>This action cannot be undone.</source>
-        <target></target>
+        <target>~Ĉi tiu ago ne povas esti malfariĝinta.</target>
       </trans-unit>
       <trans-unit id="n4ubl87" resname="An error occurred while importing the component.">
         <source>An error occurred while importing the component.</source>
-        <target></target>
+        <target>~Eraro dum importado de la komponanto.</target>
       </trans-unit>
       <trans-unit id="ufou7bp" resname="An error occurred while importing properties.">
         <source>An error occurred while importing properties.</source>
-        <target></target>
+        <target>~Eraro dum importado de la propraĵoj.</target>
       </trans-unit>
       <trans-unit id="75hvkks" resname="An error occurred while importing the file.">
         <source>An error occurred while importing the file.</source>
-        <target></target>
+        <target>~Eraro dum importado de la dosiero.</target>
       </trans-unit>
       <trans-unit id="d4k3rfs" resname="The default style will be used instead.">
         <source>The default style will be used instead.</source>
-        <target></target>
+        <target>~La defaŭlta stilo estos uzata anstataŭe.</target>
       </trans-unit>
       <trans-unit id="zy96s83" resname="Style not available">
         <source>Style not available</source>
-        <target></target>
+        <target>~Stilo ne disponebla</target>
       </trans-unit>
       <trans-unit id="kbfcjec" resname="An error occurred while saving the project">
         <source>An error occurred while saving the project</source>
-        <target></target>
+        <target>~Eraro dum konservado de la projekto</target>
       </trans-unit>
       <trans-unit id="r7wtigx" resname="Saving project...">
         <source>Saving project...</source>
-        <target></target>
+        <target>~Konservas la projekton...</target>
       </trans-unit>
       <trans-unit id="7izvosz" resname="Saving document structure to server...">
         <source>Saving document structure to server...</source>
-        <target></target>
+        <target>~Ŝargante la strukturo de la dokumento sur la servilo...</target>
       </trans-unit>
       <trans-unit id="7qjboss" resname="Uploading assets...">
         <source>Uploading assets...</source>
-        <target></target>
+        <target>~Ŝargante rimedojn...</target>
       </trans-unit>
       <trans-unit id="ls7yhcp" resname="Uploading images and files to server...">
         <source>Uploading images and files to server...</source>
-        <target></target>
+        <target>~Ŝargante bildojn kaj dosierojn al la servilo...</target>
       </trans-unit>
       <trans-unit id="3ligykn" resname="Save complete!">
         <source>Save complete!</source>
-        <target></target>
+        <target>~Kompleta konservado!</target>
       </trans-unit>
       <trans-unit id="6djxama" resname="All changes have been saved successfully.">
         <source>All changes have been saved successfully.</source>
-        <target></target>
+        <target>~Ĉiuj ŝanĝoj estis ĝuste konservitaj.</target>
       </trans-unit>
       <trans-unit id="c2rhyb8" resname="Uploading asset">
         <source>Uploading asset</source>
-        <target></target>
+        <target>~Ŝargante rimedon</target>
       </trans-unit>
       <trans-unit id="woh89y7" resname="Saving project">
         <source>Saving project</source>
-        <target></target>
+        <target>~Ŝargante projekton</target>
       </trans-unit>
       <trans-unit id="nf8i3fq" resname="Preparing...">
         <source>Preparing...</source>
-        <target></target>
+        <target>~Preparante...</target>
       </trans-unit>
       <trans-unit id="5w7esi8" resname="Preparing to save your project...">
         <source>Preparing to save your project...</source>
-        <target></target>
+        <target>~Preparante por konservi vian projekton...</target>
       </trans-unit>
       <trans-unit id="7m6t944" resname="No project available to share">
         <source>No project available to share</source>
-        <target></target>
+        <target>~Ne estas disponebla projekto por kundividi</target>
       </trans-unit>
       <trans-unit id="4izldio" resname="Failed to load project data">
         <source>Failed to load project data</source>
-        <target></target>
+        <target>~Eraro dum ŝarĝi la projektajn datumojn</target>
       </trans-unit>
       <trans-unit id="umn18fb" resname="Owner">
         <source>Owner</source>
-        <target></target>
+        <target>~posedanto</target>
       </trans-unit>
       <trans-unit id="bpzq2au" resname="you">
         <source>you</source>
-        <target></target>
+        <target>~vi</target>
       </trans-unit>
       <trans-unit id="ucx9w29" resname="More actions">
         <source>More actions</source>
-        <target></target>
+        <target>~Pli da agoj</target>
       </trans-unit>
       <trans-unit id="n7uyxg9" resname="Make owner">
         <source>Make owner</source>
-        <target></target>
+        <target>~Fari posedanto</target>
       </trans-unit>
       <trans-unit id="efraf57" resname="Remove access">
         <source>Remove access</source>
-        <target></target>
+        <target>~Forigi aliron</target>
       </trans-unit>
       <trans-unit id="egib2dq" resname="Please enter an email address">
         <source>Please enter an email address</source>
-        <target></target>
+        <target>~Enmetu retadreso</target>
       </trans-unit>
       <trans-unit id="dp9esrz" resname="Please enter a valid email address">
         <source>Please enter a valid email address</source>
-        <target></target>
+        <target>~Enmetu validan retadreson</target>
       </trans-unit>
       <trans-unit id="3q7hfl8" resname="Inviting...">
         <source>Inviting...</source>
-        <target></target>
+        <target>~Invitas...</target>
       </trans-unit>
       <trans-unit id="18c3gfo" resname="Invited {email}">
         <source>Invited {email}</source>
-        <target></target>
+        <target>~Gastiganto {email}</target>
       </trans-unit>
       <trans-unit id="q36ktkb" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
-        <target></target>
+        <target>~Ĉi tiu uzanto jam estas kunlaboranto</target>
       </trans-unit>
       <trans-unit id="xj3gvja" resname="User not found">
         <source>User not found</source>
-        <target></target>
+        <target>~Uzanto ne trovita</target>
       </trans-unit>
       <trans-unit id="483r77d" resname="Failed to invite user">
         <source>Failed to invite user</source>
-        <target></target>
+        <target>~Eraro dum invitado de la uzanto</target>
       </trans-unit>
       <trans-unit id="alc0kqm" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target></target>
+        <target>~Ĉu forigi la permeson al {email}?</target>
       </trans-unit>
       <trans-unit id="08o3cnj" resname="Removed {email}">
         <source>Removed {email}</source>
-        <target></target>
+        <target>~Alirajto al {email} estis forigita</target>
       </trans-unit>
       <trans-unit id="ue8ijts" resname="Failed to remove collaborator">
         <source>Failed to remove collaborator</source>
-        <target></target>
+        <target>~Eraro dum forigado de la kunlaboranto</target>
       </trans-unit>
       <trans-unit id="90kg580" resname="Transfer ownership to {email}? You will become an editor.">
         <source>Transfer ownership to {email}? You will become an editor.</source>
-        <target></target>
+        <target>~Ĉu transdoni la proprieton al {email}? Vi iĝos redaktanto.</target>
       </trans-unit>
       <trans-unit id="1f0g1f7" resname="Ownership transferred to {email}">
         <source>Ownership transferred to {email}</source>
-        <target></target>
+        <target>~Proprieto transdonita al {email}</target>
       </trans-unit>
       <trans-unit id="c6nqtqh" resname="Failed to transfer ownership">
         <source>Failed to transfer ownership</source>
-        <target></target>
+        <target>~Eraro dum transdono de la proprieto</target>
       </trans-unit>
       <trans-unit id="ogwn22j" resname="Project data not loaded. Please try again.">
         <source>Project data not loaded. Please try again.</source>
-        <target></target>
+        <target>~Projektaj datumoj ne ŝarĝis. Bonvolu reprovi.</target>
       </trans-unit>
       <trans-unit id="h4fwkle" resname="Project is now public">
         <source>Project is now public</source>
-        <target></target>
+        <target>~Nun la projekto estas publika  </target>
       </trans-unit>
       <trans-unit id="tq7wjh8" resname="Project is now private">
         <source>Project is now private</source>
-        <target></target>
+        <target>~Nun la projekto estas privata  </target>
       </trans-unit>
       <trans-unit id="uswwnwg" resname="Failed to update visibility">
         <source>Failed to update visibility</source>
-        <target></target>
+        <target>~Eraro dum ĝisdatigo de la videbleco  </target>
       </trans-unit>
       <trans-unit id="ib0a2y1" resname="Link copied to clipboard">
         <source>Link copied to clipboard</source>
-        <target></target>
+        <target>~Ligo kopiata al la tonkesto  </target>
       </trans-unit>
       <trans-unit id="09ep8rj" resname="Failed to copy link">
         <source>Failed to copy link</source>
-        <target></target>
+        <target>~Eraro dum kopiado de la ligo  </target>
       </trans-unit>
       <trans-unit id="jwue70r" resname="Print preview requires server mode">
         <source>Print preview requires server mode</source>
-        <target></target>
+        <target>~La antaŭrigardo de presado postulas la servormodon  </target>
       </trans-unit>
       <trans-unit id="zywrsq2" resname="Document manager not available">
         <source>Document manager not available</source>
-        <target></target>
+        <target>~Dokumenta administranto ne disponeblas  </target>
       </trans-unit>
       <trans-unit id="mvlmnec" resname="Print preview not available">
         <source>Print preview not available</source>
-        <target></target>
+        <target>~Previsualizo de presado ne disponeblas  </target>
       </trans-unit>
       <trans-unit id="glwr2z5" resname="Failed to generate preview">
         <source>Failed to generate preview</source>
-        <target></target>
+        <target>~Eraro dum generado de la antaŭrigardo  </target>
       </trans-unit>
       <trans-unit id="5syi4nf" resname="Queued">
         <source>Queued</source>
-        <target></target>
+        <target>~En vico</target>
       </trans-unit>
       <trans-unit id="7e1ko26" resname="Estimating...">
         <source>Estimating...</source>
-        <target></target>
+        <target>~Estimante...</target>
       </trans-unit>
       <trans-unit id="hmc2zh3" resname="Ready">
         <source>Ready</source>
-        <target></target>
+        <target>~Pretas</target>
       </trans-unit>
       <trans-unit id="ccjqzaz" resname="Failed">
         <source>Failed</source>
-        <target></target>
+        <target>~Eraro</target>
       </trans-unit>
       <trans-unit id="td7jkhq" resname="Image Optimizer">
         <source>Image Optimizer</source>
-        <target></target>
+        <target>~Bild-optimigilo</target>
       </trans-unit>
       <trans-unit id="lxildby" resname="N/A">
         <source>N/A</source>
-        <target></target>
+        <target>~N/E</target>
       </trans-unit>
       <trans-unit id="mvmrzpe" resname="Already optimized">
         <source>Already optimized</source>
-        <target></target>
+        <target>~Jam optimigita</target>
       </trans-unit>
       <trans-unit id="7xn7skv" resname="Processing">
         <source>Processing</source>
-        <target></target>
+        <target>~Procesas</target>
       </trans-unit>
       <trans-unit id="bhyvmbp" resname="Saving changes...">
         <source>Saving changes...</source>
-        <target></target>
+        <target>~Konservante ŝanĝojn...</target>
       </trans-unit>
       <trans-unit id="o5jqih5" resname="Images optimized successfully">
         <source>Images optimized successfully</source>
-        <target></target>
+        <target>~Bildoj ĝuste optimigitaj</target>
       </trans-unit>
       <trans-unit id="ivgt5pa" resname="Error optimizing images">
         <source>Error optimizing images</source>
-        <target></target>
+        <target>~Eraro dum optimigado de la bildoj</target>
       </trans-unit>
       <trans-unit id="kxpoz1k" resname="in">
         <source>in</source>
-        <target></target>
+        <target>~en</target>
       </trans-unit>
       <trans-unit id="3y6es7b" resname="User">
         <source>User</source>
-        <target></target>
+        <target>~Uzanto</target>
       </trans-unit>
       <trans-unit id="9nlgnht" resname="Viewing page">
         <source>Viewing page</source>
-        <target></target>
+        <target>~Vidas paĝo</target>
       </trans-unit>
       <trans-unit id="xx8gkrx" resname="You">
         <source>You</source>
-        <target></target>
+        <target>~Vi</target>
       </trans-unit>
       <trans-unit id="ppaeupg" resname="Offline mode">
         <source>Offline mode</source>
-        <target></target>
+        <target>~Senreta modo</target>
       </trans-unit>
       <trans-unit id="bl3pyi5" resname="Shared">
         <source>Shared</source>
-        <target></target>
+        <target>~Kunhavigita</target>
       </trans-unit>
       <trans-unit id="9c7t932" resname="ELPX export not available. Please save your project first.">
         <source>ELPX export not available. Please save your project first.</source>
-        <target></target>
+        <target>~Eksporto ELPX ne disponebla. Unue konservu vian projekton.</target>
       </trans-unit>
       <trans-unit id="4tap8bo" resname="Error generating ELPX file:">
         <source>Error generating ELPX file:</source>
-        <target></target>
+        <target>~Eraro dum generado de la ELPX-dosiero:</target>
       </trans-unit>
       <trans-unit id="pmqi5ea" resname="Print preview is not available.">
         <source>Print preview is not available.</source>
-        <target></target>
+        <target>~La antaŭrigardo de la presado ne estas disponebla.</target>
       </trans-unit>
       <trans-unit id="68b53jm" resname="Preview opened in new window.">
         <source>Preview opened in new window.</source>
-        <target></target>
+        <target>~Antaŭrigardo malfermita en nova fenestro.</target>
       </trans-unit>
       <trans-unit id="muh1lch" resname="pages">
         <source>pages</source>
-        <target></target>
+        <target>~paĝoj</target>
       </trans-unit>
       <trans-unit id="mpfxh0b" resname="Generating file from collaborative document...">
         <source>Generating file from collaborative document...</source>
-        <target></target>
+        <target>~Generante dosieron de la kunlabora dokumento...</target>
       </trans-unit>
       <trans-unit id="fhf882p" resname="File saved.">
         <source>File saved.</source>
-        <target></target>
+        <target>~Dosiero konservita.</target>
       </trans-unit>
       <trans-unit id="oyo692d" resname="An error occurred while saving the file.">
         <source>An error occurred while saving the file.</source>
-        <target></target>
+        <target>~Eraro dum konservado de la dosiero.</target>
       </trans-unit>
       <trans-unit id="qqujd5p" resname="Preview is not available. Please reload the page.">
         <source>Preview is not available. Please reload the page.</source>
-        <target></target>
+        <target>~La antaŭrigardo ne estas disponebla. Bonvolu reŝargi la paĝon.</target>
       </trans-unit>
       <trans-unit id="co7ub62" resname="Storage not available">
         <source>Storage not available</source>
-        <target></target>
+        <target>~Ne disponebla stokado</target>
       </trans-unit>
       <trans-unit id="bom6o99" resname="Invalid style package">
         <source>Invalid style package</source>
-        <target></target>
+        <target>~Nevalida stilo</target>
       </trans-unit>
       <trans-unit id="8xbknij" resname="config.xml not found in ZIP">
         <source>config.xml not found in ZIP</source>
-        <target></target>
+        <target>~config.xml ne trovita en la ZIP</target>
       </trans-unit>
       <trans-unit id="6g70xum" resname="This style cannot be downloaded">
         <source>This style cannot be downloaded</source>
-        <target></target>
+        <target>~Ĉi tiu stilo ne povas esti elŝutita</target>
       </trans-unit>
       <trans-unit id="pfq6z0d" resname="Style already exists">
         <source>Style already exists</source>
-        <target></target>
+        <target>~La stilo jam ekzistas</target>
       </trans-unit>
       <trans-unit id="wp91tf6" resname="A style with this name already exists">
         <source>A style with this name already exists</source>
-        <target></target>
+        <target>~Jam estas stiloj kun tiu ĉi nomo</target>
       </trans-unit>
       <trans-unit id="c4s4yx0" resname="Style files not found">
         <source>Style files not found</source>
-        <target></target>
+        <target>~Stilaj dosieroj ne trovitaj</target>
       </trans-unit>
       <trans-unit id="dc5gayj" resname="Add page">
         <source>Add page</source>
-        <target></target>
+        <target>~Aldoni paĝon</target>
       </trans-unit>
       <trans-unit id="ozv6aw3" resname="Export page">
         <source>Export page</source>
-        <target></target>
+        <target>~Eksporti paĝon</target>
       </trans-unit>
       <trans-unit id="lb9jw2l" resname="Table of contents">
         <source>Table of contents</source>
-        <target></target>
+        <target>~Enhava indekso</target>
       </trans-unit>
       <trans-unit id="lz6fy2e" resname="Export functionality not available. Please reload the page.">
         <source>Export functionality not available. Please reload the page.</source>
-        <target></target>
+        <target>~Eksportada funkcio ne disponeblas. Bonvolu reŝargi la paĝon.</target>
       </trans-unit>
       <trans-unit id="xodyy6u" resname="Collaboration service not ready">
         <source>Collaboration service not ready</source>
-        <target></target>
+        <target>~La kunlabora redakta servo ne estas disponebla</target>
       </trans-unit>
       <trans-unit id="nizm7dc" resname="Export failed">
         <source>Export failed</source>
-        <target></target>
+        <target>~Eraro dum la eksportado</target>
       </trans-unit>
       <trans-unit id="k3eomrx" resname="Please wait for the project to fully load before importing.">
         <source>Please wait for the project to fully load before importing.</source>
-        <target></target>
+        <target>~Atendu ke la projekto plene ŝarĝiĝu antaŭ importi.</target>
       </trans-unit>
       <trans-unit id="l86v6ny" resname="this page">
         <source>this page</source>
-        <target></target>
+        <target>~ĉi tiu paĝo</target>
       </trans-unit>
       <trans-unit id="z59gzbb" resname="Unknown user">
         <source>Unknown user</source>
-        <target></target>
+        <target>~Uzanto nekonata</target>
       </trans-unit>
       <trans-unit id="mfnlcls" resname="Do you want to delete">
         <source>Do you want to delete</source>
-        <target></target>
+        <target>~Ĉu vi volas forigi</target>
       </trans-unit>
       <trans-unit id="ureh5ja" resname="selected pages">
         <source>selected pages</source>
-        <target></target>
+        <target>~elektitajn paĝojn</target>
       </trans-unit>
       <trans-unit id="5dxq4at" resname="and their children">
         <source>and their children</source>
-        <target></target>
+        <target>~kaj iliajn subpaĝojn</target>
       </trans-unit>
       <trans-unit id="loglpqk" resname="You can undo this action.">
         <source>You can undo this action.</source>
-        <target></target>
+        <target>~Vi povas malfari ĉi tiun agon.</target>
       </trans-unit>
       <trans-unit id="s03bsva" resname="and all its children">
         <source>and all its children</source>
-        <target></target>
+        <target>~kaj ĉiujn iliajn subpaĝojn</target>
       </trans-unit>
       <trans-unit id="n0s483c" resname="Another user is viewing this page or its children">
         <source>Another user is viewing this page or its children</source>
-        <target></target>
+        <target>~Alia uzanto vidas ĉi tiun paĝon aŭ ĝiajn subpaĝojn</target>
       </trans-unit>
       <trans-unit id="l4hdada" resname="Other users are viewing this page or its children">
         <source>Other users are viewing this page or its children</source>
-        <target></target>
+        <target>~Aliaj uzantoj vidas ĉi tiun paĝon aŭ ĝiajn subpaĝojn</target>
       </trans-unit>
       <trans-unit id="9w78mzz" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
-        <target></target>
+        <target>~Ili estos aŭtomate redirektitaj al la superrega paĝo.</target>
       </trans-unit>
       <trans-unit id="04ta28o" resname="Preferences will be applied after refreshing the page.">
         <source>Preferences will be applied after refreshing the page.</source>
-        <target></target>
+        <target>~La preferoj estos aplikitaj post la paĝa ĝisdatigo.</target>
       </trans-unit>
       <trans-unit id="2yatdge" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
         <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target></target>
+        <target>~Estas necesas reŝargi la paĝon por apliki la ŝanĝojn. Unue elŝutu vian projekton por ne perdi laboron. Poste reŝarĝu la paĝon.</target>
       </trans-unit>
       <trans-unit id="6l88wq6" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
-        <target></target>
+        <target>~Vi havas nesalvigitajn ŝanĝojn. Ĉu vi certas ke vi volas eliri?</target>
       </trans-unit>
       <trans-unit id="0l6hdph" resname="Project not ready for collaboration">
         <source>Project not ready for collaboration</source>
-        <target></target>
+        <target>~La projekto ne estas preta por kunlabora redaktado</target>
       </trans-unit>
       <trans-unit id="1ws10rx" resname="Generating ELPX file...">
         <source>Generating ELPX file...</source>
-        <target></target>
+        <target>~Generante ELPX-dosieron...</target>
       </trans-unit>
       <trans-unit id="5hvaqpi" resname="File generated and downloaded.">
         <source>File generated and downloaded.</source>
-        <target></target>
+        <target>~Dosiero generita kaj elŝutita.</target>
       </trans-unit>
       <trans-unit id="jfcmnpj" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
-        <target></target>
+        <target>~Eraro dum generado de la ELPX-dosiero.</target>
       </trans-unit>
       <trans-unit id="gcbvzh1" resname="Saving document...">
         <source>Saving document...</source>
-        <target></target>
+        <target>~Konservante dokumenton...</target>
       </trans-unit>
       <trans-unit id="wperz91" resname="Saving...">
         <source>Saving...</source>
-        <target></target>
+        <target>~Konservante...</target>
       </trans-unit>
       <trans-unit id="d0dsrlf" resname="Offline Mode">
         <source>Offline Mode</source>
-        <target></target>
+        <target>~Senreta modo</target>
       </trans-unit>
       <trans-unit id="kwhtbw0" resname="Your project is automatically saved in your browser. Use File &gt; Export to download a copy.">
         <source>Your project is automatically saved in your browser. Use File &gt; Export to download a copy.</source>
-        <target></target>
+        <target>~Via projekto estas aŭtomate konservata en via retumilo. Uzu Dosiero - Eksporti por elŝuti kopion.</target>
       </trans-unit>
       <trans-unit id="xfknefh" resname="Cannot save project to server because your storage quota has been exceeded. You can download the project locally.">
         <source>Cannot save project to server because your storage quota has been exceeded. You can download the project locally.</source>
-        <target></target>
+        <target>~Ne povas konservi la projekton sur la servilo ĉar via stokadkvoto estis superita. Vi povas elŝuti la projekton al via komputilo.</target>
       </trans-unit>
       <trans-unit id="a92jjnu" resname="Quota exceeded">
         <source>Quota exceeded</source>
-        <target></target>
+        <target>~Stokadkvoto superita</target>
       </trans-unit>
       <trans-unit id="uav3bj0" resname="Project saved successfully">
         <source>Project saved successfully</source>
-        <target></target>
+        <target>~La projekto estis sukcese konservita</target>
       </trans-unit>
       <trans-unit id="v71a3bf" resname="Failed to save project">
         <source>Failed to save project</source>
-        <target></target>
+        <target>~Eraro dum konservado de la projekto</target>
       </trans-unit>
       <trans-unit id="wr4ks0o" resname="Project saved">
         <source>Project saved</source>
-        <target></target>
+        <target>~Projekto konservita</target>
       </trans-unit>
       <trans-unit id="n1tqlge" resname="Failed to import style">
         <source>Failed to import style</source>
-        <target></target>
+        <target>~Eraro dum importado de la stilo</target>
       </trans-unit>
       <trans-unit id="xbj0h2l" resname="Legacy license, please review">
         <source>Legacy license, please review</source>
-        <target></target>
+        <target>~La licenco de la projekto postulas revizion</target>
       </trans-unit>
       <trans-unit id="hg2gd8e" resname="Add child page">
         <source>Add child page</source>
-        <target></target>
+        <target>~Aldoni subpaĝon</target>
       </trans-unit>
       <trans-unit id="02igulc" resname="New Page">
         <source>New Page</source>
-        <target></target>
+        <target>~Nova paĝo</target>
       </trans-unit>
       <trans-unit id="0b2zsa9" resname="Error storing image">
         <source>Error storing image</source>
-        <target></target>
+        <target>~Eraro dum stokado de la bildo</target>
       </trans-unit>
       <trans-unit id="vxc4qel" resname="Could not load YouTube API">
         <source>Could not load YouTube API</source>
-        <target></target>
+        <target>~Ne povis ŝarĝi la API-on de YouTube</target>
       </trans-unit>
       <trans-unit id="syeva0z" resname="Please select an AI assistant.">
         <source>Please select an AI assistant.</source>
-        <target></target>
+        <target>~Elektu AI-asistanto.</target>
       </trans-unit>
       <trans-unit id="fjt2t59" resname="The following lines are invalid:">
         <source>The following lines are invalid:</source>
-        <target></target>
+        <target>~La sekvaj linioj ne estas validaj:</target>
       </trans-unit>
       <trans-unit id="ubud2op" resname="The questions have been added successfully">
         <source>The questions have been added successfully</source>
-        <target></target>
+        <target>~La demandoj estis aldonitaj ĝuste</target>
       </trans-unit>
       <trans-unit id="1f101ff" resname="Start voice recording">
         <source>Start voice recording</source>
-        <target></target>
+        <target>~Komenci voĉregistradon</target>
       </trans-unit>
       <trans-unit id="on43zdo" resname="File name">
         <source>File name</source>
-        <target></target>
+        <target>~Nomo de dosiero</target>
       </trans-unit>
       <trans-unit id="dt86u9a" resname="Recording time">
         <source>Recording time</source>
-        <target></target>
+        <target>~Tempo de registrado</target>
       </trans-unit>
       <trans-unit id="4l9md39" resname="Review recording">
         <source>Review recording</source>
-        <target></target>
+        <target>~Revizii registradon</target>
       </trans-unit>
       <trans-unit id="vos5tnm" resname="Recording in progress">
         <source>Recording in progress</source>
-        <target></target>
+        <target>~Registrado en progreso</target>
       </trans-unit>
       <trans-unit id="k3nyd7c" resname="Uploading...">
         <source>Uploading...</source>
-        <target></target>
+        <target>~Ŝarĝante...</target>
       </trans-unit>
       <trans-unit id="8n7mii2" resname="Microphone access was denied or unavailable.">
         <source>Microphone access was denied or unavailable.</source>
-        <target></target>
+        <target>~Alirado al mikrofono aŭ mikrofono ne disponebla.</target>
       </trans-unit>
       <trans-unit id="dvvb2v0" resname="Failed to save recording.">
         <source>Failed to save recording.</source>
-        <target></target>
+        <target>~Eraro dum konservado de la registrado.</target>
       </trans-unit>
       <trans-unit id="48zx1nn" resname="Recording">
         <source>Recording</source>
-        <target></target>
+        <target>~Registrado</target>
       </trans-unit>
       <trans-unit id="po5fkk4" resname="Data error">
         <source>Data error</source>
-        <target></target>
+        <target>~Eraro en datumoj</target>
       </trans-unit>
       <trans-unit id="mvlov2x" resname="This might not work in this ePub reader">
         <source>This might not work in this ePub reader</source>
-        <target></target>
+        <target>~Tio eble ne funkcios en ĉi tiu ePub legilo</target>
       </trans-unit>
       <trans-unit id="3mve5hj" resname="This activity does not work in ePub format">
         <source>This activity does not work in ePub format</source>
-        <target></target>
+        <target>~Ĉi tiu agado ne funkcias en ePub-formato</target>
       </trans-unit>
       <trans-unit id="ddcvta9" resname="Full search">
         <source>Full search</source>
-        <target></target>
+        <target>~Plena serĉo</target>
       </trans-unit>
       <trans-unit id="9jwr24x" resname="No search results">
         <source>No search results</source>
-        <target></target>
+        <target>~Neniuj rezultoj</target>
       </trans-unit>
       <trans-unit id="w74ev92" resname="block">
         <source>block</source>
-        <target></target>
+        <target>~bloko</target>
       </trans-unit>
       <trans-unit id="cap6k3s" resname="Default font">
         <source>Default font</source>
-        <target></target>
+        <target>~Defaŭlta tipografio</target>
       </trans-unit>
       <trans-unit id="akbo706" resname="Uppercase">
         <source>Uppercase</source>
-        <target></target>
+        <target>~Majuskuloj</target>
       </trans-unit>
       <trans-unit id="76u7ypv" resname="Light/Dark mode">
         <source>Light/Dark mode</source>
-        <target></target>
+        <target>~Luma/okuluma reĝimo</target>
       </trans-unit>
       <trans-unit id="7qmsowe" resname="Generating...">
         <source>Generating...</source>
-        <target></target>
+        <target>~Generante...</target>
       </trans-unit>
       <trans-unit id="2oy9ddg" resname="The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.">
         <source>The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.</source>
-        <target></target>
+        <target>~La dosiĝilo de dosierujo ne respondis. Tio povas okazi kiam malfermi eksportitajn dosierojn rekte de via komputilo (file:// protokolo). Provu malfermi la dosieron tra servilo.</target>
       </trans-unit>
       <trans-unit id="yakyeye" resname="No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.">
         <source>No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.</source>
-        <target></target>
+        <target>~La dosiĝilo de dosierujo ne trovis dosierojn. Ĉi tio estas konata limigo kiam malfermante eksportitajn dosierojn kun la protocolo file:// en iuj retumiloj. Provu uzi alian retumilon aŭ malfermi la dosieron tra retservilo.</target>
       </trans-unit>
       <trans-unit id="50ouo1w" resname="Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.">
         <source>Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.</source>
-        <target></target>
+        <target>~Loka modo: pro la sekurecopolitiko de la retumilo, vi devos elekti la dosierujon, de kiu vi malfermis ĉi tiun dosieron. En retservilo tio ne estos necese.</target>
       </trans-unit>
       <trans-unit id="9lzdwjd" resname="Hangman game">
         <source>Hangman game</source>
-        <target></target>
+        <target>~Ŝatru</target>
       </trans-unit>
       <trans-unit id="xdapt99" resname="Game over">
         <source>Game over</source>
-        <target></target>
+        <target>~Fino de la ludo</target>
       </trans-unit>
       <trans-unit id="01wsqpz" resname="Reload game?">
         <source>Reload game?</source>
-        <target></target>
+        <target>~Ĉu restartigi la ludon?</target>
       </trans-unit>
       <trans-unit id="vkw9an9" resname="Click Play to start">
         <source>Click Play to start</source>
-        <target></target>
+        <target>~Klaku "Ludi" por komenci</target>
       </trans-unit>
       <trans-unit id="mrnypyu" resname="Click Other word to continue">
         <source>Click Other word to continue</source>
-        <target></target>
+        <target>~Klaku sur "Alia vorto" por daŭrigi</target>
       </trans-unit>
       <trans-unit id="opkfadz" resname="Attempting to reconnect...">
         <source>Attempting to reconnect...</source>
-        <target></target>
+        <target>~Probas rekonekti...</target>
       </trans-unit>
       <trans-unit id="3vx4js8" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
-        <target></target>
+        <target>~Via aliro al ĉi tiu projekto estis nuligita.</target>
       </trans-unit>
       <trans-unit id="kn5ig14" resname="Mind map saved">
         <source>Mind map saved</source>
-        <target></target>
+        <target>~Menskartoj konservitaj</target>
       </trans-unit>
       <trans-unit id="c957e2f" resname="source">
         <source>source</source>
-        <target></target>
+        <target>~fonto</target>
       </trans-unit>
       <trans-unit id="q4yo54h" resname="target">
         <source>target</source>
-        <target></target>
+        <target>~celo</target>
       </trans-unit>
       <trans-unit id="l2pgrp0" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>
-        <target></target>
+        <target>~Krei novan formulbaron</target>
       </trans-unit>
       <trans-unit id="6aam3bm" resname="Add Category">
         <source>Add Category</source>
-        <target></target>
+        <target>~Aldoni kategorion</target>
       </trans-unit>
       <trans-unit id="trmy265" resname="Quick start">
         <source>Quick start</source>
-        <target></target>
+        <target>~Rapida starto</target>
       </trans-unit>
       <trans-unit id="9rxs767" resname="Start from empty set">
         <source>Start from empty set</source>
-        <target></target>
+        <target>~Komenci de nulo</target>
       </trans-unit>
       <trans-unit id="e9m3hft" resname="Start with minimal example">
         <source>Start with minimal example</source>
-        <target></target>
+        <target>~Komenci kun minimuma ekzemplo</target>
       </trans-unit>
       <trans-unit id="cs78h5s" resname="Create a new set without loading external files.">
         <source>Create a new set without loading external files.</source>
-        <target></target>
+        <target>~Kreu novan kolekton sen ŝarĝi eksterajn dosierojn.</target>
       </trans-unit>
       <trans-unit id="6rbd3a4" resname="Your set is empty. Use the &quot;+ Add Category&quot; button above to create the first category.">
         <source>Your set is empty. Use the "+ Add Category" button above to create the first category.</source>
-        <target></target>
+        <target>~Via kolekto estas malplena. Uzu la butonon "+ Aldoni kategorion" supre por krei la unuan kategorion.</target>
       </trans-unit>
       <trans-unit id="rs3gfqm" resname="Double-click to rename">
         <source>Double-click to rename</source>
-        <target></target>
+        <target>~Duoble klaku por renomumi</target>
       </trans-unit>
       <trans-unit id="uzjg549" resname="Close without saving?">
         <source>Close without saving?</source>
-        <target></target>
+        <target>~Ĉu fermi sen konservi?</target>
       </trans-unit>
       <trans-unit id="02t37vh" resname="This set has unsaved changes. Close anyway?">
         <source>This set has unsaved changes. Close anyway?</source>
-        <target></target>
+        <target>~Ĉi tiu kolekto havas nesavedajn ŝanĝojn. Ĉu fermi malgraŭ tio?</target>
       </trans-unit>
       <trans-unit id="ikqg5oa" resname="Rename set">
         <source>Rename set</source>
-        <target></target>
+        <target>~Renomi kolekton</target>
       </trans-unit>
       <trans-unit id="wklz2h1" resname="Set name">
         <source>Set name</source>
-        <target></target>
+        <target>~Nomo de la kolekto</target>
       </trans-unit>
       <trans-unit id="n4toqna" resname="Starter example">
         <source>Starter example</source>
-        <target></target>
+        <target>~Komenca ekzemplo</target>
       </trans-unit>
       <trans-unit id="vx13e66" resname="Error processing JSON:">
         <source>Error processing JSON:</source>
-        <target></target>
+        <target>~Eraro dum prilaborado de JSON:</target>
       </trans-unit>
       <trans-unit id="50p16dh" resname="Code license:">
         <source>Code license:</source>
-        <target></target>
+        <target>~Licencoj de kodo:</target>
       </trans-unit>
       <trans-unit id="dokiy2u" resname="Content:">
         <source>Content:</source>
-        <target></target>
+        <target>~Enhavo:</target>
       </trans-unit>
       <trans-unit id="he2hxew" resname="Send to host">
         <source>Send to host</source>
-        <target></target>
+        <target>~Sendi</target>
       </trans-unit>
       <trans-unit id="biui651" resname="Sent!">
         <source>Sent!</source>
-        <target></target>
+        <target>~Sendita!</target>
       </trans-unit>
       <trans-unit id="rtfqs2h" resname="Missing or invalid origin.">
         <source>Missing or invalid origin.</source>
-        <target></target>
+        <target>~Mankas la fonto aŭ nevalida fonto.</target>
       </trans-unit>
       <trans-unit id="d95zsro" resname="No host window available.">
         <source>No host window available.</source>
-        <target></target>
+        <target>~Ne troviĝas la celfenestro.</target>
       </trans-unit>
       <trans-unit id="tz3pepq" resname="Your set is empty. Start by adding a category.">
         <source>Your set is empty. Start by adding a category.</source>
-        <target></target>
+        <target>~Via aro estas malplena. Komencu aldoni kategorion.</target>
       </trans-unit>
       <trans-unit id="qgjhg38" resname="Add first category">
         <source>Add first category</source>
-        <target></target>
+        <target>~Aldoni la unuan kategorion</target>
       </trans-unit>
       <trans-unit id="5r23oqq" resname="Mermaid code">
         <source>Mermaid code</source>
-        <target></target>
+        <target>~Mermaid-kodo</target>
       </trans-unit>
       <trans-unit id="3dixy9u" resname="Need help? Visit %s">
         <source>Need help? Visit %s</source>
-        <target></target>
+        <target>~Ĉu vi bezonas helpon? Vizitu %s</target>
       </trans-unit>
       <trans-unit id="iwbsvbu" resname="Mermaid diagram">
         <source>Mermaid diagram</source>
-        <target></target>
+        <target>~Diagrama Mermaid</target>
       </trans-unit>
       <trans-unit id="qtuyzrq" resname="Player compatible with .srt subtitles. Check only if using .srt subtitles.">
         <source>Player compatible with .srt subtitles. Check only if using .srt subtitles.</source>
-        <target></target>
+        <target>~Reproduktoro kongrua kun subtitoloj SRT. Marku ĉi tiun opcion nur se vi uzas SRT-subtitolojn.</target>
       </trans-unit>
       <trans-unit id="clvwwsf" resname="Task information">
         <source>Task information</source>
-        <target></target>
+        <target>~Informo pri la tasko</target>
       </trans-unit>
       <trans-unit id="x53iklu" resname="You made %s errors. You have %s attempts left. Do you want to try again?">
         <source>You made %s errors. You have %s attempts left. Do you want to try again?</source>
-        <target></target>
+        <target>~Vi faris %s erarojn. Restas %s provojn. Ĉu vi volas reprovi?</target>
       </trans-unit>
       <trans-unit id="vvyksd2" resname="You must close the edited questionnaire before saving the activity.">
         <source>You must close the edited questionnaire before saving the activity.</source>
-        <target></target>
+        <target>~Vi devas fermi la redaktitan kvizo antaŭ konservi la aktivecon.</target>
       </trans-unit>
       <trans-unit id="0qqgh6z" resname="YouTube videos cannot be embedded in preview mode. ">
         <source>YouTube videos cannot be embedded in preview mode. </source>
-        <target></target>
+        <target>~YouTube-videoj ne povas esti enkorpigitaj en antaŭrigardo.</target>
       </trans-unit>
       <trans-unit id="ab9mz2h" resname="Invalid file content">
         <source>Invalid file content</source>
-        <target></target>
+        <target>~Nevalida dosiera enhavo</target>
       </trans-unit>
       <trans-unit id="9azyke5" resname="Answer type: Single">
         <source>Answer type: Single</source>
-        <target></target>
+        <target>~Tipo de respondo: Unu</target>
       </trans-unit>
       <trans-unit id="k9i5ol7" resname="Answer type: Multiple">
         <source>Answer type: Multiple</source>
-        <target></target>
+        <target>~Tipo de respondo: Multnombra</target>
       </trans-unit>
       <trans-unit id="qoql9yy" resname="Suggestion or hint (optional)">
         <source>Suggestion or hint (optional)</source>
-        <target></target>
+        <target>~Sugestio aŭ indiko (opcia)</target>
       </trans-unit>
       <trans-unit id="yiur78c" resname="Hint or suggestion for the student">
         <source>Hint or suggestion for the student</source>
-        <target></target>
+        <target>~Indiko aŭ sugesto por la studento  </target>
       </trans-unit>
       <trans-unit id="j7rmto2" resname="Feedback for correct answer (optional)">
         <source>Feedback for correct answer (optional)</source>
-        <target></target>
+        <target>~Reagado por ĝusta respondo (nedeviga)  </target>
       </trans-unit>
       <trans-unit id="0dh02vj" resname="Message shown when answer is correct">
         <source>Message shown when answer is correct</source>
-        <target></target>
+        <target>~Mesaĝo montrata kiam la respondo estas ĝusta  </target>
       </trans-unit>
       <trans-unit id="82rovf6" resname="Feedback for wrong answer (optional)">
         <source>Feedback for wrong answer (optional)</source>
-        <target></target>
+        <target>~Reagado por malĝusta respondo (nedeviga)  </target>
       </trans-unit>
       <trans-unit id="eejfoh7" resname="Message shown when answer is wrong">
         <source>Message shown when answer is wrong</source>
-        <target></target>
+        <target>~Mesaĝo montrata kiam la respondo estas malĝusta  </target>
       </trans-unit>
       <trans-unit id="fsk1cp2" resname="No indicators were selected for this activity.">
         <source>No indicators were selected for this activity.</source>
-        <target></target>
+        <target>~Neniam estis elektitaj indikiloj por ĉi tiu aktiveco.  </target>
       </trans-unit>
       <trans-unit id="po2ifsa" resname="DigCompEdu summary">
         <source>DigCompEdu summary</source>
-        <target></target>
+        <target>~Resumo DigCompEdu  </target>
       </trans-unit>
       <trans-unit id="83piqpt" resname="Selected indicators: ">
         <source>Selected indicators: </source>
-        <target></target>
+        <target>~Elektitaj indikiloj:  </target>
       </trans-unit>
       <trans-unit id="0r9lwav" resname="DigCompEdu: Digital Competence Manager">
         <source>DigCompEdu: Digital Competence Manager</source>
-        <target></target>
+        <target>~DigCompEdu: Administranto de la Kapaĵa Kompetenteco  </target>
       </trans-unit>
       <trans-unit id="51fpif4" resname="Framework data could not be loaded. Please verify the data file is available.">
         <source>Framework data could not be loaded. Please verify the data file is available.</source>
-        <target></target>
+        <target>~Ne eblis ŝarĝi la datumaron. Kontrolu, ĉu la datumaro estas disponebla.</target>
       </trans-unit>
       <trans-unit id="g0qziww" resname="Framework data is still loading. Please wait.">
         <source>Framework data is still loading. Please wait.</source>
-        <target></target>
+        <target>~Ĝis ankoraŭ ŝarĝas la datumoj de la kadro. Bonvolu atendi...</target>
       </trans-unit>
       <trans-unit id="t9g3q02" resname="DigCompEdu framework viewer">
         <source>DigCompEdu framework viewer</source>
-        <target></target>
+        <target>~Vidilo de la DigCompEdu-kadro</target>
       </trans-unit>
       <trans-unit id="hdrzw17" resname="DigCompEdu framework">
         <source>DigCompEdu framework</source>
-        <target></target>
+        <target>~DigCompEdu-kadro</target>
       </trans-unit>
       <trans-unit id="e5nqxwz" resname="Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.">
         <source>Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.</source>
-        <target></target>
+        <target>~Uzu filtrilojn, serĉon aŭ plena ekrano por esplori la kadron. La indikiloj restas elektitaj kiam vi filtradas.</target>
       </trans-unit>
       <trans-unit id="bxi83c0" resname="Area">
         <source>Area</source>
-        <target></target>
+        <target>~Areo</target>
       </trans-unit>
       <trans-unit id="nkobuy6" resname="Competence">
         <source>Competence</source>
-        <target></target>
+        <target>~Kompetenco</target>
       </trans-unit>
       <trans-unit id="6elf0yg" resname="Stage">
         <source>Stage</source>
-        <target></target>
+        <target>~Fazo</target>
       </trans-unit>
       <trans-unit id="5cb7dvw" resname="Indicator">
         <source>Indicator</source>
-        <target></target>
+        <target>~Indikiloj</target>
       </trans-unit>
       <trans-unit id="e5oxrr3" resname="Performance and examples">
         <source>Performance and examples</source>
-        <target></target>
+        <target>~Efikeco kaj ekzemploj</target>
       </trans-unit>
       <trans-unit id="n7x2v9y" resname="DigCompEdu settings">
         <source>DigCompEdu settings</source>
-        <target></target>
+        <target>~Agordo de DigCompEdu</target>
       </trans-unit>
       <trans-unit id="tgcnndm" resname="Español (MRCDD detallado)">
         <source>Español (MRCDD detallado)</source>
-        <target></target>
+        <target>~Hispana (Detala MRCDD)</target>
       </trans-unit>
       <trans-unit id="4wayhny" resname="Galego (MRCDD completo)">
         <source>Galego (MRCDD completo)</source>
-        <target></target>
+        <target>~Galega (Plena MRCDD)</target>
       </trans-unit>
       <trans-unit id="runzdvs" resname="English (DigCompEdu core)">
         <source>English (DigCompEdu core)</source>
-        <target></target>
+        <target>~Angla (DigCompEdu kerna)</target>
       </trans-unit>
       <trans-unit id="oanb207" resname="Display options">
         <source>Display options</source>
-        <target></target>
+        <target>~Opcioj de vida</target>
       </trans-unit>
       <trans-unit id="r1s6ubr" resname="Table only">
         <source>Table only</source>
-        <target></target>
+        <target>~Nur tabulo</target>
       </trans-unit>
       <trans-unit id="rslxc3d" resname="Table + textual summary">
         <source>Table + textual summary</source>
-        <target></target>
+        <target>~Tabulo + resumeco tekstala</target>
       </trans-unit>
       <trans-unit id="ce3y6yd" resname="Competency framework">
         <source>Competency framework</source>
-        <target></target>
+        <target>~Kadro de kompetenteco</target>
       </trans-unit>
       <trans-unit id="5x5gpnd" resname="Selection granularity">
         <source>Selection granularity</source>
-        <target></target>
+        <target>~Granularidad de selekto</target>
       </trans-unit>
       <trans-unit id="aoqzsjo" resname="Competences">
         <source>Competences</source>
-        <target></target>
+        <target>~Kompetencoj</target>
       </trans-unit>
       <trans-unit id="wv3tn4a" resname="Levels">
         <source>Levels</source>
-        <target></target>
+        <target>~Niveloj</target>
       </trans-unit>
       <trans-unit id="nccybx3" resname="Indicators">
         <source>Indicators</source>
-        <target></target>
+        <target>~Indikiloj</target>
       </trans-unit>
       <trans-unit id="67ahwa9" resname="Search indicators">
         <source>Search indicators</source>
-        <target></target>
+        <target>~Serĉi indikilojn</target>
       </trans-unit>
       <trans-unit id="a80dlmk" resname="Search by area, competence, indicator...">
         <source>Search by area, competence, indicator...</source>
-        <target></target>
+        <target>~Serĉi laŭ areo, kompetenteco, indikilo...</target>
       </trans-unit>
       <trans-unit id="mtpp0uk" resname="Filter by level">
         <source>Filter by level</source>
-        <target></target>
+        <target>~Filtri laŭ nivelo</target>
       </trans-unit>
       <trans-unit id="u2ouq50" resname="Toggle fullscreen">
         <source>Toggle fullscreen</source>
-        <target></target>
+        <target>~Ŝalti plenekranan reĝimon</target>
       </trans-unit>
       <trans-unit id="ouv93uw" resname="Reset selection">
         <source>Reset selection</source>
-        <target></target>
+        <target>~Restarigi elekton</target>
       </trans-unit>
       <trans-unit id="gearyqu" resname="Preview summary">
         <source>Preview summary</source>
-        <target></target>
+        <target>~Antaŭrigardo de la resumo</target>
       </trans-unit>
       <trans-unit id="j5fe2hf" resname="DigCompEdu framework (fullscreen)">
         <source>DigCompEdu framework (fullscreen)</source>
-        <target></target>
+        <target>~Kadro DigCompEdu (plenekrane)</target>
       </trans-unit>
       <trans-unit id="lvc9x66" resname="Selection summary preview">
         <source>Selection summary preview</source>
-        <target></target>
+        <target>~Antaŭrigardo de la elekta resumo</target>
       </trans-unit>
       <trans-unit id="imperyo" resname="Examples:">
         <source>Examples:</source>
-        <target></target>
+        <target>~Ekzemploj:</target>
       </trans-unit>
       <trans-unit id="p9bmhb6" resname="No items selected.">
         <source>No items selected.</source>
-        <target></target>
+        <target>~Neniuj elementoj elektitaj.</target>
       </trans-unit>
       <trans-unit id="d0x2ptc" resname="Selected items: ">
         <source>Selected items: </source>
-        <target></target>
+        <target>~Elektitaj elementoj: </target>
       </trans-unit>
       <trans-unit id="7gsrch9" resname="Area of">
         <source>Area of</source>
-        <target></target>
+        <target>~Areo de</target>
       </trans-unit>
       <trans-unit id="8t3ugys" resname="and ">
         <source>and </source>
-        <target></target>
+        <target>~kaj</target>
       </trans-unit>
       <trans-unit id="cy7m9di" resname="indicator">
         <source>indicator</source>
-        <target></target>
+        <target>~indikilo</target>
       </trans-unit>
       <trans-unit id="ees4iwa" resname="level">
         <source>level</source>
-        <target></target>
+        <target>~nivelo</target>
       </trans-unit>
       <trans-unit id="ussu6uw" resname="Unable to change framework. The previous data will remain loaded.">
         <source>Unable to change framework. The previous data will remain loaded.</source>
-        <target></target>
+        <target>~Ne eblis ŝanĝi la kadron. La antaŭaj datumoj restos.</target>
       </trans-unit>
       <trans-unit id="iar2axk" resname="Font color">
         <source>Font color</source>
-        <target></target>
+        <target>~Koloro de la teksto</target>
       </trans-unit>
     </body>
   </file>
