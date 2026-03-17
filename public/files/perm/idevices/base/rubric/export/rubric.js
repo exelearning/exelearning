@@ -402,11 +402,25 @@ var $rubric = {
         this.ensureHtml2Canvas(
             function () {
                 target.classList.add(captureClass);
+                var detachedStyles = null;
+                if (window.location.pathname.indexOf('/viewer/') !== -1) {
+                    detachedStyles = $rubric.detachStylesheetsForCapture(document);
+                }
                 window.html2canvas(target, {
                     backgroundColor: '#ffffff',
                     scale: 2,
                     useCORS: true,
                     logging: false,
+                    onclone: function (clonedDoc) {
+                        // In /viewer context html2canvas may clone into a document
+                        // that cannot resolve SW-only relative CSS paths.
+                        // Remove external stylesheets to avoid 404 noise and rely
+                        // on inline computed styles copied into the capture target.
+                        var links = clonedDoc.querySelectorAll('link[rel="stylesheet"]');
+                        for (var i = 0; i < links.length; i++) {
+                            links[i].parentNode && links[i].parentNode.removeChild(links[i]);
+                        }
+                    },
                 })
                     .then(function (canvas) {
                         if (window.jspdf && window.jspdf.jsPDF) {
@@ -426,6 +440,9 @@ var $rubric = {
                         console.error('Error al capturar la rúbrica:', e);
                     })
                     .finally(function () {
+                        if (detachedStyles) {
+                            $rubric.restoreStylesheetsAfterCapture(detachedStyles);
+                        }
                         target.classList.remove(captureClass);
                         if (target && target.getAttribute('data-rubric-capture-temp') === '1') {
                             target.parentNode && target.parentNode.removeChild(target);
@@ -439,6 +456,39 @@ var $rubric = {
                 }
             }
         );
+    },
+
+    detachStylesheetsForCapture: function (doc) {
+        if (!doc || !doc.head) return [];
+
+        var detached = [];
+        var links = doc.querySelectorAll('link[rel="stylesheet"]');
+        for (var i = 0; i < links.length; i++) {
+            var link = links[i];
+            detached.push({
+                node: link,
+                parent: link.parentNode,
+                nextSibling: link.nextSibling,
+            });
+            link.parentNode && link.parentNode.removeChild(link);
+        }
+
+        return detached;
+    },
+
+    restoreStylesheetsAfterCapture: function (detached) {
+        if (!Array.isArray(detached) || detached.length === 0) return;
+
+        for (var i = detached.length - 1; i >= 0; i--) {
+            var entry = detached[i];
+            if (!entry || !entry.parent || !entry.node) continue;
+
+            if (entry.nextSibling && entry.nextSibling.parentNode === entry.parent) {
+                entry.parent.insertBefore(entry.node, entry.nextSibling);
+            } else {
+                entry.parent.appendChild(entry.node);
+            }
+        }
     },
 
     buildCaptureTarget: function (table) {
@@ -471,15 +521,47 @@ var $rubric = {
         temp.style.zIndex = '-1';
 
         if (header.length === 1) {
-            temp.appendChild(header.get(0).cloneNode(true));
+            temp.appendChild(this.cloneNodeWithComputedStyles(header.get(0)));
         }
-        temp.appendChild($table.get(0).cloneNode(true));
+        temp.appendChild(this.cloneNodeWithComputedStyles($table.get(0)));
         if (footer.length === 1) {
-            temp.appendChild(footer.get(0).cloneNode(true));
+            temp.appendChild(this.cloneNodeWithComputedStyles(footer.get(0)));
         }
 
         document.body.appendChild(temp);
         return temp;
+    },
+
+    cloneNodeWithComputedStyles: function (sourceNode) {
+        var clone = sourceNode.cloneNode(true);
+        this.applyComputedStylesRecursive(sourceNode, clone);
+        return clone;
+    },
+
+    applyComputedStylesRecursive: function (sourceNode, targetNode) {
+        if (!sourceNode || !targetNode || sourceNode.nodeType !== 1 || targetNode.nodeType !== 1) {
+            return;
+        }
+
+        var computed = window.getComputedStyle(sourceNode);
+        if (computed) {
+            // Copy all computed properties to make capture independent from
+            // external stylesheet loading inside html2canvas clone documents.
+            for (var i = 0; i < computed.length; i++) {
+                var prop = computed[i];
+                var value = computed.getPropertyValue(prop);
+                if (value && value !== '') {
+                    targetNode.style.setProperty(prop, value);
+                }
+            }
+        }
+
+        var sourceChildren = sourceNode.children;
+        var targetChildren = targetNode.children;
+        var childCount = Math.min(sourceChildren.length, targetChildren.length);
+        for (var j = 0; j < childCount; j++) {
+            this.applyComputedStylesRecursive(sourceChildren[j], targetChildren[j]);
+        }
     },
 
     ensureHtml2Canvas: function (onReady, onError) {
