@@ -48,25 +48,23 @@ export class LibraryDetector {
         this.filesToInclude.clear();
         this.detectedPatterns = [];
 
-        if (!html || typeof html !== 'string') {
-            return this._buildResult();
-        }
-
-        // Scan for each pattern
-        for (const lib of LIBRARY_PATTERNS) {
-            // Skip MathJax libraries if LaTeX was pre-rendered
-            if (options.skipMathJax && (lib.name === 'exe_math' || lib.name === 'exe_math_datagame')) {
-                continue;
-            }
-
-            if (this._matchesPattern(html, lib)) {
-                // Special case: DataGame requires LaTeX check in decrypted content
-                if (lib.requiresLatexCheck) {
-                    if (!this._hasLatexInDataGame(html)) {
-                        continue;
-                    }
+        // Scan for each pattern (only when html content is available)
+        if (html && typeof html === 'string') {
+            for (const lib of LIBRARY_PATTERNS) {
+                // Skip MathJax libraries if LaTeX was pre-rendered
+                if (options.skipMathJax && (lib.name === 'exe_math' || lib.name === 'exe_math_datagame')) {
+                    continue;
                 }
-                this._addLibrary(lib);
+
+                if (this._matchesPattern(html, lib)) {
+                    // Special case: DataGame requires LaTeX check in decrypted content
+                    if (lib.requiresLatexCheck) {
+                        if (!this._hasLatexInDataGame(html)) {
+                            continue;
+                        }
+                    }
+                    this._addLibrary(lib);
+                }
             }
         }
 

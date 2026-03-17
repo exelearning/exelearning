@@ -1003,7 +1003,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     page_properties: trans('Page properties', {}, locale),
                     delete_page: trans('Delete page', {}, locale),
                     clone_page: trans('Clone page', {}, locale),
-                    import_content: trans('Import', {}, locale),
+                    import_content: trans('Import content', {}, locale),
                     new_page: trans('New page', {}, locale),
                     add_subpage: trans('Add subpage', {}, locale),
                     page_options: trans('Page options', {}, locale),
