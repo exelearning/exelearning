@@ -20,43 +20,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { AssetProvider, ExportAsset } from '../interfaces';
-import { MIME_TO_EXTENSION } from '../constants';
-
-/**
- * Reverse lookup: extension to MIME type
- */
-const EXTENSION_TO_MIME: Record<string, string> = {};
-for (const [mime, ext] of Object.entries(MIME_TO_EXTENSION)) {
-    EXTENSION_TO_MIME[ext] = mime;
-}
-
-// Add common extensions
-Object.assign(EXTENSION_TO_MIME, {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.gif': 'image/gif',
-    '.webp': 'image/webp',
-    '.svg': 'image/svg+xml',
-    '.mp3': 'audio/mpeg',
-    '.mp4': 'video/mp4',
-    '.webm': 'video/webm',
-    '.ogg': 'audio/ogg',
-    '.pdf': 'application/pdf',
-    '.doc': 'application/msword',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.xls': 'application/vnd.ms-excel',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    '.ppt': 'application/vnd.ms-powerpoint',
-    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    '.zip': 'application/zip',
-    '.json': 'application/json',
-    '.xml': 'application/xml',
-    '.txt': 'text/plain',
-    '.html': 'text/html',
-    '.css': 'text/css',
-    '.js': 'application/javascript',
-});
+import { EXTENSION_TO_MIME } from '../constants';
 
 /**
  * FileSystemAssetProvider class

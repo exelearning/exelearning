@@ -792,14 +792,7 @@ export class Epub3Exporter extends BaseExporter {
                 assetsAdded++;
             };
 
-            if (this.assets.forEachAsset) {
-                await this.assets.forEachAsset(processAsset);
-            } else {
-                const assets = await this.assets.getAllAssets();
-                for (const asset of assets) {
-                    await processAsset(asset);
-                }
-            }
+            await this.forEachAsset(processAsset);
         } catch (e) {
             console.warn('[Epub3Exporter] Failed to add assets:', e);
         }

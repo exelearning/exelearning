@@ -1786,29 +1786,8 @@ class AssetManager {
    */
   async getPendingAssets() {
     const pendingMetadata = this.getPendingAssetsMetadata();
-
-    if (pendingMetadata.length === 0) {
-      return [];
-    }
-
-    // Get blobs for pending assets (needed for upload)
-    const pendingAssets = [];
-    for (const meta of pendingMetadata) {
-      const blob = await this.getBlob(meta.id);
-      if (blob) {
-        pendingAssets.push({
-          ...meta,
-          projectId: this.projectId,
-          blob
-        });
-      } else {
-        // Asset metadata exists but blob not cached locally
-        // This can happen when another client added the asset
-        Logger.log(`[AssetManager] Pending asset ${meta.id.substring(0, 8)}... has no local blob`);
-      }
-    }
-
-    return pendingAssets;
+    if (pendingMetadata.length === 0) return [];
+    return this.getPendingAssetsBatch(pendingMetadata);
   }
 
   /**
@@ -1852,8 +1831,9 @@ class AssetManager {
       uploaded: true
     });
 
-    // Release the raw blob from memory — the server is now the source of truth.
-    // The blobURL remains valid for rendering (browser holds an internal reference).
+    // Release the raw in-memory blob after successful upload.
+    // Local cached access is still preserved through Cache API / blob URLs
+    // for post-save rendering, preview, and export in the current session.
     this.releaseUploadedBlob(id);
 
     Logger.log(`[AssetManager] Marked ${id.substring(0, 8)}... as uploaded via Yjs`);

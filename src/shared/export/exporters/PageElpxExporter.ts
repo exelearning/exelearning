@@ -92,14 +92,7 @@ export class PageElpxExporter extends ElpxExporter {
                 }
             };
 
-            if (this.assets.forEachAsset) {
-                await this.assets.forEachAsset(processAsset);
-            } else {
-                const allAssets = await this.assets.getAllAssets();
-                for (const asset of allAssets) {
-                    await processAsset(asset);
-                }
-            }
+            await this.forEachAsset(processAsset);
 
             console.log(`[PageElpxExporter] Added ${assetsAdded} filtered assets to ZIP`);
         } catch (e) {

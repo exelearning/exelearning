@@ -297,6 +297,26 @@ export abstract class BaseExporter {
     }
 
     // =========================================================================
+    // Asset Iteration
+    // =========================================================================
+
+    /**
+     * Iterate over all assets using the most efficient method available.
+     * Uses forEachAsset() when supported (streaming, memory-efficient),
+     * otherwise falls back to getAllAssets().
+     */
+    protected async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<void> {
+        if (this.assets.forEachAsset) {
+            await this.assets.forEachAsset(callback);
+        } else {
+            const assets = await this.assets.getAllAssets();
+            for (const asset of assets) {
+                await callback(asset);
+            }
+        }
+    }
+
+    // =========================================================================
     // File Handling
     // =========================================================================
 
@@ -327,14 +347,7 @@ export abstract class BaseExporter {
                 assetsAdded++;
             };
 
-            if (this.assets.forEachAsset) {
-                await this.assets.forEachAsset(processAsset);
-            } else {
-                const assets = await this.assets.getAllAssets();
-                for (const asset of assets) {
-                    await processAsset(asset);
-                }
-            }
+            await this.forEachAsset(processAsset);
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
         }
@@ -366,14 +379,7 @@ export abstract class BaseExporter {
                 assetsAdded++;
             };
 
-            if (this.assets.forEachAsset) {
-                await this.assets.forEachAsset(processAsset);
-            } else {
-                const assets = await this.assets.getAllAssets();
-                for (const asset of assets) {
-                    await processAsset(asset);
-                }
-            }
+            await this.forEachAsset(processAsset);
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
         }

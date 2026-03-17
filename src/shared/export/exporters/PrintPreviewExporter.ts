@@ -489,17 +489,25 @@ ${logoCss}
                 }
             };
 
-            if (this.assets.forEachAsset) {
-                await this.assets.forEachAsset(processAsset);
-            } else {
-                const assets = await this.assets.getAllAssets();
-                for (const asset of assets) {
-                    await processAsset(asset);
-                }
-            }
+            await this.iterateAssets(processAsset);
             console.log('[PrintPreview] Asset map built. Size:', this.assetExportPathMap.size);
         } catch (e) {
             console.warn('[PrintPreviewExporter] Failed to build asset map:', e);
+        }
+    }
+
+    /**
+     * Iterate over all assets using the most efficient method available.
+     * Uses forEachAsset() when supported (streaming), otherwise falls back to getAllAssets().
+     */
+    private async iterateAssets(callback: (asset: ExportAsset) => Promise<void>): Promise<void> {
+        if (this.assets!.forEachAsset) {
+            await this.assets!.forEachAsset(callback);
+        } else {
+            const assets = await this.assets!.getAllAssets();
+            for (const asset of assets) {
+                await callback(asset);
+            }
         }
     }
 

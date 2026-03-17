@@ -852,14 +852,7 @@ export class Html5Exporter extends BaseExporter {
                 assetsAdded++;
             };
 
-            if (this.assets.forEachAsset) {
-                await this.assets.forEachAsset(async asset => processAsset(asset));
-            } else {
-                const assets = await this.assets.getAllAssets();
-                for (const asset of assets) {
-                    await processAsset(asset);
-                }
-            }
+            await this.forEachAsset(processAsset);
         } catch (e) {
             console.warn('[Html5Exporter] Failed to add assets to preview files:', e);
         }

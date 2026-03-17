@@ -8,6 +8,9 @@ import type { Database, YjsDocument, NewYjsDocument, YjsUpdate, NewYjsUpdate, Yj
 import { now } from '../types';
 import { supportsReturning, updateByColumnAndReturn, toBinaryData } from '../helpers';
 
+/** version column is varchar — cast for numeric operations */
+const versionAsInt = sql<number>`CAST(version AS INTEGER)`;
+
 // ============================================================================
 // YJS DOCUMENTS (SNAPSHOTS)
 // ============================================================================
@@ -107,12 +110,11 @@ export async function snapshotExists(db: Kysely<Database>, projectId: number): P
 // ============================================================================
 
 export async function findUpdatesByProjectId(db: Kysely<Database>, projectId: number): Promise<YjsUpdate[]> {
-    // version is varchar — use CAST for numeric ordering
     return db
         .selectFrom('yjs_updates')
         .selectAll()
         .where('project_id', '=', projectId)
-        .orderBy(sql<number>`CAST(version AS INTEGER)`, 'asc')
+        .orderBy(versionAsInt, 'asc')
         .execute();
 }
 
@@ -121,14 +123,13 @@ export async function findUpdatesSince(
     projectId: number,
     sinceVersion: string,
 ): Promise<YjsUpdate[]> {
-    // version is varchar — use CAST for numeric comparison and ordering
     const sinceVersionNum = parseInt(sinceVersion, 10);
     return db
         .selectFrom('yjs_updates')
         .selectAll()
         .where('project_id', '=', projectId)
-        .where(sql<number>`CAST(version AS INTEGER)`, '>', sinceVersionNum)
-        .orderBy(sql<number>`CAST(version AS INTEGER)`, 'asc')
+        .where(versionAsInt, '>', sinceVersionNum)
+        .orderBy(versionAsInt, 'asc')
         .execute();
 }
 
@@ -166,21 +167,19 @@ export async function deleteUpdatesBefore(
     projectId: number,
     beforeVersion: string,
 ): Promise<number> {
-    // version is varchar — use CAST for numeric comparison
     const beforeVersionNum = parseInt(beforeVersion, 10);
     const result = await db
         .deleteFrom('yjs_updates')
         .where('project_id', '=', projectId)
-        .where(sql<number>`CAST(version AS INTEGER)`, '<', beforeVersionNum)
+        .where(versionAsInt, '<', beforeVersionNum)
         .execute();
     return Number(result[0]?.numDeletedRows ?? 0);
 }
 
 export async function getLatestVersion(db: Kysely<Database>, projectId: number): Promise<string> {
-    // version is varchar — use CAST for numeric MAX
     const result = await db
         .selectFrom('yjs_updates')
-        .select(sql<number>`MAX(CAST(version AS INTEGER))`.as('maxVersion'))
+        .select(sql<number>`MAX(${versionAsInt})`.as('maxVersion'))
         .where('project_id', '=', projectId)
         .executeTakeFirst();
 
@@ -277,15 +276,14 @@ export interface UpdateStats {
  * Used to determine when compaction is needed
  */
 export async function getUpdateStats(db: Kysely<Database>, projectId: number): Promise<UpdateStats> {
-    // version is varchar — use CAST for numeric MIN/MAX
     const result = await db
         .selectFrom('yjs_updates')
         .select(eb => [
             eb.fn.count<number>('id').as('count'),
             eb.fn.sum<number>(eb.fn('length', ['update_data'])).as('totalBytes'),
         ])
-        .select(sql<number>`MIN(CAST(version AS INTEGER))`.as('oldestVersion'))
-        .select(sql<number>`MAX(CAST(version AS INTEGER))`.as('newestVersion'))
+        .select(sql<number>`MIN(${versionAsInt})`.as('oldestVersion'))
+        .select(sql<number>`MAX(${versionAsInt})`.as('newestVersion'))
         .where('project_id', '=', projectId)
         .executeTakeFirst();
 
@@ -363,12 +361,11 @@ export async function deleteUpdatesUpToVersion(
     projectId: number,
     upToVersion: string,
 ): Promise<number> {
-    // version is varchar — use CAST for numeric comparison
     const upToVersionNum = parseInt(upToVersion, 10);
     const result = await db
         .deleteFrom('yjs_updates')
         .where('project_id', '=', projectId)
-        .where(sql<number>`CAST(version AS INTEGER)`, '<=', upToVersionNum)
+        .where(versionAsInt, '<=', upToVersionNum)
         .execute();
     return Number(result[0]?.numDeletedRows ?? 0);
 }
