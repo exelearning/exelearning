@@ -12402,11 +12402,11 @@
       </trans-unit>
       <trans-unit id="0004d3c" resname="Type A-Z">
         <source>Type A-Z</source>
-        <target>~~Typ A-Z</target>
+        <target>~Typ A-Z</target>
       </trans-unit>
       <trans-unit id="anco5yo" resname="Type Z-A">
         <source>Type Z-A</source>
-        <target>~~Typ Z-A</target>
+        <target>~Typ Z-A</target>
       </trans-unit>
       <trans-unit id="vwgq2xc" resname="Show references">
         <source>Show references</source>
@@ -12538,7 +12538,7 @@
       </trans-unit>
       <trans-unit id="bxn0par" resname="Savings">
         <source>Savings</source>
-        <target>~~Einsparung</target>
+        <target>~Einsparung</target>
       </trans-unit>
       <trans-unit id="8ode1er" resname="Selected">
         <source>Selected</source>
@@ -12686,7 +12686,7 @@
       </trans-unit>
       <trans-unit id="nqjtas3" resname="Another user">
         <source>Another user</source>
-        <target>~~Anderer Benutzer</target>
+        <target>~Anderer Benutzer</target>
       </trans-unit>
       <trans-unit id="qqurrcn" resname="Clone iDevice">
         <source>Clone iDevice</source>
@@ -12718,7 +12718,7 @@
       </trans-unit>
       <trans-unit id="0dzl654" resname="Being edited by">
         <source>Being edited by</source>
-        <target>~~Bearbeitet von</target>
+        <target>~Bearbeitet von</target>
       </trans-unit>
       <trans-unit id="e12gldl" resname="Content will appear when saved">
         <source>Content will appear when saved</source>
@@ -12770,7 +12770,7 @@
       </trans-unit>
       <trans-unit id="v7lnmpj" resname="Being edited by">
         <source>Being edited by</source>
-        <target>~~Bearbeitet von</target>
+        <target>~Bearbeitet von</target>
       </trans-unit>
       <trans-unit id="1x8ehph" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>
@@ -12842,7 +12842,7 @@
       </trans-unit>
       <trans-unit id="uy17447" resname="PDF">
         <source>PDF</source>
-        <target>~~PDF</target>
+        <target>~PDF</target>
       </trans-unit>
       <trans-unit id="h790s98" resname="Other">
         <source>Other</source>
@@ -13034,7 +13034,7 @@
       </trans-unit>
       <trans-unit id="awtzaji" resname="No broken links to export">
         <source>No broken links to export</source>
-        <target>~~Keine defekten Links zum Exportieren</target>
+        <target>~Keine defekten Links zum Exportieren</target>
       </trans-unit>
       <trans-unit id="z6c6dw1" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
@@ -13054,7 +13054,7 @@
       </trans-unit>
       <trans-unit id="o8lxdcp" resname="No resources to export">
         <source>No resources to export</source>
-        <target>~~Keine Ressourcen zum Exportieren</target>
+        <target>~Keine Ressourcen zum Exportieren</target>
       </trans-unit>
       <trans-unit id="00wktri" resname="Failed to download the style">
         <source>Failed to download the style</source>
@@ -13074,7 +13074,7 @@
       </trans-unit>
       <trans-unit id="b04uhvk" resname="No projects have been shared with you yet.">
         <source>No projects have been shared with you yet.</source>
-        <target>~~Es wurden noch keine Projekte mit dir geteilt.</target>
+        <target>~Es wurden noch keine Projekte mit dir geteilt.</target>
       </trans-unit>
       <trans-unit id="9b0xhm9" resname="Shared by">
         <source>Shared by</source>
@@ -13082,7 +13082,7 @@
       </trans-unit>
       <trans-unit id="6xsoeuc" resname="Clone to my projects">
         <source>Clone to my projects</source>
-        <target>~~Eine Kopie in meinen Projekten speichern</target>
+        <target>~Eine Kopie in meinen Projekten speichern</target>
       </trans-unit>
       <trans-unit id="kukqujf" resname="Select all">
         <source>Select all</source>
@@ -13134,7 +13134,7 @@
       </trans-unit>
       <trans-unit id="01uz0zd" resname="The default style will be used instead.">
         <source>The default style will be used instead.</source>
-        <target>~~Der Standardstil wird stattdessen verwendet.</target>
+        <target>~Der Standardstil wird stattdessen verwendet.</target>
       </trans-unit>
       <trans-unit id="3q1wy30" resname="Style not available">
         <source>Style not available</source>
@@ -13186,7 +13186,7 @@
       </trans-unit>
       <trans-unit id="kthaocp" resname="No project available to share">
         <source>No project available to share</source>
-        <target>~~Es ist kein Projekt zum Teilen verfügbar</target>
+        <target>~Es ist kein Projekt zum Teilen verfügbar</target>
       </trans-unit>
       <trans-unit id="yuehhnx" resname="Failed to load project data">
         <source>Failed to load project data</source>
@@ -13226,7 +13226,7 @@
       </trans-unit>
       <trans-unit id="lx8h64t" resname="Invited {email}">
         <source>Invited {email}</source>
-        <target>~~Gast {email}</target>
+        <target>~Gast {email}</target>
       </trans-unit>
       <trans-unit id="rrdh7vh" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
@@ -13242,7 +13242,7 @@
       </trans-unit>
       <trans-unit id="9xmc0wx" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target>~~Möchten Sie die Zugriffsberechtigung für {email} entfernen?</target>
+        <target>~Möchten Sie die Zugriffsberechtigung für {email} entfernen?</target>
       </trans-unit>
       <trans-unit id="xz0r4i1" resname="Removed {email}">
         <source>Removed {email}</source>
@@ -13318,7 +13318,7 @@
       </trans-unit>
       <trans-unit id="tmnex8m" resname="Failed">
         <source>Failed</source>
-        <target>~~Fehler</target>
+        <target>~Fehler</target>
       </trans-unit>
       <trans-unit id="ll0acym" resname="Image Optimizer">
         <source>Image Optimizer</source>
@@ -13326,11 +13326,11 @@
       </trans-unit>
       <trans-unit id="v9soijf" resname="N/A">
         <source>N/A</source>
-        <target>~~N/V</target>
+        <target>~N/V</target>
       </trans-unit>
       <trans-unit id="ciuj4pa" resname="Already optimized">
         <source>Already optimized</source>
-        <target>~~Bereits optimiert</target>
+        <target>~Bereits optimiert</target>
       </trans-unit>
       <trans-unit id="0bte55v" resname="Processing">
         <source>Processing</source>
@@ -13406,7 +13406,7 @@
       </trans-unit>
       <trans-unit id="3gf5xcc" resname="Storage not available">
         <source>Storage not available</source>
-        <target>~~Speicher nicht verfügbar</target>
+        <target>~Speicher nicht verfügbar</target>
       </trans-unit>
       <trans-unit id="tt7loc2" resname="Invalid style package">
         <source>Invalid style package</source>
@@ -13470,7 +13470,7 @@
       </trans-unit>
       <trans-unit id="tlect3d" resname="Do you want to delete">
         <source>Do you want to delete</source>
-        <target>~~Möchten Sie löschen</target>
+        <target>~Möchten Sie löschen</target>
       </trans-unit>
       <trans-unit id="3r08ngf" resname="selected pages">
         <source>selected pages</source>
@@ -13478,7 +13478,7 @@
       </trans-unit>
       <trans-unit id="68wzhib" resname="and their children">
         <source>and their children</source>
-        <target>~~und deren Unterseiten</target>
+        <target>~und deren Unterseiten</target>
       </trans-unit>
       <trans-unit id="k2k0gme" resname="You can undo this action.">
         <source>You can undo this action.</source>
@@ -13486,7 +13486,7 @@
       </trans-unit>
       <trans-unit id="ws5rzbi" resname="and all its children">
         <source>and all its children</source>
-        <target>~~und alle ihre Unterseiten</target>
+        <target>~und alle ihre Unterseiten</target>
       </trans-unit>
       <trans-unit id="95tahyb" resname="Another user is viewing this page or its children">
         <source>Another user is viewing this page or its children</source>
@@ -13614,7 +13614,7 @@
       </trans-unit>
       <trans-unit id="k4ax492" resname="Review recording">
         <source>Review recording</source>
-        <target>~~Aufnahme überprüfen</target>
+        <target>~Aufnahme überprüfen</target>
       </trans-unit>
       <trans-unit id="osu79so" resname="Recording in progress">
         <source>Recording in progress</source>
@@ -13658,7 +13658,7 @@
       </trans-unit>
       <trans-unit id="1rborms" resname="block">
         <source>block</source>
-        <target>~~block</target>
+        <target>~block</target>
       </trans-unit>
       <trans-unit id="v8nooof" resname="Default font">
         <source>Default font</source>
@@ -13742,7 +13742,7 @@
       </trans-unit>
       <trans-unit id="a09t7bp" resname="Start from empty set">
         <source>Start from empty set</source>
-        <target>~~Von Grund auf neu beginnen</target>
+        <target>~Von Grund auf neu beginnen</target>
       </trans-unit>
       <trans-unit id="p57mms7" resname="Start with minimal example">
         <source>Start with minimal example</source>
@@ -13750,11 +13750,11 @@
       </trans-unit>
       <trans-unit id="ic1rat7" resname="Create a new set without loading external files.">
         <source>Create a new set without loading external files.</source>
-        <target>~~Erstellt eine neue Gruppe ohne externe Dateien hochzuladen.</target>
+        <target>~Erstellt eine neue Gruppe ohne externe Dateien hochzuladen.</target>
       </trans-unit>
       <trans-unit id="jaevwz6" resname="Your set is empty. Use the &quot;+ Add Category&quot; button above to create the first category.">
         <source>Your set is empty. Use the "+ Add Category" button above to create the first category.</source>
-        <target>~~Deine Gruppe ist leer. Verwende die Schaltfläche "+ Kategorie hinzufügen" oben, um die erste Kategorie zu erstellen.</target>
+        <target>~Deine Gruppe ist leer. Verwende die Schaltfläche "+ Kategorie hinzufügen" oben, um die erste Kategorie zu erstellen.</target>
       </trans-unit>
       <trans-unit id="h6pwuji" resname="Double-click to rename">
         <source>Double-click to rename</source>
@@ -13770,11 +13770,11 @@
       </trans-unit>
       <trans-unit id="6opnuii" resname="Rename set">
         <source>Rename set</source>
-        <target>~~Set umbenennen</target>
+        <target>~Set umbenennen</target>
       </trans-unit>
       <trans-unit id="3sq9x5q" resname="Set name">
         <source>Set name</source>
-        <target>~~Name des Sets</target>
+        <target>~Name des Sets</target>
       </trans-unit>
       <trans-unit id="p8646pd" resname="Starter example">
         <source>Starter example</source>
@@ -13794,11 +13794,11 @@
       </trans-unit>
       <trans-unit id="xadheb9" resname="Send to host">
         <source>Send to host</source>
-        <target>~~Senden</target>
+        <target>~Senden</target>
       </trans-unit>
       <trans-unit id="bzlxn4u" resname="Sent!">
         <source>Sent!</source>
-        <target>~~Gesendet!</target>
+        <target>~Gesendet!</target>
       </trans-unit>
       <trans-unit id="wdhmujr" resname="Missing or invalid origin.">
         <source>Missing or invalid origin.</source>
@@ -13806,11 +13806,11 @@
       </trans-unit>
       <trans-unit id="ucgkggi" resname="No host window available.">
         <source>No host window available.</source>
-        <target>~~Das Ziel-Fenster wurde nicht gefunden.</target>
+        <target>~Das Ziel-Fenster wurde nicht gefunden.</target>
       </trans-unit>
       <trans-unit id="14jqhdz" resname="Your set is empty. Start by adding a category.">
         <source>Your set is empty. Start by adding a category.</source>
-        <target>~~Dein Satz ist leer. Beginne mit dem Hinzufügen einer Kategorie.</target>
+        <target>~Dein Satz ist leer. Beginne mit dem Hinzufügen einer Kategorie.</target>
       </trans-unit>
       <trans-unit id="acpbbot" resname="Add first category">
         <source>Add first category</source>
@@ -13846,7 +13846,7 @@
       </trans-unit>
       <trans-unit id="qyd8i29" resname="YouTube videos cannot be embedded in preview mode. ">
         <source>YouTube videos cannot be embedded in preview mode. </source>
-        <target>~~YouTube-Videos können in der Vorschau nicht eingebettet werden.</target>
+        <target>~YouTube-Videos können in der Vorschau nicht eingebettet werden.</target>
       </trans-unit>
       <trans-unit id="jf611jx" resname="Invalid file content">
         <source>Invalid file content</source>
@@ -13886,7 +13886,7 @@
       </trans-unit>
       <trans-unit id="yry86wu" resname="No indicators were selected for this activity.">
         <source>No indicators were selected for this activity.</source>
-        <target>~~Es wurden keine Indikatoren für diese Aktivität ausgewählt.</target>
+        <target>~Es wurden keine Indikatoren für diese Aktivität ausgewählt.</target>
       </trans-unit>
       <trans-unit id="un8d1wj" resname="DigCompEdu summary">
         <source>DigCompEdu summary</source>
@@ -13914,11 +13914,11 @@
       </trans-unit>
       <trans-unit id="cbvm6ib" resname="DigCompEdu framework">
         <source>DigCompEdu framework</source>
-        <target>~~DigCompEdu-Rahmen</target>
+        <target>~DigCompEdu-Rahmen</target>
       </trans-unit>
       <trans-unit id="sndznzk" resname="Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.">
         <source>Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.</source>
-        <target>~~Verwenden Sie Filter, Suche oder Vollbild, um den Rahmen zu erkunden. Die Indikatoren bleiben beim Filtern ausgewählt.</target>
+        <target>~Verwenden Sie Filter, Suche oder Vollbild, um den Rahmen zu erkunden. Die Indikatoren bleiben beim Filtern ausgewählt.</target>
       </trans-unit>
       <trans-unit id="76nuj7o" resname="Area">
         <source>Area</source>
@@ -13938,7 +13938,7 @@
       </trans-unit>
       <trans-unit id="fqpm7bv" resname="Performance and examples">
         <source>Performance and examples</source>
-        <target>~~Leistung und Beispiele</target>
+        <target>~Leistung und Beispiele</target>
       </trans-unit>
       <trans-unit id="umc7dpt" resname="DigCompEdu settings">
         <source>DigCompEdu settings</source>
@@ -13946,15 +13946,15 @@
       </trans-unit>
       <trans-unit id="aa9sfs1" resname="Español (MRCDD detallado)">
         <source>Español (MRCDD detallado)</source>
-        <target>~~Spanisch (detailliertes MRCDD)</target>
+        <target>~Spanisch (detailliertes MRCDD)</target>
       </trans-unit>
       <trans-unit id="mih8u2g" resname="Galego (MRCDD completo)">
         <source>Galego (MRCDD completo)</source>
-        <target>~~Galicisch (vollständiges MRCDD)</target>
+        <target>~Galicisch (vollständiges MRCDD)</target>
       </trans-unit>
       <trans-unit id="budfkfp" resname="English (DigCompEdu core)">
         <source>English (DigCompEdu core)</source>
-        <target>~~Englisch (DigCompEdu Kern)</target>
+        <target>~Englisch (DigCompEdu Kern)</target>
       </trans-unit>
       <trans-unit id="vgmcrpt" resname="Display options">
         <source>Display options</source>
@@ -13974,7 +13974,7 @@
       </trans-unit>
       <trans-unit id="prmi35h" resname="Selection granularity">
         <source>Selection granularity</source>
-        <target>~~Auswahlgranularität</target>
+        <target>~Auswahlgranularität</target>
       </trans-unit>
       <trans-unit id="1xs6ctp" resname="Competences">
         <source>Competences</source>
@@ -14018,7 +14018,7 @@
       </trans-unit>
       <trans-unit id="2ukxbe2" resname="Selection summary preview">
         <source>Selection summary preview</source>
-        <target>~~Auswahlzusammenfassungs-Vorschau</target>
+        <target>~Auswahlzusammenfassungs-Vorschau</target>
       </trans-unit>
       <trans-unit id="7vvouqj" resname="Examples:">
         <source>Examples:</source>
@@ -14038,15 +14038,15 @@
       </trans-unit>
       <trans-unit id="i4v522a" resname="and ">
         <source>and </source>
-        <target>~~und</target>
+        <target>~und</target>
       </trans-unit>
       <trans-unit id="68x1unj" resname="indicator">
         <source>indicator</source>
-        <target>~~Indikator</target>
+        <target>~Indikator</target>
       </trans-unit>
       <trans-unit id="egluw99" resname="level">
         <source>level</source>
-        <target>~~Niveau</target>
+        <target>~Niveau</target>
       </trans-unit>
       <trans-unit id="0n5pw1z" resname="Unable to change framework. The previous data will remain loaded.">
         <source>Unable to change framework. The previous data will remain loaded.</source>
