@@ -87,6 +87,10 @@ var $exeDevice = {
      * @returns
      */
     completeLicense: function (str) {
+        if (str === 'propietary license') return c_('Proprietary license');
+        if (str === 'not appropriate') return c_('Not appropriate');
+        if (str === 'public domain') return c_('Public domain');
+
         var licenses = this.eXeLicenses;
         var license;
         var type;
