@@ -3,7 +3,7 @@
  * Type-safe queries for SQLite, PostgreSQL, and MySQL
  * All functions accept db as first parameter for dependency injection
  */
-import type { Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import type { Database, YjsDocument, NewYjsDocument, YjsUpdate, NewYjsUpdate, YjsVersionHistory } from '../types';
 import { now } from '../types';
 import { supportsReturning, updateByColumnAndReturn, toBinaryData } from '../helpers';
@@ -107,11 +107,12 @@ export async function snapshotExists(db: Kysely<Database>, projectId: number): P
 // ============================================================================
 
 export async function findUpdatesByProjectId(db: Kysely<Database>, projectId: number): Promise<YjsUpdate[]> {
+    // version is varchar — use CAST for numeric ordering
     return db
         .selectFrom('yjs_updates')
         .selectAll()
         .where('project_id', '=', projectId)
-        .orderBy('version', 'asc')
+        .orderBy(sql<number>`CAST(version AS INTEGER)`, 'asc')
         .execute();
 }
 
@@ -120,15 +121,15 @@ export async function findUpdatesSince(
     projectId: number,
     sinceVersion: string,
 ): Promise<YjsUpdate[]> {
-    const updates = await db
+    // version is varchar — use CAST for numeric comparison and ordering
+    const sinceVersionNum = parseInt(sinceVersion, 10);
+    return db
         .selectFrom('yjs_updates')
         .selectAll()
         .where('project_id', '=', projectId)
-        .orderBy('version', 'asc')
+        .where(sql<number>`CAST(version AS INTEGER)`, '>', sinceVersionNum)
+        .orderBy(sql<number>`CAST(version AS INTEGER)`, 'asc')
         .execute();
-
-    const sinceVersionNum = parseInt(sinceVersion, 10);
-    return updates.filter(u => parseInt(u.version, 10) > sinceVersionNum);
 }
 
 export async function createUpdate(db: Kysely<Database>, data: NewYjsUpdate): Promise<YjsUpdate> {
@@ -163,26 +164,27 @@ export async function deleteAllUpdates(db: Kysely<Database>, projectId: number):
 export async function deleteUpdatesBefore(
     db: Kysely<Database>,
     projectId: number,
-    beforeVersion: number,
+    beforeVersion: string,
 ): Promise<number> {
-    const updates = await db.selectFrom('yjs_updates').selectAll().where('project_id', '=', projectId).execute();
-
-    const toDelete = updates.filter(u => parseInt(u.version, 10) < beforeVersion);
-
-    for (const update of toDelete) {
-        await db.deleteFrom('yjs_updates').where('id', '=', update.id).execute();
-    }
-
-    return toDelete.length;
+    // version is varchar — use CAST for numeric comparison
+    const beforeVersionNum = parseInt(beforeVersion, 10);
+    const result = await db
+        .deleteFrom('yjs_updates')
+        .where('project_id', '=', projectId)
+        .where(sql<number>`CAST(version AS INTEGER)`, '<', beforeVersionNum)
+        .execute();
+    return Number(result[0]?.numDeletedRows ?? 0);
 }
 
 export async function getLatestVersion(db: Kysely<Database>, projectId: number): Promise<string> {
-    const updates = await db.selectFrom('yjs_updates').select('version').where('project_id', '=', projectId).execute();
+    // version is varchar — use CAST for numeric MAX
+    const result = await db
+        .selectFrom('yjs_updates')
+        .select(sql<number>`MAX(CAST(version AS INTEGER))`.as('maxVersion'))
+        .where('project_id', '=', projectId)
+        .executeTakeFirst();
 
-    if (updates.length === 0) return '0';
-
-    const maxVersion = Math.max(...updates.map(u => parseInt(u.version, 10)));
-    return maxVersion.toString();
+    return result?.maxVersion != null ? String(result.maxVersion) : '0';
 }
 
 export async function countUpdates(db: Kysely<Database>, projectId: number): Promise<number> {
@@ -275,33 +277,28 @@ export interface UpdateStats {
  * Used to determine when compaction is needed
  */
 export async function getUpdateStats(db: Kysely<Database>, projectId: number): Promise<UpdateStats> {
-    const updates = await findUpdatesByProjectId(db, projectId);
+    // version is varchar — use CAST for numeric MIN/MAX
+    const result = await db
+        .selectFrom('yjs_updates')
+        .select(eb => [
+            eb.fn.count<number>('id').as('count'),
+            eb.fn.sum<number>(eb.fn('length', ['update_data'])).as('totalBytes'),
+        ])
+        .select(sql<number>`MIN(CAST(version AS INTEGER))`.as('oldestVersion'))
+        .select(sql<number>`MAX(CAST(version AS INTEGER))`.as('newestVersion'))
+        .where('project_id', '=', projectId)
+        .executeTakeFirst();
 
-    if (updates.length === 0) {
-        return {
-            count: 0,
-            totalBytes: 0,
-            oldestVersion: '0',
-            newestVersion: '0',
-        };
-    }
-
-    let totalBytes = 0;
-    let oldestVersion = Number.MAX_SAFE_INTEGER;
-    let newestVersion = 0;
-
-    for (const update of updates) {
-        totalBytes += update.update_data.length;
-        const version = parseInt(update.version, 10);
-        if (version < oldestVersion) oldestVersion = version;
-        if (version > newestVersion) newestVersion = version;
+    const count = Number(result?.count ?? 0);
+    if (count === 0) {
+        return { count: 0, totalBytes: 0, oldestVersion: '0', newestVersion: '0' };
     }
 
     return {
-        count: updates.length,
-        totalBytes,
-        oldestVersion: oldestVersion.toString(),
-        newestVersion: newestVersion.toString(),
+        count,
+        totalBytes: Number(result?.totalBytes ?? 0),
+        oldestVersion: String(result?.oldestVersion ?? '0'),
+        newestVersion: String(result?.newestVersion ?? '0'),
     };
 }
 
@@ -366,16 +363,14 @@ export async function deleteUpdatesUpToVersion(
     projectId: number,
     upToVersion: string,
 ): Promise<number> {
-    const updates = await db.selectFrom('yjs_updates').selectAll().where('project_id', '=', projectId).execute();
-
-    const versionNum = parseInt(upToVersion, 10);
-    const toDelete = updates.filter(u => parseInt(u.version, 10) <= versionNum);
-
-    for (const update of toDelete) {
-        await db.deleteFrom('yjs_updates').where('id', '=', update.id).execute();
-    }
-
-    return toDelete.length;
+    // version is varchar — use CAST for numeric comparison
+    const upToVersionNum = parseInt(upToVersion, 10);
+    const result = await db
+        .deleteFrom('yjs_updates')
+        .where('project_id', '=', projectId)
+        .where(sql<number>`CAST(version AS INTEGER)`, '<=', upToVersionNum)
+        .execute();
+    return Number(result[0]?.numDeletedRows ?? 0);
 }
 
 /**
@@ -499,7 +494,7 @@ export async function countVersions(db: Kysely<Database>, projectId: number): Pr
  * Useful for limiting storage usage
  */
 export async function pruneOldVersions(db: Kysely<Database>, projectId: number, keepCount: number): Promise<number> {
-    // Get versions to keep
+    // Get IDs of versions to keep (most recent N)
     const versionsToKeep = await db
         .selectFrom('yjs_version_history')
         .select('id')
@@ -508,25 +503,17 @@ export async function pruneOldVersions(db: Kysely<Database>, projectId: number, 
         .limit(keepCount)
         .execute();
 
-    const keepIds = new Set(versionsToKeep.map(v => v.id));
+    const keepIds = versionsToKeep.map(v => v.id);
 
-    // Get all versions
-    const allVersions = await db
-        .selectFrom('yjs_version_history')
-        .select('id')
-        .where('project_id', '=', projectId)
-        .execute();
+    // Delete all versions for this project that are NOT in the keep list
+    let query = db.deleteFrom('yjs_version_history').where('project_id', '=', projectId);
 
-    // Delete versions not in keepIds
-    let deletedCount = 0;
-    for (const version of allVersions) {
-        if (!keepIds.has(version.id)) {
-            await db.deleteFrom('yjs_version_history').where('id', '=', version.id).execute();
-            deletedCount++;
-        }
+    if (keepIds.length > 0) {
+        query = query.where('id', 'not in', keepIds);
     }
 
-    return deletedCount;
+    const result = await query.execute();
+    return Number(result[0]?.numDeletedRows ?? 0);
 }
 
 /**

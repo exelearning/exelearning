@@ -1769,13 +1769,23 @@ class AssetManager {
   }
 
   /**
-   * Get assets pending upload
+   * Get metadata for assets pending upload (no blobs loaded).
+   * Use this for quota checks and progress estimation without loading all blobs into memory.
+   * @returns {Array} Array of metadata objects (without blob property)
+   */
+  getPendingAssetsMetadata() {
+    const allMetadata = this.getAllAssetsMetadata();
+    return allMetadata.filter(a => a.uploaded === false);
+  }
+
+  /**
+   * Get assets pending upload with blobs loaded.
+   * Loads blobs for ALL pending assets. For memory-efficient uploads,
+   * prefer getPendingAssetsMetadata() + getPendingAssetsBatch().
    * @returns {Promise<Array>}
    */
   async getPendingAssets() {
-    // Get metadata from Yjs and filter by uploaded=false
-    const allMetadata = this.getAllAssetsMetadata();
-    const pendingMetadata = allMetadata.filter(a => a.uploaded === false);
+    const pendingMetadata = this.getPendingAssetsMetadata();
 
     if (pendingMetadata.length === 0) {
       return [];
@@ -1802,6 +1812,29 @@ class AssetManager {
   }
 
   /**
+   * Load blobs for a specific batch of asset IDs.
+   * Used for memory-efficient streaming uploads — load blobs only when needed.
+   * @param {Array<Object>} metadataList - Array of metadata objects (from getPendingAssetsMetadata)
+   * @returns {Promise<Array>} Array of assets with blobs loaded
+   */
+  async getPendingAssetsBatch(metadataList) {
+    const assets = [];
+    for (const meta of metadataList) {
+      const blob = await this.getBlob(meta.id);
+      if (blob) {
+        assets.push({
+          ...meta,
+          projectId: this.projectId,
+          blob
+        });
+      } else {
+        Logger.log(`[AssetManager] Pending asset ${meta.id.substring(0, 8)}... has no local blob (batch)`);
+      }
+    }
+    return assets;
+  }
+
+  /**
    * Mark asset as uploaded in Yjs metadata
    * @param {string} id - Asset UUID
    * @returns {Promise<void>}
@@ -1819,7 +1852,26 @@ class AssetManager {
       uploaded: true
     });
 
+    // Release the raw blob from memory — the server is now the source of truth.
+    // The blobURL remains valid for rendering (browser holds an internal reference).
+    this.releaseUploadedBlob(id);
+
     Logger.log(`[AssetManager] Marked ${id.substring(0, 8)}... as uploaded via Yjs`);
+  }
+
+  /**
+   * Release a blob from the in-memory blobCache after successful upload.
+   * Keeps blobURLCache intact so existing blob:// URLs in the editor remain valid.
+   * Cache API entry is intentionally preserved — getBlob() needs it as fallback
+   * for post-save operations (export, preview, re-rendering).
+   * Cache API is cleaned up on project close via cleanup().
+   * @param {string} id - Asset UUID
+   */
+  releaseUploadedBlob(id) {
+    if (this.blobCache.has(id)) {
+      this.blobCache.delete(id);
+      Logger.log(`[AssetManager] Released blob from memory for ${id.substring(0, 8)}...`);
+    }
   }
 
   /**

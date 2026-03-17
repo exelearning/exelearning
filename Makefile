@@ -186,7 +186,7 @@ endif
 # Start full app: Static files + Electron (no server needed)
 .PHONY: run-app
 run-app: check-bun check-env deps css bundle
-	@bun add --no-save electron electron-updater electron-log electron-context-menu 2>/dev/null || true
+	@bun add --no-save electron-updater electron-log electron-context-menu 2>/dev/null || true
 	@echo "Building static files..."
 	@bun scripts/build-static-bundle.ts
 	@echo "Copying static files to app/..."

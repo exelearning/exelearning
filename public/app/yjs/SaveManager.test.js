@@ -78,6 +78,8 @@ describe('SaveManager', () => {
       assetManager: {
         projectId: 'project-123',
         getPendingAssets: vi.fn().mockResolvedValue([]),
+        getPendingAssetsMetadata: vi.fn().mockReturnValue([]),
+        getPendingAssetsBatch: vi.fn().mockResolvedValue([]),
         markAssetUploaded: vi.fn(),
       },
       updateSaveStatus: vi.fn(),
@@ -537,8 +539,8 @@ describe('SaveManager', () => {
 
       await manager.save();
 
-      // saveYjsState is called with projectId, documentManager, and onProgress callback
-      expect(spy).toHaveBeenCalledWith('project-123', mockBridge.documentManager, expect.any(Function));
+      // saveYjsState is called with projectId, documentManager, pre-encoded state, and onProgress callback
+      expect(spy).toHaveBeenCalledWith('project-123', mockBridge.documentManager, expect.any(Uint8Array), expect.any(Function));
     });
 
     it('calls updateProjectMetadata', async () => {
@@ -571,17 +573,22 @@ describe('SaveManager', () => {
       expect(mockBridge.isNewProject).toBe(false);
     });
 
-    it('uploads pending assets', async () => {
+    it('uploads pending assets with metadata-only objects (no blob property)', async () => {
       const manager = new SaveManager(mockBridge);
-      mockBridge.assetManager.getPendingAssets.mockResolvedValue([
-        { id: 'asset-1', blob: new Blob(['test']), filename: 'test.txt', mime: 'text/plain' },
-      ]);
+      const pendingMeta = [
+        { id: 'asset-1', filename: 'test.txt', mime: 'text/plain', size: 4, uploaded: false },
+      ];
+      mockBridge.assetManager.getPendingAssetsMetadata.mockReturnValue(pendingMeta);
 
       const uploadSpy = vi.spyOn(manager, 'uploadAssets').mockResolvedValue({ uploaded: 1, failed: 0 });
 
       await manager.save();
 
       expect(uploadSpy).toHaveBeenCalled();
+      // Verify uploadAssets receives metadata-only objects (no blob property)
+      const passedAssets = uploadSpy.mock.calls[0][2];
+      expect(passedAssets).toEqual(pendingMeta);
+      expect(passedAssets[0].blob).toBeUndefined();
     });
 
     it('handles save errors gracefully', async () => {
@@ -622,7 +629,7 @@ describe('SaveManager', () => {
 
     it('encodes Yjs state', async () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token' });
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       // Verify that the body sent to XHR is a Uint8Array (result of encoding)
       expect(xhrInstances.length).toBeGreaterThan(0);
@@ -634,7 +641,7 @@ describe('SaveManager', () => {
 
     it('sends state to server with markSaved=true (explicit save)', async () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       expect(xhr.open).toHaveBeenCalledWith(
@@ -651,7 +658,7 @@ describe('SaveManager', () => {
         get: vi.fn().mockReturnValue('My Test Project'),
       });
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-Project-Title', 'My%20Test%20Project');
@@ -663,7 +670,7 @@ describe('SaveManager', () => {
         get: vi.fn().mockReturnValue('Título con ñ y émojis 🎉'),
       });
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       const titleCall = xhr.setRequestHeader.mock.calls.find(c => c[0] === 'X-Project-Title');
@@ -678,7 +685,7 @@ describe('SaveManager', () => {
         get: vi.fn().mockReturnValue(null),
       });
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-Project-Title', '');
@@ -688,7 +695,7 @@ describe('SaveManager', () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
       mockBridge.documentManager.getMetadata = undefined;
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-Project-Title', '');
@@ -713,7 +720,7 @@ describe('SaveManager', () => {
       global.XMLHttpRequest = ErrorXHR;
 
       const manager = new SaveManager(mockBridge);
-      await expect(manager.saveYjsState('project-123', mockBridge.documentManager)).rejects.toThrow(
+      await expect(manager.saveYjsState('project-123', mockBridge.documentManager, null)).rejects.toThrow(
         'Failed to save document: 500 Internal error'
       );
     });
@@ -743,7 +750,7 @@ describe('SaveManager', () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token' });
       const progressCallback = vi.fn();
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager, progressCallback);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null, progressCallback);
 
       expect(progressCallback).toHaveBeenCalledWith(0); // Initial
       expect(progressCallback).toHaveBeenCalledWith(50); // 50%
@@ -767,7 +774,7 @@ describe('SaveManager', () => {
       global.XMLHttpRequest = NetworkErrorXHR;
 
       const manager = new SaveManager(mockBridge);
-      await expect(manager.saveYjsState('project-123', mockBridge.documentManager)).rejects.toThrow(
+      await expect(manager.saveYjsState('project-123', mockBridge.documentManager, null)).rejects.toThrow(
         'Network error while saving document'
       );
     });
@@ -1235,11 +1242,13 @@ describe('SaveManager', () => {
 
     it('handles asset upload errors gracefully', async () => {
       const manager = new SaveManager(mockBridge);
-      // Set up a pending asset that will be uploaded
-      mockBridge.assetManager.getPendingAssets.mockResolvedValue([
-        { id: 'a1', blob: new Blob(['1']), filename: 'a.txt' },
+      // Set up pending asset metadata
+      const pendingMeta = [{ id: 'a1', filename: 'a.txt', size: 1, uploaded: false }];
+      mockBridge.assetManager.getPendingAssetsMetadata.mockReturnValue(pendingMeta);
+      // Mock uploadAssetBatch to fail (uploadSmallAssetsBatched loads blobs per-batch internally)
+      mockBridge.assetManager.getPendingAssetsBatch.mockResolvedValue([
+        { id: 'a1', blob: new Blob(['1']), filename: 'a.txt', projectId: 'project-123' },
       ]);
-      // Mock uploadAssetBatch to fail
       vi.spyOn(manager, 'uploadAssetBatch').mockRejectedValue(new Error('Upload error'));
 
       const result = await manager.save();
