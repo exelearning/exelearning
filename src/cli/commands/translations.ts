@@ -39,11 +39,22 @@ const EXCLUDE_FILE_PATTERNS = [
     /[\\/]+exe_math[\\/]+/, // MathJax directory (has its own t() calls)
     /[\\/]+node_modules[\\/]+/, // Dependencies
     /[\\/]+cli[\\/]+commands[\\/]+translations\.ts$/, // This file (TRANS_PREFIX pattern matches its own source)
+    // Comment the following 3 lines to scan the admin panel
     /[\\/]+views[\\/]+admin[\\/]+/, // Admin-only Nunjucks templates
     /[\\/]+app[\\/]+admin[\\/]+/, // Admin-only frontend JS
     /[\\/]+routes[\\/]+admin/, // Admin-only backend routes
     /[\\/]+shared[\\/]+export[\\/]+generators[\\/]+I18nGenerator\.ts$/, // Has translation strings in comments only
+    /[\\/]+tinymce_5[\\/]+js[\\/]+tinymce[\\/]+plugins[\\/]+lists[\\/]+plugin\.min\.js$/, // TinyMCE lists plugin (minified, not translatable)
+    /[\\/]+jquery-ui[\\/]+jquery-ui\.min\.js$/, // jQuery UI (minified, not translatable)
+    /[\\/]+app\.bundle\.js$/, // Compiled bundle (stale; sources are scanned directly)
 ];
+
+/**
+ * Exact keys to exclude from extraction (strings that are not UI translations)
+ */
+const EXCLUDE_EXACT_KEYS = new Set([
+    'P + \\\\tfrac12 \\\\rho v^2 + \\\\rho g h = \\\\text{constant}', // Bernoulli equation example in edicuatex lang file
+]);
 
 /**
  * Keys that look like test patterns (not real translations)
@@ -65,10 +76,10 @@ function shouldExcludeFile(filePath: string): boolean {
 }
 
 /**
- * Check if a key looks like a test pattern and should be excluded
+ * Check if a key looks like a test pattern or is explicitly excluded
  */
 function isInvalidKey(key: string): boolean {
-    return INVALID_KEY_PATTERNS.some(pattern => pattern.test(key));
+    return EXCLUDE_EXACT_KEYS.has(key) || INVALID_KEY_PATTERNS.some(pattern => pattern.test(key));
 }
 
 /**
@@ -199,7 +210,8 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
         return { content: xlfContent, added: 0 };
     }
 
-    const newContent = xlfContent.slice(0, bodyCloseIndex) + newUnits + '\n    ' + xlfContent.slice(bodyCloseIndex);
+    const newContent =
+        xlfContent.slice(0, bodyCloseIndex).trimEnd() + '\n' + newUnits + '\n    ' + xlfContent.slice(bodyCloseIndex);
 
     return { content: newContent, added: keysToAdd.length };
 }
@@ -345,6 +357,9 @@ async function processLocale(
             }
         }
     }
+
+    // Normalize </body> indentation (any operation can leave wrong leading whitespace)
+    content = content.replace(/^[ \t]*<\/body>/m, '    </body>');
 
     // Write back
     fs.writeFileSync(xlfPath, content, 'utf-8');
