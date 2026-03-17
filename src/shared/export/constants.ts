@@ -680,7 +680,7 @@ export function formatShortLicenseText(licenseName: string): string {
         return 'Creative Commons CC0 1.0';
     }
 
-    return licenseName;
+    return entry?.displayName || licenseName;
 }
 
 /**
