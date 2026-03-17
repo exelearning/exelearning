@@ -113,6 +113,7 @@ export class PageRenderer {
             author: options.author,
             description: options.description,
             license: options.license,
+            language: options.language,
         });
 
         // Calculate page counter values
@@ -607,7 +608,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         projectTitle?: string,
         assetExportPathMap?: Map<string, string>,
-        metadata?: { author?: string; description?: string; license?: string },
+        metadata?: { author?: string; description?: string; license?: string; language?: string },
     ): string {
         let html = '';
 
@@ -1024,6 +1025,7 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
     author: options.author,
     description: options.description,
     license: options.license,
+    language: options.language,
 })}
 </div>
 </section>\n`;
