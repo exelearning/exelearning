@@ -4515,8 +4515,15 @@ window.simplifyMediaElements = function(html) {
 
   let modified = 0;
 
+  // Mark video elements that have <source> children (avoids :has() which is unsupported in Chrome < 105)
+  doc.querySelectorAll('video').forEach((video) => {
+    if (video.querySelector('source')) {
+      video.classList.add('exe-video-with-source');
+    }
+  });
+
   // Find all video elements with class "mediaelement" or with source children
-  doc.querySelectorAll('video.mediaelement, video:has(source)').forEach((video) => {
+  doc.querySelectorAll('video.mediaelement, video.exe-video-with-source').forEach((video) => {
     // Get the source URL - either from <source> child or from video.src
     let src = video.getAttribute('src') || '';
     const sourceEl = video.querySelector('source');
@@ -4534,7 +4541,7 @@ window.simplifyMediaElements = function(html) {
     const width = video.getAttribute('width') || '';
     const height = video.getAttribute('height') || '';
     const poster = video.getAttribute('poster') || '';
-    const className = video.className.replace('mediaelement', '').trim();
+    const className = video.className.replace('mediaelement', '').replace('exe-video-with-source', '').trim();
 
     // Create simple video element
     const newVideo = doc.createElement('video');
@@ -4556,8 +4563,14 @@ window.simplifyMediaElements = function(html) {
     modified++;
   });
 
-  // Also simplify audio elements with source children
-  doc.querySelectorAll('audio:has(source)').forEach((audio) => {
+  // Also simplify audio elements with source children (avoids :has() which is unsupported in Chrome < 105)
+  doc.querySelectorAll('audio').forEach((audio) => {
+    if (audio.querySelector('source')) {
+      audio.classList.add('exe-audio-with-source');
+    }
+  });
+
+  doc.querySelectorAll('audio.exe-audio-with-source').forEach((audio) => {
     let src = audio.getAttribute('src') || '';
     const sourceEl = audio.querySelector('source');
     if (sourceEl) {
@@ -4567,7 +4580,7 @@ window.simplifyMediaElements = function(html) {
     if (!src) return;
 
     const type = sourceEl?.getAttribute('type') || '';
-    const className = audio.className;
+    const className = audio.className.replace('exe-audio-with-source', '').trim();
 
     const newAudio = doc.createElement('audio');
     newAudio.setAttribute('src', src);
