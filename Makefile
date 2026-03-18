@@ -16,6 +16,19 @@ endif
 
 MAKEFLAGS += --no-print-directory
 
+# Warn when running in native Windows shells (cmd or PowerShell)
+ifeq ($(SYSTEM_OS),windows)
+$(warning )
+$(warning ============================================================)
+$(warning  WARNING: Non-Bash shell detected (cmd or PowerShell))
+$(warning ============================================================)
+$(warning  Running make in native Windows shells may cause errors.)
+$(warning  Please use a Bash-compatible terminal instead,)
+$(warning  e.g. Git Bash: https://git-scm.com/downloads)
+$(warning ============================================================)
+$(warning )
+endif
+
 # Default target: show help
 .DEFAULT_GOAL := help
 
