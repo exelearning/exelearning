@@ -541,7 +541,7 @@ export class Html5Exporter extends BaseExporter {
 
     /**
      * Generate preview files map (for Service Worker-based preview)
-     * Returns a map of file paths to content (Uint8Array or string)
+     * Returns a map of file paths to transferable ArrayBuffers
      * Same structure as ZIP export but without creating the archive
      *
      * This enables unified preview/export rendering using the eXeViewer approach:
@@ -549,8 +549,8 @@ export class Html5Exporter extends BaseExporter {
      * - Files are the same as what would be in the HTML5 export
      * - No blob:// URLs, no special preview rendering path
      */
-    async generateForPreview(options?: Html5ExportOptions): Promise<Map<string, Uint8Array | string>> {
-        const files = new Map<string, Uint8Array | string>();
+    async generateForPreview(options?: Html5ExportOptions): Promise<Map<string, ArrayBuffer>> {
+        const files = new Map<string, ArrayBuffer>();
 
         try {
             let pages = this.buildPageList();
@@ -569,8 +569,8 @@ export class Html5Exporter extends BaseExporter {
 
             // File tracking for ELPX manifest (only when download-source-file is used)
             const fileList: string[] | null = needsElpxDownload ? [] : null;
-            const addFile = (path: string, content: Uint8Array | string) => {
-                files.set(path, content);
+            const addFile = (path: string, content: Uint8Array | string | ArrayBuffer) => {
+                files.set(path, this.toPreviewArrayBuffer(content));
                 if (fileList) fileList.push(path);
             };
 
@@ -796,7 +796,7 @@ export class Html5Exporter extends BaseExporter {
                 // Include the manifest file itself in the file list (self-reference)
                 fileList.push('libs/elpx-manifest.js');
                 const manifestJs = this.generateElpxManifestFile(fileList);
-                files.set('libs/elpx-manifest.js', manifestJs);
+                addFile('libs/elpx-manifest.js', manifestJs);
 
                 // Ensure ELPX download libraries are present (may not be detected by library detector)
                 const elpxLibFiles = ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'];
@@ -814,13 +814,12 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 12. Add all HTML pages to files map
-            const encoder = new TextEncoder();
             for (const entry of pageEntries) {
                 let { html } = entry;
                 if (needsElpxDownload) {
                     html = this.injectElpxScripts(html, entry.page, entry.index === 0);
                 }
-                files.set(entry.filename, encoder.encode(html));
+                addFile(entry.filename, html);
             }
 
             return files;
@@ -834,7 +833,7 @@ export class Html5Exporter extends BaseExporter {
      * Add project assets to preview files map
      */
     private async addAssetsToPreviewFiles(
-        files: Map<string, Uint8Array | string>,
+        files: Map<string, ArrayBuffer>,
         trackingList?: string[] | null,
     ): Promise<number> {
         let assetsAdded = 0;
@@ -847,7 +846,7 @@ export class Html5Exporter extends BaseExporter {
                 if (!exportPath) return;
 
                 const filePath = `content/resources/${exportPath}`;
-                files.set(filePath, asset.data);
+                files.set(filePath, await this.toPreviewAssetBuffer(asset.data));
                 if (trackingList) trackingList.push(filePath);
                 assetsAdded++;
             };
@@ -858,5 +857,29 @@ export class Html5Exporter extends BaseExporter {
         }
 
         return assetsAdded;
+    }
+
+    private toPreviewArrayBuffer(content: Uint8Array | string | ArrayBuffer): ArrayBuffer {
+        if (content instanceof ArrayBuffer) {
+            return content;
+        }
+
+        if (typeof content === 'string') {
+            return new TextEncoder().encode(content).buffer as ArrayBuffer;
+        }
+
+        if (content.byteOffset === 0 && content.byteLength === content.buffer.byteLength) {
+            return content.buffer as ArrayBuffer;
+        }
+
+        return content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength) as ArrayBuffer;
+    }
+
+    private async toPreviewAssetBuffer(content: Uint8Array | Blob | ArrayBuffer): Promise<ArrayBuffer> {
+        if (content instanceof Blob) {
+            return content.arrayBuffer();
+        }
+
+        return this.toPreviewArrayBuffer(content);
     }
 }

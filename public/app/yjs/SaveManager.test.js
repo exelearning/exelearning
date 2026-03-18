@@ -79,7 +79,9 @@ describe('SaveManager', () => {
         projectId: 'project-123',
         getPendingAssets: vi.fn().mockResolvedValue([]),
         getPendingAssetsMetadata: vi.fn().mockReturnValue([]),
-        getPendingAssetsBatch: vi.fn().mockResolvedValue([]),
+        getPendingAssetsBatch: vi.fn(async (assets) => assets),
+        getBlob: vi.fn().mockResolvedValue(null),
+        getBlobForExport: vi.fn().mockResolvedValue(null),
         markAssetUploaded: vi.fn(),
       },
       updateSaveStatus: vi.fn(),
@@ -129,9 +131,9 @@ describe('SaveManager', () => {
       expect(manager.MAX_BATCH_BYTES).toBe(20 * 1024 * 1024);
     });
 
-    it('initializes MAX_CONCURRENT_BATCHES to 10', () => {
+    it('initializes MAX_CONCURRENT_BATCHES to 2', () => {
       const manager = new SaveManager(mockBridge);
-      expect(manager.MAX_CONCURRENT_BATCHES).toBe(10);
+      expect(manager.MAX_CONCURRENT_BATCHES).toBe(2);
     });
 
     it('initializes CHUNK_UPLOAD_THRESHOLD to 20MB', () => {
@@ -1361,6 +1363,22 @@ describe('SaveManager', () => {
       expect(chunks[0].length).toBe(10);
     });
 
+    it('splits session chunks by total bytes as well as file count', () => {
+      const manager = new SaveManager(mockBridge);
+      const mb = 1024 * 1024;
+      const assets = [
+        { id: 'asset-1', size: 12 * mb },
+        { id: 'asset-2', size: 9 * mb },
+        { id: 'asset-3', size: 4 * mb },
+      ];
+
+      const chunks = manager.createSessionChunks(assets, 200, 20 * mb);
+
+      expect(chunks.length).toBe(2);
+      expect(chunks[0].map(asset => asset.id)).toEqual(['asset-1']);
+      expect(chunks[1].map(asset => asset.id)).toEqual(['asset-2', 'asset-3']);
+    });
+
     it('returns empty array for empty input', () => {
       const manager = new SaveManager(mockBridge);
       const chunks = manager.createSessionChunks([]);
@@ -1427,6 +1445,10 @@ describe('SaveManager', () => {
       expect(fetchCallCount).toBe(2);
       expect(result.uploaded).toBe(335); // 200 + 135
       expect(result.failed).toBe(0);
+      expect(mockBridge.assetManager.getPendingAssetsBatch).toHaveBeenCalledWith(
+        expect.any(Array),
+        { restoreToMemory: false }
+      );
     });
 
     it('accumulates progress across batches', async () => {
@@ -1797,6 +1819,39 @@ describe('SaveManager', () => {
       // Both start calls should happen before any end calls
       expect(callOrder.indexOf('large-start')).toBeLessThan(2);
       expect(callOrder.indexOf('session-start')).toBeLessThan(2);
+    });
+
+    it('runs upload streams sequentially in Electron mode', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_UPLOAD_THRESHOLD = 1000;
+      manager.setWebSocketHandler(mockWsHandler);
+      window.electronAPI = {};
+
+      const smallAsset = { id: 'small', blob: new Blob(['small']), filename: 'small.txt' };
+      const largeAsset = { id: 'large', blob: new Blob(['x'.repeat(2000)]), filename: 'large.bin' };
+      const callOrder = [];
+
+      vi.spyOn(manager, 'uploadLargeAssetsChunked').mockImplementation(async () => {
+        callOrder.push('large-start');
+        await new Promise(r => setTimeout(r, 10));
+        callOrder.push('large-end');
+        return { uploaded: 1, failed: 0 };
+      });
+
+      vi.spyOn(manager, 'uploadWithSession').mockImplementation(async () => {
+        callOrder.push('session-start');
+        await new Promise(r => setTimeout(r, 10));
+        callOrder.push('session-end');
+        return { uploaded: 1, failed: 0 };
+      });
+
+      try {
+        await manager.uploadAssets('project-123', mockBridge.assetManager, [smallAsset, largeAsset], null);
+      } finally {
+        delete window.electronAPI;
+      }
+
+      expect(callOrder).toEqual(['large-start', 'large-end', 'session-start', 'session-end']);
     });
 
     it('falls back to batch upload when session fails', async () => {

@@ -465,11 +465,15 @@ class AssetManager {
   }
 
   /**
-   * Get blob from memory
+   * Get blob from memory or Cache API.
    * @param {string} id - Asset UUID
+   * @param {Object} options
+   * @param {boolean} options.restoreToMemory - Rehydrate blobCache from Cache API (default: true)
    * @returns {Promise<Blob|null>}
    */
-  async getBlob(id) {
+  async getBlob(id, options = {}) {
+    const { restoreToMemory = true } = options;
+
     // 1. Check in-memory cache first (fastest)
     const memBlob = this.blobCache.get(id);
     if (memBlob) return memBlob;
@@ -477,12 +481,25 @@ class AssetManager {
     // 2. Fallback to Cache API (survives page reload)
     const cachedBlob = await this._getFromCache(id);
     if (cachedBlob) {
-      // Restore to memory cache for faster subsequent access
-      this.blobCache.set(id, cachedBlob);
+      // Restore to memory cache for faster subsequent access unless this is an
+      // export/preview-only read that must not repopulate the editor working set.
+      if (restoreToMemory) {
+        this.blobCache.set(id, cachedBlob);
+      }
       return cachedBlob;
     }
 
     return null;
+  }
+
+  /**
+   * Get blob for export/preview without repopulating blobCache from Cache API.
+   * This keeps the editor working set bounded after save().
+   * @param {string} id - Asset UUID
+   * @returns {Promise<Blob|null>}
+   */
+  async getBlobForExport(id) {
+    return this.getBlob(id, { restoreToMemory: false });
   }
 
   /**
@@ -1796,10 +1813,11 @@ class AssetManager {
    * @param {Array<Object>} metadataList - Array of metadata objects (from getPendingAssetsMetadata)
    * @returns {Promise<Array>} Array of assets with blobs loaded
    */
-  async getPendingAssetsBatch(metadataList) {
+  async getPendingAssetsBatch(metadataList, options = {}) {
+    const { restoreToMemory = true } = options;
     const assets = [];
     for (const meta of metadataList) {
-      const blob = await this.getBlob(meta.id);
+      const blob = await this.getBlob(meta.id, { restoreToMemory });
       if (blob) {
         assets.push({
           ...meta,
