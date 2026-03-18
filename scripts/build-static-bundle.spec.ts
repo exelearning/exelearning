@@ -458,6 +458,30 @@ describe('processNjkTemplateContent', () => {
         expect(result).toBe('<p>Click <span data-i18n="here">here</span> to continue</p>');
     });
 
+    it('should not place data-i18n on closing tags (icon + trans in button)', () => {
+        const content = `<button><span class="exe-icon">delete</span> {{ 'Delete' | trans }}</button>`;
+        const result = processNjkTemplateContent(content, 'v1.0.0');
+        // Pattern 2a skips closing tag >, falls through to pattern 2b which wraps in <span>
+        expect(result).toBe(
+            '<button><span class="exe-icon">delete</span> <span data-i18n="Delete">Delete</span></button>',
+        );
+    });
+
+    it('should not place data-i18n on void elements like input', () => {
+        const content = `<label><input type="checkbox" class="check"> {{ 'Show references' | trans }}</label>`;
+        const result = processNjkTemplateContent(content, 'v1.0.0');
+        // input is void — pattern 2a skips it, pattern 2b wraps in <span>
+        expect(result).toBe(
+            '<label><input type="checkbox" class="check"> <span data-i18n="Show references">Show references</span></label>',
+        );
+    });
+
+    it('should add data-i18n to opening tag when trans is sole content', () => {
+        const content = `<option value="x">{{ 'Name A-Z' | trans }}</option>`;
+        const result = processNjkTemplateContent(content, 'v1.0.0');
+        expect(result).toBe('<option value="x" data-i18n="Name A-Z">Name A-Z</option>');
+    });
+
     it('should replace basePath with relative path', () => {
         const content = `<link href="{{ basePath }}/style/main.css">`;
         const result = processNjkTemplateContent(content, 'v1.0.0');

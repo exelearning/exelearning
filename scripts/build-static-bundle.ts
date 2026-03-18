@@ -29,6 +29,7 @@ import { XMLParser } from 'fast-xml-parser';
 // Import centralized configuration
 import { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES } from './static-bundle/static-config';
 import { buildConfigParams } from '../src/routes/config-params';
+import { VOID_ELEMENTS } from '../src/shared/utils/html-constants';
 
 // Re-export config for external use
 export { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES };
@@ -677,7 +678,17 @@ export function processNjkTemplateContent(content: string, version: string): str
     // STEP 2: Handle translations in ELEMENT CONTENT
 
     // 2a. Handle {{ 'Text' | trans }} that is the SOLE content of an element
-    content = content.replace(/>(\s*)\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}(\s*)</g, ' data-i18n="$2">$1$2$3<');
+    // Match opening tag (<tagname ...>) followed by {{ 'Text' | trans }} as sole content.
+    // - Uses (<[a-z][^>]*) to only match opening tags (not closing tags like </span>)
+    // - Excludes HTML void elements (input, img, br, etc.) which can't have text content
+    const voidElements = VOID_ELEMENTS.join('|');
+    content = content.replace(
+        new RegExp(
+            `(<(?!${voidElements})[a-z][^>]*)>(\\s*)\\{\\{\\s*['"]([^'"]+)['"]\\s*\\|\\s*trans\\s*\\}\\}(\\s*)<`,
+            'gi',
+        ),
+        '$1 data-i18n="$3">$2$3$4<',
+    );
 
     // 2b. Handle remaining {{ 'Text' | trans }} (mixed with other content)
     content = content.replace(/\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}/g, '<span data-i18n="$1">$1</span>');
