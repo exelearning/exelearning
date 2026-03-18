@@ -425,6 +425,110 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
     }
 
     /**
+     * Remove legacy outer wrapper <div class="exe-text">...</div> when present.
+     * The removal is conservative: only strips when the whole HTML is wrapped.
+     *
+     * @param html - HTML content
+     * @returns HTML without the outer legacy wrapper
+     */
+    protected stripLegacyExeTextWrapper(html: string): string {
+        if (!html) return html;
+
+        const leadingWhitespaceLength = html.match(/^\s*/)?.[0].length ?? 0;
+        const trailingWhitespaceLength = html.match(/\s*$/)?.[0].length ?? 0;
+        const coreEnd = html.length - trailingWhitespaceLength;
+        const core = html.slice(leadingWhitespaceLength, coreEnd);
+
+        if (!core.toLowerCase().startsWith('<div')) {
+            return html;
+        }
+
+        const openingEnd = this.findTagEnd(core, 0);
+        if (openingEnd === -1) return html;
+
+        const openingTag = core.slice(0, openingEnd + 1);
+        const classAttr = openingTag.match(/\bclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i);
+        if (!classAttr) return html;
+
+        const classValue = classAttr[1] ?? classAttr[2] ?? classAttr[3] ?? '';
+        const classTokens = classValue
+            .split(/\s+/)
+            .map(token => token.trim())
+            .filter(Boolean);
+
+        // Remove only the exact legacy wrapper token, never exe-text-activity or similar.
+        if (!classTokens.includes('exe-text')) {
+            return html;
+        }
+
+        const closing = this.findMatchingClosingDiv(core, openingEnd + 1);
+        if (!closing) return html;
+
+        // Only unwrap when this is a single root wrapper with no sibling HTML.
+        if (closing.end !== core.length) {
+            return html;
+        }
+
+        return core.slice(openingEnd + 1, closing.start);
+    }
+
+    /**
+     * Find the end index of an HTML tag, handling quoted attribute values.
+     */
+    private findTagEnd(input: string, start: number): number {
+        let quote: '"' | "'" | null = null;
+        for (let i = start; i < input.length; i++) {
+            const ch = input[i];
+
+            if (quote) {
+                if (ch === quote) quote = null;
+                continue;
+            }
+
+            if (ch === '"' || ch === "'") {
+                quote = ch;
+                continue;
+            }
+
+            if (ch === '>') {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Find the matching closing </div> of the first root <div>.
+     */
+    private findMatchingClosingDiv(input: string, searchStart: number): { start: number; end: number } | null {
+        let depth = 1;
+        const tagRegex = /<\/?div\b[^>]*>/gi;
+        tagRegex.lastIndex = searchStart;
+
+        let match: RegExpExecArray | null;
+        while ((match = tagRegex.exec(input)) !== null) {
+            const tag = match[0];
+            const isClosing = /^<\/div\b/i.test(tag);
+
+            if (isClosing) {
+                depth--;
+                if (depth === 0) {
+                    return {
+                        start: match.index,
+                        end: match.index + tag.length,
+                    };
+                }
+                continue;
+            }
+
+            depth++;
+        }
+
+        return null;
+    }
+
+    /**
      * Strip HTML tags from content, returning plain text.
      * Matches Symfony's strip_tags() behavior for legacy imports.
      *
