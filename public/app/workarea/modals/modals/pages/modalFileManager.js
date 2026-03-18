@@ -972,8 +972,10 @@ export default class ModalFilemanager extends Modal {
                     valB = (b.filename || '').toLowerCase();
                     return valA.localeCompare(valB) * modifier;
                 case 'date':
-                    valA = a.createdAt || 0;
-                    valB = b.createdAt || 0;
+                    valA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    valB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    valA = Number.isNaN(valA) ? 0 : valA;
+                    valB = Number.isNaN(valB) ? 0 : valB;
                     return (valA - valB) * modifier;
                 case 'size':
                     valA = a.size || 0;
