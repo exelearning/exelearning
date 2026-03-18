@@ -538,6 +538,63 @@ describe('ModalFilemanager', () => {
       modal.sortAssets();
       expect(modal.filteredAssets[0].filename).toBe('z');
     });
+
+    it('should sort by date-desc (newest first) with ISO string dates', () => {
+      modal.sortBy = 'date-desc';
+      modal.filteredAssets = [
+        { filename: 'old.png', createdAt: '2024-01-01T00:00:00.000Z' },
+        { filename: 'new.png', createdAt: '2024-06-15T12:00:00.000Z' },
+        { filename: 'mid.png', createdAt: '2024-03-10T06:00:00.000Z' },
+      ];
+      modal.sortAssets();
+      expect(modal.filteredAssets.map(a => a.filename)).toEqual(['new.png', 'mid.png', 'old.png']);
+    });
+
+    it('should sort by date-asc (oldest first) with ISO string dates', () => {
+      modal.sortBy = 'date-asc';
+      modal.filteredAssets = [
+        { filename: 'new.png', createdAt: '2024-06-15T12:00:00.000Z' },
+        { filename: 'old.png', createdAt: '2024-01-01T00:00:00.000Z' },
+        { filename: 'mid.png', createdAt: '2024-03-10T06:00:00.000Z' },
+      ];
+      modal.sortAssets();
+      expect(modal.filteredAssets.map(a => a.filename)).toEqual(['old.png', 'mid.png', 'new.png']);
+    });
+
+    it('should handle missing createdAt when sorting by date', () => {
+      modal.sortBy = 'date-asc';
+      modal.filteredAssets = [
+        { filename: 'dated.png', createdAt: '2024-06-15T12:00:00.000Z' },
+        { filename: 'no-date.png' },
+        { filename: 'null-date.png', createdAt: null },
+      ];
+      modal.sortAssets();
+      expect(modal.filteredAssets.map(a => a.filename)).toEqual([
+        'no-date.png',
+        'null-date.png',
+        'dated.png',
+      ]);
+    });
+
+    it('should sort by size asc', () => {
+      modal.sortBy = 'size-asc';
+      modal.filteredAssets = [
+        { filename: 'big.png', size: 5000 },
+        { filename: 'small.png', size: 100 },
+      ];
+      modal.sortAssets();
+      expect(modal.filteredAssets[0].filename).toBe('small.png');
+    });
+
+    it('should sort by type asc', () => {
+      modal.sortBy = 'type-asc';
+      modal.filteredAssets = [
+        { filename: 'b.mp4', mime: 'video/mp4' },
+        { filename: 'a.png', mime: 'image/png' },
+      ];
+      modal.sortAssets();
+      expect(modal.filteredAssets[0].filename).toBe('a.png');
+    });
   });
 
   describe('renderGrid/renderList', () => {
