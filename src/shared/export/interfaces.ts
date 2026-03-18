@@ -633,8 +633,8 @@ export interface PageRenderOptions {
     /** Translated labels for navigation buttons (resolved at export time from XLF) */
     navLabels?: { previous: string; next: string; page: string };
 
-    // Detected libraries from content scanning (MathJax, Mermaid, etc.)
-    detectedLibraries?: LibraryDetectionResult;
+    // Detected library names from content scanning (MathJax, Mermaid, etc.)
+    detectedLibraries?: string[];
 
     /**
      * Theme files to include in the HTML head.

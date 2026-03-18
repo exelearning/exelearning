@@ -16,6 +16,7 @@ import type {
     ZipProvider,
     ExportOptions,
     ExportResult,
+    LibraryDetectionOptions,
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
@@ -830,6 +831,35 @@ export abstract class BaseExporter {
         }
 
         return htmlParts.join('\n');
+    }
+
+    /**
+     * Yield component HTML fragments lazily so callers can detect libraries
+     * without building one giant intermediate string.
+     */
+    protected *iteratePageContentFragments(pages: ExportPage[]): Generator<string> {
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        yield component.content;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Detect required libraries across all page fragments incrementally.
+     */
+    protected getRequiredLibraryFilesForPages(
+        pages: ExportPage[],
+        options: LibraryDetectionOptions = {},
+    ): { files: string[]; patterns: import('../interfaces').LibraryPattern[] } {
+        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragments(
+            this.iteratePageContentFragments(pages),
+            options,
+        );
     }
 
     // =========================================================================

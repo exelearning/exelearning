@@ -282,9 +282,8 @@ export class Html5Exporter extends BaseExporter {
             // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
             // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             // Note: exe-package:elp is still in the content at this point (transformation happens in PageRenderer)
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(
+                pages,
                 {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
                     includeMathJax: meta.addMathJax === true,
@@ -727,9 +726,8 @@ export class Html5Exporter extends BaseExporter {
 
             // 8. Detect and fetch additional required libraries based on content
             // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(
+                pages,
                 {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
                     includeMathJax: meta.addMathJax === true,

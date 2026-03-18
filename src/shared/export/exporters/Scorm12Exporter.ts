@@ -246,9 +246,8 @@ export class Scorm12Exporter extends Html5Exporter {
             commonFiles.push('libs/common_i18n.js');
 
             // 5. Detect and fetch additional required libraries based on content
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(
+                pages,
                 {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
                     includeMathJax: meta.addMathJax === true,

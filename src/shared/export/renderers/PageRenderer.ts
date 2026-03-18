@@ -90,6 +90,7 @@ export class PageRenderer {
             extraHeadScripts = '',
             onLoadScript = '',
             onUnloadScript = '',
+            detectedLibraries: providedDetectedLibraries,
             // Theme files (CSS/JS from theme root directory)
             themeFiles = [],
             // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
@@ -106,7 +107,7 @@ export class PageRenderer {
         // Detect libraries from ORIGINAL content (before transformation)
         // This is important for exe-package:elp links which get transformed during rendering
         const originalContent = this.collectPageContent(page);
-        const detectedLibraries = this.detectContentLibraries(originalContent);
+        const detectedLibraries = providedDetectedLibraries ?? this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
         const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, {
@@ -998,8 +999,8 @@ ${userFooterHtml}</div></footer>`;
         } = options;
 
         let contentHtml = '';
-        // Collect content for library detection
-        const allContentParts: string[] = [];
+        const effectiveDetectedLibraries =
+            detectedLibraries.length > 0 ? detectedLibraries : this.detectContentLibrariesForPages(allPages);
 
         for (const page of allPages) {
             // Check if page title should be hidden and get effective title
@@ -1009,9 +1010,6 @@ ${userFooterHtml}</div></footer>`;
             // This ensures title stays hidden even when theme JS (flux, neo, nova, zen)
             // moves the .page-title element out of .page-header via movePageTitle()
             const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
-
-            // Collect raw content from page components for library detection
-            allContentParts.push(this.collectPageContent(page));
 
             // Single-page sections use main-header > page-header structure for CSS compatibility
             contentHtml += `<section id="section-${page.id}">
@@ -1043,24 +1041,6 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
             }
         }
 
-        // Detect content libraries
-        const contentLibraries = this.detectContentLibraries(allContentParts.join('\n'));
-        let libIncludes = '';
-        for (const libName of contentLibraries) {
-            const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
-            if (!libPattern) continue;
-
-            const jsFiles = libPattern.files.filter(f => f.endsWith('.js'));
-            const cssFiles = libPattern.files.filter(f => f.endsWith('.css'));
-
-            for (const jsFile of jsFiles) {
-                libIncludes += `\n<script src="libs/${jsFile}"> </script>`;
-            }
-            for (const cssFile of cssFiles) {
-                libIncludes += `\n<link rel="stylesheet" href="libs/${cssFile}">`;
-            }
-        }
-
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">
 <head>
@@ -1074,13 +1054,13 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
-<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}${libIncludes}
+<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">
 <script src="theme/style.js"> </script>
 <link rel="stylesheet" href="theme/style.css">
 ${this.renderFavicon('', faviconPath, faviconType)}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
-${this.renderDetectedLibraries(detectedLibraries, '')}
+${this.renderDetectedLibraries(effectiveDetectedLibraries, '')}
 ${addAccessibilityToolbar ? `<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">` : ''}
 ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>
@@ -1193,6 +1173,16 @@ ${addExeLink ? this.renderMadeWithEXe() : ''}
             }
         }
 
+        return Array.from(detectedLibs);
+    }
+
+    private detectContentLibrariesForPages(pages: ExportPage[]): string[] {
+        const detectedLibs = new Set<string>();
+        for (const page of pages) {
+            for (const libName of this.detectContentLibraries(this.collectPageContent(page))) {
+                detectedLibs.add(libName);
+            }
+        }
         return Array.from(detectedLibs);
     }
 
