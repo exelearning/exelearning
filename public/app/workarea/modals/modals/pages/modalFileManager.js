@@ -1342,9 +1342,9 @@ export default class ModalFilemanager extends Modal {
         if (this.showRefCount) {
             const usageCount = this.getAssetUsageCount(asset.id);
             const badgeClass = usageCount > 0 ? 'bg-primary' : 'bg-danger';
-            nameCell.innerHTML = `<span class="filename">${asset.filename || 'Unknown'}</span> <span class="badge rounded-pill ${badgeClass} badge-sm">${usageCount}</span>`;
+            nameCell.innerHTML = `<span class="filename">${asset.filename || _('Unknown')}</span> <span class="badge rounded-pill ${badgeClass} badge-sm">${usageCount}</span>`;
         } else {
-            nameCell.textContent = asset.filename || 'Unknown';
+            nameCell.textContent = asset.filename || _('Unknown');
         }
         row.appendChild(nameCell);
 
@@ -1386,7 +1386,7 @@ export default class ModalFilemanager extends Modal {
         const dateCell = document.createElement('td');
         dateCell.className = 'col-date';
         const date = asset.createdAt ? new Date(asset.createdAt) : null;
-        dateCell.textContent = date ? date.toLocaleDateString() : 'Unknown';
+        dateCell.textContent = date ? date.toLocaleDateString() : _('Unknown');
         row.appendChild(dateCell);
 
         // Click handler
@@ -1406,12 +1406,12 @@ export default class ModalFilemanager extends Modal {
      * Get human-readable file type label
      */
     getFileTypeLabel(mime) {
-        if (!mime) return 'Unknown';
-        if (mime.startsWith('image/')) return 'Image';
-        if (mime.startsWith('video/')) return 'Video';
-        if (mime.startsWith('audio/')) return 'Audio';
-        if (mime.includes('pdf')) return 'PDF';
-        return 'File';
+        if (!mime) return _('Unknown');
+        if (mime.startsWith('image/')) return _('Image');
+        if (mime.startsWith('video/')) return _('Video');
+        if (mime.startsWith('audio/')) return _('Audio');
+        if (mime.includes('pdf')) return _('PDF');
+        return _('File');
     }
 
     /**
@@ -1646,15 +1646,15 @@ export default class ModalFilemanager extends Modal {
             if (this.isSearchMode) {
                 // In search mode: show image with info overlay
                 item.innerHTML = `
-                    <img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || 'Image')}" loading="lazy"${loadingAttrs}>
+                    <img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || _('Image'))}" loading="lazy"${loadingAttrs}>
                     ${usageBadge}
                     <div class="item-info">
-                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || 'Image')}</span>
+                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || _('Image'))}</span>
                         ${pathBadgeHtml}
                     </div>`;
             } else {
                 // Normal mode: just image
-                item.innerHTML = `<img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || 'Image')}" loading="lazy"${loadingAttrs}>${usageBadge}`;
+                item.innerHTML = `<img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || _('Image'))}" loading="lazy"${loadingAttrs}>${usageBadge}`;
             }
         } else {
             // Use icon for non-image files
@@ -1667,7 +1667,7 @@ export default class ModalFilemanager extends Modal {
                     </div>
                     ${usageBadge}
                     <div class="item-info">
-                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || 'File')}</span>
+                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || _('File'))}</span>
                         ${pathBadgeHtml}
                     </div>`;
             } else {
@@ -1675,7 +1675,7 @@ export default class ModalFilemanager extends Modal {
                 item.innerHTML = `
                     <div class="media-thumbnail file-thumbnail">
                         <span class="exe-icon">${icon}</span>
-                        <span class="media-label">${this.escapeHtml(asset.filename || 'File')}</span>
+                        <span class="media-label">${this.escapeHtml(asset.filename || _('File'))}</span>
                     </div>${usageBadge}`;
             }
         }
@@ -1908,20 +1908,20 @@ export default class ModalFilemanager extends Modal {
         }
 
         // Update metadata
-        if (this.filenameSpan) this.filenameSpan.textContent = asset.filename || 'Unknown';
-        if (this.typeSpan) this.typeSpan.textContent = asset.mime || 'Unknown';
+        if (this.filenameSpan) this.filenameSpan.textContent = asset.filename || _('Unknown');
+        if (this.typeSpan) this.typeSpan.textContent = asset.mime || _('Unknown');
         if (this.sizeSpan) this.sizeSpan.textContent = this.assetManager.formatFileSize(asset.size || 0);
 
         // Date
         if (this.dateSpan) {
             const date = asset.createdAt ? new Date(asset.createdAt) : null;
-            this.dateSpan.textContent = date ? date.toLocaleDateString() : 'Unknown';
+            this.dateSpan.textContent = date ? date.toLocaleDateString() : _('Unknown');
         }
 
         // Usage count
         if (this.usageSpan) {
             const usageCount = this.getAssetUsageCount(asset.id);
-            this.usageSpan.textContent = `${usageCount} iDevices`;
+            this.usageSpan.textContent = _('%1 iDevices').replace('%1', usageCount);
         }
 
         // URL
@@ -2103,7 +2103,7 @@ export default class ModalFilemanager extends Modal {
 
         let confirmMsg;
         if (filesToDelete.length === 1) {
-            const filename = filesToDelete[0].filename || 'Unknown';
+            const filename = filesToDelete[0].filename || _('Unknown');
             const usageCount = this.getAssetUsageCount(filesToDelete[0].id);
             confirmMsg = _('Delete "%1"?').replace('%1', filename);
             if (usageCount > 0) {
@@ -2930,7 +2930,7 @@ export default class ModalFilemanager extends Modal {
                 editor.insertContent(`<iframe src="${assetUrl}" data-mce-html="true" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>`);
             } else {
                 // Insert as link
-                editor.insertContent(`<a href="${blobUrl}" data-asset-url="${assetUrl}">${this.selectedAsset.filename || 'File'}</a>`);
+                editor.insertContent(`<a href="${blobUrl}" data-asset-url="${assetUrl}">${this.selectedAsset.filename || _('File')}</a>`);
             }
 
             Logger.log(`[MediaLibrary] Inserted asset into editor: ${this.selectedAsset.id}`);

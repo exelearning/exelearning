@@ -14056,6 +14056,70 @@
         <source>Font color</source>
         <target>~Textfarbe</target>
       </trans-unit>
+      <trans-unit id="bub0sse" resname="Import content">
+        <source>Import content</source>
+        <target>~Inhalt importieren</target>
+      </trans-unit>
+      <trans-unit id="o7879ad" resname="Open in new tab">
+        <source>Open in new tab</source>
+        <target>~In neuem Tab öffnen</target>
+      </trans-unit>
+      <trans-unit id="43l26ci" resname="Open preview in new tab">
+        <source>Open preview in new tab</source>
+        <target>~Vorschau in neuem Tab öffnen</target>
+      </trans-unit>
+      <trans-unit id="qi24yv5" resname="Unpin preview">
+        <source>Unpin preview</source>
+        <target>~Vorschau lösen</target>
+      </trans-unit>
+      <trans-unit id="v4ds1gi" resname="Refresh preview">
+        <source>Refresh preview</source>
+        <target>~Vorschau aktualisieren</target>
+      </trans-unit>
+      <trans-unit id="u6hqx04" resname="Content preview">
+        <source>Content preview</source>
+        <target>~Inhaltsvorschau</target>
+      </trans-unit>
+      <trans-unit id="qzuq5b0" resname="Pin preview">
+        <source>Pin preview</source>
+        <target>~Vorschau anheften</target>
+      </trans-unit>
+      <trans-unit id="4c2f8tp" resname="Pin preview to layout">
+        <source>Pin preview to layout</source>
+        <target>~Vorschau an Layout anheften</target>
+      </trans-unit>
+      <trans-unit id="b5nu2qa" resname="Import (.elpx…)">
+        <source>Import (.elpx…)</source>
+        <target>~Importieren (.elpx…)</target>
+      </trans-unit>
+      <trans-unit id="1hinbxp" resname="Download as">
+        <source>Download as</source>
+        <target>~Herunterladen als</target>
+      </trans-unit>
+      <trans-unit id="0ejnebe" resname="0 iDevices">
+        <source>0 iDevices</source>
+        <target>~0 iDevices</target>
+      </trans-unit>
+      <trans-unit id="hmug9f2" resname="Proprietary license">
+        <source>Proprietary license</source>
+        <target>~Proprietäre Lizenz</target>
+      </trans-unit>
+      <trans-unit id="ta20qyu" resname="Not appropriate">
+        <source>Not appropriate</source>
+        <target>~Nicht zutreffend</target>
+      </trans-unit>
+      <trans-unit id="r5aqkel" resname="Public domain">
+        <source>Public domain</source>
+        <target>~Gemeinfrei</target>
+      </trans-unit>
+      <trans-unit id="xd4wmni" resname="%1 iDevices">
+        <source>%1 iDevices</source>
+        <target>~%1 iDevices</target>
+      </trans-unit>
+      <trans-unit id="ada1hdk" resname="creative commons: cc0 1.0">
+        <source>creative commons: cc0 1.0</source>
+        <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

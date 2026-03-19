@@ -26,6 +26,7 @@ import type {
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { VOID_ELEMENTS } from '../../utils/html-constants';
 
 /**
  * EPUB3 XML namespaces
@@ -42,26 +43,6 @@ export const EPUB3_NAMESPACES = {
  * EPUB3 MIME type
  */
 export const EPUB3_MIMETYPE = 'application/epub+zip';
-
-/**
- * Void HTML elements that must be self-closed in XHTML
- */
-const VOID_ELEMENTS = [
-    'area',
-    'base',
-    'br',
-    'col',
-    'embed',
-    'hr',
-    'img',
-    'input',
-    'link',
-    'meta',
-    'param',
-    'source',
-    'track',
-    'wbr',
-];
 
 /**
  * MIME types for EPUB manifest
