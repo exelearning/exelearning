@@ -440,7 +440,7 @@ export default class ModalProperties extends Modal {
         categoryLink.setAttribute('href', '#');
         categoryLink.classList.add('exe-tab');
         categoryLink.classList.add('exe-advanced');
-        categoryLink.innerHTML = categoryTitle;
+        categoryLink.innerHTML = _(categoryTitle);
         // Add event to tab
         categoryLink.addEventListener('click', (event) => {
             event.preventDefault();
@@ -723,7 +723,7 @@ export default class ModalProperties extends Modal {
             let helpSpanText = document.createElement('span');
             helpSpanText.classList.add('help-content');
             helpSpanText.classList.add('help-hidden');
-            helpSpanText.innerHTML = property.help;
+            helpSpanText.innerHTML = _(property.help);
             helpContainer.append(helpIcon);
             helpContainer.append(helpSpanText);
             return helpContainer;

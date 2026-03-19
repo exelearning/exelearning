@@ -14053,6 +14053,70 @@
         <source>Font color</source>
         <target>~Culoarea textului</target>
       </trans-unit>
+      <trans-unit id="cdqgdh7" resname="Import content">
+        <source>Import content</source>
+        <target>~Importă conținut</target>
+      </trans-unit>
+      <trans-unit id="a7ycs2x" resname="Open in new tab">
+        <source>Open in new tab</source>
+        <target>~Deschide în filă nouă</target>
+      </trans-unit>
+      <trans-unit id="ujjx2oj" resname="Open preview in new tab">
+        <source>Open preview in new tab</source>
+        <target>~Deschide previzualizarea într-o filă nouă</target>
+      </trans-unit>
+      <trans-unit id="yq17mvz" resname="Unpin preview">
+        <source>Unpin preview</source>
+        <target>~Anulează fixarea previzualizării</target>
+      </trans-unit>
+      <trans-unit id="8zxoj4c" resname="Refresh preview">
+        <source>Refresh preview</source>
+        <target>~Actualizează previzualizarea</target>
+      </trans-unit>
+      <trans-unit id="5x581ky" resname="Content preview">
+        <source>Content preview</source>
+        <target>~Previzualizare conținut</target>
+      </trans-unit>
+      <trans-unit id="s2v4g4w" resname="Pin preview">
+        <source>Pin preview</source>
+        <target>~Fixează previzualizarea</target>
+      </trans-unit>
+      <trans-unit id="08o9aiz" resname="Pin preview to layout">
+        <source>Pin preview to layout</source>
+        <target>~Fixează previzualizarea la aspect</target>
+      </trans-unit>
+      <trans-unit id="flvvvyd" resname="Import (.elpx…)">
+        <source>Import (.elpx…)</source>
+        <target>~Importă (.elpx…)</target>
+      </trans-unit>
+      <trans-unit id="8406fy0" resname="Download as">
+        <source>Download as</source>
+        <target>~Descarcă ca</target>
+      </trans-unit>
+      <trans-unit id="bxvsxea" resname="0 iDevices">
+        <source>0 iDevices</source>
+        <target>~0 iDevices</target>
+      </trans-unit>
+      <trans-unit id="60jc3a0" resname="Proprietary license">
+        <source>Proprietary license</source>
+        <target>~Licență proprietară</target>
+      </trans-unit>
+      <trans-unit id="fmluhjy" resname="Not appropriate">
+        <source>Not appropriate</source>
+        <target>~Nu este adecvată</target>
+      </trans-unit>
+      <trans-unit id="e89wjfj" resname="Public domain">
+        <source>Public domain</source>
+        <target>~Domeniu public</target>
+      </trans-unit>
+      <trans-unit id="dfvf7if" resname="%1 iDevices">
+        <source>%1 iDevices</source>
+        <target>~%1 iDevices</target>
+      </trans-unit>
+      <trans-unit id="2e5y7vp" resname="creative commons: cc0 1.0">
+        <source>creative commons: cc0 1.0</source>
+        <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
