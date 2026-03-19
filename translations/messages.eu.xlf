@@ -14053,6 +14053,70 @@
         <source>Font color</source>
         <target>~Testuaren kolorea</target>
       </trans-unit>
+      <trans-unit id="licv2gu" resname="Import content">
+        <source>Import content</source>
+        <target>~Edukia inportatu</target>
+      </trans-unit>
+      <trans-unit id="756xxal" resname="Open in new tab">
+        <source>Open in new tab</source>
+        <target>~Ireki fitxa berrian</target>
+      </trans-unit>
+      <trans-unit id="paufk23" resname="Open preview in new tab">
+        <source>Open preview in new tab</source>
+        <target>~Ireki aurrebista fitxa berrian</target>
+      </trans-unit>
+      <trans-unit id="iddfumd" resname="Unpin preview">
+        <source>Unpin preview</source>
+        <target>~Askatu aurrebista</target>
+      </trans-unit>
+      <trans-unit id="17j14h6" resname="Refresh preview">
+        <source>Refresh preview</source>
+        <target>~Eguneratu aurrebista</target>
+      </trans-unit>
+      <trans-unit id="0v55nre" resname="Content preview">
+        <source>Content preview</source>
+        <target>~Edukiaren aurrebista</target>
+      </trans-unit>
+      <trans-unit id="g0pbm7a" resname="Pin preview">
+        <source>Pin preview</source>
+        <target>~Ainguratu aurrebista</target>
+      </trans-unit>
+      <trans-unit id="ud8ekt3" resname="Pin preview to layout">
+        <source>Pin preview to layout</source>
+        <target>~Ainguratu aurrebista diseinura</target>
+      </trans-unit>
+      <trans-unit id="h69zf3b" resname="Import (.elpx…)">
+        <source>Import (.elpx…)</source>
+        <target>~Inportatu (.elpx…)</target>
+      </trans-unit>
+      <trans-unit id="qbsekk0" resname="Download as">
+        <source>Download as</source>
+        <target>~Deskargatu honela</target>
+      </trans-unit>
+      <trans-unit id="y28ca74" resname="0 iDevices">
+        <source>0 iDevices</source>
+        <target>~0 iDevices</target>
+      </trans-unit>
+      <trans-unit id="17auca4" resname="Proprietary license">
+        <source>Proprietary license</source>
+        <target>~Jabetza lizentzia</target>
+      </trans-unit>
+      <trans-unit id="orwnr56" resname="Not appropriate">
+        <source>Not appropriate</source>
+        <target>~Ez dagokiona</target>
+      </trans-unit>
+      <trans-unit id="xlo8n1g" resname="Public domain">
+        <source>Public domain</source>
+        <target>~Domeinu publikoa</target>
+      </trans-unit>
+      <trans-unit id="4lfqivc" resname="%1 iDevices">
+        <source>%1 iDevices</source>
+        <target>~%1 iDevices</target>
+      </trans-unit>
+      <trans-unit id="bl4727m" resname="creative commons: cc0 1.0">
+        <source>creative commons: cc0 1.0</source>
+        <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
