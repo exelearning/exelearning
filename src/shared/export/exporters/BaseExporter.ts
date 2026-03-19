@@ -60,6 +60,59 @@ export abstract class BaseExporter {
         this.libraryDetector = new LibraryDetector();
     }
 
+    protected isElpxExportDebugEnabled(): boolean {
+        const browserGlobal = globalThis as unknown as {
+            eXeLearning?: {
+                config?: {
+                    debugElpxExport?: boolean;
+                };
+            };
+            window?: {
+                eXeLearning?: {
+                    config?: {
+                        debugElpxExport?: boolean;
+                    };
+                };
+            };
+        };
+
+        return (
+            browserGlobal.window?.eXeLearning?.config?.debugElpxExport === true ||
+            browserGlobal.eXeLearning?.config?.debugElpxExport === true
+        );
+    }
+
+    protected logElpxExportDebugPhase(phase: string, context: Record<string, unknown> = {}): void {
+        if (!this.isElpxExportDebugEnabled()) {
+            return;
+        }
+
+        const browserGlobal = globalThis as unknown as {
+            window?: {
+                __currentElpxExportTrace?: {
+                    startedMs: number;
+                    entries: Array<Record<string, unknown>>;
+                };
+            };
+        };
+
+        const trace = browserGlobal.window?.__currentElpxExportTrace;
+        if (!trace) {
+            return;
+        }
+
+        const now = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        const entry = {
+            phase,
+            ts: new Date().toISOString(),
+            elapsedMs: Math.round(now - trace.startedMs),
+            ...context,
+        };
+
+        trace.entries.push(entry);
+        console.log('[ELPX Export DEBUG]', entry);
+    }
+
     // =========================================================================
     // Abstract Methods (must be implemented by subclasses)
     // =========================================================================
@@ -365,6 +418,7 @@ export abstract class BaseExporter {
         let assetsAdded = 0;
 
         try {
+            this.logElpxExportDebugPhase('exporter:assets-to-zip:start');
             const exportPathMap = await this.buildAssetExportPathMap();
 
             const processAsset = async (asset: ExportAsset) => {
@@ -381,6 +435,10 @@ export abstract class BaseExporter {
             };
 
             await this.forEachAsset(processAsset);
+            this.logElpxExportDebugPhase('exporter:assets-to-zip:end', {
+                assetsAdded,
+                exportPaths: exportPathMap.size,
+            });
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
         }
@@ -496,6 +554,7 @@ export abstract class BaseExporter {
         const usedPaths = new Set<string>();
 
         try {
+            this.logElpxExportDebugPhase('exporter:asset-export-map:start');
             // Use lightweight metadata listing when available (avoids loading binary data)
             const items: Array<{ id: string; filename: string; folderPath?: string; mime: string }> = this.assets
                 .listAssetMetadata
@@ -541,6 +600,10 @@ export abstract class BaseExporter {
                 usedPaths.add(finalPath.toLowerCase());
                 this.assetExportPathMap.set(item.id, finalPath);
             }
+            this.logElpxExportDebugPhase('exporter:asset-export-map:end', {
+                assets: items.length,
+                uniquePaths: this.assetExportPathMap.size,
+            });
         } catch (e) {
             console.warn('[BaseExporter] Failed to build asset export path map:', e);
         }
@@ -628,6 +691,15 @@ export abstract class BaseExporter {
      * so the XML content keeps the original protocol for re-import compatibility
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
+        const componentCount = pages.reduce((total, page) => {
+            const blocks = page.blocks || [];
+            return total + blocks.reduce((blockTotal, block) => blockTotal + (block.components?.length || 0), 0);
+        }, 0);
+        this.logElpxExportDebugPhase('exporter:preprocess-pages:start', {
+            pages: pages.length,
+            components: componentCount,
+        });
+
         // Deep clone pages to avoid mutating the original document
         // This ensures multiple exports on the same document work correctly
         const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
@@ -656,6 +728,10 @@ export abstract class BaseExporter {
                 }
             }
         }
+        this.logElpxExportDebugPhase('exporter:preprocess-pages:end', {
+            pages: clonedPages.length,
+            components: componentCount,
+        });
         return clonedPages;
     }
 

@@ -65,6 +65,40 @@ class AssetManager {
 
     // Yjs bridge reference (set externally) - source of truth for metadata
     this.yjsBridge = null;
+
+    // Cache API persistence may be unavailable under custom schemes such as
+    // app:// in Electron. Disable repeated attempts after the first hard failure
+    // to avoid thousands of slow exceptions during large imports.
+    this.cachePersistenceDisabled = false;
+  }
+
+  /**
+   * Cache API only accepts HTTP(S) requests. In Electron app:// mode we use a
+   * synthetic HTTPS URL so the same cache can still be used when supported.
+   * @param {string} id
+   * @returns {string}
+   * @private
+   */
+  _getCacheRequestUrl(id) {
+    const path = `/asset/${id}`;
+    const protocol = window.location?.protocol || '';
+    if (protocol === 'http:' || protocol === 'https:') {
+      return path;
+    }
+    return `https://cache.exelearning.invalid${path}`;
+  }
+
+  /**
+   * Disable Cache API persistence after an unrecoverable runtime failure.
+   * @param {Error} error
+   * @private
+   */
+  _disableCachePersistence(error) {
+    if (this.cachePersistenceDisabled) {
+      return;
+    }
+    this.cachePersistenceDisabled = true;
+    console.warn('[AssetManager] Cache API persistence disabled:', error.message);
   }
 
   /**
@@ -142,16 +176,19 @@ class AssetManager {
    * @private
    */
   async _putToCache(id, blob) {
-    if (!('caches' in window)) return; // Cache API not supported
+    if (!('caches' in window) || this.cachePersistenceDisabled) return; // Cache API not supported
 
     try {
       const cache = await caches.open(this.getCacheName());
       const response = new Response(blob, {
         headers: { 'Content-Type': blob.type || 'application/octet-stream' }
       });
-      await cache.put(`/asset/${id}`, response);
+      await cache.put(this._getCacheRequestUrl(id), response);
     } catch (e) {
       console.warn('[AssetManager] Cache API write failed:', e.message);
+      if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
+        this._disableCachePersistence(e);
+      }
     }
   }
 
@@ -162,16 +199,19 @@ class AssetManager {
    * @private
    */
   async _getFromCache(id) {
-    if (!('caches' in window)) return null;
+    if (!('caches' in window) || this.cachePersistenceDisabled) return null;
 
     try {
       const cache = await caches.open(this.getCacheName());
-      const response = await cache.match(`/asset/${id}`);
+      const response = await cache.match(this._getCacheRequestUrl(id));
       if (response) {
         return await response.blob();
       }
     } catch (e) {
       console.warn('[AssetManager] Cache API read failed:', e.message);
+      if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
+        this._disableCachePersistence(e);
+      }
     }
     return null;
   }
@@ -182,11 +222,11 @@ class AssetManager {
    * @private
    */
   async _deleteFromCache(id) {
-    if (!('caches' in window)) return;
+    if (!('caches' in window) || this.cachePersistenceDisabled) return;
 
     try {
       const cache = await caches.open(this.getCacheName());
-      await cache.delete(`/asset/${id}`);
+      await cache.delete(this._getCacheRequestUrl(id));
     } catch (e) {
       // Ignore delete errors
     }
@@ -197,7 +237,7 @@ class AssetManager {
    * Called on project close or after successful save
    */
   async clearCache() {
-    if (!('caches' in window)) return;
+    if (!('caches' in window) || this.cachePersistenceDisabled) return;
 
     try {
       await caches.delete(this.getCacheName());

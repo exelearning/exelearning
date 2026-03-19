@@ -47,6 +47,7 @@ describe('SaveManager', () => {
 
     // Mock eXeLearning global
     global.eXeLearning = {
+      config: {},
       app: {
         toasts: {
           createToast: vi.fn().mockReturnValue({
@@ -93,6 +94,7 @@ describe('SaveManager', () => {
     delete global.eXeLearning;
     delete global._;
     delete global.XMLHttpRequest;
+    delete window.electronAPI;
   });
 
   describe('constructor', () => {
@@ -1838,10 +1840,10 @@ describe('SaveManager', () => {
         return { uploaded: 1, failed: 0 };
       });
 
-      vi.spyOn(manager, 'uploadWithSession').mockImplementation(async () => {
-        callOrder.push('session-start');
+      vi.spyOn(manager, 'uploadSmallAssetsIndividually').mockImplementation(async () => {
+        callOrder.push('single-start');
         await new Promise(r => setTimeout(r, 10));
-        callOrder.push('session-end');
+        callOrder.push('single-end');
         return { uploaded: 1, failed: 0 };
       });
 
@@ -1851,7 +1853,48 @@ describe('SaveManager', () => {
         delete window.electronAPI;
       }
 
-      expect(callOrder).toEqual(['large-start', 'large-end', 'session-start', 'session-end']);
+      expect(callOrder).toEqual(['large-start', 'large-end', 'single-start', 'single-end']);
+    });
+
+    it('uses single-file upload for small assets in Electron mode by default', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_UPLOAD_THRESHOLD = 1000;
+      manager.setWebSocketHandler(mockWsHandler);
+      window.electronAPI = {};
+
+      const singleSpy = vi.spyOn(manager, 'uploadSmallAssetsIndividually').mockResolvedValue({ uploaded: 1, failed: 0 });
+      const sessionSpy = vi.spyOn(manager, 'uploadWithSession').mockResolvedValue({ uploaded: 1, failed: 0 });
+
+      await manager.uploadAssets(
+        'project-123',
+        mockBridge.assetManager,
+        [{ id: 'small', blob: new Blob(['small']), filename: 'small.txt' }],
+        null
+      );
+
+      expect(singleSpy).toHaveBeenCalled();
+      expect(sessionSpy).not.toHaveBeenCalled();
+    });
+
+    it('allows restoring baseline Electron batching via experiment flag', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_UPLOAD_THRESHOLD = 1000;
+      manager.setWebSocketHandler(mockWsHandler);
+      window.electronAPI = {};
+      window.eXeLearning.config.saveMemoryExperiment = 'baseline';
+
+      const singleSpy = vi.spyOn(manager, 'uploadSmallAssetsIndividually').mockResolvedValue({ uploaded: 1, failed: 0 });
+      const sessionSpy = vi.spyOn(manager, 'uploadWithSession').mockResolvedValue({ uploaded: 1, failed: 0 });
+
+      await manager.uploadAssets(
+        'project-123',
+        mockBridge.assetManager,
+        [{ id: 'small', blob: new Blob(['small']), filename: 'small.txt' }],
+        null
+      );
+
+      expect(singleSpy).not.toHaveBeenCalled();
+      expect(sessionSpy).toHaveBeenCalled();
     });
 
     it('falls back to batch upload when session fails', async () => {
@@ -2034,6 +2077,55 @@ describe('SaveManager', () => {
       await manager.uploadAssetBatch('project-123', assets, mockBridge.assetManager);
 
       expect(mockFetch).toHaveBeenCalled();
+    });
+  });
+
+  describe('save memory instrumentation', () => {
+    it('collects and summarizes save memory samples when enabled', async () => {
+      window.eXeLearning.config.debugSaveMemory = true;
+      window.electronAPI = {
+        getMemoryUsage: vi.fn().mockResolvedValue({
+          process: {
+            rss: 1000,
+            heapTotal: 2000,
+            heapUsed: 1500,
+            external: 300,
+            arrayBuffers: 120,
+          },
+          renderer: {
+            workingSetSize: 4000,
+            peakWorkingSetSize: 4500,
+            privateBytes: 3500,
+            sharedBytes: 200,
+          },
+        }),
+      };
+
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      vi.spyOn(manager, 'updateProjectMetadata').mockResolvedValue();
+
+      const result = await manager.save({ showProgress: false });
+
+      expect(result.success).toBe(true);
+      expect(window.__lastSaveMemoryTimeline).toEqual(expect.any(Array));
+      expect(window.__lastSaveMemoryTimeline.length).toBeGreaterThan(0);
+      expect(window.__lastSaveMemorySummary).toEqual(expect.objectContaining({
+        outcome: 'success',
+      }));
+      expect(Logger.log).toHaveBeenCalledWith(expect.stringContaining('[SaveManager][Memory]'));
+      expect(Logger.log).toHaveBeenCalledWith(expect.stringContaining('[SaveManager][MemorySummary]'));
+    });
+
+    it('supports assets-only experiment by skipping Yjs upload', async () => {
+      window.eXeLearning.config.saveMemoryExperiment = 'assets-only';
+
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      const saveYjsSpy = vi.spyOn(manager, 'saveYjsState').mockResolvedValue({ success: true });
+      vi.spyOn(manager, 'updateProjectMetadata').mockResolvedValue();
+
+      await manager.save({ showProgress: false });
+
+      expect(saveYjsSpy).not.toHaveBeenCalled();
     });
   });
 });

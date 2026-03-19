@@ -21,7 +21,19 @@ describe('mock-electron-api.js', () => {
 
     it('creates electronAPI handlers that resolve successfully', async () => {
         await expect(window.electronAPI.save('http://file', 'key', 'one.elpx')).resolves.toBe(true);
-        await expect(window.electronAPI.saveBuffer('base64', 'key', 'two.elpx')).resolves.toBe(true);
+        await expect(window.electronAPI.saveBuffer('base64', 'key', 'two.elpx')).resolves.toEqual(
+            expect.objectContaining({
+                saved: true,
+                canceled: false,
+                filePath: 'two.elpx',
+                timings: expect.objectContaining({
+                    totalMs: expect.any(Number),
+                    promptMs: expect.any(Number),
+                    normalizeMs: expect.any(Number),
+                    writeMs: expect.any(Number),
+                }),
+            })
+        );
         await expect(window.electronAPI.openElp()).resolves.toBe('/fake/path/from/mock/test.elp');
         await expect(window.electronAPI.exportToFolder({ dest: '/tmp' })).resolves.toEqual({
             ok: true,

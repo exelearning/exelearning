@@ -1999,8 +1999,9 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         const cache = global.caches._storage.get(cacheName);
+        const cacheKey = assetManager._getCacheRequestUrl('asset-123');
         expect(cache).toBeDefined();
-        expect(cache.has('/asset/asset-123')).toBe(true);
+        expect(cache.has(cacheKey)).toBe(true);
       });
 
       it('handles Cache API not supported', async () => {
@@ -2018,6 +2019,17 @@ describe('AssetManager', () => {
         // Should not throw
         await assetManager._putToCache('asset-123', new Blob(['test']));
         expect(console.warn).toHaveBeenCalled();
+      });
+
+      it('disables cache persistence after unsupported scheme failures', async () => {
+        global.caches.open = mock(async () => ({
+          put: mock(async () => {
+            throw new Error("Failed to execute 'put' on 'Cache': Request scheme 'app' is unsupported");
+          }),
+        }));
+
+        await assetManager._putToCache('asset-123', new Blob(['test']));
+        expect(assetManager.cachePersistenceDisabled).toBe(true);
       });
     });
 
@@ -2062,7 +2074,7 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         const cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/asset-123')).toBe(false);
+        expect(cache.has(assetManager._getCacheRequestUrl('asset-123'))).toBe(false);
       });
 
       it('handles Cache API not supported', async () => {
@@ -2125,7 +2137,7 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         const cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/asset-uuid-123')).toBe(true);
+        expect(cache.has(assetManager._getCacheRequestUrl('asset-uuid-123'))).toBe(true);
       });
     });
 
@@ -2140,7 +2152,7 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         const cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/blob-id-456')).toBe(true);
+        expect(cache.has(assetManager._getCacheRequestUrl('blob-id-456'))).toBe(true);
       });
     });
 
@@ -2208,7 +2220,7 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         let cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/asset-to-delete')).toBe(true);
+        expect(cache.has(assetManager._getCacheRequestUrl('asset-to-delete'))).toBe(true);
 
         await assetManager.deleteAsset('asset-to-delete');
 
@@ -2220,7 +2232,7 @@ describe('AssetManager', () => {
 
         // Cache should be cleared
         cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/asset-to-delete')).toBe(false);
+        expect(cache.has(assetManager._getCacheRequestUrl('asset-to-delete'))).toBe(false);
       });
     });
   });

@@ -8,17 +8,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // URL-based save-as (REST API fallback exports) — always prompts
   saveAs: (downloadUrl, projectKey, suggestedName) => ipcRenderer.invoke('app:saveAs', { downloadUrl, projectKey, suggestedName }),
   // Binary save (Yjs exports that generate data client-side) — always prompts
-  saveBuffer: (base64Data, projectKey, suggestedName) =>
-    ipcRenderer.invoke('app:saveBuffer', { base64Data, projectKey, suggestedName }),
+  saveBuffer: (bufferData, projectKey, suggestedName) =>
+    ipcRenderer.invoke('app:saveBuffer', { bufferData, projectKey, suggestedName }),
   // Binary save-as (Yjs exports fallback) — always prompts
-  saveBufferAs: (base64Data, projectKey, suggestedName) =>
-    ipcRenderer.invoke('app:saveBufferAs', { base64Data, projectKey, suggestedName }),
+  saveBufferAs: (bufferData, projectKey, suggestedName) =>
+    ipcRenderer.invoke('app:saveBufferAs', { bufferData, projectKey, suggestedName }),
   exportToFolder: (downloadUrl, projectKey, suggestedDirName) =>
     ipcRenderer.invoke('app:exportToFolder', { downloadUrl, projectKey, suggestedDirName }),
   exportBufferToFolder: (base64Data, suggestedDirName) =>
     ipcRenderer.invoke('app:exportBufferToFolder', { base64Data, suggestedDirName }),
   openElp: () => ipcRenderer.invoke('app:openElp'),
   readFile: (filePath) => ipcRenderer.invoke('app:readFile', { filePath }),
+  getMemoryUsage: () => ipcRenderer.invoke('app:getMemoryUsage'),
   notifyRendererReadyForOpenFile: () => ipcRenderer.send('app:renderer-ready-for-open-file'),
   onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (_e, data) => cb && cb(data)),
   onDownloadDone: (cb) => ipcRenderer.on('download-done', (_e, data) => cb && cb(data)),

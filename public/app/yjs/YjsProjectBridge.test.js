@@ -4719,14 +4719,25 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       global.window.__currentProjectId = 'test-project-123';
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 42,
+            promptMs: 30,
+            normalizeMs: 2,
+            writeMs: 10,
+          },
+        })),
       };
 
       const result = await bridge.exportToElpx();
 
       expect(result).toEqual({ saved: true });
       expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
+        expect.any(Uint8Array),
         'test-project-123',
         'project.elpx'
       );
@@ -4752,7 +4763,18 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       global.window.__currentProjectId = 'test-project-123';
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(false)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: false,
+          canceled: true,
+          canceledAt: 'dialog',
+          filePath: null,
+          timings: {
+            totalMs: 15,
+            promptMs: 15,
+            normalizeMs: 0,
+            writeMs: 0,
+          },
+        })),
       };
 
       const result = await bridge.exportToElpx();
@@ -4781,13 +4803,24 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       delete global.window.__currentProjectId;
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 10,
+            promptMs: 4,
+            normalizeMs: 1,
+            writeMs: 5,
+          },
+        })),
       };
 
       await bridge.exportToElpx();
 
       expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
+        expect.any(Uint8Array),
         'default',
         'project.elpx'
       );
@@ -4795,6 +4828,57 @@ describe('YjsProjectBridge', () => {
       // Cleanup
       delete global.eXeLearning;
       delete global.window.electronAPI;
+    });
+
+    it('stores export debug timeline when enabled', async () => {
+      const mockExporter = {
+        export: mock(() => Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'project.elpx',
+        })),
+      };
+      global.window.SharedExporters = {
+        createExporter: mock(() => mockExporter),
+      };
+
+      global.eXeLearning = { config: { debugElpxExport: true, isOfflineInstallation: true } };
+      global.window.eXeLearning = global.eXeLearning;
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 44,
+            promptMs: 30,
+            normalizeMs: 4,
+            writeMs: 10,
+          },
+        })),
+      };
+
+      const result = await bridge.exportToElpx();
+
+      expect(result).toEqual({ saved: true });
+      expect(global.window.__lastElpxExportSummary).toEqual(
+        expect.objectContaining({
+          outcome: 'success',
+          filename: 'project.elpx',
+          electronSaveMs: 44,
+          electronPromptMs: 30,
+          electronNormalizeMs: 4,
+          electronWriteMs: 10,
+        })
+      );
+      expect(global.window.__lastElpxExportTimeline.length).toBeGreaterThan(0);
+
+      delete global.eXeLearning;
+      delete global.window.eXeLearning;
+      delete global.window.electronAPI;
+      delete global.window.__lastElpxExportSummary;
+      delete global.window.__lastElpxExportTimeline;
     });
 
     it('falls back to browser download when not in Electron mode', async () => {
