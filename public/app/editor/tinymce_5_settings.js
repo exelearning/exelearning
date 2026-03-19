@@ -400,6 +400,7 @@ var $exeTinyMCE = {
 
                             cb(result.blobUrl, {
                                 title: result.asset.filename || '',
+                                text: result.asset.filename || '',
                                 alt: '',
                                 'data-asset-id': result.asset.id  // CRITICAL: Used by convertBlobURLsToAssetRefs
                             });

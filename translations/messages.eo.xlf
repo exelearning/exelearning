@@ -14053,6 +14053,70 @@
         <source>Font color</source>
         <target>~Koloro de la teksto</target>
       </trans-unit>
+      <trans-unit id="yks2zvx" resname="Import content">
+        <source>Import content</source>
+        <target>~Importi enhavon</target>
+      </trans-unit>
+      <trans-unit id="xeweive" resname="Open in new tab">
+        <source>Open in new tab</source>
+        <target>~Malfermi en nova langeto</target>
+      </trans-unit>
+      <trans-unit id="dbswfr3" resname="Open preview in new tab">
+        <source>Open preview in new tab</source>
+        <target>~Malfermi antaŭrigardon en nova langeto</target>
+      </trans-unit>
+      <trans-unit id="n34zsid" resname="Unpin preview">
+        <source>Unpin preview</source>
+        <target>~Malpingli antaŭrigardon</target>
+      </trans-unit>
+      <trans-unit id="r9wx5wk" resname="Refresh preview">
+        <source>Refresh preview</source>
+        <target>~Aktualigi antaŭrigardon</target>
+      </trans-unit>
+      <trans-unit id="mwcemvk" resname="Content preview">
+        <source>Content preview</source>
+        <target>~Antaŭrigardo de enhavo</target>
+      </trans-unit>
+      <trans-unit id="8su7dq0" resname="Pin preview">
+        <source>Pin preview</source>
+        <target>~Pingli antaŭrigardon</target>
+      </trans-unit>
+      <trans-unit id="rmjy8j6" resname="Pin preview to layout">
+        <source>Pin preview to layout</source>
+        <target>~Pingli antaŭrigardon al aranĝo</target>
+      </trans-unit>
+      <trans-unit id="rkgc8z4" resname="Import (.elpx…)">
+        <source>Import (.elpx…)</source>
+        <target>~Importi (.elpx…)</target>
+      </trans-unit>
+      <trans-unit id="5qzib1r" resname="Download as">
+        <source>Download as</source>
+        <target>~Elŝuti kiel</target>
+      </trans-unit>
+      <trans-unit id="5eaeiph" resname="0 iDevices">
+        <source>0 iDevices</source>
+        <target>~0 iDevices</target>
+      </trans-unit>
+      <trans-unit id="pxyj8bg" resname="Proprietary license">
+        <source>Proprietary license</source>
+        <target>~Propra licenco</target>
+      </trans-unit>
+      <trans-unit id="wid64go" resname="Not appropriate">
+        <source>Not appropriate</source>
+        <target>~Ne konvena</target>
+      </trans-unit>
+      <trans-unit id="vjkdxve" resname="Public domain">
+        <source>Public domain</source>
+        <target>~Publika domajno</target>
+      </trans-unit>
+      <trans-unit id="wb0ymjz" resname="%1 iDevices">
+        <source>%1 iDevices</source>
+        <target>~%1 iDevices</target>
+      </trans-unit>
+      <trans-unit id="rw1mp58" resname="creative commons: cc0 1.0">
+        <source>creative commons: cc0 1.0</source>
+        <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

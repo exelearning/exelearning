@@ -60,10 +60,42 @@ describe('Preview Service Worker', () => {
             // PDF files: open URL directly (SW serves HTML wrapper for navigation)
             expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('.pdf');
             expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain("window.open(url.href, '_blank')");
-            // Non-HTML resources: fetch from SW, open as blob URL
-            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain("window.open('about:blank'");
+            // Non-HTML resources: fetch from SW, download via <a download> with original filename
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('a.download');
             expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('fetch(url.href)');
             expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('URL.createObjectURL');
+            // Should NOT use window.open for downloads (loses filename)
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).not.toContain("window.open('about:blank'");
+        });
+
+        it('should extract filename from URL path for downloads with safe decoding', () => {
+            // Raw filename extraction
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain("url.pathname.split('/').pop()");
+            // Safe decode with try/catch fallback
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain("decodeURIComponent(rawFileName)");
+            // Download attribute uses decoded filename
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain("a.download = fileName");
+            // Anchor is appended to DOM for reliable click
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain("document.body.appendChild(a)");
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain("document.body.removeChild(a)");
+        });
+
+        it('should extract filename correctly from various URL paths', () => {
+            // Simulates the filename extraction logic used in the script
+            const extractFilename = (pathname) => {
+                var rawFileName = pathname.split('/').pop() || 'download';
+                var fileName = rawFileName;
+                try { fileName = decodeURIComponent(rawFileName); } catch (err) { fileName = rawFileName; }
+                return fileName;
+            };
+            expect(extractFilename('/viewer/content/resources/report.odt')).toBe('report.odt');
+            expect(extractFilename('/viewer/content/resources/my%20doc.docx')).toBe('my doc.docx');
+            expect(extractFilename('/viewer/content/resources/%E4%B8%AD%E6%96%87.xlsx')).toBe('中文.xlsx');
+            expect(extractFilename('/viewer/content/resources/file.with.dots.pptx')).toBe('file.with.dots.pptx');
+            // Malformed percent-encoding — decodeURIComponent throws URIError, falls back to raw
+            expect(extractFilename('/viewer/content/resources/bad%ZZfile.odt')).toBe('bad%ZZfile.odt');
+            // Truncated percent sequence
+            expect(extractFilename('/viewer/content/resources/file%2.docx')).toBe('file%2.docx');
         });
 
         it('should have PREVIEW_REFRESH_SCRIPT defined', () => {
@@ -324,10 +356,12 @@ describe('Preview Service Worker', () => {
             // PDF files: open URL directly (SW serves wrapper)
             expect(resultHtml).toContain('.pdf');
             expect(resultHtml).toContain("window.open(url.href, '_blank')");
-            // Non-HTML resources: fetch from SW, open as blob URL
-            expect(resultHtml).toContain("window.open('about:blank'");
+            // Non-HTML resources: fetch from SW, download via <a download> with original filename
+            expect(resultHtml).toContain('a.download');
             expect(resultHtml).toContain('fetch(url.href)');
             expect(resultHtml).toContain('URL.createObjectURL');
+            // Should NOT use window.open for downloads (loses filename)
+            expect(resultHtml).not.toContain("window.open('about:blank'");
         });
 
         it('should skip external link handler when disabled', () => {
