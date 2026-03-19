@@ -34,7 +34,7 @@ import {
     stop as stopWebSocket,
 } from './websocket/yjs-websocket';
 import { getFilesDir } from './services/file-helper';
-import { db } from './db/client';
+import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
 import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
@@ -835,6 +835,7 @@ async function gracefulShutdown(signal: string) {
     stopWebSocket();
     stopCleanupScheduler();
     await disconnectRedis();
+    await closeDb();
     process.exit(0);
 }
 

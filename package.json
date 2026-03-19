@@ -11,7 +11,7 @@
     "start:local": "cross-env FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1 bun run start:dev",
     "dev": "bun run --parallel start:dev sass:watch",
     "dev:local": "bun run --parallel start:local sass:watch",
-    "build": "bun build src/index.ts --outdir dist --target bun --external kysely --external 'kysely/*' && bun build src/cli/index.ts --outfile dist/cli.js --target bun --external kysely --external 'kysely/*'",
+    "build": "bun build src/index.ts --outdir dist --target bun --external kysely --external 'kysely/*' --external jsdom && bun build src/cli/index.ts --outfile dist/cli.js --target bun --external kysely --external 'kysely/*' --external jsdom",
     "build:standalone": "bun scripts/build-standalone.js",
     "build:all": "bun run build && bun run --parallel css:node bundle:resources bundle:i18n bundle:app bundle:importers bundle:exporters",
     "bundle:i18n": "bun scripts/build-i18n-bundles.js",
