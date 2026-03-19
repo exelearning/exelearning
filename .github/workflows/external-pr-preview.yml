@@ -4,7 +4,8 @@
 # Deploys a static preview of pull requests from external contributors (forks)
 # to GitHub Pages under /pr-preview/pr-{number}/.
 #
-# Previews are automatically cleaned up when the PR is closed or merged.
+# Previews are deployed only when a maintainer adds the `external-pr-preview` label to a
+# fork PR. They are automatically cleaned up when the PR is closed or merged.
 #
 # ⚠️  SECURITY NOTE: This workflow uses `pull_request_target`, which means it
 # requires maintainer approval before running. Since it builds and deploys code
@@ -14,11 +15,9 @@
 name: Deploy external PR Preview
 
 on:
-  # Runs after the approve workflow completes for fork PRs
   pull_request_target:
     types:
-      - opened
-      - reopened
+      - labeled
       - synchronize
       - closed
     paths-ignore:
@@ -35,8 +34,13 @@ permissions:
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
-    # Only for external PRs (forks)
-    if: github.event.pull_request.head.repo.fork == true
+    if: >-
+      github.event.pull_request.head.repo.fork == true
+      && github.event.action != 'closed'
+      && (
+        (github.event.action == 'labeled' && github.event.label.name == 'external-pr-preview')
+        || (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'external-pr-preview'))
+      )
     steps:
       - name: Checkout PR head safely
         uses: actions/checkout@v6
@@ -44,13 +48,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Bun
-        if: github.event.action != 'closed'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Install dependencies
-        if: github.event.action != 'closed'
         run: bun install
 
       - name: Generate version string
@@ -60,7 +62,6 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build static distribution
-        if: github.event.action != 'closed'
         run: VERSION=${{ steps.version.outputs.version }} bun run build:static
 
       - name: Deploy preview
@@ -69,14 +70,30 @@ jobs:
           source-dir: ./dist/static/
           preview-branch: gh-pages
           umbrella-dir: pr-preview
-          action: auto
+          action: deploy
           qr-code: true
           pages-base-url: exelearning-external-pr.pages.dev
           wait-for-pages-deployment: false
 
       - name: Add preview URL to summary
-        if: github.event.action != 'closed'
         run: |
           echo "## 🚀 PR Preview Deployed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Preview URL:** https://exelearning-external-pr.pages.dev/pr-preview/pr-${{ github.event.pull_request.number }}/" >> $GITHUB_STEP_SUMMARY
+
+  cleanup-preview:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.pull_request.head.repo.fork == true
+      && github.event.action == 'closed'
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v6
+
+      - name: Remove preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: ./dist/static/
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: remove
