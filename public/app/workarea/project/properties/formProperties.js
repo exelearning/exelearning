@@ -592,7 +592,7 @@ export default class FormProperties {
                 )) {
                     const optionElement = document.createElement('option');
                     optionElement.value = value;
-                    optionElement.innerHTML = text;
+                    optionElement.innerHTML = _(text);
                     if (value === property.value) {
                         optionElement.setAttribute('selected', 'selected');
                     }

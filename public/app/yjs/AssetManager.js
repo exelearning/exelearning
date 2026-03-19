@@ -1125,6 +1125,27 @@ class AssetManager {
   }
 
   /**
+   * @private
+   */
+  static IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'ico', 'avif', 'tiff', 'tif']);
+
+  /**
+   * Check if a MIME type or filename indicates an image
+   * @param {string} mimeType - MIME type
+   * @param {string} filename - Filename
+   * @returns {boolean} True if image
+   * @private
+   */
+  _isImageAsset(mimeType, filename) {
+    if (mimeType && mimeType.startsWith('image/')) return true;
+    if (filename) {
+      const ext = filename.toLowerCase().split('.').pop();
+      return AssetManager.IMAGE_EXTENSIONS.has(ext);
+    }
+    return false;
+  }
+
+  /**
    * Resolve an HTML asset with all its internal relative URLs converted to blob URLs
    *
    * This method:
@@ -2299,6 +2320,43 @@ class AssetManager {
 
       // Not HTML, let Phase 2 handle it
       return fullMatch;
+    });
+
+    // Phase 1.75: Handle <a> tags with asset:// hrefs
+    // Add download="filename" for non-image files so the browser uses the original name.
+    // Images are skipped to preserve lightbox behavior.
+    // Pattern: <a ... href="asset://uuid/filename" ...>...</a>  (self-closing not valid for <a>)
+    const anchorAssetRegex = /(<a\b[^>]*?)href=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.[a-z0-9]+)?(?:\/([^"'&]+))?)\2([^>]*>)([\s\S]*?)(<\/a>)/gi;
+
+    resolvedHTML = resolvedHTML.replace(anchorAssetRegex, (fullMatch, beforeHref, quote, assetUrl, assetId, urlFilename, afterHref, content, closingTag) => {
+      const blobURL = this.blobURLCache.get(assetId);
+      const resolvedUrl = blobURL || (usePlaceholder ? this.generatePlaceholder('Loading...', 'loading') : assetUrl);
+
+      if (!blobURL) {
+        this.missingAssets.add(assetId);
+      }
+
+      // Determine filename: prefer metadata, fallback to URL path
+      const metadata = this.getAssetMetadata(assetId);
+      let filename = metadata?.filename;
+      if (!filename && urlFilename) {
+        try { filename = decodeURIComponent(urlFilename); } catch { filename = urlFilename; }
+      }
+
+      // Add download attribute for non-image files
+      let downloadAttr = '';
+      if (filename && !this._isImageAsset(metadata?.mime, filename)) {
+        downloadAttr = ` download="${filename.replace(/"/g, '&quot;')}"`;
+      }
+
+      // Fix corrupted text content: if anchor text is an asset:// URL (no child HTML elements),
+      // replace it with the filename. This recovers documents where blob URLs were saved as text.
+      let resolvedContent = content;
+      if (filename && !content.includes('<') && /^\s*asset:\/\//.test(content)) {
+        resolvedContent = filename;
+      }
+
+      return `${beforeHref}href=${quote}${resolvedUrl}${quote}${downloadAttr}${afterHref}${resolvedContent}${closingTag}`;
     });
 
     // Phase 2: Handle any remaining asset:// URLs (video, audio, background-image, etc.)

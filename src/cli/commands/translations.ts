@@ -102,6 +102,8 @@ async function extractTranslationKeys(): Promise<Set<string>> {
         /\bc_\(\s*"((?:[^"\\]|\\.)*)"/g, // c_("key")
         /'((?:[^'\\]|\\.)*)'\s*\|\s*trans\b/g, // 'key' | trans
         /"((?:[^"\\]|\\.)*)"\s*\|\s*trans\b/g, // "key" | trans
+        /\bt\.\w+\s+or\s+'((?:[^'\\]|\\.)*)'/g, // t.xxx or 'fallback' (Nunjucks)
+        /\bt\.\w+\s+or\s+"((?:[^"\\]|\\.)*)"/g, // t.xxx or "fallback" (Nunjucks)
     ];
 
     // Patterns for template literals (backticks).

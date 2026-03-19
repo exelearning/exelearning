@@ -87,6 +87,10 @@ var $exeDevice = {
      * @returns
      */
     completeLicense: function (str) {
+        if (str === 'propietary license') return c_('Proprietary license');
+        if (str === 'not appropriate') return c_('Not appropriate');
+        if (str === 'public domain') return c_('Public domain');
+
         // CC0 uses a publicdomain URL, not the standard licenses/ path
         if (str === _('creative commons: cc0 1.0') || str.toLowerCase() === 'creative commons: cc0 1.0') {
             return '<a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="license" class="cc cc-0"><span></span>Creative Commons CC0 1.0</a>';
