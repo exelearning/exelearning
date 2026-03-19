@@ -74,6 +74,35 @@
     }
 
     /**
+     * Extract the filename from an asset:// URL path component.
+     * e.g. "asset://uuid/report.docx" → "report.docx"
+     * e.g. "asset://uuid.pdf" → null (no path separator, extension-only format)
+     *
+     * @param {string} assetUrl
+     * @returns {string|null}
+     */
+    function extractFilenameFromAssetUrl(assetUrl) {
+        if (!assetUrl) return null;
+        const match = assetUrl.match(/asset:\/\/(?:asset\/+)?[a-z0-9-]+(?:\.[a-z0-9]+)?\/(.+)/i);
+        if (!match) return null;
+        try { return decodeURIComponent(match[1]); } catch { return match[1]; }
+    }
+
+    const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'ico', 'avif', 'tiff', 'tif']);
+
+    /**
+     * Check whether a filename has an image extension.
+     *
+     * @param {string|undefined} filename
+     * @returns {boolean}
+     */
+    function isImageFilename(filename) {
+        if (!filename) return false;
+        const ext = filename.toLowerCase().split('.').pop();
+        return IMAGE_EXTENSIONS.has(ext);
+    }
+
+    /**
      * Request missing asset from peers (deduplicated by assetId).
      * Fire-and-forget: resolver still returns null immediately.
      *
@@ -559,6 +588,14 @@
                 if (resolved) {
                     el.setAttribute('href', resolved);
                     el.removeAttribute('data-asset-loading');
+
+                    // Set download attribute for non-image files so the browser
+                    // uses the original filename instead of the blob UUID.
+                    // Skip images to avoid breaking lightbox galleries.
+                    const filename = extractFilenameFromAssetUrl(assetUrl);
+                    if (filename && !isImageFilename(filename)) {
+                        el.setAttribute('download', filename);
+                    }
                 }
             });
         });
@@ -717,6 +754,21 @@
         // External links (http/https) and blob URLs (asset files like PDFs):
         // open in new tab to prevent overwriting the editor
         if (/^(https?:\/\/|blob:)/i.test(href)) {
+            // For blob URLs, add download attribute with original filename for non-image assets.
+            // This ensures the browser uses the original filename instead of the blob UUID.
+            if (href.startsWith('blob:') && !link.hasAttribute('download')) {
+                const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    const assetId = assetManager.reverseBlobCache?.get(href);
+                    if (assetId) {
+                        const metadata = assetManager.getAssetMetadata(assetId);
+                        if (metadata?.filename && !isImageFilename(metadata.filename)) {
+                            link.setAttribute('download', metadata.filename);
+                        }
+                    }
+                }
+            }
+
             link.setAttribute('target', '_blank');
             link.setAttribute('rel', 'noopener noreferrer');
             return;
