@@ -191,12 +191,9 @@ export class ElpxExporter extends Html5Exporter {
             addFile('libs/common_i18n.js', i18nContent);
 
             // 1.7 Detect and fetch additional required libraries based on content
-            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(
-                pages,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            });
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);

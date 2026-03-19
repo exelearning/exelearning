@@ -270,12 +270,9 @@ export class Epub3Exporter extends BaseExporter {
             }
 
             // 7. Detect and fetch required libraries
-            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(
-                pages,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            });
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);

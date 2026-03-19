@@ -282,14 +282,11 @@ export class Html5Exporter extends BaseExporter {
             // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
             // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             // Note: exe-package:elp is still in the content at this point (transformation happens in PageRenderer)
-            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(
-                pages,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                    includeMathJax: meta.addMathJax === true,
-                    skipMathJax: latexWasRendered && !meta.addMathJax,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                includeMathJax: meta.addMathJax === true,
+                skipMathJax: latexWasRendered && !meta.addMathJax,
+            });
 
             if (latexWasRendered) {
                 console.log('[Html5Exporter] LaTeX pre-rendered - skipping MathJax library (~1MB saved)');
@@ -726,14 +723,11 @@ export class Html5Exporter extends BaseExporter {
 
             // 8. Detect and fetch additional required libraries based on content
             // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
-            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(
-                pages,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                    includeMathJax: meta.addMathJax === true,
-                    skipMathJax: latexWasRendered && !meta.addMathJax,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                includeMathJax: meta.addMathJax === true,
+                skipMathJax: latexWasRendered && !meta.addMathJax,
+            });
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
