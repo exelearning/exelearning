@@ -64,3 +64,4 @@ Current state:
 - [Architecture Documentation](architecture.md)
 - [Development Environment](development/environment.md)
 - [Testing Guide](development/testing.md)
+- [Profiling Guide](development/profiling.md)

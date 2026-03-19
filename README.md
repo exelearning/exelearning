@@ -91,6 +91,7 @@ make up-local
 This will install dependencies, build assets, and start the development server at `http://localhost:8080` with hot reload.
 
 More development tools, options, and real-time collaboration info are documented in the `doc/` folder. See also [Architecture Documentation](./doc/architecture.md).
+For profiling and performance investigations in Electron and export/save flows, see [doc/development/profiling.md](./doc/development/profiling.md).
 
 
 ## Usage
