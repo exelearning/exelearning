@@ -931,6 +931,125 @@ describe('AssetManager', () => {
       expect(result).toContain('blob:new');
       expect(result).not.toContain('asset://');
     });
+
+    it('adds download attribute for non-image anchor with metadata', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:doc');
+      mockYjsBridge._assetsMap.set(uuid, { filename: 'report.docx', folderPath: '', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 100 });
+
+      const html = `<a href="asset://${uuid}/report.docx">Download</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:doc"');
+      expect(result).toContain('download="report.docx"');
+    });
+
+    it('does NOT add download attribute for image anchors', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:img');
+      mockYjsBridge._assetsMap.set(uuid, { filename: 'photo.jpg', folderPath: '', mime: 'image/jpeg', size: 100 });
+
+      const html = `<a href="asset://${uuid}/photo.jpg">View</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:img"');
+      expect(result).not.toContain('download');
+    });
+
+    it('falls back to filename from URL when metadata unavailable', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:fallback');
+
+      const html = `<a href="asset://${uuid}/presentation.pptx">Download</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:fallback"');
+      expect(result).toContain('download="presentation.pptx"');
+    });
+
+    it('marks anchor assets as missing when not cached', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+      const html = `<a href="asset://${uuid}/file.docx">Download</a>`;
+      assetManager.resolveHTMLAssetsSync(html);
+
+      expect(assetManager.missingAssets.has(uuid)).toBe(true);
+    });
+
+    it('does NOT add download for anchor with no filename in URL and no metadata', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:noname');
+
+      const html = `<a href="asset://${uuid}">Link</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:noname"');
+      expect(result).not.toContain('download');
+    });
+
+    it('skips download for SVG image anchors (by extension)', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:svg');
+
+      const html = `<a href="asset://${uuid}/diagram.svg">View</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:svg"');
+      expect(result).not.toContain('download');
+    });
+
+    it('adds download for PDF anchors', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:pdf');
+
+      const html = `<a href="asset://${uuid}/document.pdf">Download PDF</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:pdf"');
+      expect(result).toContain('download="document.pdf"');
+    });
+
+    it('replaces asset:// text content with filename when anchor text is corrupted', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:doc');
+      mockYjsBridge._assetsMap.set(uuid, {
+        id: uuid, filename: 'report.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 1024
+      });
+
+      const html = `<a href="asset://${uuid}/report.docx">asset://${uuid}/report.docx</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('>report.docx</a>');
+      expect(result).not.toContain('asset://');
+    });
+
+    it('does NOT replace anchor text content when it contains child HTML elements', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:img');
+      mockYjsBridge._assetsMap.set(uuid, {
+        id: uuid, filename: 'photo.jpg', mime: 'image/jpeg', size: 2048
+      });
+
+      const html = `<a href="asset://${uuid}/photo.jpg"><img src="asset://${uuid}/photo.jpg"></a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      // The img child should be preserved, not replaced with filename
+      expect(result).toContain('<img');
+      expect(result).not.toContain('>photo.jpg</a>');
+    });
+
+    it('does NOT replace anchor text content when text is normal (not asset://)', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:doc');
+      mockYjsBridge._assetsMap.set(uuid, {
+        id: uuid, filename: 'report.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 1024
+      });
+
+      const html = `<a href="asset://${uuid}/report.docx">Click here to download</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('>Click here to download</a>');
+    });
   });
 
   describe('convertBlobURLsToAssetRefs', () => {
@@ -9961,14 +10080,14 @@ describe('resolveHTMLAssetsSync additional branches', () => {
     expect(result).toContain('blob:resolved');
   });
 
-  it('phase2 keeps html asset urls intact', () => {
+  it('phase1.75 resolves html asset anchor href to blob URL', () => {
     const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
     mockBridge._assetsMap.set(uuid, { filename: 'p.html', folderPath: '', mime: 'text/html', size: 1 });
     am.blobURLCache.set(uuid, 'blob:resolved');
     const html = `<a href="asset://${uuid}">link</a>`;
     const result = am.resolveHTMLAssetsSync(html);
-    // HTML assets in phase 2 are kept as asset:// URLs
-    expect(result).toContain(`asset://${uuid}`);
+    // Anchor hrefs are resolved to blob URLs (even for HTML assets)
+    expect(result).toContain('blob:resolved');
   });
 
   it('phase2 marks missing non-html asset as missing and returns placeholder', () => {
