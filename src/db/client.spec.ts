@@ -197,6 +197,45 @@ describe('Kysely ORM Client', () => {
                 expect(error).toBeDefined();
             }
         });
+
+        it('should be a no-op when database was never initialized', async () => {
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPath = process.env.DB_PATH;
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                // Reset so _db is null
+                await resetClientCacheForTesting();
+                // closeDb should not throw and should not trigger lazy init
+                await closeDb();
+                // Calling it again should also be safe
+                await closeDb();
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PATH = originalPath;
+            }
+        });
+
+        it('should close an initialized database and set it to null', async () => {
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPath = process.env.DB_PATH;
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                await resetClientCacheForTesting();
+                // Force initialization
+                getDb();
+                // Close the initialized db
+                await closeDb();
+                // Subsequent closeDb should be a no-op (db is null after close)
+                await closeDb();
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PATH = originalPath;
+                // Reset to clean state for other tests
+                await resetClientCacheForTesting();
+            }
+        });
     });
 
     describe('type exports', () => {
