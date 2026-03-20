@@ -1534,6 +1534,12 @@ describe('PageRenderer', () => {
             expect(libs).toContain('exe_lightbox');
         });
 
+        it('should detect exe_lightbox by rel="lightbox[X]" attribute', () => {
+            const html = '<a rel="lightbox[gallery1]" href="img.jpg"><img src="thumb.jpg"></a>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toContain('exe_lightbox');
+        });
+
         it('should detect multiple libraries in same content', () => {
             const html = `
                 <pre class="highlighted-code">code</pre>

@@ -1158,8 +1158,10 @@ ${addExeLink ? this.renderMadeWithEXe() : ''}
                     break;
 
                 case 'rel':
-                    // Look for rel="pattern"
-                    found = html.includes(`rel="${lib.pattern}"`) || html.includes(`rel='${lib.pattern}'`);
+                    // Look for rel="pattern" or rel="pattern[X]" (e.g., lightbox, lightbox[gallery1])
+                    found =
+                        new RegExp(`rel="[^"]*${lib.pattern as string}[^"]*"`, 'i').test(html) ||
+                        new RegExp(`rel='[^']*${lib.pattern as string}[^']*'`, 'i').test(html);
                     break;
 
                 case 'regex':

@@ -3412,13 +3412,18 @@ export default class IdeviceNode {
      *
      */
     loadLegacyExeFunctionalitiesExport() {
+        // Legacy $exe_effects object
+        $exeFX.init();
+        // Legacy $exe_games object
+        $exeGames.init();
+        // Legacy $exe_highlighter object
+        $exeHighlighter.init();
         // Legacy $exeABCmusic object
         $exeABCmusic.init();
-
-        $exeFX.init();
-
-        // Render mermaid diagrams after save
-        $exe.mermaid.init();
+        // Legacy $exe object
+        $exe.init();
+        // a[rel^='lightbox']
+        $exe.setMultimediaGalleries();
     }
 
     /**

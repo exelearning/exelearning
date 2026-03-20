@@ -4991,11 +4991,27 @@ describe('IdeviceNode', () => {
             expect(typeof idevice.loadLegacyExeFunctionalitiesExport).toBe('function');
         });
 
-        it('calls $exe.mermaid.init() to render mermaid diagrams', () => {
-            const mermaidInitSpy = vi.spyOn(global.$exe.mermaid, 'init');
+        it('calls init on all legacy objects and setMultimediaGalleries', () => {
+            global.$exeFX = { init: vi.fn() };
+            global.$exeGames = { init: vi.fn() };
+            global.$exeHighlighter = { init: vi.fn() };
+            global.$exeABCmusic = { init: vi.fn() };
+            global.$exe = { init: vi.fn(), setMultimediaGalleries: vi.fn() };
+
             idevice.loadLegacyExeFunctionalitiesExport();
-            expect(mermaidInitSpy).toHaveBeenCalled();
-            mermaidInitSpy.mockRestore();
+
+            expect(global.$exeFX.init).toHaveBeenCalled();
+            expect(global.$exeGames.init).toHaveBeenCalled();
+            expect(global.$exeHighlighter.init).toHaveBeenCalled();
+            expect(global.$exeABCmusic.init).toHaveBeenCalled();
+            expect(global.$exe.init).toHaveBeenCalled();
+            expect(global.$exe.setMultimediaGalleries).toHaveBeenCalled();
+
+            delete global.$exeFX;
+            delete global.$exeGames;
+            delete global.$exeHighlighter;
+            delete global.$exeABCmusic;
+            delete global.$exe;
         });
     });
 

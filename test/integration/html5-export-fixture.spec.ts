@@ -146,14 +146,13 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('libs/bootstrap/bootstrap.bundle.min.js');
         });
 
-        it('should NOT include exe_lightbox when content does not use lightbox', async () => {
+        it('should include exe_lightbox because fixture content uses rel="lightbox noopener"', async () => {
             if (!exportedIndexHtml) return;
 
-            // exe_lightbox is now conditionally included only when content uses lightbox
-            // (rel="lightbox" attribute or imageGallery class)
-            // This fixture doesn't use lightbox, so it should not be included
-            expect(exportedIndexHtml).not.toContain('libs/exe_lightbox/exe_lightbox.js');
-            expect(exportedIndexHtml).not.toContain('libs/exe_lightbox/exe_lightbox.css');
+            // The fixture contains rel="lightbox noopener" links, so exe_lightbox must be included.
+            // Detection matches any rel attribute containing "lightbox" (e.g. "lightbox", "lightbox[X]", "lightbox noopener").
+            expect(exportedIndexHtml).toContain('libs/exe_lightbox/exe_lightbox.js');
+            expect(exportedIndexHtml).toContain('libs/exe_lightbox/exe_lightbox.css');
         });
 
         it('should preserve original theme/style.css filename (not rename to content.css)', async () => {
