@@ -517,9 +517,6 @@ var $exe = {
                     $("body").append(hiddenPlayer);
                     $exe.hasMultimediaGalleries = true;
                 }
-                // Inline content title
-                var t = this.title;
-                if (ref.indexOf('#') == 0 && $(ref).length == 1 && t && t != "") $(ref).prepend('<h2 class="pp_title">' + t + '</h2>');
             });
             lightboxLinks.prettyPhoto({
                 social_tools: "",
