@@ -24,6 +24,8 @@
 
     // Cache de URLs resueltas para evitar múltiples resoluciones
     const resolvedCache = new Map();
+    // Reverse cache: blobUrl → assetUrl
+    const blobToAssetCache = new Map();
     // Deduplicate in-flight peer requests for missing assets
     const pendingPeerRequests = new Map();
 
@@ -186,6 +188,7 @@
                 const blobUrl = await assetManager.resolveAssetURL(url);
                 if (blobUrl) {
                     resolvedCache.set(url, blobUrl);
+                    blobToAssetCache.set(blobUrl, url);
                     return blobUrl;
                 }
             } catch (e) {
@@ -681,6 +684,7 @@
          */
         clearCache: function() {
             resolvedCache.clear();
+            blobToAssetCache.clear();
             pendingPeerRequests.clear();
         },
 
@@ -698,6 +702,31 @@
          * @returns {boolean} True if asset:// URL
          */
         isAssetUrl: isAssetUrl,
+
+        /**
+         * Get the asset:// URL that was resolved to a given blob:// URL.
+         * e.g. "blob:http://localhost:8080/d3519ead-..." → "asset://2d982eb3-....png"
+         *
+         * @param {string} blobUrl
+         * @returns {string|null} asset:// URL or null if not found
+         */
+        getAssetUrlFromBlob: function(blobUrl) {
+            if (!blobUrl || !blobUrl.startsWith('blob:')) return null;
+
+            // Fast path: blob was resolved through this resolver
+            const cached = blobToAssetCache.get(blobUrl);
+            if (cached) return cached;
+
+            // Fallback: ask AssetManager (covers blobs resolved by other means)
+            const assetManager = getAssetManager();
+            if (!assetManager) return null;
+            const assetId = assetManager.reverseBlobCache?.get(blobUrl);
+            if (!assetId) return null;
+            const metadata = assetManager.getAssetMetadata(assetId);
+            return metadata?.filename
+                ? `asset://${assetId}/${metadata.filename}`
+                : `asset://${assetId}`;
+        },
 
         /**
          * Stop observing (for cleanup/testing)
@@ -754,6 +783,11 @@
         // External links (http/https) and blob URLs (asset files like PDFs):
         // open in new tab to prevent overwriting the editor
         if (/^(https?:\/\/|blob:)/i.test(href)) {
+            // Skip links that use lightbox (rel="lightbox", "lightbox[X]", or combined values)
+            const rel = link.getAttribute('rel') || '';
+            if (/\blightbox(\[[^\]]*\])?\b/i.test(rel)) {
+                return;
+            }
             // For blob URLs, add download attribute with original filename for non-image assets.
             // This ensures the browser uses the original filename instead of the blob UUID.
             if (href.startsWith('blob:') && !link.hasAttribute('download')) {
