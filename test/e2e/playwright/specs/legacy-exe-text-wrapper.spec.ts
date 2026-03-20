@@ -231,7 +231,9 @@ test.describe('Legacy ELP Import - exe-text wrapper removal', () => {
 
                         scannedComponents += 1;
 
-                        const componentId = String(component.get('id') || component.get('ideviceId') || `component-${j}`);
+                        const componentId = String(
+                            component.get('id') || component.get('ideviceId') || `component-${j}`,
+                        );
                         const componentType = String(component.get('type') || ideviceType || 'unknown');
                         const identity = `${componentType}::${blockId}::${componentId}`;
 
