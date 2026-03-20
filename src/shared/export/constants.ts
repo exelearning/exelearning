@@ -385,6 +385,37 @@ export function getExtensionFromMime(mime: string): string {
 }
 
 // =============================================================================
+// Extension to MIME Type Mapping
+// =============================================================================
+
+/**
+ * File extension to MIME type mapping.
+ * Derived from MIME_TO_EXTENSION plus additional common extensions
+ * (Office documents, XML, etc.) not covered by the reverse lookup.
+ */
+export const EXTENSION_TO_MIME: Record<string, string> = {
+    // Reverse of MIME_TO_EXTENSION
+    ...Object.fromEntries(Object.entries(MIME_TO_EXTENSION).map(([mime, ext]) => [ext, mime])),
+    // Ensure canonical MIME types for extensions with multiple MIME aliases
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.ppt': 'application/vnd.ms-powerpoint',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    '.xml': 'application/xml',
+};
+
+/**
+ * Get MIME type from file extension
+ */
+export function getMimeFromExtension(ext: string): string {
+    return EXTENSION_TO_MIME[ext] || 'application/octet-stream';
+}
+
+// =============================================================================
 // License Registry (Single Source of Truth)
 // =============================================================================
 

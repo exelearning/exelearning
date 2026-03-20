@@ -47,6 +47,7 @@ describe('SaveManager', () => {
 
     // Mock eXeLearning global
     global.eXeLearning = {
+      config: {},
       app: {
         toasts: {
           createToast: vi.fn().mockReturnValue({
@@ -78,6 +79,10 @@ describe('SaveManager', () => {
       assetManager: {
         projectId: 'project-123',
         getPendingAssets: vi.fn().mockResolvedValue([]),
+        getPendingAssetsMetadata: vi.fn().mockReturnValue([]),
+        getPendingAssetsBatch: vi.fn(async (assets) => assets),
+        getBlob: vi.fn().mockResolvedValue(null),
+        getBlobForExport: vi.fn().mockResolvedValue(null),
         markAssetUploaded: vi.fn(),
       },
       updateSaveStatus: vi.fn(),
@@ -89,6 +94,7 @@ describe('SaveManager', () => {
     delete global.eXeLearning;
     delete global._;
     delete global.XMLHttpRequest;
+    delete window.electronAPI;
   });
 
   describe('constructor', () => {
@@ -127,9 +133,9 @@ describe('SaveManager', () => {
       expect(manager.MAX_BATCH_BYTES).toBe(20 * 1024 * 1024);
     });
 
-    it('initializes MAX_CONCURRENT_BATCHES to 10', () => {
+    it('initializes MAX_CONCURRENT_BATCHES to 2', () => {
       const manager = new SaveManager(mockBridge);
-      expect(manager.MAX_CONCURRENT_BATCHES).toBe(10);
+      expect(manager.MAX_CONCURRENT_BATCHES).toBe(2);
     });
 
     it('initializes CHUNK_UPLOAD_THRESHOLD to 20MB', () => {
@@ -537,8 +543,8 @@ describe('SaveManager', () => {
 
       await manager.save();
 
-      // saveYjsState is called with projectId, documentManager, and onProgress callback
-      expect(spy).toHaveBeenCalledWith('project-123', mockBridge.documentManager, expect.any(Function));
+      // saveYjsState is called with projectId, documentManager, pre-encoded state, and onProgress callback
+      expect(spy).toHaveBeenCalledWith('project-123', mockBridge.documentManager, expect.any(Uint8Array), expect.any(Function));
     });
 
     it('calls updateProjectMetadata', async () => {
@@ -571,17 +577,22 @@ describe('SaveManager', () => {
       expect(mockBridge.isNewProject).toBe(false);
     });
 
-    it('uploads pending assets', async () => {
+    it('uploads pending assets with metadata-only objects (no blob property)', async () => {
       const manager = new SaveManager(mockBridge);
-      mockBridge.assetManager.getPendingAssets.mockResolvedValue([
-        { id: 'asset-1', blob: new Blob(['test']), filename: 'test.txt', mime: 'text/plain' },
-      ]);
+      const pendingMeta = [
+        { id: 'asset-1', filename: 'test.txt', mime: 'text/plain', size: 4, uploaded: false },
+      ];
+      mockBridge.assetManager.getPendingAssetsMetadata.mockReturnValue(pendingMeta);
 
       const uploadSpy = vi.spyOn(manager, 'uploadAssets').mockResolvedValue({ uploaded: 1, failed: 0 });
 
       await manager.save();
 
       expect(uploadSpy).toHaveBeenCalled();
+      // Verify uploadAssets receives metadata-only objects (no blob property)
+      const passedAssets = uploadSpy.mock.calls[0][2];
+      expect(passedAssets).toEqual(pendingMeta);
+      expect(passedAssets[0].blob).toBeUndefined();
     });
 
     it('handles save errors gracefully', async () => {
@@ -622,7 +633,7 @@ describe('SaveManager', () => {
 
     it('encodes Yjs state', async () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token' });
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       // Verify that the body sent to XHR is a Uint8Array (result of encoding)
       expect(xhrInstances.length).toBeGreaterThan(0);
@@ -634,7 +645,7 @@ describe('SaveManager', () => {
 
     it('sends state to server with markSaved=true (explicit save)', async () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       expect(xhr.open).toHaveBeenCalledWith(
@@ -651,7 +662,7 @@ describe('SaveManager', () => {
         get: vi.fn().mockReturnValue('My Test Project'),
       });
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-Project-Title', 'My%20Test%20Project');
@@ -663,7 +674,7 @@ describe('SaveManager', () => {
         get: vi.fn().mockReturnValue('Título con ñ y émojis 🎉'),
       });
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       const titleCall = xhr.setRequestHeader.mock.calls.find(c => c[0] === 'X-Project-Title');
@@ -678,7 +689,7 @@ describe('SaveManager', () => {
         get: vi.fn().mockReturnValue(null),
       });
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-Project-Title', '');
@@ -688,7 +699,7 @@ describe('SaveManager', () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
       mockBridge.documentManager.getMetadata = undefined;
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
 
       const xhr = xhrInstances[0];
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-Project-Title', '');
@@ -713,7 +724,7 @@ describe('SaveManager', () => {
       global.XMLHttpRequest = ErrorXHR;
 
       const manager = new SaveManager(mockBridge);
-      await expect(manager.saveYjsState('project-123', mockBridge.documentManager)).rejects.toThrow(
+      await expect(manager.saveYjsState('project-123', mockBridge.documentManager, null)).rejects.toThrow(
         'Failed to save document: 500 Internal error'
       );
     });
@@ -743,7 +754,7 @@ describe('SaveManager', () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token' });
       const progressCallback = vi.fn();
 
-      await manager.saveYjsState('project-123', mockBridge.documentManager, progressCallback);
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null, progressCallback);
 
       expect(progressCallback).toHaveBeenCalledWith(0); // Initial
       expect(progressCallback).toHaveBeenCalledWith(50); // 50%
@@ -767,7 +778,7 @@ describe('SaveManager', () => {
       global.XMLHttpRequest = NetworkErrorXHR;
 
       const manager = new SaveManager(mockBridge);
-      await expect(manager.saveYjsState('project-123', mockBridge.documentManager)).rejects.toThrow(
+      await expect(manager.saveYjsState('project-123', mockBridge.documentManager, null)).rejects.toThrow(
         'Network error while saving document'
       );
     });
@@ -1235,11 +1246,13 @@ describe('SaveManager', () => {
 
     it('handles asset upload errors gracefully', async () => {
       const manager = new SaveManager(mockBridge);
-      // Set up a pending asset that will be uploaded
-      mockBridge.assetManager.getPendingAssets.mockResolvedValue([
-        { id: 'a1', blob: new Blob(['1']), filename: 'a.txt' },
+      // Set up pending asset metadata
+      const pendingMeta = [{ id: 'a1', filename: 'a.txt', size: 1, uploaded: false }];
+      mockBridge.assetManager.getPendingAssetsMetadata.mockReturnValue(pendingMeta);
+      // Mock uploadAssetBatch to fail (uploadSmallAssetsBatched loads blobs per-batch internally)
+      mockBridge.assetManager.getPendingAssetsBatch.mockResolvedValue([
+        { id: 'a1', blob: new Blob(['1']), filename: 'a.txt', projectId: 'project-123' },
       ]);
-      // Mock uploadAssetBatch to fail
       vi.spyOn(manager, 'uploadAssetBatch').mockRejectedValue(new Error('Upload error'));
 
       const result = await manager.save();
@@ -1352,6 +1365,22 @@ describe('SaveManager', () => {
       expect(chunks[0].length).toBe(10);
     });
 
+    it('splits session chunks by total bytes as well as file count', () => {
+      const manager = new SaveManager(mockBridge);
+      const mb = 1024 * 1024;
+      const assets = [
+        { id: 'asset-1', size: 12 * mb },
+        { id: 'asset-2', size: 9 * mb },
+        { id: 'asset-3', size: 4 * mb },
+      ];
+
+      const chunks = manager.createSessionChunks(assets, 200, 20 * mb);
+
+      expect(chunks.length).toBe(2);
+      expect(chunks[0].map(asset => asset.id)).toEqual(['asset-1']);
+      expect(chunks[1].map(asset => asset.id)).toEqual(['asset-2', 'asset-3']);
+    });
+
     it('returns empty array for empty input', () => {
       const manager = new SaveManager(mockBridge);
       const chunks = manager.createSessionChunks([]);
@@ -1418,6 +1447,10 @@ describe('SaveManager', () => {
       expect(fetchCallCount).toBe(2);
       expect(result.uploaded).toBe(335); // 200 + 135
       expect(result.failed).toBe(0);
+      expect(mockBridge.assetManager.getPendingAssetsBatch).toHaveBeenCalledWith(
+        expect.any(Array),
+        { restoreToMemory: false }
+      );
     });
 
     it('accumulates progress across batches', async () => {
@@ -1790,6 +1823,80 @@ describe('SaveManager', () => {
       expect(callOrder.indexOf('session-start')).toBeLessThan(2);
     });
 
+    it('runs upload streams sequentially in Electron mode', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_UPLOAD_THRESHOLD = 1000;
+      manager.setWebSocketHandler(mockWsHandler);
+      window.electronAPI = {};
+
+      const smallAsset = { id: 'small', blob: new Blob(['small']), filename: 'small.txt' };
+      const largeAsset = { id: 'large', blob: new Blob(['x'.repeat(2000)]), filename: 'large.bin' };
+      const callOrder = [];
+
+      vi.spyOn(manager, 'uploadLargeAssetsChunked').mockImplementation(async () => {
+        callOrder.push('large-start');
+        await new Promise(r => setTimeout(r, 10));
+        callOrder.push('large-end');
+        return { uploaded: 1, failed: 0 };
+      });
+
+      vi.spyOn(manager, 'uploadSmallAssetsIndividually').mockImplementation(async () => {
+        callOrder.push('single-start');
+        await new Promise(r => setTimeout(r, 10));
+        callOrder.push('single-end');
+        return { uploaded: 1, failed: 0 };
+      });
+
+      try {
+        await manager.uploadAssets('project-123', mockBridge.assetManager, [smallAsset, largeAsset], null);
+      } finally {
+        delete window.electronAPI;
+      }
+
+      expect(callOrder).toEqual(['large-start', 'large-end', 'single-start', 'single-end']);
+    });
+
+    it('uses single-file upload for small assets in Electron mode by default', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_UPLOAD_THRESHOLD = 1000;
+      manager.setWebSocketHandler(mockWsHandler);
+      window.electronAPI = {};
+
+      const singleSpy = vi.spyOn(manager, 'uploadSmallAssetsIndividually').mockResolvedValue({ uploaded: 1, failed: 0 });
+      const sessionSpy = vi.spyOn(manager, 'uploadWithSession').mockResolvedValue({ uploaded: 1, failed: 0 });
+
+      await manager.uploadAssets(
+        'project-123',
+        mockBridge.assetManager,
+        [{ id: 'small', blob: new Blob(['small']), filename: 'small.txt' }],
+        null
+      );
+
+      expect(singleSpy).toHaveBeenCalled();
+      expect(sessionSpy).not.toHaveBeenCalled();
+    });
+
+    it('allows restoring baseline Electron batching via experiment flag', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_UPLOAD_THRESHOLD = 1000;
+      manager.setWebSocketHandler(mockWsHandler);
+      window.electronAPI = {};
+      window.eXeLearning.config.saveMemoryExperiment = 'baseline';
+
+      const singleSpy = vi.spyOn(manager, 'uploadSmallAssetsIndividually').mockResolvedValue({ uploaded: 1, failed: 0 });
+      const sessionSpy = vi.spyOn(manager, 'uploadWithSession').mockResolvedValue({ uploaded: 1, failed: 0 });
+
+      await manager.uploadAssets(
+        'project-123',
+        mockBridge.assetManager,
+        [{ id: 'small', blob: new Blob(['small']), filename: 'small.txt' }],
+        null
+      );
+
+      expect(singleSpy).not.toHaveBeenCalled();
+      expect(sessionSpy).toHaveBeenCalled();
+    });
+
     it('falls back to batch upload when session fails', async () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token' });
       manager.CHUNK_UPLOAD_THRESHOLD = 1000;
@@ -1970,6 +2077,55 @@ describe('SaveManager', () => {
       await manager.uploadAssetBatch('project-123', assets, mockBridge.assetManager);
 
       expect(mockFetch).toHaveBeenCalled();
+    });
+  });
+
+  describe('save memory instrumentation', () => {
+    it('collects and summarizes save memory samples when enabled', async () => {
+      window.eXeLearning.config.debugSaveMemory = true;
+      window.electronAPI = {
+        getMemoryUsage: vi.fn().mockResolvedValue({
+          process: {
+            rss: 1000,
+            heapTotal: 2000,
+            heapUsed: 1500,
+            external: 300,
+            arrayBuffers: 120,
+          },
+          renderer: {
+            workingSetSize: 4000,
+            peakWorkingSetSize: 4500,
+            privateBytes: 3500,
+            sharedBytes: 200,
+          },
+        }),
+      };
+
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      vi.spyOn(manager, 'updateProjectMetadata').mockResolvedValue();
+
+      const result = await manager.save({ showProgress: false });
+
+      expect(result.success).toBe(true);
+      expect(window.__lastSaveMemoryTimeline).toEqual(expect.any(Array));
+      expect(window.__lastSaveMemoryTimeline.length).toBeGreaterThan(0);
+      expect(window.__lastSaveMemorySummary).toEqual(expect.objectContaining({
+        outcome: 'success',
+      }));
+      expect(Logger.log).toHaveBeenCalledWith(expect.stringContaining('[SaveManager][Memory]'));
+      expect(Logger.log).toHaveBeenCalledWith(expect.stringContaining('[SaveManager][MemorySummary]'));
+    });
+
+    it('supports assets-only experiment by skipping Yjs upload', async () => {
+      window.eXeLearning.config.saveMemoryExperiment = 'assets-only';
+
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      const saveYjsSpy = vi.spyOn(manager, 'saveYjsState').mockResolvedValue({ success: true });
+      vi.spyOn(manager, 'updateProjectMetadata').mockResolvedValue();
+
+      await manager.save({ showProgress: false });
+
+      expect(saveYjsSpy).not.toHaveBeenCalled();
     });
   });
 });

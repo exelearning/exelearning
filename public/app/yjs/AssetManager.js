@@ -65,6 +65,40 @@ class AssetManager {
 
     // Yjs bridge reference (set externally) - source of truth for metadata
     this.yjsBridge = null;
+
+    // Cache API persistence may be unavailable under custom schemes such as
+    // app:// in Electron. Disable repeated attempts after the first hard failure
+    // to avoid thousands of slow exceptions during large imports.
+    this.cachePersistenceDisabled = false;
+  }
+
+  /**
+   * Cache API only accepts HTTP(S) requests. In Electron app:// mode we use a
+   * synthetic HTTPS URL so the same cache can still be used when supported.
+   * @param {string} id
+   * @returns {string}
+   * @private
+   */
+  _getCacheRequestUrl(id) {
+    const path = `/asset/${id}`;
+    const protocol = window.location?.protocol || '';
+    if (protocol === 'http:' || protocol === 'https:') {
+      return path;
+    }
+    return `https://cache.exelearning.invalid${path}`;
+  }
+
+  /**
+   * Disable Cache API persistence after an unrecoverable runtime failure.
+   * @param {Error} error
+   * @private
+   */
+  _disableCachePersistence(error) {
+    if (this.cachePersistenceDisabled) {
+      return;
+    }
+    this.cachePersistenceDisabled = true;
+    console.warn('[AssetManager] Cache API persistence disabled:', error.message);
   }
 
   /**
@@ -142,16 +176,19 @@ class AssetManager {
    * @private
    */
   async _putToCache(id, blob) {
-    if (!('caches' in window)) return; // Cache API not supported
+    if (!('caches' in window) || this.cachePersistenceDisabled) return; // Cache API not supported
 
     try {
       const cache = await caches.open(this.getCacheName());
       const response = new Response(blob, {
         headers: { 'Content-Type': blob.type || 'application/octet-stream' }
       });
-      await cache.put(`/asset/${id}`, response);
+      await cache.put(this._getCacheRequestUrl(id), response);
     } catch (e) {
       console.warn('[AssetManager] Cache API write failed:', e.message);
+      if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
+        this._disableCachePersistence(e);
+      }
     }
   }
 
@@ -162,16 +199,19 @@ class AssetManager {
    * @private
    */
   async _getFromCache(id) {
-    if (!('caches' in window)) return null;
+    if (!('caches' in window) || this.cachePersistenceDisabled) return null;
 
     try {
       const cache = await caches.open(this.getCacheName());
-      const response = await cache.match(`/asset/${id}`);
+      const response = await cache.match(this._getCacheRequestUrl(id));
       if (response) {
         return await response.blob();
       }
     } catch (e) {
       console.warn('[AssetManager] Cache API read failed:', e.message);
+      if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
+        this._disableCachePersistence(e);
+      }
     }
     return null;
   }
@@ -182,11 +222,11 @@ class AssetManager {
    * @private
    */
   async _deleteFromCache(id) {
-    if (!('caches' in window)) return;
+    if (!('caches' in window) || this.cachePersistenceDisabled) return;
 
     try {
       const cache = await caches.open(this.getCacheName());
-      await cache.delete(`/asset/${id}`);
+      await cache.delete(this._getCacheRequestUrl(id));
     } catch (e) {
       // Ignore delete errors
     }
@@ -197,7 +237,7 @@ class AssetManager {
    * Called on project close or after successful save
    */
   async clearCache() {
-    if (!('caches' in window)) return;
+    if (!('caches' in window) || this.cachePersistenceDisabled) return;
 
     try {
       await caches.delete(this.getCacheName());
@@ -465,11 +505,15 @@ class AssetManager {
   }
 
   /**
-   * Get blob from memory
+   * Get blob from memory or Cache API.
    * @param {string} id - Asset UUID
+   * @param {Object} options
+   * @param {boolean} options.restoreToMemory - Rehydrate blobCache from Cache API (default: true)
    * @returns {Promise<Blob|null>}
    */
-  async getBlob(id) {
+  async getBlob(id, options = {}) {
+    const { restoreToMemory = true } = options;
+
     // 1. Check in-memory cache first (fastest)
     const memBlob = this.blobCache.get(id);
     if (memBlob) return memBlob;
@@ -477,12 +521,25 @@ class AssetManager {
     // 2. Fallback to Cache API (survives page reload)
     const cachedBlob = await this._getFromCache(id);
     if (cachedBlob) {
-      // Restore to memory cache for faster subsequent access
-      this.blobCache.set(id, cachedBlob);
+      // Restore to memory cache for faster subsequent access unless this is an
+      // export/preview-only read that must not repopulate the editor working set.
+      if (restoreToMemory) {
+        this.blobCache.set(id, cachedBlob);
+      }
       return cachedBlob;
     }
 
     return null;
+  }
+
+  /**
+   * Get blob for export/preview without repopulating blobCache from Cache API.
+   * This keeps the editor working set bounded after save().
+   * @param {string} id - Asset UUID
+   * @returns {Promise<Blob|null>}
+   */
+  async getBlobForExport(id) {
+    return this.getBlob(id, { restoreToMemory: false });
   }
 
   /**
@@ -1790,36 +1847,49 @@ class AssetManager {
   }
 
   /**
-   * Get assets pending upload
+   * Get metadata for assets pending upload (no blobs loaded).
+   * Use this for quota checks and progress estimation without loading all blobs into memory.
+   * @returns {Array} Array of metadata objects (without blob property)
+   */
+  getPendingAssetsMetadata() {
+    const allMetadata = this.getAllAssetsMetadata();
+    return allMetadata.filter(a => a.uploaded === false);
+  }
+
+  /**
+   * Get assets pending upload with blobs loaded.
+   * Loads blobs for ALL pending assets. For memory-efficient uploads,
+   * prefer getPendingAssetsMetadata() + getPendingAssetsBatch().
    * @returns {Promise<Array>}
    */
   async getPendingAssets() {
-    // Get metadata from Yjs and filter by uploaded=false
-    const allMetadata = this.getAllAssetsMetadata();
-    const pendingMetadata = allMetadata.filter(a => a.uploaded === false);
+    const pendingMetadata = this.getPendingAssetsMetadata();
+    if (pendingMetadata.length === 0) return [];
+    return this.getPendingAssetsBatch(pendingMetadata);
+  }
 
-    if (pendingMetadata.length === 0) {
-      return [];
-    }
-
-    // Get blobs for pending assets (needed for upload)
-    const pendingAssets = [];
-    for (const meta of pendingMetadata) {
-      const blob = await this.getBlob(meta.id);
+  /**
+   * Load blobs for a specific batch of asset IDs.
+   * Used for memory-efficient streaming uploads — load blobs only when needed.
+   * @param {Array<Object>} metadataList - Array of metadata objects (from getPendingAssetsMetadata)
+   * @returns {Promise<Array>} Array of assets with blobs loaded
+   */
+  async getPendingAssetsBatch(metadataList, options = {}) {
+    const { restoreToMemory = true } = options;
+    const assets = [];
+    for (const meta of metadataList) {
+      const blob = await this.getBlob(meta.id, { restoreToMemory });
       if (blob) {
-        pendingAssets.push({
+        assets.push({
           ...meta,
           projectId: this.projectId,
           blob
         });
       } else {
-        // Asset metadata exists but blob not cached locally
-        // This can happen when another client added the asset
-        Logger.log(`[AssetManager] Pending asset ${meta.id.substring(0, 8)}... has no local blob`);
+        Logger.log(`[AssetManager] Pending asset ${meta.id.substring(0, 8)}... has no local blob (batch)`);
       }
     }
-
-    return pendingAssets;
+    return assets;
   }
 
   /**
@@ -1840,7 +1910,27 @@ class AssetManager {
       uploaded: true
     });
 
+    // Release the raw in-memory blob after successful upload.
+    // Local cached access is still preserved through Cache API / blob URLs
+    // for post-save rendering, preview, and export in the current session.
+    this.releaseUploadedBlob(id);
+
     Logger.log(`[AssetManager] Marked ${id.substring(0, 8)}... as uploaded via Yjs`);
+  }
+
+  /**
+   * Release a blob from the in-memory blobCache after successful upload.
+   * Keeps blobURLCache intact so existing blob:// URLs in the editor remain valid.
+   * Cache API entry is intentionally preserved — getBlob() needs it as fallback
+   * for post-save operations (export, preview, re-rendering).
+   * Cache API is cleaned up on project close via cleanup().
+   * @param {string} id - Asset UUID
+   */
+  releaseUploadedBlob(id) {
+    if (this.blobCache.has(id)) {
+      this.blobCache.delete(id);
+      Logger.log(`[AssetManager] Released blob from memory for ${id.substring(0, 8)}...`);
+    }
   }
 
   /**

@@ -15,6 +15,7 @@
  */
 
 import type {
+    ExportAsset,
     ExportPage,
     ExportMetadata,
     ExportOptions,
@@ -250,13 +251,9 @@ export class Epub3Exporter extends BaseExporter {
             }
 
             // 7. Detect and fetch required libraries
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            });
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
@@ -751,13 +748,12 @@ export class Epub3Exporter extends BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) {
-                    continue;
+                    return;
                 }
 
                 // Store in EPUB/content/resources/{exportPath} (matching HTML references)
@@ -771,7 +767,9 @@ export class Epub3Exporter extends BaseExporter {
                 this.addManifestItem(this.generateUniqueId(`asset-${asset.id}`), zipPath, mimeType);
 
                 assetsAdded++;
-            }
+            };
+
+            await this.forEachAsset(processAsset);
         } catch (e) {
             console.warn('[Epub3Exporter] Failed to add assets:', e);
         }

@@ -745,6 +745,37 @@ describe('PageRenderer', () => {
             const html = renderer.renderSinglePage(pages);
             expect(html).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
         });
+
+        it('should use provided detectedLibraries without rescanning all page content', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'component-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<div class="exe-fx">Effects</div>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, {
+                detectedLibraries: ['exe_highlighter'],
+            });
+
+            expect(html).toContain('libs/exe_highlighter/exe_highlighter.js');
+            expect(html).not.toContain('libs/exe_effects/exe_effects.js');
+        });
     });
 
     describe('renderFavicon', () => {

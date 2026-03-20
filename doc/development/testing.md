@@ -2,6 +2,8 @@
 
 This document explains the testing framework used in eXeLearning, including unit, integration, frontend, and end-to-end (E2E) tests.
 
+For runtime profiling of Electron save/export flows, see [profiling.md](./profiling.md).
+
 ## Test Structure
 
 Tests are organized by type and location:

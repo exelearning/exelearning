@@ -271,6 +271,109 @@ describe('CombinedAssetProvider', () => {
         });
     });
 
+    describe('forEachAsset', () => {
+        it('should iterate over all assets across providers', async () => {
+            const provider1 = createMockProvider([mockAsset1]);
+            const provider2 = createMockProvider([mockAsset2]);
+            const combined = new CombinedAssetProvider([provider1, provider2]);
+
+            const processed: string[] = [];
+            const count = await combined.forEachAsset(async asset => {
+                processed.push(asset.id);
+            });
+
+            expect(count).toBe(2);
+            expect(processed).toContain('asset-1');
+            expect(processed).toContain('asset-2');
+        });
+
+        it('should deduplicate by id', async () => {
+            const provider1 = createMockProvider([mockAsset1]);
+            const provider2 = createMockProvider([mockAsset1, mockAsset2]);
+            const combined = new CombinedAssetProvider([provider1, provider2]);
+
+            const processed: string[] = [];
+            await combined.forEachAsset(async asset => {
+                processed.push(asset.id);
+            });
+
+            expect(processed.filter(id => id === 'asset-1')).toHaveLength(1);
+        });
+
+        it('should fall back to getAllAssets for providers without forEachAsset', async () => {
+            // createMockProvider doesn't have forEachAsset
+            const provider1 = createMockProvider([mockAsset1]);
+            const combined = new CombinedAssetProvider([provider1]);
+
+            const processed: string[] = [];
+            const count = await combined.forEachAsset(async asset => {
+                processed.push(asset.id);
+            });
+
+            expect(count).toBe(1);
+            expect(processed).toContain('asset-1');
+        });
+    });
+
+    describe('listAssetMetadata', () => {
+        it('should return metadata from all providers', async () => {
+            const provider1 = createMockProvider([mockAsset1]);
+            const provider2 = createMockProvider([mockAsset2]);
+            const combined = new CombinedAssetProvider([provider1, provider2]);
+
+            const metadata = await combined.listAssetMetadata();
+
+            expect(metadata).toHaveLength(2);
+            expect(metadata.map(m => m.id)).toContain('asset-1');
+            expect(metadata.map(m => m.id)).toContain('asset-2');
+        });
+
+        it('should deduplicate by id', async () => {
+            const provider1 = createMockProvider([mockAsset1]);
+            const provider2 = createMockProvider([mockAsset1, mockAsset2]);
+            const combined = new CombinedAssetProvider([provider1, provider2]);
+
+            const metadata = await combined.listAssetMetadata();
+
+            expect(metadata.filter(m => m.id === 'asset-1')).toHaveLength(1);
+        });
+    });
+
+    describe('listAssetMetadata and forEachAsset consistency', () => {
+        it('should return the same asset IDs from both methods', async () => {
+            const provider1 = createMockProvider([mockAsset1]);
+            const provider2 = createMockProvider([mockAsset2]);
+            const combined = new CombinedAssetProvider([provider1, provider2]);
+
+            const meta = await combined.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await combined.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+        });
+
+        it('should return the same deduplicated asset IDs from both methods', async () => {
+            const provider1 = createMockProvider([mockAsset1]);
+            const provider2 = createMockProvider([mockAsset1, mockAsset2]);
+            const combined = new CombinedAssetProvider([provider1, provider2]);
+
+            const meta = await combined.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await combined.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+            expect(idsFromMeta.size).toBe(2);
+        });
+    });
+
     describe('getProviders', () => {
         it('should return copy of providers array', () => {
             const provider1 = createMockProvider([mockAsset1]);

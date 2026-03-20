@@ -337,6 +337,30 @@ describe('LibraryDetector', () => {
         });
     });
 
+    describe('incremental fragment scanning', () => {
+        it('should detect libraries across multiple fragments without concatenating them first', () => {
+            const result = detector.detectLibrariesFromFragments([
+                '<div class="exe-fx animated">Effects</div>',
+                '<pre class="highlighted-code">code</pre>',
+            ]);
+
+            expect(result.libraries.map(l => l.name)).toContain('exe_effects');
+            expect(result.libraries.map(l => l.name)).toContain('exe_highlighter');
+        });
+
+        it('should return required files and patterns from fragment iterables', () => {
+            const { files, patterns } = detector.getAllRequiredFilesWithPatternsFromFragments(
+                ['<a href="img.jpg" rel="lightbox">Image</a>', '<p>\\(x^2\\)</p>'],
+                { includeAccessibilityToolbar: true },
+            );
+
+            expect(files).toContain('exe_lightbox/exe_lightbox.js');
+            expect(files).toContain('exe_atools/exe_atools.js');
+            expect(patterns.some(pattern => pattern.name === 'exe_lightbox')).toBe(true);
+            expect(patterns.some(pattern => pattern.name === 'exe_math')).toBe(true);
+        });
+    });
+
     describe('groupFilesByType', () => {
         it('should group JS and CSS files', () => {
             const files = ['script.js', 'style.css', 'lib.js', 'theme.css'];

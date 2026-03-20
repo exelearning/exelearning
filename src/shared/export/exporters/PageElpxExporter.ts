@@ -10,7 +10,7 @@
  * for a partial page export).
  */
 
-import type { ExportOptions, ExportPage, ExportResult, ElpxExportOptions } from '../interfaces';
+import type { ExportAsset, ExportOptions, ExportPage, ExportResult, ElpxExportOptions } from '../interfaces';
 import { ElpxExporter } from './ElpxExporter';
 
 export class PageElpxExporter extends ElpxExporter {
@@ -75,28 +75,24 @@ export class PageElpxExporter extends ElpxExporter {
         let assetsAdded = 0;
 
         try {
-            const allAssets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
-            console.log(
-                `[PageElpxExporter] Filtering ${allAssets.length} total assets, ` +
-                    `keeping ${this.filteredAssetIds.size} referenced`,
-            );
 
-            for (const asset of allAssets) {
+            const processAsset = async (asset: ExportAsset) => {
                 // Only include assets that are actually referenced by exported pages
-                if (this.filteredAssetIds.has(asset.id)) {
+                if (this.filteredAssetIds!.has(asset.id)) {
                     const exportPath = exportPathMap.get(asset.id);
                     if (exportPath) {
                         const zipPath = `content/resources/${exportPath}`;
                         this.zip.addFile(zipPath, asset.data);
                         if (trackingList) trackingList.push(zipPath);
                         assetsAdded++;
-                        console.log(`[PageElpxExporter] Added referenced asset: ${zipPath}`);
                     } else {
                         console.warn(`[PageElpxExporter] No export path for referenced asset: ${asset.id}`);
                     }
                 }
-            }
+            };
+
+            await this.forEachAsset(processAsset);
 
             console.log(`[PageElpxExporter] Added ${assetsAdded} filtered assets to ZIP`);
         } catch (e) {
