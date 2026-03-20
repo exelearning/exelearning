@@ -729,6 +729,32 @@
         },
 
         /**
+         * Extract the filename from an asset:// URL path component.
+         * e.g. "asset://uuid/report.docx" → "report.docx"
+         * e.g. "asset://uuid.pdf" → null (no path separator, extension-only format)
+         *
+         * @param {string} assetUrl
+         * @returns {string|null}
+         */
+        extractFilenameFromAssetUrl: extractFilenameFromAssetUrl,
+
+        /**
+         * Extract the filename from a blob:// URL by looking it up in the AssetManager cache.
+         * e.g. "blob:http://localhost:8080/2f2738f5-90c8-4dc9-8076-8c06fa6c39c1" → "report.docx"
+         *
+         * @param {string} blobUrl
+         * @returns {string|null} Filename or null if not found
+         */
+        extractFilenameFromBlob: function(blobUrl) {
+            if (!blobUrl || !blobUrl.startsWith('blob:')) return null;
+            const assetManager = getAssetManager();
+            if (!assetManager) return null;
+            const assetId = assetManager.reverseBlobCache?.get(blobUrl);
+            if (!assetId) return null;
+            return assetManager.getAssetMetadata(assetId)?.filename ?? null;
+        },
+
+        /**
          * Stop observing (for cleanup/testing)
          */
         disconnect: function() {

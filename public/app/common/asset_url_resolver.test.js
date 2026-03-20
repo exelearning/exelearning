@@ -2502,4 +2502,107 @@ describe('AssetUrlResolver', () => {
       addEventListenerSpy.mockRestore();
     });
   });
+
+  describe('API: extractFilenameFromAssetUrl', () => {
+    it('is exposed on eXeLearningAssetResolver', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      await import('./asset_url_resolver.js');
+      expect(typeof window.eXeLearningAssetResolver.extractFilenameFromAssetUrl).toBe('function');
+      delete window.jQuery;
+    });
+
+    it('extracts filename from asset://uuid/filename.ext URL', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      await import('./asset_url_resolver.js');
+      const fn = window.eXeLearningAssetResolver.extractFilenameFromAssetUrl;
+      expect(fn('asset://2d982eb3-2352-462c-ebcc-0fa4f50306e3/report.docx')).toBe('report.docx');
+      expect(fn('asset://2d982eb3-2352-462c-ebcc-0fa4f50306e3.png')).toBeNull();
+      expect(fn(null)).toBeNull();
+      delete window.jQuery;
+    });
+  });
+
+  describe('API: extractFilenameFromBlob', () => {
+    it('returns filename from blob URL via AssetManager reverseBlobCache', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      const blobUrl = 'blob:http://localhost:8080/2f2738f5-90c8-4dc9-8076-8c06fa6c39c1';
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn(),
+          reverseBlobCache: new Map([[blobUrl, 'abc123']]),
+          getAssetMetadata: vi.fn().mockReturnValue({ filename: 'report.docx' }),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      const fn = window.eXeLearningAssetResolver.extractFilenameFromBlob;
+      expect(fn(blobUrl)).toBe('report.docx');
+      expect(fn('blob:http://localhost:8080/unknown')).toBeNull();
+      expect(fn('not-a-blob')).toBeNull();
+      delete window.jQuery;
+    });
+  });
+
+  describe('API: getAssetUrlFromBlob', () => {
+    it('returns asset URL from blobToAssetCache after resolve', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      const blobUrl = 'blob:http://localhost:8080/test-uuid';
+      const assetUrl = 'asset://abc123/video.mp4';
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn().mockResolvedValue(blobUrl),
+          reverseBlobCache: new Map(),
+          getAssetMetadata: vi.fn(),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      const resolver = window.eXeLearningAssetResolver;
+      // Populate blobToAssetCache by resolving
+      await resolver.resolve(assetUrl);
+      expect(resolver.getAssetUrlFromBlob(blobUrl)).toBe(assetUrl);
+      delete window.jQuery;
+    });
+
+    it('falls back to AssetManager reverseBlobCache when not in blobToAssetCache', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      const blobUrl = 'blob:http://localhost:8080/fallback-uuid';
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn(),
+          reverseBlobCache: new Map([[blobUrl, 'def456']]),
+          getAssetMetadata: vi.fn().mockReturnValue({ filename: 'audio.mp3' }),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      const result = window.eXeLearningAssetResolver.getAssetUrlFromBlob(blobUrl);
+      expect(result).toBe('asset://def456/audio.mp3');
+      delete window.jQuery;
+    });
+
+    it('returns null for non-blob URLs', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn(),
+          reverseBlobCache: new Map(),
+          getAssetMetadata: vi.fn(),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      expect(window.eXeLearningAssetResolver.getAssetUrlFromBlob('asset://abc')).toBeNull();
+      expect(window.eXeLearningAssetResolver.getAssetUrlFromBlob(null)).toBeNull();
+      delete window.jQuery;
+    });
+  });
 });
