@@ -45,6 +45,7 @@ import {
     LEGACY_TYPE_ALIASES,
     defaultLogger,
 } from './interfaces';
+import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 
 import { LegacyXmlParser } from './LegacyXmlParser';
 import type { LegacyParseResult, LegacyPage, LegacyBlock, LegacyIdevice, LegacyMetadata } from './LegacyXmlParser';
@@ -673,6 +674,7 @@ export class ElpxImporter {
 
         // Build HTML view with feedback if present
         let htmlView = legacyIdevice.htmlView || '';
+        htmlView = this.normalizeTextIdeviceHtml(legacyIdevice.type, htmlView);
 
         // If there's feedback content, append feedback button and content
         // BUT only if the HTML doesn't already have feedback embedded (prevents duplication)
@@ -1047,6 +1049,7 @@ export class ElpxImporter {
         const htmlViewNode = this.getElement(compNode, 'htmlView');
         if (htmlViewNode) {
             let htmlContent = this.decodeHtmlContent(htmlViewNode.textContent || '') || '';
+            htmlContent = this.normalizeTextIdeviceHtml(ideviceType, htmlContent);
 
             // Convert {{context_path}} to asset:// URLs
             if (this.assetHandler && this.assetMap.size > 0 && htmlContent) {
@@ -1065,15 +1068,32 @@ export class ElpxImporter {
         const jsonPropsNode = this.getElement(compNode, 'jsonProperties');
         if (jsonPropsNode) {
             try {
-                const jsonStr = this.decodeHtmlContent(jsonPropsNode.textContent || '{}') || '{}';
+                const rawJsonStr = jsonPropsNode.textContent || '{}';
                 let props: Record<string, unknown> = {};
 
-                try {
-                    props = JSON.parse(jsonStr);
-                } catch (parseErr) {
+                const parseCandidates = [
+                    rawJsonStr,
+                    this.decodeHtmlContentForJson(rawJsonStr),
+                    this.decodeHtmlContent(rawJsonStr),
+                ];
+
+                let parsed = false;
+                for (const candidate of parseCandidates) {
+                    try {
+                        props = JSON.parse(candidate);
+                        parsed = true;
+                        break;
+                    } catch {
+                        // Try next candidate.
+                    }
+                }
+
+                if (!parsed) {
                     this.logger.warn(`[ElpxImporter] Invalid JSON for ${componentId}, using empty object`);
                     props = {};
                 }
+
+                props = this.decodeHtmlEntitiesInObject(props) as Record<string, unknown>;
 
                 // Convert {{context_path}} in parsed JSON values
                 if (this.assetHandler && this.assetMap.size > 0 && props && typeof props === 'object') {
@@ -1082,6 +1102,14 @@ export class ElpxImporter {
                     } catch (convErr) {
                         this.logger.warn(`[ElpxImporter] Error converting paths in JSON for ${componentId}:`, convErr);
                     }
+                }
+
+                if (typeof props.textTextarea === 'string') {
+                    props.textTextarea = stripLegacyExeTextWrapper(props.textTextarea);
+                }
+
+                if (typeof props.htmlView === 'string') {
+                    props.htmlView = stripLegacyExeTextWrapper(props.htmlView);
                 }
 
                 compData.properties = props;
@@ -1122,6 +1150,48 @@ export class ElpxImporter {
         compData.structureProps = structureProps;
 
         return compData;
+    }
+
+    private decodeHtmlContentForJson(text: string): string {
+        if (!text) return '';
+
+        // Keep &quot; intact here to avoid breaking JSON strings that embed HTML attributes.
+        return text
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&#39;/g, "'")
+            .replace(/&apos;/g, "'")
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+    }
+
+    private decodeHtmlEntitiesInObject(obj: unknown): unknown {
+        if (typeof obj === 'string') {
+            return this.decodeHtmlContent(obj);
+        }
+
+        if (Array.isArray(obj)) {
+            return obj.map(item => this.decodeHtmlEntitiesInObject(item));
+        }
+
+        if (!obj || typeof obj !== 'object') {
+            return obj;
+        }
+
+        const result: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+            result[key] = this.decodeHtmlEntitiesInObject(value);
+        }
+        return result;
+    }
+
+    private normalizeTextIdeviceHtml(ideviceType: string, html: string): string {
+        if (!html) return html;
+        const normalizedType = (ideviceType || '').toLowerCase();
+        const shouldNormalize = normalizedType === 'text' || normalizedType.includes('jsidevice');
+        if (!shouldNormalize) return html;
+        return stripLegacyExeTextWrapper(html);
     }
 
     /**

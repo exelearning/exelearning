@@ -35,7 +35,7 @@ export class DefaultHandler extends BaseLegacyHandler {
         // Strategy 1: Look for "fields" list (JsIdevice format)
         const fieldsResult = this.extractFieldsContent(dict);
         if (fieldsResult) {
-            return fieldsResult;
+            return this.stripLegacyExeTextWrapper(fieldsResult);
         }
 
         // Strategy 2: Direct content fields (older formats)
@@ -43,12 +43,12 @@ export class DefaultHandler extends BaseLegacyHandler {
         for (const field of contentFields) {
             const content = this.extractRichTextContent(dict, field);
             if (content) {
-                return content;
+                return this.stripLegacyExeTextWrapper(content);
             }
         }
 
         // Strategy 3: Any TextField or TextAreaField
-        return this.extractAnyTextFieldContent(dict);
+        return this.stripLegacyExeTextWrapper(this.extractAnyTextFieldContent(dict));
     }
 
     /**

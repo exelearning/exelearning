@@ -198,7 +198,7 @@ describe('text iDevice export', () => {
       const origIsInExe = eXe.app.isInExe;
       eXe.app.isInExe = () => false;
       const data = {
-        textTextarea: `<div class="exe-text"><p>Content</p></div>
+        textTextarea: `<p>Content</p>
 <div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
 <div class="feedback js-feedback js-hidden"><p>Feedback content</p></div>`,
         textFeedbackInput: '',

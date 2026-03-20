@@ -1655,7 +1655,7 @@ describe('LatexPreRenderer', () => {
             const jsonData = JSON.stringify({ textTextarea: `<p>${renderedSpan}</p>` });
             const html = `
                 <div class="idevice_node text" data-idevice-json-data="${jsonData.replace(/"/g, '&quot;')}">
-                    <div class="exe-text"><p>${renderedSpan}</p></div>
+                    <p>${renderedSpan}</p>
                 </div>`;
 
             const result = await LatexPreRenderer.preRender(html);
