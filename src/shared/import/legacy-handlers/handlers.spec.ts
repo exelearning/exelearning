@@ -204,6 +204,32 @@ describe('DefaultHandler', () => {
 
             expect(handler.extractHtmlView(dict)).toBe('<div class="exe-text"><p>Broken');
         });
+
+        it('should unwrap when content starts with UTF-8 BOM before exe-text wrapper', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="\uFEFF&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;BOM content&lt;/p&gt;&lt;/div&gt;"/>
+                </dictionary>
+            `);
+
+            expect(handler.extractHtmlView(dict)).toBe('<p>BOM content</p>');
+        });
+
+        it('should unwrap exe-text and preserve trailing legacy feedback sibling blocks', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;Main&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;iDevice_buttons feedback-button js-required&quot;&gt;&lt;input type=&quot;button&quot; class=&quot;feedbackbutton&quot; value=&quot;Info&quot; /&gt;&lt;/div&gt;&lt;div class=&quot;feedback js-feedback js-hidden&quot;&gt;Info content&lt;/div&gt;"/>
+                </dictionary>
+            `);
+
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('<p>Main</p>');
+            expect(result).toContain('iDevice_buttons feedback-button');
+            expect(result).toContain('Info content');
+            expect(result).not.toContain('<div class="exe-text">');
+        });
     });
 
     describe('extractFeedback', () => {

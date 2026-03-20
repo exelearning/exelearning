@@ -1843,4 +1843,128 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
 
         ydoc.destroy();
     });
+
+    it('should remove legacy exe-text wrapper from JsIdevice htmlView and jsonProperties textTextarea', async () => {
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>JsIdevice Wrapper Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+  <odeProperty><key>pp_theme</key><value>base</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-a-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>comp-a-1</odeIdeviceId>
+          <odeIdeviceTypeName>JsIdevice</odeIdeviceTypeName>
+          <odeComponentOrder>0</odeComponentOrder>
+          <htmlView><![CDATA[<div class="exe-text"><p>HTML content</p></div>]]></htmlView>
+          <jsonProperties><![CDATA[{"textTextarea":"&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;JSON content&lt;/p&gt;&lt;/div&gt;","htmlView":"&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;JSON htmlView&lt;/p&gt;&lt;/div&gt;"}]]></jsonProperties>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zipData = fflate.zipSync({
+            'content.xml': encoder.encode(contentXml),
+        });
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromBuffer(zipData);
+
+        const navigation = ydoc.getArray('navigation');
+        const page = navigation.get(0) as Y.Map<unknown>;
+        const blocks = page.get('blocks') as Y.Array<unknown>;
+        const block = blocks.get(0) as Y.Map<unknown>;
+        const components = block.get('components') as Y.Array<unknown>;
+        const comp = components.get(0) as Y.Map<unknown>;
+
+        const html = comp.get('htmlView') as string;
+        expect(html).toBe('<p>HTML content</p>');
+        expect(html).not.toContain('class="exe-text"');
+
+        const rawJson = comp.get('jsonProperties') as string;
+        const props = JSON.parse(rawJson) as { textTextarea?: string };
+        expect(props.textTextarea).toBe('<p>JSON content</p>');
+        expect(props.textTextarea).not.toContain('class="exe-text"');
+        expect((props as Record<string, string>).htmlView).toBe('<p>JSON htmlView</p>');
+        expect((props as Record<string, string>).htmlView).not.toContain('class="exe-text"');
+
+        ydoc.destroy();
+    });
+
+    it('should unwrap exe-text and preserve trailing feedback siblings in text htmlView', async () => {
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Text Wrapper Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+  <odeProperty><key>pp_theme</key><value>base</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-a-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>comp-a-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <odeComponentOrder>0</odeComponentOrder>
+          <htmlView><![CDATA[<div class="exe-text"><p>Main</p></div><div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Info" /></div><div class="feedback js-feedback js-hidden">Info content</div>]]></htmlView>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zipData = fflate.zipSync({ 'content.xml': encoder.encode(contentXml) });
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromBuffer(zipData);
+
+        const navigation = ydoc.getArray('navigation');
+        const page = navigation.get(0) as Y.Map<unknown>;
+        const blocks = page.get('blocks') as Y.Array<unknown>;
+        const block = blocks.get(0) as Y.Map<unknown>;
+        const components = block.get('components') as Y.Array<unknown>;
+        const comp = components.get(0) as Y.Map<unknown>;
+
+        const html = comp.get('htmlView') as string;
+        expect(html).toContain('<p>Main</p>');
+        expect(html).toContain('iDevice_buttons feedback-button');
+        expect(html).toContain('Info content');
+        expect(html).not.toContain('<div class="exe-text">');
+
+        ydoc.destroy();
+    });
 });
