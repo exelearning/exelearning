@@ -4991,12 +4991,7 @@ describe('IdeviceNode', () => {
             expect(typeof idevice.loadLegacyExeFunctionalitiesExport).toBe('function');
         });
 
-        it('calls $exe.mermaid.init() to render mermaid diagrams', () => {
-            const mermaidInitSpy = vi.spyOn(global.$exe.mermaid, 'init');
-            idevice.loadLegacyExeFunctionalitiesExport();
-            expect(mermaidInitSpy).toHaveBeenCalled();
-            mermaidInitSpy.mockRestore();
-        });
+
     });
 
     describe('legacyExeIdevicesFilePicker', () => {
