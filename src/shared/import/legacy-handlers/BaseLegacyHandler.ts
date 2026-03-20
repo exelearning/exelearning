@@ -16,6 +16,7 @@
 
 import type { IdeviceHandler, IdeviceHandlerContext, FeedbackResult, BlockProperties } from './IdeviceHandler';
 import { FEEDBACK_TRANSLATIONS } from '../interfaces';
+import { stripLegacyExeTextWrapper } from '../legacyExeTextWrapper';
 
 /**
  * Abstract base class for legacy iDevice handlers
@@ -422,6 +423,17 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
             .replace(/\\r(?![a-zA-Z])/g, '\r'); // Negative lookahead to preserve LaTeX commands
 
         return decoded;
+    }
+
+    /**
+     * Remove legacy outer wrapper <div class="exe-text">...</div> when present.
+     * The removal is conservative: only strips when the whole HTML is wrapped.
+     *
+     * @param html - HTML content
+     * @returns HTML without the outer legacy wrapper
+     */
+    protected stripLegacyExeTextWrapper(html: string): string {
+        return stripLegacyExeTextWrapper(html);
     }
 
     /**
