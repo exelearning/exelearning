@@ -21,6 +21,41 @@
 #ri_TableEditor {
   overflow-x: auto;
 }
+
+#ri_CsvTools {
+  margin: 0 auto;
+}
+
+#ri_CsvTools .exe-block-info {
+  margin-bottom: 0.85em;
+}
+
+#ri_CsvFile {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#ri_CsvTools .ri-csv-import {
+  margin-bottom: 0.5em;
+}
+
+#ri_CsvTools .ri-csv-import-actions,
+#ri_CsvTools .ri-csv-export-actions {
+  padding-left: 0.2em;
+}
+
+#ri_CsvText {
+  width: 100%;
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  font-size: 13px;
+}
 #ri_Table input {
   box-sizing: border-box;
   padding: 2px;

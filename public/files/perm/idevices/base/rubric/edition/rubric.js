@@ -130,7 +130,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the table to define a scoring guide. Define the score or value of each descriptor.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following rubric'))}
                     <fieldset class="exe-fieldset ">
                         <legend><a href="#">${_('Rubric')}</a></legend>
                         <div>
@@ -141,14 +141,41 @@ var $exeDevice = {
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
+                <div class="exe-form-tab" title="${_('CSV import/export')}">
+                    <fieldset class="exe-fieldset">
+                        <legend><a href="#">${_('CSV import/export')}</a></legend>
+                        <div id="ri_CsvTools">
+                            <p class="exe-block-info">
+                                ${_('You can import rubric data from CSV files.')}
+                            </p>
+                            <div class="ri-csv-import">
+                                <form method="POST">
+                                    <div class="exe-file-upload" data-exe-upload>
+                                        <label for="ri_CsvFile" class="form-label mb-1">${_('Import')}: </label>
+                                        <input type="file" id="ri_CsvFile" accept=".csv,text/csv" class="exe-file-input" />
+                                        <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_('Choose')}</button>
+                                        <span class="exe-file-name" data-exe-file-name>${_('No file selected')}</span>
+                                        <span class="exe-field-instructions d-block mt-1">${_('Supported formats')}: csv</span>
+                                    </div>
+                                </form>
+                            </div>
+                            <p class="exe-block-info mt-3">
+                                ${_('You can export the rubric in CSV format to integrate it into other compatible activities.')}
+                            </p>
+                            <p class="ri-csv-export-actions d-flex align-items-center justify-content-start gap-1 mb-0">
+                                <input type="button" id="ri_ExportCsv" class="btn btn-primary" value="${_('Export CSV')}" />
+                            </p>
+                        </div>
+                    </fieldset>
+                </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, false)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
         this.resetForm();
         this.loadPreviousValues();
+        this.initCSVTabControls();
     },
 
     loadPreviousValues: function () {
@@ -421,6 +448,427 @@ var $exeDevice = {
         } catch (e) {
             return encoded;
         }
+    },
+
+    initCSVTabControls: function () {
+        var $csvTools = $('#ri_CsvTools');
+        var $csvFile = $csvTools.find('#ri_CsvFile');
+        var $csvUploadWrap = $csvTools.find('[data-exe-upload]').first();
+        var $csvFileName = $csvUploadWrap.find('[data-exe-file-name]').first();
+
+        $csvUploadWrap
+            .find('[data-exe-file-trigger]')
+            .off('click.rubricCsv')
+            .on('click.rubricCsv', function () {
+                $csvFile.trigger('click');
+                return false;
+            });
+
+        $csvFile.off('change.rubricCsv').on('change.rubricCsv', function () {
+            var fileName = _('No file selected');
+            if (this.files && this.files.length === 1 && this.files[0]) {
+                fileName = this.files[0].name || fileName;
+            }
+            if ($csvFileName.length === 1) {
+                $csvFileName.text(fileName);
+            }
+
+            if (!this.files || this.files.length !== 1) return;
+            $exeDevice.readCSVFile(this.files[0]);
+        });
+
+        $('#ri_ExportCsv').off('click.rubricCsv').on('click.rubricCsv', function () {
+            $exeDevice.exportCSV();
+            return false;
+        });
+    },
+
+    readCSVFile: function (file) {
+        if (!file) return;
+        if (!this.isCSVFile(file)) {
+            this.alert(_('Only CSV files are allowed.'));
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+            var csv = ev && ev.target ? ev.target.result : '';
+            if (typeof csv !== 'string') csv = '';
+            $exeDevice.importCSV(csv);
+        };
+        reader.onerror = function () {
+            $exeDevice.alert(_('Could not read the selected CSV file.'));
+        };
+        reader.readAsText(file, 'utf-8');
+    },
+
+    isCSVFile: function (file) {
+        if (!file) return false;
+        var fileName = (file.name || '').toLowerCase();
+        var fileType = (file.type || '').toLowerCase();
+        var hasCsvExtension = /\.csv$/i.test(fileName);
+        var hasCsvMime = fileType === 'text/csv' || fileType === 'application/csv';
+        // Some browsers provide an empty MIME type for local files.
+        return hasCsvExtension || hasCsvMime;
+    },
+
+    importCSV: function (csvText) {
+        var parsed;
+        try {
+            parsed = this.csvToRubricData(csvText);
+        } catch (e) {
+            this.alert(e && e.message ? e.message : _('Invalid CSV format.'));
+            return;
+        }
+
+        var currentTitle = $('#ri_Cell-0').val();
+        if (!parsed.title || parsed.title.trim() === '') {
+            parsed.title = currentTitle && currentTitle.trim() !== ''
+                ? currentTitle
+                : _('Imported rubric');
+        }
+
+        this.clearCurrentRubricEdition();
+        this.jsonToTable(parsed, 'edition');
+        this.enableFieldsetToggle();
+        this.setEditionFocus();
+        this.alert(_('CSV imported successfully.'));
+    },
+
+    clearCurrentRubricEdition: function () {
+        if (this.editor && this.editor.length === 1) {
+            this.editor.empty();
+        }
+        this.cells = null;
+    },
+
+    exportCSV: function () {
+        var data = this.tableEditorToJSON();
+        if (!data || !data.categories || data.categories.length === 0) {
+            this.alert(_('There is no rubric to export.'));
+            return;
+        }
+
+        var csv = this.rubricDataToCSV(data);
+
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'rubric.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    tableEditorToJSON: function () {
+        var table = $('#ri_TableEditor table').first();
+        if (table.length !== 1) return null;
+        var self = this;
+
+        var data = {
+            title: '',
+            categories: [],
+            scores: [],
+            descriptions: [],
+        };
+
+        var captionInput = $('caption input[type="text"]', table).first();
+        if (captionInput.length === 1) {
+            data.title = this.removeTags(captionInput.val() || '');
+        }
+
+        var thInputs = $('thead th input[type="text"]', table);
+        thInputs.each(function (index) {
+            // Skip first hidden corner header cell.
+            if (index === 0) return;
+            data.scores.push(self.removeTags($(this).val() || ''));
+        });
+
+        $('tbody tr', table).each(function () {
+            var row = $(this);
+            var categoryInput = $('th input[type="text"]', row).first();
+            var category = self.removeTags(categoryInput.val() || '');
+            if (category === '') return;
+
+            data.categories.push(category);
+
+            var descriptors = [];
+            $('td', row).each(function () {
+                var td = $(this);
+                var textInput = td.find('input[type="text"]').not('.ri_Weight').first();
+                var weightInput = td.find('input.ri_Weight').first();
+
+                descriptors.push({
+                    weight: self.removeTags(weightInput.val() || ''),
+                    text: self.removeTags(textInput.val() || ''),
+                });
+            });
+
+            data.descriptions.push(descriptors);
+        });
+
+        if (data.categories.length === 0) return null;
+        return data;
+    },
+
+    csvToRubricData: function (csvText) {
+        if (typeof csvText !== 'string' || csvText.trim() === '') {
+            throw new Error(_('Please provide CSV content.'));
+        }
+
+        var normalized = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        var lines = normalized.split('\n').filter(function (line) {
+            return line.trim() !== '';
+        });
+        if (lines.length < 2) {
+            throw new Error(_('The CSV must include a header row and at least one data row.'));
+        }
+
+        var rows = [];
+        for (var i = 0; i < lines.length; i++) {
+            rows.push(this.parseCSVLine(lines[i]));
+        }
+
+        var header = rows[0].map(function (cell) {
+            return cell.trim();
+        });
+
+        var hasDescriptionColumn = header.length > 1 && /(descrip|description)/i.test(header[1]);
+        var hasWeightColumn = header.length > 2 && /(peso|weight)/i.test(header[header.length - 1]);
+        var scoreStart = hasDescriptionColumn ? 2 : 1;
+        var scoreEnd = hasWeightColumn ? header.length - 1 : header.length;
+        if (scoreEnd <= scoreStart) {
+            throw new Error(_('The CSV must include at least one score column.'));
+        }
+
+        var scores = header.slice(scoreStart, scoreEnd);
+        var headerWeights = [];
+        for (var s = 0; s < scores.length; s++) {
+            var match = scores[s].match(/\(([^)]+)\)\s*$/);
+            headerWeights.push(match ? this.normalizeNumericValue(match[1]) : '');
+        }
+
+        var data = {
+            title: '',
+            categories: [],
+            scores: scores,
+            descriptions: [],
+        };
+
+        for (var r = 1; r < rows.length; r++) {
+            var row = rows[r];
+            while (row.length < header.length) row.push('');
+
+            var categoryRaw = (row[0] || '').trim();
+            if (categoryRaw === '') continue;
+
+            var parsedCategory = this.parseCsvCriterionAndScore(categoryRaw);
+            var category = parsedCategory.text;
+            var criterionScore = parsedCategory.score;
+
+            var descriptionCol = hasDescriptionColumn ? (row[1] || '').trim() : '';
+            var rowWeight = hasWeightColumn
+                ? this.normalizeNumericValue(row[header.length - 1])
+                : '';
+
+            var descriptors = [];
+            for (var c = 0; c < scores.length; c++) {
+                var txtRaw = (row[scoreStart + c] || '').trim();
+                var parsedDescriptor = this.parseCsvDescriptorAndScore(txtRaw);
+                var txt = parsedDescriptor.text;
+                if (txt === '' && c === 0 && descriptionCol !== '') txt = descriptionCol;
+                descriptors.push({
+                    weight:
+                        parsedDescriptor.score ||
+                        headerWeights[c] ||
+                        rowWeight ||
+                        criterionScore,
+                    text: txt,
+                });
+            }
+
+            data.categories.push(category);
+            data.descriptions.push(descriptors);
+        }
+
+        if (data.categories.length === 0) {
+            throw new Error(_('No rubric rows could be imported from the CSV.'));
+        }
+
+        return data;
+    },
+
+    rubricDataToCSV: function (data) {
+        var headers = ['Criterio', 'Descripción'];
+        for (var i = 0; i < data.scores.length; i++) {
+            headers.push(this.csvPlainText(data.scores[i]));
+        }
+        headers.push('Peso (%)');
+
+        var rows = [headers];
+        for (var r = 0; r < data.categories.length; r++) {
+            var row = [];
+            var descriptors = data.descriptions[r] || [];
+            row.push(this.csvPlainText(data.categories[r] || ''));
+            row.push(
+                this.csvDescriptorText(
+                    descriptors[0] ? descriptors[0].text || '' : '',
+                    descriptors[0] ? descriptors[0].weight || '' : ''
+                )
+            );
+
+            var rowWeight = '';
+            for (var c = 0; c < data.scores.length; c++) {
+                var cell = descriptors[c] || { text: '', weight: '' };
+                row.push(this.csvDescriptorText(cell.text || '', cell.weight || ''));
+                if (rowWeight === '' && cell.weight) rowWeight = this.csvPlainText(cell.weight);
+            }
+            row.push(rowWeight);
+            rows.push(row);
+        }
+
+        var csvRows = [];
+        for (var z = 0; z < rows.length; z++) {
+            var encoded = [];
+            for (var j = 0; j < rows[z].length; j++) {
+                encoded.push(this.encodeCSVCell(rows[z][j]));
+            }
+            csvRows.push(encoded.join(','));
+        }
+        return csvRows.join('\n');
+    },
+
+    parseCsvCriterionAndScore: function (value) {
+        var plain = this.csvPlainText(value);
+        if (plain === '') {
+            return { text: '', score: '' };
+        }
+
+        var match = plain.match(/^(.*?)\s*#\s*([-+]?[0-9]+(?:[.,][0-9]+)?)\s*$/);
+        if (!match) {
+            return { text: plain, score: '' };
+        }
+
+        var text = match[1].trim();
+        var score = this.normalizeNumericValue(match[2]);
+        return { text: text, score: score };
+    },
+
+    parseCsvDescriptorAndScore: function (value) {
+        var plain = this.csvPlainText(value);
+        if (plain === '') {
+            return { text: '', score: '' };
+        }
+
+        var match = plain.match(/^(.*?)\s*#\s*([-+]?[0-9]+(?:[.,][0-9]+)?)\s*$/);
+        if (!match) {
+            return { text: plain, score: '' };
+        }
+
+        return {
+            text: match[1].trim(),
+            score: this.normalizeNumericValue(match[2]),
+        };
+    },
+
+    csvDescriptorText: function (value, score) {
+        var parsed = this.parseCsvDescriptorAndScore(value);
+        var text = parsed.text;
+        var resolvedScore = parsed.score || this.normalizeNumericValue(score);
+
+        if (text === '') return '';
+        if (resolvedScore === '') return text;
+        return text + '#' + resolvedScore;
+    },
+
+    csvCriterionText: function (value) {
+        var plain = this.csvPlainText(value);
+        if (plain === '') return '';
+
+        var scoreMatch = null;
+        var text = plain;
+
+        // "Criterion (4)" => "Criterion#4"
+        scoreMatch = text.match(/^(.*)\(([-+]?[0-9]+(?:[.,][0-9]+)?)\)\s*$/);
+        if (scoreMatch) {
+            text = scoreMatch[1].trim();
+            return text + '#' + this.normalizeNumericValue(scoreMatch[2]);
+        }
+
+        // "Criterion Puntuacion: 4" / "Criterion Score: 4" => "Criterion#4"
+        scoreMatch = text.match(/^(.*?)(?:puntuaci[oó]n|score)\s*:\s*([-+]?[0-9]+(?:[.,][0-9]+)?)\s*$/i);
+        if (scoreMatch) {
+            text = scoreMatch[1].trim();
+            return text + '#' + this.normalizeNumericValue(scoreMatch[2]);
+        }
+
+        return plain;
+    },
+
+    csvPlainText: function (value) {
+        if (value === null || typeof value === 'undefined') return '';
+
+        var wrapper = $('<div></div>');
+        wrapper.html(String(value));
+
+        // Exclude interactive controls from CSV output.
+        wrapper
+            .find('button, input[type="button"], input[type="submit"], input[type="reset"], .btn')
+            .remove();
+
+        var text = wrapper.text();
+        text = text.replace(/\s+/g, ' ').trim();
+        return text;
+    },
+
+    parseCSVLine: function (line) {
+        var cells = [];
+        var value = '';
+        var inQuotes = false;
+
+        for (var i = 0; i < line.length; i++) {
+            var ch = line.charAt(i);
+
+            if (ch === '"') {
+                if (inQuotes && line.charAt(i + 1) === '"') {
+                    value += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (ch === ',' && !inQuotes) {
+                cells.push(value);
+                value = '';
+            } else {
+                value += ch;
+            }
+        }
+
+        if (inQuotes) {
+            throw new Error(_('Invalid CSV format.'));
+        }
+
+        cells.push(value);
+        return cells;
+    },
+
+    encodeCSVCell: function (value) {
+        if (value === null || typeof value === 'undefined') return '';
+        value = String(value);
+        if (value.indexOf('"') > -1) value = value.replace(/"/g, '""');
+        if (/[",\n]/.test(value)) return '"' + value + '"';
+        return value;
+    },
+
+    normalizeNumericValue: function (value) {
+        if (value === null || typeof value === 'undefined') return '';
+        value = String(value).trim();
+        if (value === '') return '';
+        value = value.replace(',', '.');
+        var num = parseFloat(value);
+        if (isNaN(num)) return '';
+        return String(num);
     },
 
     // Get a list of the available rubrics (only one for the moment, that's why there's just a "New rubric" button)

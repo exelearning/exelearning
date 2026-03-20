@@ -1,0 +1,246 @@
+/**
+ * Unit tests for rubric iDevice CSV tools (edition)
+ */
+
+/* eslint-disable no-undef */
+
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+describe('rubric iDevice CSV tools (edition)', () => {
+  let $exeDevice;
+
+  beforeEach(() => {
+    global.$exeDevice = undefined;
+    $exeDevice = global.loadIdevice(join(__dirname, 'rubric.js'));
+  });
+
+  afterEach(() => {
+    global.$exeDevice = undefined;
+  });
+
+  it('parseCSVLine handles quoted commas', () => {
+    const row = $exeDevice.parseCSVLine('"Criterio, 1",Texto,"Nivel, A"');
+    expect(row).toEqual(['Criterio, 1', 'Texto', 'Nivel, A']);
+  });
+
+  it('csvToRubricData imports levels and weights from CSV header', () => {
+    const csv = [
+      'Criterio,Descripción,Excelente (4),Notable (3),Aprobado (2),Insuficiente (1),Peso (%)',
+      'Comprensión del contenido,Demuestra entendimiento de los conceptos clave,Demuestra comprensión profunda y completa de todos los conceptos,Comprende la mayoría de los conceptos con pequeñas lagunas,Comprensión básica con lagunas notables,No demuestra comprensión de los conceptos,25',
+    ].join('\n');
+
+    const data = $exeDevice.csvToRubricData(csv);
+
+    expect(data.categories).toEqual(['Comprensión del contenido']);
+    expect(data.scores).toEqual([
+      'Excelente (4)',
+      'Notable (3)',
+      'Aprobado (2)',
+      'Insuficiente (1)',
+    ]);
+    expect(data.descriptions[0][0].text).toBe(
+      'Demuestra comprensión profunda y completa de todos los conceptos'
+    );
+    expect(data.descriptions[0][0].weight).toBe('4');
+    expect(data.descriptions[0][3].weight).toBe('1');
+  });
+
+  it('csvToRubricData imports criterion#score as criterion text plus score fallback', () => {
+    const csv = [
+      'Criterio,Descripción,Nivel A,Nivel B',
+      'Claridad#3,Texto base,Desc A,Desc B',
+    ].join('\n');
+
+    const data = $exeDevice.csvToRubricData(csv);
+
+    expect(data.categories).toEqual(['Claridad']);
+    expect(data.descriptions[0][0].weight).toBe('3');
+    expect(data.descriptions[0][1].weight).toBe('3');
+  });
+
+  it('csvToRubricData leaves score empty when criterion has no #score and no other weight source', () => {
+    const csv = [
+      'Criterio,Descripción,Nivel A,Nivel B',
+      'Claridad,Texto base,Desc A,Desc B',
+    ].join('\n');
+
+    const data = $exeDevice.csvToRubricData(csv);
+
+    expect(data.categories).toEqual(['Claridad']);
+    expect(data.descriptions[0][0].weight).toBe('');
+    expect(data.descriptions[0][1].weight).toBe('');
+  });
+
+  it('importCSV shows success modal when import completes', () => {
+    const csv = [
+      'Criterio,Descripción,Nivel A',
+      'Claridad,Texto base,Descriptor A#4',
+    ].join('\n');
+
+    const alertSpy = vi.spyOn($exeDevice, 'alert').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'clearCurrentRubricEdition').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'enableFieldsetToggle').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'setEditionFocus').mockImplementation(() => {});
+
+    $exeDevice.importCSV(csv);
+
+    expect(alertSpy).toHaveBeenCalledWith('CSV imported successfully.');
+  });
+
+  it('importCSV shows error modal when CSV is invalid', () => {
+    const alertSpy = vi.spyOn($exeDevice, 'alert').mockImplementation(() => {});
+
+    $exeDevice.importCSV('');
+
+    expect(alertSpy).toHaveBeenCalled();
+    const firstArg = alertSpy.mock.calls[0][0];
+    expect(String(firstArg).length).toBeGreaterThan(0);
+  });
+
+  it('rubricDataToCSV exports a valid CSV matrix', () => {
+    const data = {
+      title: 'Rubrica test',
+      categories: ['Criterio 1'],
+      scores: ['Nivel 1', 'Nivel 2'],
+      descriptions: [
+        [
+          { text: 'Desc 1.1', weight: '2' },
+          { text: 'Desc 1.2', weight: '1' },
+        ],
+      ],
+    };
+
+    const csv = $exeDevice.rubricDataToCSV(data);
+
+    expect(csv).toContain('Criterio,Descripción,Nivel 1,Nivel 2,Peso (%)');
+    expect(csv).toContain('Criterio 1,Desc 1.1#2,Desc 1.1#2,Desc 1.2#1,2');
+  });
+
+  it('rubricDataToCSV exports only plain text and excludes buttons', () => {
+    const data = {
+      title: 'Rubrica test',
+      categories: ['<strong>Criterio</strong> <button>Editar</button>'],
+      scores: ['<em>Nivel 1</em>'],
+      descriptions: [
+        [
+          {
+            text: '<p>Texto <span>visible</span> <button class="btn">Guardar</button></p>',
+            weight: '2',
+          },
+        ],
+      ],
+    };
+
+    const csv = $exeDevice.rubricDataToCSV(data);
+
+    expect(csv).toContain('Criterio,Descripción,Nivel 1,Peso (%)');
+    expect(csv).toContain('Criterio,Texto visible#2,Texto visible#2,2');
+    expect(csv).not.toContain('<button');
+    expect(csv).not.toContain('Editar');
+    expect(csv).not.toContain('Guardar');
+  });
+
+  it('rubricDataToCSV keeps existing criterion#score without duplicating row score', () => {
+    const data = {
+      title: 'Rubrica test',
+      categories: ['Criterio base#4'],
+      scores: ['Nivel 1'],
+      descriptions: [[{ text: 'Descriptor', weight: '2' }]],
+    };
+
+    const csv = $exeDevice.rubricDataToCSV(data);
+
+    expect(csv).toContain('Criterio base#4,Descriptor#2,Descriptor#2,2');
+    expect(csv).not.toContain('Descriptor#2#2');
+  });
+
+  it('tableEditorToJSON reads actual editor inputs, not action labels', () => {
+    document.body.innerHTML = `
+      <div id="ri_TableEditor">
+        <table>
+          <caption><input type="text" value="Rubrica" /></caption>
+          <thead>
+            <tr>
+              <th><input type="text" value="" /></th>
+              <th>
+                <span class="ri_Actions">← → ✎Editar x</span>
+                <input type="text" value="Excelente" />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>
+                <span class="ri_Actions">↑ ↓ ✎Editar x</span>
+                <input type="text" value="Criterio 1" />
+              </th>
+              <td>
+                <input type="text" value="Descriptor 1" />
+                <span><label>Puntuación:</label><input type="text" class="ri_Weight" value="4" /></span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const data = $exeDevice.tableEditorToJSON();
+
+    expect(data.scores).toEqual(['Excelente']);
+    expect(data.categories).toEqual(['Criterio 1']);
+    expect(data.descriptions[0][0]).toEqual({ text: 'Descriptor 1', weight: '4' });
+  });
+
+  it('rubricDataToCSV keeps criterion text and appends score to descriptors', () => {
+    const data = {
+      title: 'Rubrica test',
+      categories: ['Criterio con nota (4)'],
+      scores: ['Nivel 1'],
+      descriptions: [[{ text: 'Descriptor', weight: '4' }]],
+    };
+
+    const csv = $exeDevice.rubricDataToCSV(data);
+
+    expect(csv).toContain('Criterio con nota (4),Descriptor#4,Descriptor#4,4');
+  });
+
+  it('csvToRubricData imports descriptor#score into descriptor text and weight', () => {
+    const csv = [
+      'Criterio,Descripción,Nivel A,Nivel B',
+      'Claridad,Desc base#5,Desc A#4,Desc B#2',
+    ].join('\n');
+
+    const data = $exeDevice.csvToRubricData(csv);
+
+    expect(data.categories).toEqual(['Claridad']);
+    expect(data.descriptions[0][0]).toEqual({ text: 'Desc A', weight: '4' });
+    expect(data.descriptions[0][1]).toEqual({ text: 'Desc B', weight: '2' });
+  });
+
+  it('csvCriterionText handles score labels with Puntuacion/Score', () => {
+    expect($exeDevice.csvCriterionText('Pensamiento critico Puntuacion: 3,5')).toBe('Pensamiento critico#3.5');
+    expect($exeDevice.csvCriterionText('Critical Thinking Score: 2')).toBe('Critical Thinking#2');
+  });
+
+  it('parseCsvCriterionAndScore parses criterion text and score separated by #', () => {
+    expect($exeDevice.parseCsvCriterionAndScore('Organizacion # 4')).toEqual({ text: 'Organizacion', score: '4' });
+    expect($exeDevice.parseCsvCriterionAndScore('Organizacion')).toEqual({ text: 'Organizacion', score: '' });
+  });
+
+  it('parseCsvDescriptorAndScore parses descriptor text and score separated by #', () => {
+    expect($exeDevice.parseCsvDescriptorAndScore('Buen trabajo # 3')).toEqual({ text: 'Buen trabajo', score: '3' });
+    expect($exeDevice.parseCsvDescriptorAndScore('Buen trabajo')).toEqual({ text: 'Buen trabajo', score: '' });
+  });
+
+  it('isCSVFile accepts only CSV files', () => {
+    expect($exeDevice.isCSVFile({ name: 'rubrica.csv', type: '' })).toBe(true);
+    expect($exeDevice.isCSVFile({ name: 'rubrica.txt', type: 'text/csv' })).toBe(true);
+    expect($exeDevice.isCSVFile({ name: 'rubrica.txt', type: 'text/plain' })).toBe(false);
+    expect($exeDevice.isCSVFile({ name: 'rubrica.json', type: 'application/json' })).toBe(false);
+  });
+});
