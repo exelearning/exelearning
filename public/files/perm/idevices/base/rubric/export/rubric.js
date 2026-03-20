@@ -10,19 +10,19 @@
 var $rubric = {
     // Default strings
     ci18n: {
-        activity: 'Activity',
-        name: 'Name',
-        fullName: 'Name and surname',
-        date: 'Date',
-        score: 'Score',
-        download: 'Download',
-        calculateScore: 'Calculate score',
-        notes: 'Notes',
-        msgDelete: 'Are you sure you want clear all form fields?',
-        reset: 'Reset',
-        print: 'Print',
-        apply: 'Apply',
-        newWindow: 'New Window',
+        activity: _('Activity'),
+        name: _('Name'),
+        fullName: _('Name and surname'),
+        date: _('Date'),
+        score: _('Score'),
+        download: _('Download'),
+        calculateScore: _('Calculate score'),
+        notes: _('Notes'),
+        msgDelete: _('Are you sure you want clear all form fields?'),
+        reset: _('Reset'),
+        print: _('Print'),
+        apply: _('Apply'),
+        newWindow: _('New Window'),
     },
     idevicePath: '',
 
@@ -222,7 +222,7 @@ var $rubric = {
                 '<div id="exe-rubrics-footer">' +
                     '<p>' +
                         '<label for="' + notesId + '">' + this.ci18n.notes + ':</label> ' +
-                        '<textarea id="' + notesId + '" class="form-control form-control-sm" data-rubric-field="notes" cols="32" rows="2"></textarea>' +
+                        '<textarea id="' + notesId + '" class="form-control form-control-sm" data-rubric-field="notes" cols="32" rows="1"></textarea>' +
                     '</p>' +
                 '</div>';
             $table.after(footer);
@@ -782,7 +782,7 @@ var $rubric = {
         a.document.write(
             '<label for="notes">' +
                 i18n.notes +
-                ':</label> <textarea id="notes" class="form-control form-control-sm" cols="32" rows="6"></textarea>'
+                ':</label> <textarea id="notes" class="form-control form-control-sm" cols="32" rows="1"></textarea>'
         );
         a.document.write('</p>');
         a.document.write('</div>');
