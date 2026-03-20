@@ -2582,6 +2582,8 @@ export default class IdevicesEngine {
         $exeABCmusic.init();
         // Legacy $exe object
         $exe.init();
+        // a[rel^='lightbox']
+        $exe.setMultimediaGalleries();
     }
 
     /**
