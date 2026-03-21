@@ -178,7 +178,7 @@ getComboRemap() {
     'mod+alt+n'   : 'navbar-button-new',
     'mod+o'       : isStatic ? 'navbar-button-open-offline'    : 'navbar-button-openuserodefiles',
     'mod+s'       : isStatic ? 'navbar-button-save-offline'    : 'navbar-button-save',
-    'mod+shift+s' : isStatic ? 'navbar-button-save-as-offline' : 'navbar-button-save-as',
+    'mod+shift+s' : isStatic ? 'navbar-button-save-offline'    : 'navbar-button-save',
     'mod+alt+s'   : 'navbar-button-share',
     'mod+alt+t'   : 'navbar-button-styles',
     'mod+p'       : 'navbar-button-preview',

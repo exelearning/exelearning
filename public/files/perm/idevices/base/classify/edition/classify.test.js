@@ -310,4 +310,59 @@ describe('classify iDevice', () => {
       expect(q2.eText).toBe('');
     });
   });
+
+  describe('normalizeQuestionByType', () => {
+    it('keeps image content and audio for type 0', () => {
+      const normalized = $exeDevice.normalizeQuestionByType({
+        type: 0,
+        url: 'files/img.png',
+        eText: 'text',
+        audio: 'files/sound.mp3',
+        x: 0.2,
+        y: 0.4,
+        author: 'Author',
+        alt: 'Alt',
+      });
+
+      expect(normalized.url).toBe('files/img.png');
+      expect(normalized.eText).toBe('');
+      expect(normalized.audio).toBe('files/sound.mp3');
+      expect(normalized.x).toBe(0.2);
+      expect(normalized.y).toBe(0.4);
+    });
+
+    it('keeps text content and audio for type 1', () => {
+      const normalized = $exeDevice.normalizeQuestionByType({
+        type: 1,
+        url: 'files/img.png',
+        eText: 'text',
+        audio: 'files/sound.mp3',
+        x: 0.2,
+        y: 0.4,
+        author: 'Author',
+        alt: 'Alt',
+      });
+
+      expect(normalized.eText).toBe('text');
+      expect(normalized.url).toBe('');
+      expect(normalized.audio).toBe('files/sound.mp3');
+      expect(normalized.x).toBe(0);
+      expect(normalized.y).toBe(0);
+      expect(normalized.author).toBe('');
+      expect(normalized.alt).toBe('');
+    });
+
+    it('keeps text, image and audio for type 2', () => {
+      const normalized = $exeDevice.normalizeQuestionByType({
+        type: 2,
+        url: 'files/img.png',
+        eText: 'text',
+        audio: 'files/sound.mp3',
+      });
+
+      expect(normalized.url).toBe('files/img.png');
+      expect(normalized.eText).toBe('text');
+      expect(normalized.audio).toBe('files/sound.mp3');
+    });
+  });
 });

@@ -392,32 +392,38 @@ export default class modalOpenUserOdeFiles extends Modal {
         row.setAttribute('version-name', ode.versionName || '0');
         row.setAttribute('ode-id', ode.odeId);
 
+        const isOwner = ode.role === 'owner';
+
         const checkWrap = document.createElement('div');
         checkWrap.classList.add('ode-check-wrap');
-        const check = document.createElement('input');
-        check.type = 'checkbox';
-        check.id = 'check-' + ode.odeId;
-        check.setAttribute('name', check.id);
-        check.classList.add('ode-check');
-        check.addEventListener('change', () => {
-            // Use odeId (UUID) for delete operations
-            const projectUuid = ode.odeId;
-            if (check.checked) {
-                if (!this.odeFiles.includes(projectUuid)) this.odeFiles.push(projectUuid);
-            } else {
-                this.odeFiles = this.odeFiles.filter((id) => id !== projectUuid);
-            }
-            // Update button state based on selection
-            this.updateDeleteButtonState();
-            // Update the Select All checkbox state
-            this.updateSelectAllCheckbox();
-        });
 
-        let label = document.createElement('label');
-        label.setAttribute('for', check.id);
-        label.classList.add('visually-hidden');
-        label.textContent = _('Upload iDevice file');
-        checkWrap.append(label, check);
+        // Only render checkboxes for owned projects - shared projects must not have multi-select/delete
+        if (isOwner) {
+            const check = document.createElement('input');
+            check.type = 'checkbox';
+            check.id = 'check-' + ode.odeId;
+            check.setAttribute('name', check.id);
+            check.classList.add('ode-check');
+            check.addEventListener('change', () => {
+                // Use odeId (UUID) for delete operations
+                const projectUuid = ode.odeId;
+                if (check.checked) {
+                    if (!this.odeFiles.includes(projectUuid)) this.odeFiles.push(projectUuid);
+                } else {
+                    this.odeFiles = this.odeFiles.filter((id) => id !== projectUuid);
+                }
+                // Update button state based on selection
+                this.updateDeleteButtonState();
+                // Update the Select All checkbox state
+                this.updateSelectAllCheckbox();
+            });
+
+            let label = document.createElement('label');
+            label.setAttribute('for', check.id);
+            label.classList.add('visually-hidden');
+            label.textContent = _('Upload iDevice file');
+            checkWrap.append(label, check);
+        }
 
         const icon = document.createElement('span');
         icon.className = 'exe-logo content';
@@ -477,7 +483,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         `;
 
         // Show owner email for shared projects
-        if (ode.role && ode.role !== 'owner' && ode.ownerEmail) {
+        if (!isOwner && ode.ownerEmail) {
             metaContent += `
                 <span class="dot">•</span>
                 <span class="ode-owner-info" title="${_('Shared by')} ${ode.ownerEmail}">
@@ -513,14 +519,11 @@ export default class modalOpenUserOdeFiles extends Modal {
             row.classList.add('ode-row--indented');
         }
 
-        // Check if this is a shared project (user is not owner)
-        const isSharedProject = ode.role && ode.role !== 'owner';
-
         // Copy/Duplicate button - shown for all projects
         const copyBtn = document.createElement('button');
         copyBtn.className =
             'exe-icon open-user-ode-file-action open-user-ode-file-action-copy';
-        copyBtn.title = isSharedProject ? _('Clone to my projects') : _('Duplicate');
+        copyBtn.title = isOwner ? _('Duplicate') : _('Clone to my projects');
         copyBtn.innerHTML =
             '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">\n' +
             '  <path d="M5.33333 5.33333V3.46667C5.33333 2.71993 5.33333 2.34656 5.47866 2.06135C5.60649 1.81047 5.81047 1.60649 6.06135 1.47866C6.34656 1.33333 6.71993 1.33333 7.46667 1.33333H12.5333C13.2801 1.33333 13.6534 1.33333 13.9387 1.47866C14.1895 1.60649 14.3935 1.81047 14.5213 2.06135C14.6667 2.34656 14.6667 2.71993 14.6667 3.46667V8.53333C14.6667 9.28007 14.6667 9.65344 14.5213 9.93865C14.3935 10.1895 14.1895 10.3935 13.9387 10.5213C13.6534 10.6667 13.2801 10.6667 12.5333 10.6667H10.6667M3.46667 14.6667H8.53333C9.28007 14.6667 9.65344 14.6667 9.93865 14.5213C10.1895 14.3935 10.3935 14.1895 10.5213 13.9387C10.6667 13.6534 10.6667 13.2801 10.6667 12.5333V7.46667C10.6667 6.71993 10.6667 6.34656 10.5213 6.06135C10.3935 5.81047 10.1895 5.60649 9.93865 5.47866C9.65344 5.33333 9.28007 5.33333 8.53333 5.33333H3.46667C2.71993 5.33333 2.34656 5.33333 2.06135 5.47866C1.81047 5.60649 1.60649 5.81047 1.47866 6.06135C1.33333 6.34656 1.33333 6.71993 1.33333 7.46667V12.5333C1.33333 13.2801 1.33333 13.6534 1.47866 13.9387C1.60649 14.1895 1.81047 14.3935 2.06135 14.5213C2.34656 14.6667 2.71993 14.6667 3.46667 14.6667Z" stroke="#1D1D1D" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>\n' +
@@ -532,7 +535,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         actions.append(copyBtn);
 
         // Delete button - only shown for owned projects
-        if (!isSharedProject) {
+        if (isOwner) {
             const deleteBtn = document.createElement('button');
             deleteBtn.className =
                 'exe-icon open-user-ode-file-action open-user-ode-file-action-delete';
@@ -760,24 +763,29 @@ export default class modalOpenUserOdeFiles extends Modal {
             const data = {
                 title: _('Open project'),
                 forceOpen: _('Open without saving'),
-                openYjsProject: true,
-                projectUuid: projectUuid,
+                pendingAction: { action: 'open', projectUuid },
             };
             eXeLearning.app.modals.sessionlogout.show(data);
             return;
         }
 
         // No unsaved changes, proceed with navigation
-        // Close modal
         this.close();
 
-        // Clear beforeunload handler to prevent browser dialog
-        window.onbeforeunload = null;
-
-        // Redirect to workarea with project UUID
-        Logger.log(`[OpenProject] Opening project: ${projectUuid}`);
-        const basePath = window.eXeLearning?.config?.basePath || '';
-        window.location.href = `${basePath}/workarea?project=${projectUuid}`;
+        if (eXeLearning.app.project?.transitionToProject) {
+            await eXeLearning.app.project.transitionToProject({
+                action: 'open',
+                projectUuid,
+                skipSave: true,
+            });
+        } else {
+            // Fallback: direct redirect
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
+            window.onbeforeunload = null;
+            Logger.log(`[OpenProject] Opening project: ${projectUuid}`);
+            const basePath = window.eXeLearning?.config?.basePath || '';
+            window.location.href = `${basePath}/workarea?project=${projectUuid}`;
+        }
     }
 
     /**
@@ -874,6 +882,12 @@ export default class modalOpenUserOdeFiles extends Modal {
      * This ensures the button always reflects the current odeFiles array
      */
     updateDeleteButtonState() {
+        // Never show bulk delete on the shared-with-me tab
+        if (this.currentTab === 'shared-with-me') {
+            this.odeFiles = [];
+            this.removeDeleteButtonFooter(this.odeFiles);
+            return;
+        }
         if (this.odeFiles.length > 0) {
             this.makeDeleteButtonFooter([...this.odeFiles]); // Pass a copy to avoid reference issues
         } else {
@@ -1376,30 +1390,24 @@ export default class modalOpenUserOdeFiles extends Modal {
             return;
         }
 
-        // Check for unsaved changes BEFORE uploading (only for large files and not imports)
+        // Check for unsaved changes BEFORE processing (only for ELP files, not imports)
         if (!skipSessionCheck && !isImportIdevices && !isImportProperties) {
-            // Check for unsaved changes using Yjs mechanism
             const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
             const hasUnsaved =
                 yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
 
             if (hasUnsaved) {
-                // There are unsaved changes - show confirmation modal
-                const data = {
-                    title: _('Open project'),
-                    forceOpen: _('Open without saving'),
-                    openOdeFile: true,
-                    localOdeFile: true,
-                    odeFile: odeFile, // Pass the file object
-                    isLargeFile: true,
-                };
-
                 // Close open files modal
                 if (this.modal && this.modal._isShown) {
                     this.close();
                 }
 
-                // Show session logout modal and return (don't upload yet)
+                // Show session logout modal with pendingAction for import
+                const data = {
+                    title: _('Open project'),
+                    forceOpen: _('Open without saving'),
+                    pendingAction: { action: 'import', file: odeFile },
+                };
                 eXeLearning.app.modals.sessionlogout.show(data);
                 return;
             }
@@ -1433,7 +1441,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                     // Use YjsBridge.importFromElpx directly (client-side, no server APIs)
                     const yjsBridge = eXeLearning.app.project._yjsBridge;
                     if (!yjsBridge) {
-                        throw new Error('Yjs bridge not initialized.');
+                        throw new Error('Collaboration service not ready.');
                     }
 
                     // Show inline progress in workarea (same as online mode)
@@ -1471,99 +1479,16 @@ export default class modalOpenUserOdeFiles extends Modal {
                     return;
                 }
 
-                // Create a new project via API to get UUID
-                const projectTitle = odeFileName.replace(/\.(elp|elpx)$/i, '') || 'Imported Project';
-                const basePath = window.eXeLearning?.config?.basePath || '';
-                const authToken = this.getAuthToken();
-                const createResponse = await fetch(`${basePath}/api/project/create-quick`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({ title: projectTitle })
+                // Online mode: store file in IndexedDB and do a full page reload
+                progressModal.hide();
+                this.cleanupOrphanedBackdrops();
+
+                Logger.log(`[OpenFile] Storing file in IndexedDB for import after reload: ${odeFileName}`);
+                await eXeLearning.app.project.transitionToProject({
+                    action: 'import',
+                    file: odeFile,
+                    skipSave: true,
                 });
-
-                const responseText = await createResponse.text();
-                let projectData;
-
-                try {
-                    projectData = JSON.parse(responseText);
-                } catch (e) {
-                    console.error('[OpenFile] Failed to parse response:', responseText);
-                    throw new Error('Invalid server response');
-                }
-
-                if (!createResponse.ok) {
-                    console.error('[OpenFile] Failed to create project:', createResponse.status, projectData);
-                    throw new Error(projectData.message || `Failed to create project: ${createResponse.status}`);
-                }
-
-                Logger.log('[OpenFile] Project data received:', projectData);
-
-                const projectUuid = projectData.uuid;
-                if (!projectUuid) {
-                    console.error('[OpenFile] No UUID in response:', projectData);
-                    throw new Error('Server did not return a project UUID');
-                }
-
-                Logger.log(`[OpenFile] Created project ${projectUuid}, processing ELP directly in memory...`);
-
-                // Clear beforeunload handler to prevent browser dialog
-                window.onbeforeunload = null;
-
-                // Process file directly in memory without redirect
-                try {
-                    // Reinitialize Yjs with the new project (keeps everything in memory)
-                    // Skip sync wait to avoid delay when opening local ELP files
-                    await eXeLearning.app.project.reinitializeWithProject(projectUuid, {
-                        skipSyncWait: true,
-                    });
-                    Logger.log(`[OpenFile] Yjs reinitialized for project ${projectUuid}`);
-
-                    // Hide progress modal before showing inline progress
-                    progressModal.hide();
-                    this.cleanupOrphanedBackdrops();
-
-                    // Show inline progress in workarea
-                    const importProgress = new ImportProgress();
-                    importProgress.show();
-
-                    // Import the ELP file directly with progress callback
-                    const stats = await eXeLearning.app.project.importElpDirectly(odeFile, {
-                        onProgress: (progress) => importProgress.update(progress)
-                    });
-                    Logger.log(`[OpenFile] Import complete:`, stats);
-
-                    // Hide inline progress
-                    importProgress.hide();
-
-                    // Update URL without page reload (wrapped in try-catch to handle browser extensions blocking pushState)
-                    try {
-                        const basePath = window.eXeLearning?.config?.basePath || '';
-                        window.history.pushState({}, '', `${basePath}/workarea?project=${projectUuid}`);
-                    } catch (pushStateError) {
-                        // Some browser extensions (security/privacy) block pushState - this is non-critical
-                        console.warn('[OpenFile] pushState blocked (likely by browser extension):', pushStateError.message);
-                    }
-
-                    // Refresh UI to show imported content (WITHOUT reset/reload from API)
-                    // Don't call openLoad() as it would reset and clear the imported content
-                    await eXeLearning.app.project.refreshAfterDirectImport();
-
-                    Logger.log(`[OpenFile] Successfully opened ${odeFileName}`);
-                } catch (err) {
-                    console.error('[OpenFile] Error processing file in memory:', err);
-                    // Ensure progress is hidden on error
-                    const importProgress = document.querySelector('#import-progress-overlay');
-                    if (importProgress) importProgress.remove();
-                    eXeLearning.app.modals.alert.show({
-                        title: _('Import error'),
-                        body: err.message || _('An error occurred while opening the file.'),
-                        contentId: 'error',
-                    });
-                }
                 return;
             } catch (err) {
                 console.error('[OpenFile] Error in direct client processing:', err);
@@ -1769,33 +1694,13 @@ export default class modalOpenUserOdeFiles extends Modal {
                 } catch (_e) {
                     // Intentional: Electron global may not exist
                 }
-                // Remember the chosen local ELP path (prefer original local path if available)
-                try {
-                    const originalPath = window.__originalElpPath;
-                    if (
-                        window.electronAPI &&
-                        typeof window.electronAPI.setSavedPath === 'function' &&
-                        (originalPath || odeFilePath)
-                    ) {
-                        const key =
-                            response.odeId ||
-                            window.__currentProjectId ||
-                            'default';
-                        window.electronAPI.setSavedPath(
-                            key,
-                            originalPath || odeFilePath
-                        );
-                    }
-                } catch (_e) {
-                    // Intentional: Electron API call may fail in browser
-                }
-
                 // If server returned a Yjs project UUID, redirect to the new URL-based workarea
                 // with import parameter so frontend can use ElpxImporter
                 if (response.projectUuid && response.elpImportPath) {
                     Logger.log(`[OpenFile] Redirecting to Yjs project: ${response.projectUuid}`);
                     Logger.log(`[OpenFile] Import path: ${response.elpImportPath}`);
                     // Clear beforeunload handler to prevent browser "Leave site?" dialog
+                    window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
                     window.onbeforeunload = null;
                     window._skipLeaveSessionModal = true;
                     const importParam = encodeURIComponent(response.elpImportPath);
@@ -1862,12 +1767,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                         eXeLearning.app.modals.sessionlogout.show({
                             title: _('Open project'),
                             forceOpen: _('Open without saving'),
-                            openOdeFile: true,
-                            localOdeFile: true,
-                            isLargeFile: true,
-                            odeFile: originalFile,
-                            odeFileName,
-                            odeFilePath,
+                            pendingAction: { action: 'import', file: originalFile },
                         });
 
                         return;
@@ -1889,7 +1789,17 @@ export default class modalOpenUserOdeFiles extends Modal {
                         yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
 
                     if (hasUnsaved) {
-                        eXeLearning.app.modals.sessionlogout.show(data);
+                        eXeLearning.app.modals.sessionlogout.show({
+                            title: _('Open project'),
+                            forceOpen: _('Open without saving'),
+                            pendingAction: { action: 'import', file: originalFile },
+                        });
+                    } else if (originalFile && eXeLearning.app.project?.transitionToProject) {
+                        await eXeLearning.app.project.transitionToProject({
+                            action: 'import',
+                            file: originalFile,
+                            skipSave: true,
+                        });
                     } else {
                         this.openUserLocalOdeFilesWithOpenSession(
                             odeFileName,
@@ -1918,32 +1828,12 @@ export default class modalOpenUserOdeFiles extends Modal {
             } catch (_e) {
                 // Intentional: Electron global may not exist
             }
-            // Remember the chosen local ELP path (prefer original local path if available)
-            try {
-                const originalPath = window.__originalElpPath;
-                if (
-                    window.electronAPI &&
-                    typeof window.electronAPI.setSavedPath === 'function' &&
-                    (originalPath || odeFilePath)
-                ) {
-                    const key =
-                        response.odeId ||
-                        window.__currentProjectId ||
-                        'default';
-                    window.electronAPI.setSavedPath(
-                        key,
-                        originalPath || odeFilePath
-                    );
-                }
-            } catch (_e) {
-                // Intentional: Electron API call may fail in browser
-            }
-
             // If server returned a Yjs project UUID, redirect with import param
             if (response.projectUuid && response.elpImportPath) {
                 Logger.log(`[OpenFile] Redirecting to Yjs project: ${response.projectUuid}`);
                 Logger.log(`[OpenFile] Import path: ${response.elpImportPath}`);
                 // Clear beforeunload handler to prevent browser "Leave site?" dialog
+                window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
                 window.onbeforeunload = null;
                 const importParam = encodeURIComponent(response.elpImportPath);
                 const basePath = window.eXeLearning?.config?.basePath || '';

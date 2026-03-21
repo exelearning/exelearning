@@ -325,7 +325,7 @@ var $exeDevice = {
                                     </div>
                                 </div>
                                 <span id="ccgmETitleAudio">${_('Audio')}</span>
-                                <div class="CCGM-EInputAudio mb-3 align-items-center gap-2 flex-nowrap" id="ccgmEInputAudio">
+                                <div class="CCGM-EInputAudio mb-3 align-items-center gap-2 flex-nowrap" id="ccgmEInputAudio" data-voice-recorder data-voice-input="#ccgmEURLAudio">
                                     <label class="sr-av" for="ccgmEURLAudio">${_('URL')}</label>
                                     <input type="text" class="exe-file-picker CCGM-EURLAudio form-control me-0" id="ccgmEURLAudio"/>
                                     <a href="#" id="ccgmEPlayAudio" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Play audio')}">
@@ -398,6 +398,9 @@ var $exeDevice = {
 
     enableForm: function () {
         $exeDevice.initQuestions();
+
+        const root = document.getElementById('ccgmQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();

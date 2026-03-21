@@ -332,7 +332,10 @@
 
     <!-- eXeLearning Common -->
     <script type="module" src="./app/common/app_common.js?v={{BUILD_VERSION}}"></script>
-    <script src="./app/common/common_i18n.js?v={{BUILD_VERSION}}"></script>
+    <!-- common_i18n.js is NOT loaded statically — it is loaded dynamically by Locale.refreshI18nGlobals()
+         from app/common/i18n/common_i18n.{lang}.js (pre-built with c_() already resolved at build time).
+         Loading the template file here would cause "ReferenceError: c_ is not defined" because c_()
+         is defined by the Locale constructor which runs after app.bundle.js loads. -->
     <script src="./app/common/common_edition.js?v={{BUILD_VERSION}}"></script>
     <script src="./app/common/common.js?v={{BUILD_VERSION}}"></script>
     <script src="./app/common/exe_effects/exe_effects.js?v={{BUILD_VERSION}}"></script>

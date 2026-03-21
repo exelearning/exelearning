@@ -491,7 +491,13 @@ class YjsProjectBridge {
       return;
     }
 
-    const affectedPageIds = this.getAffectedPageIdsForBlockStructureChanges(events);
+    // For undo/redo transactions, include ALL block touches (even pure additions)
+    // because we need to restore the exact state. For remote changes, skip pure
+    // additions since they're handled incrementally by renderRemoteComponent.
+    const undoManager = this.documentManager?.undoManager;
+    const isUndoRedo = this.isUndoRedoInProgress ||
+      (undoManager != null && transaction?.origin === undoManager);
+    const affectedPageIds = this.getAffectedPageIdsForBlockStructureChanges(events, isUndoRedo);
     if (affectedPageIds.size === 0) return;
 
     affectedPageIds.forEach((pageId) => this.schedulePageReloadIfCurrent(pageId));
@@ -525,10 +531,10 @@ class YjsProjectBridge {
    * @param {Array} events - Yjs deep observe events
    * @returns {Set<string>}
    */
-  getAffectedPageIdsForBlockStructureChanges(events) {
+  getAffectedPageIdsForBlockStructureChanges(events, includeAllBlockTouches) {
     const affectedPageIds = new Set();
     const navigation = this.documentManager?.getNavigation?.();
-    const includeAnyBlockTouch = this.isUndoRedoInProgress === true;
+    const includeAnyBlockTouch = includeAllBlockTouches === true || this.isUndoRedoInProgress === true;
     if (!navigation || !events || !Array.isArray(events)) {
       return affectedPageIds;
     }
@@ -562,6 +568,30 @@ class YjsProjectBridge {
 
       if (!includeAnyBlockTouch && !hasAdded && !hasDeleted && !hasBlockOrderChange) {
         continue;
+      }
+
+      // Pure additions (no deletions, no reorder) are handled incrementally by
+      // handleRemoteStructureChanges → renderRemoteComponent (#1532).
+      // Block and component additions may arrive in separate Yjs transaction
+      // batches (separate WebSocket messages), so we must skip BOTH independently
+      // rather than requiring them in the same event batch.
+      // Deletions and mixed events (moves) still need a full page reload.
+      if (!includeAnyBlockTouch && hasAdded && !hasDeleted && !hasBlockOrderChange) {
+        const isComponentLevel = path.length >= 4 && path[3] === 'components';
+        const isBlockLevelAddition = path.length === 2 && path[1] === 'blocks';
+        if (isComponentLevel || isBlockLevelAddition) {
+          continue;
+        }
+      }
+
+      // Block order-only changes that accompany additions are also incremental
+      if (!includeAnyBlockTouch && hasBlockOrderChange && !hasAdded && !hasDeleted) {
+        if (path.length === 3 && path[1] === 'blocks') {
+          const changedKeys = Array.from(event.changes.keys.keys?.() || []);
+          if (changedKeys.length === 1 && changedKeys[0] === 'order') {
+            continue;
+          }
+        }
       }
 
       const pageMap = navigation.get(pageIndex);
@@ -635,8 +665,6 @@ class YjsProjectBridge {
             if (pageMap) {
               const pageId = pageMap.get('id') || pageMap.get('pageId');
               Logger.log('[YjsProjectBridge] Remote block added to page:', pageId);
-              // If we're currently viewing this page, reload it
-              this.schedulePageReloadIfCurrent(pageId);
             }
           }
         }
@@ -2274,6 +2302,93 @@ class YjsProjectBridge {
   }
 
   /**
+   * Extract anchor IDs from all components in a Yjs page map.
+   * Finds <a id="..."> and <a name="..."> elements (without href, i.e. anchor bookmarks).
+   *
+   * @param {Y.Map} pageMap - Yjs page map
+   * @param {HTMLElement} tempDiv - Reusable temporary div for HTML parsing
+   * @returns {string[]} - Array of unique anchor IDs found on the page
+   */
+  _extractAnchorsFromPageMap(pageMap, tempDiv) {
+    const anchors = [];
+    const blocks = pageMap.get('blocks');
+    if (!blocks) return anchors;
+
+    for (let j = 0; j < blocks.length; j++) {
+      const blockMap = blocks.get(j);
+      const components = blockMap.get('components');
+      if (!components) continue;
+
+      for (let k = 0; k < components.length; k++) {
+        const compMap = components.get(k);
+        const htmlContent = compMap.get('htmlContent');
+        if (!htmlContent) continue;
+
+        const html = typeof htmlContent === 'string' ? htmlContent : (htmlContent.toString?.() || '');
+        if (!html || !html.includes('<a')) continue;
+
+        tempDiv.innerHTML = html;
+        tempDiv.querySelectorAll('a[id], a[name]').forEach((a) => {
+          const id = a.id || a.getAttribute('name');
+          if (id && !a.hasAttribute('href') && !anchors.includes(id)) anchors.push(id);
+        });
+      }
+    }
+
+    return anchors;
+  }
+
+  /**
+   * Get all named anchors from a single page's Yjs content.
+   * Used by the exelink dialog to find same-page anchors in other components.
+   *
+   * @param {string} pageId - The page to scan
+   * @returns {string[]} - Array of anchor IDs found on the page
+   */
+  getPageAnchors(pageId) {
+    const navigation = this.documentManager?.getNavigation?.();
+    if (!navigation || !pageId) return [];
+
+    const tempDiv = document.createElement('div');
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const id = pageMap.get('id') || pageMap.get('pageId');
+      if (id === pageId) return this._extractAnchorsFromPageMap(pageMap, tempDiv);
+    }
+
+    return [];
+  }
+
+  /**
+   * Get all named anchors from all pages except an optional excluded page.
+   * Used by the exelink dialog to populate cross-page anchor links (exe-node:pageId#anchorName).
+   *
+   * @param {string} [excludePageId] - Page ID to exclude (typically the currently edited page)
+   * @returns {Array<{pageId: string, pageName: string, anchors: string[]}>}
+   */
+  getAllPageAnchors(excludePageId = null) {
+    const navigation = this.documentManager?.getNavigation?.();
+    if (!navigation) return [];
+
+    const result = [];
+    const tempDiv = document.createElement('div');
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const pageId = pageMap.get('id') || pageMap.get('pageId');
+      const pageName = pageMap.get('pageName') || '';
+
+      if (!pageId || pageId === 'root' || pageId === excludePageId) continue;
+
+      const anchors = this._extractAnchorsFromPageMap(pageMap, tempDiv);
+      if (anchors.length > 0) result.push({ pageId, pageName, anchors });
+    }
+
+    return result;
+  }
+
+  /**
    * Update page properties
    * @param {string} pageId - Page ID
    * @param {Object} props - Properties to update
@@ -2573,10 +2688,9 @@ class YjsProjectBridge {
    * Export project to .elpx file
    * Uses SharedExporters (TypeScript unified pipeline) when available
    * Filename is automatically generated from project title (sanitized: lowercase, no accents, no special chars)
-   * @param {Object} options - Export options
-   * @param {boolean} options.saveAs - If true, always prompt for save location (Save As behavior)
+   * In Electron/Desktop mode, always prompts for save destination (no silent overwrite).
    */
-  async exportToElpx(options = {}) {
+  async exportToElpx() {
     // Ensure exelearning_version is set in metadata before export
     if (this.documentManager?._updateVersionMetadata) {
       await this.documentManager._updateVersionMetadata();
@@ -2615,15 +2729,9 @@ class YjsProjectBridge {
             }
             const base64Data = btoa(binary);
             const key = window.__currentProjectId || 'default';
-
-            if (options.saveAs) {
-              // Save As: always prompt for new location
-              await window.electronAPI.saveBufferAs(base64Data, key, exportFilename);
-            } else {
-              // Save: use remembered path or prompt first time
-              // If opened from legacy .elp, main.js will prompt for new .elpx location
-              await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
-            }
+            // saveBuffer returns false when the user cancels the OS save dialog
+            const saved = await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
+            if (!saved) return { saved: false };
             Logger.log('[YjsProjectBridge] ELPX exported via Electron:', exportFilename);
           } else {
             // Browser mode: direct download
@@ -2638,6 +2746,7 @@ class YjsProjectBridge {
             URL.revokeObjectURL(url);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
           }
+          return { saved: true };
         } else {
           throw new Error(result.error || 'Export failed');
         }
@@ -2699,6 +2808,9 @@ class YjsProjectBridge {
       }
       if (!this.documentManager?._initialized && typeof this.documentManager?.captureBaselineState === 'function') {
         this.documentManager.captureBaselineState();
+      }
+      if (typeof this.documentManager?.clearUndoStack === 'function') {
+        this.documentManager.clearUndoStack();
       }
     } else if (this.documentManager && !this.documentManager.isDirty) {
       this.documentManager.markDirty();

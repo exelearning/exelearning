@@ -535,7 +535,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 
     // === Public Domain (generic, no specific license link) ===
     'public domain': {
-        displayName: 'public domain',
+        displayName: 'Public domain',
         url: '',
         cssClass: '',
     },
@@ -586,7 +586,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
         legacy: true,
     },
     'propietary license': {
-        displayName: 'propietary license',
+        displayName: 'Proprietary license',
         url: '',
         cssClass: '',
         hideInFooter: true,
@@ -598,7 +598,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
         legacy: true,
     },
     'not appropriate': {
-        displayName: 'not appropriate',
+        displayName: 'Not appropriate',
         url: '',
         cssClass: '',
         hideInFooter: true,
@@ -676,7 +676,11 @@ export function formatShortLicenseText(licenseName: string): string {
         }
     }
 
-    return licenseName;
+    if (entry?.url?.includes('creativecommons.org/publicdomain/zero/')) {
+        return 'Creative Commons CC0 1.0';
+    }
+
+    return entry?.displayName || licenseName;
 }
 
 /**

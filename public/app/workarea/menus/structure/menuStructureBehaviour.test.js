@@ -448,6 +448,26 @@ describe('MenuStructureBehaviour', () => {
             );
         });
 
+        it('does NOT trigger multi-selection when CapsLock is active', async () => {
+            const selectSpy = vi.spyOn(behaviour, 'selectNode').mockResolvedValue(
+                document.querySelector('.nav-element[nav-id="node-2"]')
+            );
+            const multiSpy = vi.spyOn(behaviour, 'handleMultiSelectionClick');
+
+            behaviour.addEventNavElementOnclick();
+
+            const label = document.querySelector('.nav-element[nav-id="node-2"] > .nav-element-text');
+            const event = new MouseEvent('click', { bubbles: true });
+            Object.defineProperty(event, 'getModifierState', {
+                value: (key) => key === 'CapsLock',
+            });
+            label.dispatchEvent(event);
+
+            await Promise.resolve();
+            expect(multiSpy).not.toHaveBeenCalled();
+            expect(selectSpy).toHaveBeenCalled();
+        });
+
         it('supports Shift range multi-selection', () => {
             const node1 = document.querySelector('.nav-element[nav-id="node-1"]');
             const node2 = document.querySelector('.nav-element[nav-id="node-2"]');

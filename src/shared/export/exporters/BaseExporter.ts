@@ -91,15 +91,16 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Fetch translated labels for the navigation buttons (Previous / Next).
+     * Fetch translated labels for navigation buttons (Previous / Next / Page counter).
      * Labels are resolved from XLF translations so the exported HTML already
      * contains the correct text for the content language — no runtime JS needed.
      */
-    protected async fetchNavLabels(language: string): Promise<{ previous: string; next: string }> {
+    protected async fetchNavLabels(language: string): Promise<{ previous: string; next: string; page: string }> {
         const translations = await this.resources.fetchI18nTranslations(language);
         return {
             previous: translations.get('Previous') || 'Previous',
             next: translations.get('Next') || 'Next',
+            page: translations.get('Page') || 'Page',
         };
     }
 
@@ -741,13 +742,18 @@ export abstract class BaseExporter {
             return content;
         }
 
-        // Replace href="exe-node:pageId" with actual page URLs
-        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageId) => {
+        // Replace href="exe-node:pageId" or href="exe-node:pageId#anchor" with actual page URLs
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            // Split pageId from optional anchor fragment (e.g. "pageId#section1")
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
+
             const pageUrls = pageUrlMap.get(pageId);
             if (pageUrls) {
                 // Use the appropriate URL based on whether we're on index or subpage
                 const url = isFromIndex ? pageUrls.url : pageUrls.urlFromSubpage;
-                return `href="${url}"`;
+                return `href="${url}${anchorFragment}"`;
             }
             // If page not found, leave the link unchanged (might be an external link or error)
             console.warn(`[BaseExporter] Internal link target not found: ${pageId}`);
@@ -842,8 +848,67 @@ export abstract class BaseExporter {
     }
 
     // =========================================================================
-    // ELPX Manifest Generation (for download-source-file iDevice)
+    // ELPX Download Support (for download-source-file iDevice)
     // =========================================================================
+
+    /** Library files required for client-side ELPX download */
+    protected static readonly ELPX_LIB_FILES = ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'];
+
+    /**
+     * Ensure ELPX download libraries (fflate, exe_elpx_download) are present in the ZIP.
+     * Call after library detection step so we only fetch what's missing.
+     */
+    protected async ensureElpxDownloadLibraries(
+        addFile: (path: string, content: Uint8Array | string) => void,
+        commonFiles?: string[],
+    ): Promise<void> {
+        const missingLibs = BaseExporter.ELPX_LIB_FILES.filter(f => !this.zip.hasFile(`libs/${f}`));
+        if (missingLibs.length === 0) return;
+        try {
+            const libContents = await this.resources.fetchLibraryFiles(missingLibs);
+            for (const [libPath, content] of libContents) {
+                addFile(`libs/${libPath}`, content);
+                if (commonFiles) commonFiles.push(`libs/${libPath}`);
+            }
+        } catch {
+            // Continue without ELPX download libraries
+        }
+    }
+
+    /**
+     * Generate ELPX manifest and add it to the ZIP.
+     * Also adds HTML page paths to the file list before generating.
+     *
+     * @param fileList - Tracked file paths to include in manifest
+     * @param pageFileUrls - HTML page file URLs to add to the file list
+     * @param commonFiles - Optional SCORM/IMS common files array to update
+     */
+    protected addElpxManifestToZip(fileList: string[], pageFileUrls: string[], commonFiles?: string[]): void {
+        for (const url of pageFileUrls) {
+            if (!fileList.includes(url)) {
+                fileList.push(url);
+            }
+        }
+        fileList.push('libs/elpx-manifest.js');
+        const manifestJs = this.generateElpxManifestFile(fileList);
+        this.zip.addFile('libs/elpx-manifest.js', manifestJs);
+        if (commonFiles) commonFiles.push('libs/elpx-manifest.js');
+    }
+
+    /**
+     * Inject ELPX download script tags into HTML before </body> for pages
+     * that contain download-source-file iDevice or exe-package:elp links.
+     *
+     * @returns Modified HTML with injected scripts, or original HTML if not applicable
+     */
+    protected injectElpxScripts(html: string, page: ExportPage, isIndex: boolean): string {
+        if (!this.pageHasDownloadSourceFile(page)) return html;
+        const basePath = isIndex ? '' : '../';
+        const fflateScript = `<script src="${basePath}libs/fflate/fflate.umd.js"> </script>`;
+        const elpxDownloadScript = `<script src="${basePath}libs/exe_elpx_download/exe_elpx_download.js"> </script>`;
+        const manifestScript = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
+        return html.replace(/<\/body>/i, `${fflateScript}\n${elpxDownloadScript}\n${manifestScript}\n</body>`);
+    }
 
     /**
      * Generate ELPX manifest as a standalone JS file

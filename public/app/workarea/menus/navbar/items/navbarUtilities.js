@@ -345,7 +345,7 @@ export default class NavbarFile {
         let toast = eXeLearning.app.toasts.createToast(toastData);
         // Get ode used files
         this.getOdeSessionUsedFilesEvent().then((response) => {
-            if (response.responseMessage == 'OK' && response.usedFiles) {
+            if (response.responseMessage == 'OK' && response.usedFiles?.length > 0) {
                 // Show eXe UsedFilesList modal
                 eXeLearning.app.modals.odeusedfiles.show(response);
             } else {

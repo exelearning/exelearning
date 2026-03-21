@@ -832,18 +832,8 @@ export class Html5Exporter extends BaseExporter {
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
                 const filename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
                 let html = pageHtmlMap.get(filename) || '';
-
-                // Only add ELPX download scripts to pages that have download-source-file iDevice or exe-package:elp links
-                if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
-                    const basePath = i === 0 ? '' : '../';
-                    // Library scripts must be loaded before the manifest script
-                    const fflateScript = `<script src="${basePath}libs/fflate/fflate.umd.js"> </script>`;
-                    const elpxDownloadScript = `<script src="${basePath}libs/exe_elpx_download/exe_elpx_download.js"> </script>`;
-                    const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
-                    html = html.replace(
-                        /<\/body>/i,
-                        `${fflateScript}\n${elpxDownloadScript}\n${manifestScriptTag}\n</body>`,
-                    );
+                if (needsElpxDownload) {
+                    html = this.injectElpxScripts(html, page, i === 0);
                 }
                 const encoder = new TextEncoder();
                 files.set(filename, encoder.encode(html));

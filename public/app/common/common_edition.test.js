@@ -830,12 +830,15 @@ describe('common_edition.js', () => {
 
     describe('addEvents', () => {
       let originalAlert;
+      let originalExeAlert;
       let originalWindowOpen;
 
       beforeEach(() => {
         originalAlert = global.alert;
+        originalExeAlert = globalThis.eXe?.app?.alert;
         originalWindowOpen = global.window.open;
         global.alert = vi.fn();
+        globalThis.eXe.app.alert = vi.fn();
         global.window.open = vi.fn();
         document.body.innerHTML = `
           <textarea id="eXeEQuestionsArea"></textarea>
@@ -861,6 +864,7 @@ describe('common_edition.js', () => {
 
       afterEach(() => {
         global.alert = originalAlert;
+        globalThis.eXe.app.alert = originalExeAlert;
         global.window.open = originalWindowOpen;
       });
 
@@ -871,7 +875,7 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeESaveButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith('The questions have been added successfully');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
         expect(saveQuestionsMock).toHaveBeenCalled();
       });
 
@@ -882,8 +886,8 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeESaveButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
-        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('InvalidLine'));
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('InvalidLine'));
       });
 
       it('iaButton click shows success alert when all lines are valid', () => {
@@ -894,7 +898,7 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEIAButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith('The questions have been added successfully');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
       });
 
       it('iaButton click shows invalid lines alert when some lines are invalid', () => {
@@ -905,8 +909,8 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEIAButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
-        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
       });
 
       it('openChatGPTButton click shows alert when prompt is empty', () => {
@@ -916,7 +920,7 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEOpenChatGPTButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith('There is no query to send to the assistant.');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('There is no query to send to the assistant.');
         expect(global.window.open).not.toHaveBeenCalled();
       });
 
@@ -974,6 +978,40 @@ describe('common_edition.js', () => {
           'https://chatgpt.com/?q=test%20prompt%20with%20spaces',
           '_blank'
         );
+      });
+
+      it('saveButton click shows alert when questions textarea is empty', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsArea').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeESaveButton').trigger('click');
+
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please enter at least one question.');
+        expect(saveQuestionsMock).not.toHaveBeenCalled();
+      });
+
+      it('iaButton click shows alert when IA textarea is empty', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsIA').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEIAButton').trigger('click');
+
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please enter at least one question.');
+        expect(saveQuestionsMock).not.toHaveBeenCalled();
+      });
+
+      it('openChatGPTButton click shows alert when no AI service selected', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('Test prompt');
+        $('#eXeEIASelect').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please select an AI assistant.');
+        expect(global.window.open).not.toHaveBeenCalled();
       });
     });
   });
@@ -1306,6 +1344,197 @@ describe('common_edition.js', () => {
       globalThis.$exeDevicesEdition.iDevice.filePicker.openFilePicker(mockElement);
 
       expect(globalThis.eXe.app.alert).toHaveBeenCalled();
+    });
+  });
+
+  describe('voiceRecorder', () => {
+    afterEach(() => {
+      delete globalThis.MediaRecorder;
+      delete globalThis.navigator.mediaDevices;
+    });
+
+    it('getPreferredMimeType falls back to mp4 or webm based on support', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+
+      globalThis.MediaRecorder = {
+        isTypeSupported: vi.fn((type) => type === 'audio/mp4'),
+      };
+      expect(recorder.getPreferredMimeType()).toBe('audio/mp4');
+
+      globalThis.MediaRecorder = {
+        isTypeSupported: vi.fn((type) => type === 'audio/webm'),
+      };
+      expect(recorder.getPreferredMimeType()).toBe('audio/webm');
+    });
+
+    it('resolveAssetManager prioritizes explicit manager and falls back to Yjs manager', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      const explicitManager = { insertImage: vi.fn() };
+      const fallbackManager = { insertImage: vi.fn() };
+      const previousExeLearning = globalThis.window.eXeLearning;
+
+      globalThis.window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: fallbackManager,
+            },
+          },
+        },
+      };
+
+      expect(recorder.resolveAssetManager(explicitManager)).toBe(explicitManager);
+      expect(recorder.resolveAssetManager(null)).toBe(fallbackManager);
+
+      globalThis.window.eXeLearning = previousExeLearning;
+    });
+
+    it('resolveAssetManager returns null when no manager is available', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      const previousExeLearning = globalThis.window.eXeLearning;
+
+      delete globalThis.window.eXeLearning;
+      expect(recorder.resolveAssetManager(null)).toBeNull();
+
+      globalThis.window.eXeLearning = previousExeLearning;
+    });
+
+    it('sanitizeFileNameBase generates default and removes invalid chars', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+
+      expect(recorder.sanitizeFileNameBase('')).toMatch(/^audio-rec-\d{8}-\d{6}$/);
+      expect(recorder.sanitizeFileNameBase('casa.mp3')).toBe('casa');
+      expect(recorder.sanitizeFileNameBase(' Audio prueba: 1 / test ')).toBe('Audio-prueba-1-test');
+    });
+
+    it('does not initialize when browser does not support recording', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      delete globalThis.navigator.mediaDevices;
+      delete globalThis.MediaRecorder;
+
+      document.body.innerHTML = `
+        <div data-voice-recorder data-voice-input="#audioInput">
+          <input id="audioInput" type="text" class="exe-file-picker" />
+          <input type="button" class="exe-pick-any-file" value="Select a file" />
+        </div>
+      `;
+
+      recorder.initVoiceRecorders(document.body);
+
+      expect(document.querySelector('.exe-voice-recorder-toggle')).toBeNull();
+    });
+
+    it('starts recording after modal is shown (deferred start)', async () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      const stream = { getTracks: () => [{ stop: vi.fn() }] };
+      const startMock = vi.fn();
+
+      globalThis.navigator.mediaDevices = {
+        getUserMedia: vi.fn().mockResolvedValue(stream),
+      };
+
+      globalThis.MediaRecorder = class {
+        static isTypeSupported(type) {
+          return type.indexOf('audio/webm') === 0;
+        }
+        constructor() {
+          this.mimeType = 'audio/webm';
+          this.state = 'inactive';
+        }
+        start() {
+          this.state = 'recording';
+          startMock();
+        }
+        stop() {
+          this.state = 'inactive';
+        }
+      };
+
+      document.body.innerHTML = `
+        <div id="voice-container" data-voice-recorder data-voice-input="#audioInput">
+          <input id="audioInput" type="text" class="exe-file-picker" />
+          <input type="button" class="exe-pick-any-file" value="Select a file" />
+        </div>
+      `;
+
+      recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+
+      const toggle = document.querySelector('.exe-voice-recorder-toggle');
+      toggle.click();
+
+      await Promise.resolve();
+      expect(startMock).not.toHaveBeenCalled();
+
+      await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
+      expect(startMock).toHaveBeenCalledTimes(1);
+
+      const cleanup = $('#voice-container').data('voiceRecorderCleanup');
+      if (typeof cleanup === 'function') cleanup();
+    });
+
+    it('records and saves audio with AssetManager.insertImage', async () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      const stopTrackMock = vi.fn();
+      const insertImageMock = vi.fn().mockResolvedValue('asset://mock-id.webm');
+      const stream = { getTracks: () => [{ stop: stopTrackMock }] };
+
+      globalThis.navigator.mediaDevices = {
+        getUserMedia: vi.fn().mockResolvedValue(stream),
+      };
+
+      globalThis.MediaRecorder = class {
+        static isTypeSupported(type) {
+          return type.indexOf('audio/webm') === 0;
+        }
+        constructor(s, options) {
+          this.stream = s;
+          this.options = options;
+          this.mimeType = options?.mimeType || 'audio/webm';
+          this.state = 'inactive';
+          this.ondataavailable = null;
+          this.onstop = null;
+        }
+        start() {
+          this.state = 'recording';
+        }
+        stop() {
+          this.state = 'inactive';
+          if (this.ondataavailable) {
+            this.ondataavailable({ data: new Blob(['audio'], { type: this.mimeType }), size: 5 });
+          }
+          if (this.onstop) {
+            this.onstop();
+          }
+        }
+      };
+
+      document.body.innerHTML = `
+        <div data-voice-recorder data-voice-input="#audioInput" data-voice-preview="#audioPreview">
+          <input id="audioInput" type="text" class="exe-file-picker" />
+          <input type="button" class="exe-pick-any-file" value="Select a file" />
+          <audio id="audioPreview" class="d-none"></audio>
+        </div>
+      `;
+
+      recorder.initVoiceRecorders(document.body, { insertImage: insertImageMock });
+
+      const toggle = document.querySelector('.exe-voice-recorder-toggle');
+      expect(toggle).toBeTruthy();
+
+      toggle.click();
+      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
+
+      const stopBtn = document.querySelector('.exe-voice-recorder-stop');
+      stopBtn.click();
+
+      const saveBtn = document.querySelector('.exe-voice-recorder-save');
+      saveBtn.click();
+      await Promise.resolve();
+
+      expect(insertImageMock).toHaveBeenCalledTimes(1);
+      expect($('#audioInput').val()).toBe('asset://mock-id.webm');
+      expect(stopTrackMock).toHaveBeenCalled();
     });
   });
 

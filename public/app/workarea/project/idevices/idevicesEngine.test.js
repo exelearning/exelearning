@@ -375,6 +375,7 @@ describe('IdevicesEngine', () => {
             expect(engine.mode).toBe('edition');
             expect(engine.nodeContentElement.getAttribute('mode')).toBe('edition');
         });
+
     });
 
     describe('isIdeviceInEdition', () => {
