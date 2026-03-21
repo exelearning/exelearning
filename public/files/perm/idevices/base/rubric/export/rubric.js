@@ -10,6 +10,7 @@
 var $rubric = {
     // Default strings
     ci18n: {
+        rubric: _('Rubric'),
         activity: _('Activity'),
         name: _('Name'),
         fullName: _('Name and surname'),
@@ -356,6 +357,7 @@ var $rubric = {
         var target = this.buildCaptureTarget($table);
         if (!target) return;
         var captureClass = 'exe-rubrics-capture';
+        var pdfFileName = this.getPdfFileName($table);
 
         var toPng = function (canvas) {
             try {
@@ -394,7 +396,7 @@ var $rubric = {
                     heightLeft -= pdfHeight;
                 }
 
-                pdf.save('rubric.pdf');
+                pdf.save(pdfFileName);
                 return true;
             } catch (e) {
                 console.error('Error al generar PDF:', e);
@@ -648,6 +650,52 @@ var $rubric = {
 
     getCurrentDate: function () {
         return new Date().toLocaleDateString();
+    },
+
+    normalizeFileNameToken: function (value) {
+        var text = typeof value === 'string' ? value : String(value || '');
+
+        text = text.trim().toLowerCase();
+        if (!text) return '';
+
+        try {
+            text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        } catch (e) {
+            // Keep original text if normalize() is not supported.
+        }
+
+        text = text.replace(/[^a-z0-9]+/g, '_');
+        text = text.replace(/^_+|_+$/g, '');
+        text = text.replace(/_+/g, '_');
+
+        return text;
+    },
+
+    getNormalizedActivityName: function (table) {
+        var $table = $(table);
+        var activityField = $();
+
+        // Prefer the header logically associated with this table.
+        var siblingHeader = $table.prevAll('#exe-rubrics-header').first();
+        if (siblingHeader.length === 1) {
+            activityField = siblingHeader.find('[data-rubric-field="activity"], #activity').first();
+        }
+
+        if (activityField.length !== 1) {
+            var root = this.getDataScope(table);
+            if (root.length !== 1) return '';
+            activityField = this.getField(root, 'activity');
+        }
+
+        return this.normalizeFileNameToken(activityField.val());
+    },
+
+    getPdfFileName: function (table) {
+        var rubricLabel = this.ci18n.rubric || 'Rubric';
+        var rubricPrefix = this.normalizeFileNameToken(rubricLabel) || 'rubric';
+        var normalizedName = this.getNormalizedActivityName(table);
+        if (!normalizedName) return rubricPrefix + '.pdf';
+        return rubricPrefix + '_' + normalizedName + '.pdf';
     },
 
     parseScoreText: function (text) {

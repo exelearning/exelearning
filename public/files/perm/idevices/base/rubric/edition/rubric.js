@@ -15,6 +15,7 @@ var $exeDevice = {
     // Editable strings ("Language settings tab")
     // See $rubricsIdevice.ci18n too
     ci18n: {
+        rubric: c_('Rubric'),
         activity: c_('Activity'),
         name: c_('Name'),
         date: c_('Date'),
@@ -422,6 +423,7 @@ var $exeDevice = {
     // Uses _() (GUI translations) instead of c_() because c_strings may not be loaded yet
     getTranslatedString: function (key) {
         var strings = {
+            rubric: 'Rubric',
             activity: 'Activity',
             name: 'Name',
             date: 'Date',
@@ -1085,6 +1087,7 @@ var $exeDevice = {
             // Custom texts - get fresh translations or custom values from form
             // English defaults (for comparison to detect customization)
             var englishDefaults = {
+                rubric: 'Rubric',
                 activity: 'Activity',
                 name: 'Name',
                 date: 'Date',
