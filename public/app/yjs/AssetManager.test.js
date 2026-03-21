@@ -8658,7 +8658,7 @@ describe('AssetManager - storeAssetFromServer paths (lines 4134-4164)', () => {
 
     // Blob should now be cached
     const storedBlob = await assetManager.getBlob(assetId);
-    expect(storedBlob).toBe(newBlob);
+    expect(storedBlob).toBeInstanceOf(Blob);
     // Blob URL should be cached
     expect(assetManager.blobURLCache.has(assetId)).toBe(true);
   });
@@ -9153,7 +9153,24 @@ function createFreshAssetManager(projectId = 'test-proj') {
     value: { randomUUID: vi.fn(() => 'test-uuid'), subtle: { digest: vi.fn(async () => new Uint8Array(32).buffer) } },
     writable: true, configurable: true,
   });
-  global.caches = { open: vi.fn(), delete: vi.fn() };
+  const cacheStorage = new Map();
+  global.caches = {
+    open: vi.fn(async (cacheName) => {
+      if (!cacheStorage.has(cacheName)) {
+        cacheStorage.set(cacheName, new Map());
+      }
+      const cache = cacheStorage.get(cacheName);
+      return {
+        put: vi.fn(async (url, response) => {
+          cache.set(url, response);
+        }),
+        match: vi.fn(async (url) => cache.get(url) || undefined),
+        delete: vi.fn(async (url) => cache.delete(url)),
+      };
+    }),
+    delete: vi.fn(async (cacheName) => cacheStorage.delete(cacheName)),
+    _storage: cacheStorage,
+  };
   spyOn(console, 'warn').mockImplementation(() => {});
   spyOn(console, 'error').mockImplementation(() => {});
 
@@ -9410,7 +9427,7 @@ describe('AssetManager - storeAssetFromServer new asset path (line 4164)', () =>
 
     expect(calculateHash).toHaveBeenCalledWith(blob);
     const stored = await assetManager.getBlob(assetId);
-    expect(stored).toBe(blob);
+    expect(stored).toBeInstanceOf(Blob);
   });
 
   it('uses provided hash without calculating', async () => {
