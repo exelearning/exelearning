@@ -256,12 +256,23 @@ export interface AssetProvider {
     getAsset(assetId: string): Promise<ExportAsset | null>;
 
     /**
-     * Process assets one at a time via callback, avoiding loading all into memory.
-     * When available, exporters should prefer this over getAllAssets() to reduce
-     * peak memory usage for large projects.
-     * @param callback - Called with each asset sequentially
+     * Process assets one at a time via callback.
+     * Avoids loading all assets into memory simultaneously.
+     * Falls back to getAllAssets() when not implemented.
      */
-    forEachAsset?(callback: (asset: ExportAsset) => void | Promise<void>): Promise<void>;
+    forEachAsset?(callback: (asset: ExportAsset) => Promise<void>): Promise<number>;
+
+    /**
+     * List asset metadata without loading binary data.
+     * Returns lightweight objects suitable for building export path maps.
+     * Falls back to getAllAssets() when not implemented.
+     */
+    listAssetMetadata?(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>>;
+
+    // Optional methods present in some implementations
+    exists?(assetPath: string): Promise<boolean>;
+    getMimeType?(assetPath: string): string;
+    clearCache?(): void;
 }
 
 /**
@@ -622,8 +633,8 @@ export interface PageRenderOptions {
     /** Translated labels for navigation buttons (resolved at export time from XLF) */
     navLabels?: { previous: string; next: string; page: string };
 
-    // Detected libraries from content scanning (MathJax, Mermaid, etc.)
-    detectedLibraries?: LibraryDetectionResult;
+    // Detected library names from content scanning (MathJax, Mermaid, etc.)
+    detectedLibraries?: string[];
 
     /**
      * Theme files to include in the HTML head.

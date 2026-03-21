@@ -263,7 +263,7 @@ var $exeDevice = {
 			<p style="text-align:center">' +
             str6.replace(
                 'eXeLearning',
-                '<a href="http://exelearning.net/">eXeLearning</a>'
+                '<a href="https://exelearning.net/">eXeLearning</a>'
             ) +
             '</p>';
 

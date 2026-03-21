@@ -14056,6 +14056,70 @@
         <source>Font color</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="voyvsaa" resname="Import content">
+        <source>Import content</source>
+        <target>Import content</target>
+      </trans-unit>
+      <trans-unit id="gfs5a2p" resname="Open in new tab">
+        <source>Open in new tab</source>
+        <target>Open in new tab</target>
+      </trans-unit>
+      <trans-unit id="kpdp4j4" resname="Open preview in new tab">
+        <source>Open preview in new tab</source>
+        <target>Open preview in new tab</target>
+      </trans-unit>
+      <trans-unit id="yyida7i" resname="Unpin preview">
+        <source>Unpin preview</source>
+        <target>Unpin preview</target>
+      </trans-unit>
+      <trans-unit id="b2lz4mf" resname="Refresh preview">
+        <source>Refresh preview</source>
+        <target>Refresh preview</target>
+      </trans-unit>
+      <trans-unit id="271md96" resname="Content preview">
+        <source>Content preview</source>
+        <target>Content preview</target>
+      </trans-unit>
+      <trans-unit id="e7uwv8r" resname="Pin preview">
+        <source>Pin preview</source>
+        <target>Pin preview</target>
+      </trans-unit>
+      <trans-unit id="gj8c2q0" resname="Pin preview to layout">
+        <source>Pin preview to layout</source>
+        <target>Pin preview to layout</target>
+      </trans-unit>
+      <trans-unit id="x5zcfcz" resname="Import (.elpx…)">
+        <source>Import (.elpx…)</source>
+        <target>Import (.elpx…)</target>
+      </trans-unit>
+      <trans-unit id="hhaxeze" resname="Download as">
+        <source>Download as</source>
+        <target>Download as</target>
+      </trans-unit>
+      <trans-unit id="sd586e9" resname="0 iDevices">
+        <source>0 iDevices</source>
+        <target>0 iDevices</target>
+      </trans-unit>
+      <trans-unit id="5cq6fya" resname="Proprietary license">
+        <source>Proprietary license</source>
+        <target>Proprietary license</target>
+      </trans-unit>
+      <trans-unit id="prpcpiz" resname="Not appropriate">
+        <source>Not appropriate</source>
+        <target>Not appropriate</target>
+      </trans-unit>
+      <trans-unit id="88d5abs" resname="Public domain">
+        <source>Public domain</source>
+        <target>Public domain</target>
+      </trans-unit>
+      <trans-unit id="aewgxm4" resname="%1 iDevices">
+        <source>%1 iDevices</source>
+        <target>%1 iDevices</target>
+      </trans-unit>
+      <trans-unit id="pjwbg0f" resname="creative commons: cc0 1.0">
+        <source>creative commons: cc0 1.0</source>
+        <target>creative commons: cc0 1.0</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

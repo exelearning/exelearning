@@ -116,6 +116,120 @@ describe('DefaultHandler', () => {
             `);
             expect(handler.extractHtmlView(dict)).toBe('Fallback content');
         });
+
+        it('should remove legacy outer exe-text wrapper for normal text content', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;My text.&lt;/p&gt;&lt;/div&gt;"/>
+                </dictionary>
+            `);
+            expect(handler.extractHtmlView(dict)).toBe('<p>My text.</p>');
+        });
+
+        it('should NOT remove exe-text-activity wrapper for normal text content', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class=&quot;exe-text-activity&quot;&gt;&lt;p&gt;My text.&lt;/p&gt;&lt;/div&gt;"/>
+                </dictionary>
+            `);
+            expect(handler.extractHtmlView(dict)).toBe('<div class="exe-text-activity"><p>My text.</p></div>');
+        });
+
+        it('should NOT unwrap when exe-text div is followed by sibling root elements', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;First&lt;/p&gt;&lt;/div&gt;&lt;div&gt;&lt;p&gt;Second&lt;/p&gt;&lt;/div&gt;"/>
+                </dictionary>
+            `);
+
+            expect(handler.extractHtmlView(dict)).toBe(
+                '<div class="exe-text"><p>First</p></div><div><p>Second</p></div>',
+            );
+        });
+
+        it('should preserve inner whitespace when unwrapping legacy exe-text wrapper', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class=&quot;exe-text&quot;&gt;  &lt;p&gt;My text.&lt;/p&gt;  &lt;/div&gt;"/>
+                </dictionary>
+            `);
+
+            expect(handler.extractHtmlView(dict)).toBe('  <p>My text.</p>  ');
+        });
+
+        it('should unwrap when class attribute is unquoted', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class=exe-text&gt;&lt;p&gt;Unquoted class&lt;/p&gt;&lt;/div&gt;"/>
+                </dictionary>
+            `);
+
+            expect(handler.extractHtmlView(dict)).toBe('<p>Unquoted class</p>');
+        });
+
+        it('should unwrap when class attribute uses single quotes and multiple classes', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class='legacy exe-text other'&gt;&lt;p&gt;Single quotes&lt;/p&gt;&lt;/div&gt;"/>
+                </dictionary>
+            `);
+
+            expect(handler.extractHtmlView(dict)).toBe('<p>Single quotes</p>');
+        });
+
+        it('should unwrap when opening tag has quoted attributes containing >', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class=&quot;exe-text&quot; data-title=&quot;a &gt; b&quot;&gt;&lt;p&gt;Safe parsing&lt;/p&gt;&lt;/div&gt;"/>
+                </dictionary>
+            `);
+
+            expect(handler.extractHtmlView(dict)).toBe('<p>Safe parsing</p>');
+        });
+
+        it('should NOT unwrap malformed html when outer div has no closing tag', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;Broken"/>
+                </dictionary>
+            `);
+
+            expect(handler.extractHtmlView(dict)).toBe('<div class="exe-text"><p>Broken');
+        });
+
+        it('should unwrap when content starts with UTF-8 BOM before exe-text wrapper', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="\uFEFF&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;BOM content&lt;/p&gt;&lt;/div&gt;"/>
+                </dictionary>
+            `);
+
+            expect(handler.extractHtmlView(dict)).toBe('<p>BOM content</p>');
+        });
+
+        it('should unwrap exe-text and preserve trailing legacy feedback sibling blocks', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="content"/>
+                    <unicode value="&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;Main&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;iDevice_buttons feedback-button js-required&quot;&gt;&lt;input type=&quot;button&quot; class=&quot;feedbackbutton&quot; value=&quot;Info&quot; /&gt;&lt;/div&gt;&lt;div class=&quot;feedback js-feedback js-hidden&quot;&gt;Info content&lt;/div&gt;"/>
+                </dictionary>
+            `);
+
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('<p>Main</p>');
+            expect(result).toContain('iDevice_buttons feedback-button');
+            expect(result).toContain('Info content');
+            expect(result).not.toContain('<div class="exe-text">');
+        });
     });
 
     describe('extractFeedback', () => {
@@ -263,6 +377,61 @@ describe('FreeTextHandler', () => {
                 </dictionary>
             `);
             expect(handler.extractHtmlView(dict)).toBe('Any field');
+        });
+
+        it('should remove legacy outer exe-text wrapper from imported content', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="activityTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;My text.&lt;/p&gt;&lt;/div&gt;"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+
+            const result = handler.extractHtmlView(dict);
+            expect(result).toBe('<p>My text.</p>');
+        });
+
+        it('should preserve exe-text-activity wrapper when already present', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="activityTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="&lt;div class=&quot;exe-text-activity&quot;&gt;&lt;p&gt;Main content&lt;/p&gt;&lt;/div&gt;"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+
+            const result = handler.extractHtmlView(dict);
+            expect(result).toBe('<div class="exe-text-activity"><p>Main content</p></div>');
+        });
+
+        it('should remove outer exe-text wrapper and keep feedback structure', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="activityTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;Main content&lt;/p&gt;&lt;div class=&quot;iDevice_buttons feedback-button js-required&quot;&gt;&lt;input type=&quot;button&quot; class=&quot;feedbackbutton&quot; value=&quot;Info&quot; /&gt;&lt;/div&gt;&lt;div class=&quot;feedback js-feedback js-hidden&quot;&gt;Info content&lt;/div&gt;&lt;/div&gt;"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+
+            const result = handler.extractHtmlView(dict, { language: 'en' });
+            expect(result).toContain('<p>Main content</p>');
+            expect(result).toContain('feedbackbutton');
+            expect(result).toContain('Info content');
+            expect(result).toContain('exe-text-activity');
+            expect(result).not.toContain('class="exe-text"');
         });
 
         it('should wrap content with feedback in exe-text-activity', () => {

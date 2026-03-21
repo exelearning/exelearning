@@ -37,6 +37,12 @@ export class LibraryDetector {
         this.detectedPatterns = [];
     }
 
+    private resetDetection(): void {
+        this.detectedLibraries.clear();
+        this.filesToInclude.clear();
+        this.detectedPatterns = [];
+    }
+
     /**
      * Detect all required libraries by scanning HTML content
      * @param html - HTML content to scan
@@ -44,30 +50,48 @@ export class LibraryDetector {
      * @returns Detected libraries info
      */
     detectLibraries(html: string, options: LibraryDetectionOptions = {}): LibraryDetectionResult {
-        this.detectedLibraries.clear();
-        this.filesToInclude.clear();
-        this.detectedPatterns = [];
+        this.resetDetection();
+        this.scanHtmlFragment(html, options);
+        return this.finalizeDetection(options);
+    }
 
-        // Scan for each pattern (only when html content is available)
-        if (html && typeof html === 'string') {
-            for (const lib of LIBRARY_PATTERNS) {
-                // Skip MathJax libraries if LaTeX was pre-rendered
-                if (options.skipMathJax && (lib.name === 'exe_math' || lib.name === 'exe_math_datagame')) {
-                    continue;
-                }
+    /**
+     * Detect all required libraries by scanning multiple HTML fragments incrementally.
+     * This avoids building one giant concatenated HTML string in memory.
+     */
+    detectLibrariesFromFragments(
+        htmlFragments: Iterable<string | null | undefined>,
+        options: LibraryDetectionOptions = {},
+    ): LibraryDetectionResult {
+        this.resetDetection();
+        for (const html of htmlFragments) {
+            this.scanHtmlFragment(html, options);
+        }
+        return this.finalizeDetection(options);
+    }
 
-                if (this._matchesPattern(html, lib)) {
-                    // Special case: DataGame requires LaTeX check in decrypted content
-                    if (lib.requiresLatexCheck) {
-                        if (!this._hasLatexInDataGame(html)) {
-                            continue;
-                        }
-                    }
-                    this._addLibrary(lib);
-                }
-            }
+    private scanHtmlFragment(html: string | null | undefined, options: LibraryDetectionOptions): void {
+        if (!html || typeof html !== 'string') {
+            return;
         }
 
+        for (const lib of LIBRARY_PATTERNS) {
+            // Skip MathJax libraries if LaTeX was pre-rendered
+            if (options.skipMathJax && (lib.name === 'exe_math' || lib.name === 'exe_math_datagame')) {
+                continue;
+            }
+
+            if (this._matchesPattern(html, lib)) {
+                // Special case: DataGame requires LaTeX check in decrypted content
+                if (lib.requiresLatexCheck && !this._hasLatexInDataGame(html)) {
+                    continue;
+                }
+                this._addLibrary(lib);
+            }
+        }
+    }
+
+    private finalizeDetection(options: LibraryDetectionOptions): LibraryDetectionResult {
         // Add accessibility toolbar if requested
         if (options.includeAccessibilityToolbar) {
             const atoolsLib = LIBRARY_PATTERNS.find(l => l.name === 'exe_atools');
@@ -229,6 +253,25 @@ export class LibraryDetector {
         options: LibraryDetectionOptions = {},
     ): { files: string[]; patterns: LibraryPattern[] } {
         const detected = this.detectLibraries(html, options);
+        return this.buildRequiredFilesResult(detected, options);
+    }
+
+    /**
+     * Get all files needed for export with pattern information from HTML fragments.
+     * This incremental API avoids concatenating all content into one large string.
+     */
+    getAllRequiredFilesWithPatternsFromFragments(
+        htmlFragments: Iterable<string | null | undefined>,
+        options: LibraryDetectionOptions = {},
+    ): { files: string[]; patterns: LibraryPattern[] } {
+        const detected = this.detectLibrariesFromFragments(htmlFragments, options);
+        return this.buildRequiredFilesResult(detected, options);
+    }
+
+    private buildRequiredFilesResult(
+        detected: LibraryDetectionResult,
+        options: LibraryDetectionOptions,
+    ): { files: string[]; patterns: LibraryPattern[] } {
         const files = new Set(this.getBaseLibraries());
 
         // Add detected library files

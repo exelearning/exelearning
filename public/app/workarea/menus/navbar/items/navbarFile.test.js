@@ -1655,7 +1655,7 @@ describe('NavbarFile', () => {
 
             expect(result).toBe(true);
             expect(window.electronAPI.saveBuffer).toHaveBeenCalledWith(
-                expect.any(String),
+                expect.any(Uint8Array),
                 'proj-1:html5',
                 'export.zip'
             );

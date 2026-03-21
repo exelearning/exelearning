@@ -222,6 +222,29 @@ describe('text iDevice', () => {
       // Note: infoDurationTextInputValue is 'Duration' (colon is added only in createEditorGroup HTML)
       expect(durationTextInput.value).toBe('Duration');
     });
+
+    it('removes legacy outer exe-text wrapper from loaded textarea content', () => {
+      const previousData = {
+        textTextarea: '<div class="exe-text"><p>Legacy content</p></div>',
+      };
+
+      $exeDevice.init(mockElement, previousData);
+
+      const textarea = mockElement.querySelector('#textTextarea');
+      expect(textarea.value).toBe('<p>Legacy content</p>');
+      expect(textarea.value).not.toContain('class="exe-text"');
+    });
+
+    it('extracts main content when loaded textarea has exe-text-activity wrapper', () => {
+      const previousData = {
+        textTextarea: '<div class="exe-text-activity"><p>Activity content</p></div>',
+      };
+
+      $exeDevice.init(mockElement, previousData);
+
+      const textarea = mockElement.querySelector('#textTextarea');
+      expect(textarea.value).toBe('<p>Activity content</p>');
+    });
   });
 
   describe('checkFormValues', () => {
@@ -745,18 +768,15 @@ describe('text iDevice', () => {
       $exeDevice.init(mockElement, {});
 
       // Legacy eXe 2.9 FreeTextIdevice: uses "feedbackbutton" instead of "feedbacktooglebutton"
-      // and wraps main content in <div class="exe-text">
-      const html = `<div class="exe-text">
-<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
-<ol>
-<li>Repasar nuestro porfolio.</li>
-<li>Hacer una reflexión personal.</li>
-</ol>
-</div>
-<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
-<div class="feedback js-feedback js-hidden">
-<p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
-</div>`;
+      const html = `<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
+    <ol>
+    <li>Repasar nuestro porfolio.</li>
+    <li>Hacer una reflexión personal.</li>
+    </ol>
+    <div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+    <div class="feedback js-feedback js-hidden">
+    <p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
+    </div>`;
 
       const result = $exeDevice.extractTaskInfoFromHtml(html);
 
@@ -921,13 +941,11 @@ describe('text iDevice', () => {
     it('extracts feedback from legacy eXe 2.9 format when loading previousData', () => {
       // Reproduces the bug: eXe 2.9 ELPs use "feedbackbutton" class; previously the
       // feedback content appeared in the main text box and the feedback field was empty.
-      const legacyHtml = `<div class="exe-text">
-<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
-</div>
-<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
-<div class="feedback js-feedback js-hidden">
-<p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
-</div>`;
+      const legacyHtml = `<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
+    <div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+    <div class="feedback js-feedback js-hidden">
+    <p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
+    </div>`;
 
       const previousData = { textTextarea: legacyHtml };
 

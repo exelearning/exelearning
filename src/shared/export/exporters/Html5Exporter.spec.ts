@@ -14,6 +14,19 @@ import type {
     ZipProvider,
 } from '../interfaces';
 
+function decodePreviewFile(content: ArrayBuffer | Uint8Array | string | undefined): string {
+    if (typeof content === 'string') {
+        return content;
+    }
+
+    if (!content) {
+        return '';
+    }
+
+    const bytes = content instanceof Uint8Array ? content : new Uint8Array(content);
+    return new TextDecoder().decode(bytes);
+}
+
 // Mock document adapter
 class MockDocument implements ExportDocument {
     private metadata: ExportMetadata;
@@ -525,8 +538,7 @@ describe('Html5Exporter', () => {
             resources.faviconToReturn = 'ico';
             const files = await exporter.generateForPreview();
 
-            const indexHtmlBytes = files.get('index.html') as Uint8Array;
-            const indexHtml = new TextDecoder().decode(indexHtmlBytes);
+            const indexHtml = decodePreviewFile(files.get('index.html'));
             expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico">');
         });
 
@@ -960,8 +972,7 @@ describe('Html5Exporter', () => {
             });
 
             const indexHtml = files.get('index.html');
-            const indexHtmlText =
-                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Uint8Array);
+            const indexHtmlText = decodePreviewFile(indexHtml);
             expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
         });
     });
@@ -1759,11 +1770,9 @@ describe('Html5Exporter', () => {
 
             expect(files.has('index.html')).toBe(true);
             const indexHtml = files.get('index.html');
-            expect(indexHtml).toBeInstanceOf(Uint8Array);
+            expect(indexHtml).toBeInstanceOf(ArrayBuffer);
 
-            // Decode and verify content
-            const decoder = new TextDecoder();
-            const html = decoder.decode(indexHtml as Uint8Array);
+            const html = decodePreviewFile(indexHtml);
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('Introduction');
         });
@@ -1803,11 +1812,11 @@ describe('Html5Exporter', () => {
             expect(files.has('libs/common.js')).toBe(true);
         });
 
-        it('should return Uint8Array content for all files', async () => {
+        it('should return ArrayBuffer content for all files', async () => {
             const files = await exporter.generateForPreview();
 
-            for (const [path, content] of files) {
-                expect(content).toBeInstanceOf(Uint8Array);
+            for (const [, content] of files) {
+                expect(content).toBeInstanceOf(ArrayBuffer);
             }
         });
 
@@ -2000,8 +2009,7 @@ describe('Html5Exporter', () => {
             const baseCss = files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
 
-            const decoder = new TextDecoder();
-            const cssText = decoder.decode(baseCss as Uint8Array);
+            const cssText = decodePreviewFile(baseCss);
             expect(cssText).toContain('exe-math-rendered');
         });
 
@@ -2018,8 +2026,7 @@ describe('Html5Exporter', () => {
             const baseCss = files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
 
-            const decoder = new TextDecoder();
-            const cssText = decoder.decode(baseCss as Uint8Array);
+            const cssText = decodePreviewFile(baseCss);
             expect(cssText).toContain('exe-mermaid-rendered');
         });
 
@@ -2087,10 +2094,7 @@ describe('Html5Exporter', () => {
             expect(files.has('libs/elpx-manifest.js')).toBe(true);
 
             const manifestContent = files.get('libs/elpx-manifest.js');
-            const manifestJs =
-                typeof manifestContent === 'string'
-                    ? manifestContent
-                    : new TextDecoder().decode(manifestContent as Uint8Array);
+            const manifestJs = decodePreviewFile(manifestContent);
             expect(manifestJs).toContain('window.__ELPX_MANIFEST__');
             expect(manifestJs).toContain('"files"');
         });
@@ -2126,10 +2130,7 @@ describe('Html5Exporter', () => {
             const files = await exporter.generateForPreview();
 
             const manifestContent = files.get('libs/elpx-manifest.js');
-            const manifestJs =
-                typeof manifestContent === 'string'
-                    ? manifestContent
-                    : new TextDecoder().decode(manifestContent as Uint8Array);
+            const manifestJs = decodePreviewFile(manifestContent);
 
             const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
             expect(manifestMatch).toBeTruthy();
@@ -2351,8 +2352,7 @@ describe('Html5Exporter', () => {
             const baseCss = files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
 
-            const decoder = new TextDecoder();
-            const cssText = decoder.decode(baseCss as Uint8Array);
+            const cssText = decodePreviewFile(baseCss);
 
             // Should contain both LaTeX and Mermaid CSS
             expect(cssText).toContain('.exe-math-rendered');

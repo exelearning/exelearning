@@ -237,6 +237,96 @@ bun test src/services/my-service.spec.ts --coverage
 
 **NOTE**: Frontend tests require `happy-dom` environment (configured in `vitest.config.mts`). Do NOT run frontend tests with `bun test` - they will fail with "window is not defined".
 
+## Profiling Helpers
+
+When investigating Electron save/export performance, use the built-in renderer debug flags instead of adding ad-hoc logs first.
+
+### ELPX export timing
+
+In DevTools:
+
+```js
+window.eXeLearning.config.debugElpxExport = true;
+window.eXeLearning.config.debugElpxExportIncludeCaller = true;
+```
+
+Run the export from the UI, then inspect:
+
+```js
+window.__lastElpxExportSummary
+window.__lastElpxExportTimeline
+```
+
+Important fields:
+
+- `zipGenerateMs`
+- `electronSaveMs`
+- `electronPromptMs`
+- `electronNormalizeMs`
+- `electronWriteMs`
+- `deflatedFiles`
+- `storedFiles`
+
+Use this first for:
+
+- slow `.elpx` export
+- delays before the native save dialog
+- ZIP generation bottlenecks
+
+### Save memory profiling
+
+In DevTools:
+
+```js
+window.eXeLearning.config.debugSaveMemory = true;
+```
+
+Optional experiments:
+
+```js
+window.eXeLearning.config.saveMemoryExperiment = 'auto';
+```
+
+Supported values:
+
+- `'auto'`
+- `'baseline'`
+- `'small-session-batches'`
+- `'legacy-batches'`
+- `'yjs-only'`
+- `'assets-only'`
+
+Optional byte overrides:
+
+```js
+window.eXeLearning.config.saveMemorySessionBatchBytes = 5 * 1024 * 1024;
+window.eXeLearning.config.saveMemoryBatchBytes = 5 * 1024 * 1024;
+```
+
+Run save from the UI, then inspect:
+
+```js
+window.__lastSaveMemorySummary
+window.__lastSaveMemoryTimeline
+```
+
+Important fields:
+
+- `rss`
+- `heapUsed`
+- `external`
+- `arrayBuffers`
+- `rendererWorkingSetSize`
+- `rendererPeakWorkingSetSize`
+
+Use this first for:
+
+- memory spikes during save
+- Electron multipart/request buffering investigation
+- comparing upload strategies
+
+Full developer-facing instructions live in [doc/development/profiling.md](./doc/development/profiling.md).
+
 ### Test File Naming
 
 | Location | Pattern | Runner |

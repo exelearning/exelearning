@@ -90,10 +90,14 @@ export * from './types';
 // ============================================================================
 
 /**
- * Close the database connection gracefully
+ * Close the database connection gracefully.
+ * No-op if the database was never initialized.
  */
 export async function closeDb(): Promise<void> {
-    await db.destroy();
+    if (_db) {
+        await _db.destroy();
+        _db = null;
+    }
 }
 
 /**

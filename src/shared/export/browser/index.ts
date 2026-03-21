@@ -782,29 +782,11 @@ export async function generatePreviewForSW(
         const mermaidHooks = getMermaidPreRendererHooks();
         const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
 
-        // Generate preview files (Map<string, Uint8Array | string>)
+        // Generate preview files (Map<string, ArrayBuffer>)
         const filesMap = await exporter.generateForPreview(exportOptions);
 
-        // Convert to plain object with ArrayBuffer values for SW transfer
-        const files: Record<string, ArrayBuffer> = {};
-        for (const [path, content] of filesMap) {
-            if (content instanceof Uint8Array) {
-                files[path] = content.buffer.slice(
-                    content.byteOffset,
-                    content.byteOffset + content.byteLength,
-                ) as ArrayBuffer;
-            } else if (typeof content === 'string') {
-                const encoder = new TextEncoder();
-                const encoded = encoder.encode(content);
-                files[path] = encoded.buffer.slice(
-                    encoded.byteOffset,
-                    encoded.byteOffset + encoded.byteLength,
-                ) as ArrayBuffer;
-            } else {
-                // biome-ignore lint/suspicious/noExplicitAny: fallback for unknown content types
-                files[path] = content as any;
-            }
-        }
+        // Preserve exporter-owned ArrayBuffers to avoid a second full copy before SW transfer.
+        const files = Object.fromEntries(filesMap) as Record<string, ArrayBuffer>;
 
         console.log(`[SharedExporters] Generated ${Object.keys(files).length} preview files for SW`);
 

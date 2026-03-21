@@ -29,6 +29,9 @@ import { XMLParser } from 'fast-xml-parser';
 // Import centralized configuration
 import { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES } from './static-bundle/static-config';
 import { buildConfigParams } from '../src/routes/config-params';
+import { STATIC_ROUTES } from '../src/routes/api-routes';
+import { buildParameterResponse } from '../src/routes/parameter-response';
+import { VOID_ELEMENTS } from '../src/shared/utils/html-constants';
 
 // Re-export config for external use
 export { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES };
@@ -677,7 +680,17 @@ export function processNjkTemplateContent(content: string, version: string): str
     // STEP 2: Handle translations in ELEMENT CONTENT
 
     // 2a. Handle {{ 'Text' | trans }} that is the SOLE content of an element
-    content = content.replace(/>(\s*)\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}(\s*)</g, ' data-i18n="$2">$1$2$3<');
+    // Match opening tag (<tagname ...>) followed by {{ 'Text' | trans }} as sole content.
+    // - Uses (<[a-z][^>]*) to only match opening tags (not closing tags like </span>)
+    // - Excludes HTML void elements (input, img, br, etc.) which can't have text content
+    const voidElements = VOID_ELEMENTS.join('|');
+    content = content.replace(
+        new RegExp(
+            `(<(?!${voidElements})[a-z][^>]*)>(\\s*)\\{\\{\\s*['"]([^'"]+)['"]\\s*\\|\\s*trans\\s*\\}\\}(\\s*)<`,
+            'gi',
+        ),
+        '$1 data-i18n="$3">$2$3$4<',
+    );
 
     // 2b. Handle remaining {{ 'Text' | trans }} (mixed with other content)
     content = content.replace(/\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}/g, '<span data-i18n="$1">$1</span>');
@@ -817,63 +830,25 @@ function generateModalsHtml(): string {
 }
 
 /**
- * Build API parameters object (minimal version for static mode)
+ * Build API parameters object (minimal version for static mode).
+ * Delegates to the shared buildParameterResponse to keep the response shape
+ * in sync with the server.
  */
-export interface ApiParameters {
-    routes: Record<string, { path: string; methods: string[] }>;
-    userPreferencesConfig: Record<string, unknown>;
-    ideviceInfoFieldsConfig: Record<string, unknown>;
-    themeInfoFieldsConfig: Record<string, unknown>;
-    themeEditionFieldsConfig: Record<string, unknown>;
-    odeProjectSyncPropertiesConfig: Record<string, unknown>;
-    odeProjectSyncCataloguingConfig: Record<string, unknown>;
-    odeComponentsSyncPropertiesConfig: Record<string, unknown>;
-    odeNavStructureSyncPropertiesConfig: Record<string, unknown>;
-    odePagStructureSyncPropertiesConfig: Record<string, unknown>;
-}
+export type ApiParameters = ReturnType<typeof buildApiParameters>;
 
-export function buildApiParameters(): ApiParameters {
-    const {
-        USER_PREFERENCES_CONFIG,
-        IDEVICE_INFO_FIELDS_CONFIG,
-        THEME_INFO_FIELDS_CONFIG,
-        ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG,
-        ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG,
-        ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG,
-        ODE_PROJECT_SYNC_PROPERTIES_CONFIG,
-        ODE_PROJECT_SYNC_CATALOGUING_CONFIG,
-    } = buildConfigParams({
+export function buildApiParameters() {
+    const configParams = buildConfigParams({
         TRANS_PREFIX: '',
         LICENSES,
         PACKAGE_LOCALES,
         LOCALES: LOCALE_NAMES,
     });
 
-    // In static mode, we only need a minimal set of routes that are stubbed client-side
-    return {
-        routes: {
-            // Translation routes (handled by DataProvider)
-            api_translations_lists: { path: '/api/translations/lists', methods: ['GET'] },
-            api_translations_list_by_locale: { path: '/api/translations/{locale}', methods: ['GET'] },
-
-            // iDevices and themes (handled by DataProvider)
-            api_idevices_installed: { path: '/api/idevices/installed', methods: ['GET'] },
-            api_themes_installed: { path: '/api/themes/installed', methods: ['GET'] },
-
-            // Upload limits (handled by DataProvider)
-            api_config_upload_limits: { path: '/api/config/upload-limits', methods: ['GET'] },
-        },
-        userPreferencesConfig: USER_PREFERENCES_CONFIG,
-        ideviceInfoFieldsConfig: IDEVICE_INFO_FIELDS_CONFIG,
-        themeInfoFieldsConfig: THEME_INFO_FIELDS_CONFIG,
-        // Theme edition disabled in static mode
-        themeEditionFieldsConfig: {},
-        odeProjectSyncPropertiesConfig: ODE_PROJECT_SYNC_PROPERTIES_CONFIG,
-        odeProjectSyncCataloguingConfig: ODE_PROJECT_SYNC_CATALOGUING_CONFIG,
-        odeComponentsSyncPropertiesConfig: ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG,
-        odeNavStructureSyncPropertiesConfig: ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG,
-        odePagStructureSyncPropertiesConfig: ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG,
-    };
+    return buildParameterResponse({
+        configParams,
+        routes: STATIC_ROUTES,
+        disableThemeEdition: true,
+    });
 }
 
 /**

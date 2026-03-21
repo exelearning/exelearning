@@ -59,6 +59,224 @@ class YjsProjectBridge {
     // Asset metadata observer references (for hash-change invalidation)
     this._assetsMap = null;
     this._onAssetsMapChange = null;
+    this._assetsMapDebugCalls = 0;
+    this._activeElpxExportTrace = null;
+  }
+
+  getElpxExportDebugConfig() {
+    const runtime = globalThis.window || globalThis;
+    const config = runtime.eXeLearning?.config || globalThis.eXeLearning?.config || {};
+    return {
+      enabled: config.debugElpxExport === true,
+      includeCaller: config.debugElpxExportIncludeCaller !== false,
+    };
+  }
+
+  isElpxExportDebugEnabled() {
+    return this.getElpxExportDebugConfig().enabled;
+  }
+
+  getElpxExportDebugNow() {
+    if (globalThis.performance?.now) {
+      return globalThis.performance.now();
+    }
+    return Date.now();
+  }
+
+  createElpxExportTrace() {
+    if (!this.isElpxExportDebugEnabled()) {
+      this._activeElpxExportTrace = null;
+      return null;
+    }
+
+    const runtime = globalThis.window || globalThis;
+    const trace = {
+      startedAt: new Date().toISOString(),
+      startedMs: this.getElpxExportDebugNow(),
+      entries: [],
+    };
+    this._assetsMapDebugCalls = 0;
+    runtime.__currentElpxExportTrace = trace;
+    this._activeElpxExportTrace = trace;
+    return trace;
+  }
+
+  getElpxExportCallerFrame() {
+    if (!this.getElpxExportDebugConfig().includeCaller) {
+      return null;
+    }
+
+    try {
+      const stack = new Error().stack?.split('\n') || [];
+      const caller = stack.find(line =>
+        line &&
+        !line.includes('getElpxExportCallerFrame') &&
+        !line.includes('logElpxExportPhase') &&
+        !line.includes('getAssetsMap')
+      );
+      return caller ? caller.trim() : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  logElpxExportPhase(phase, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._activeElpxExportTrace;
+    if (!trace) {
+      return;
+    }
+
+    const entry = {
+      phase,
+      ts: new Date().toISOString(),
+      elapsedMs: Math.round(this.getElpxExportDebugNow() - trace.startedMs),
+      ...context,
+    };
+
+    trace.entries.push(entry);
+    console.log('[ELPX Export DEBUG]', entry);
+  }
+
+  appendElpxExportPhaseEntry(phase, elapsedMs, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._activeElpxExportTrace;
+    if (!trace) {
+      return;
+    }
+
+    const entry = {
+      phase,
+      ts: new Date().toISOString(),
+      elapsedMs: Math.round(elapsedMs),
+      ...context,
+    };
+
+    trace.entries.push(entry);
+    console.log('[ELPX Export DEBUG]', entry);
+  }
+
+  getElpxExportPhaseEntry(trace, phase, mode = 'first') {
+    if (!trace?.entries?.length) {
+      return null;
+    }
+
+    if (mode === 'last') {
+      for (let i = trace.entries.length - 1; i >= 0; i--) {
+        if (trace.entries[i]?.phase === phase) {
+          return trace.entries[i];
+        }
+      }
+      return null;
+    }
+
+    return trace.entries.find(entry => entry?.phase === phase) || null;
+  }
+
+  getElpxExportPhaseDuration(trace, startPhase, endPhase) {
+    const start = this.getElpxExportPhaseEntry(trace, startPhase, 'first');
+    const end = this.getElpxExportPhaseEntry(trace, endPhase, 'last');
+
+    if (!start || !end) {
+      return null;
+    }
+
+    return Math.max(0, end.elapsedMs - start.elapsedMs);
+  }
+
+  buildElpxExportDerivedSummary(trace) {
+    if (!trace?.entries?.length) {
+      return {};
+    }
+
+    const zipEnd = this.getElpxExportPhaseEntry(trace, 'exporter:zip-generate:end', 'last');
+    const electronEnd = this.getElpxExportPhaseEntry(trace, 'bridge:electron:save-buffer:end', 'last');
+
+    return {
+      zipGenerateMs: this.getElpxExportPhaseDuration(trace, 'exporter:zip-generate:start', 'exporter:zip-generate:end'),
+      electronSaveMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:save-buffer:start', 'bridge:electron:save-buffer:end'),
+      electronPromptMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:dialog:start', 'bridge:electron:dialog:end'),
+      electronNormalizeMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:buffer-normalize:start', 'bridge:electron:buffer-normalize:end'),
+      electronWriteMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:write:start', 'bridge:electron:write:end'),
+      deflatedFiles: zipEnd?.deflatedFiles ?? null,
+      storedFiles: zipEnd?.storedFiles ?? null,
+      deflatedBytes: zipEnd?.deflatedBytes ?? null,
+      storedBytes: zipEnd?.storedBytes ?? null,
+      electronSaved: electronEnd?.saved ?? null,
+      electronCanceledAt: electronEnd?.canceledAt ?? null,
+    };
+  }
+
+  normalizeElectronSaveResult(result) {
+    if (typeof result === 'boolean') {
+      return {
+        saved: result,
+        canceled: !result,
+        canceledAt: result ? null : 'dialog',
+        filePath: null,
+        error: null,
+        timings: {
+          totalMs: 0,
+          promptMs: 0,
+          normalizeMs: 0,
+          writeMs: 0,
+        },
+      };
+    }
+
+    if (!result || typeof result !== 'object') {
+      return {
+        saved: false,
+        canceled: false,
+        canceledAt: 'write',
+        filePath: null,
+        error: 'Invalid saveBuffer response',
+        timings: {
+          totalMs: 0,
+          promptMs: 0,
+          normalizeMs: 0,
+          writeMs: 0,
+        },
+      };
+    }
+
+    const timings = result.timings || {};
+    const canceledAt = result.canceledAt ?? result.cancelledAt ?? null;
+
+    return {
+      saved: result.saved === true,
+      canceled: result.canceled === true || result.cancelled === true,
+      canceledAt,
+      filePath: result.filePath || null,
+      error: result.error || null,
+      timings: {
+        totalMs: Number.isFinite(timings.totalMs) ? timings.totalMs : 0,
+        promptMs: Number.isFinite(timings.promptMs) ? timings.promptMs : 0,
+        normalizeMs: Number.isFinite(timings.normalizeMs) ? timings.normalizeMs : 0,
+        writeMs: Number.isFinite(timings.writeMs) ? timings.writeMs : 0,
+      },
+    };
+  }
+
+  finalizeElpxExportTrace(outcome, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._activeElpxExportTrace;
+    if (!trace) {
+      return;
+    }
+
+    const runtime = globalThis.window || globalThis;
+    const summary = {
+      outcome,
+      startedAt: trace.startedAt,
+      totalElapsedMs: Math.round(this.getElpxExportDebugNow() - trace.startedMs),
+      entries: trace.entries.length,
+      ...this.buildElpxExportDerivedSummary(trace),
+      ...context,
+    };
+
+    runtime.__lastElpxExportTimeline = trace.entries;
+    runtime.__lastElpxExportSummary = summary;
+    delete runtime.__currentElpxExportTrace;
+    this._activeElpxExportTrace = null;
+    console.log('[ELPX Export DEBUG] Summary', summary);
   }
 
   /**
@@ -2677,10 +2895,15 @@ class YjsProjectBridge {
       throw new Error('[YjsProjectBridge] Not initialized');
     }
     const assetsMap = this.documentManager.getAssets();
-    console.log('[YjsProjectBridge DEBUG] getAssetsMap:', {
-      initialized: !!this.documentManager,
-      mapSize: assetsMap?.size || 0
-    });
+    if (this._activeElpxExportTrace) {
+      this._assetsMapDebugCalls += 1;
+      this.logElpxExportPhase('assets-map:read', {
+        call: this._assetsMapDebugCalls,
+        initialized: !!this.documentManager,
+        mapSize: assetsMap?.size || 0,
+        caller: this.getElpxExportCallerFrame(),
+      });
+    }
     return assetsMap;
   }
 
@@ -2691,14 +2914,19 @@ class YjsProjectBridge {
    * In Electron/Desktop mode, always prompts for save destination (no silent overwrite).
    */
   async exportToElpx() {
+    const trace = this.createElpxExportTrace();
+
     // Ensure exelearning_version is set in metadata before export
     if (this.documentManager?._updateVersionMetadata) {
+      this.logElpxExportPhase('bridge:version-metadata:start', {}, trace);
       await this.documentManager._updateVersionMetadata();
+      this.logElpxExportPhase('bridge:version-metadata:end', {}, trace);
     }
 
     // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
     if (window.SharedExporters?.createExporter) {
       try {
+        this.logElpxExportPhase('bridge:create-exporter:start', {}, trace);
         const exporter = window.SharedExporters.createExporter(
           'elpx',
           this.documentManager,
@@ -2706,6 +2934,9 @@ class YjsProjectBridge {
           this.resourceFetcher,
           this.assetManager
         );
+        this.logElpxExportPhase('bridge:create-exporter:end', {
+          exporter: exporter?.constructor?.name || 'unknown',
+        }, trace);
         
         // Get Mermaid pre-renderer hook if available
         const exportOptions = {};
@@ -2713,7 +2944,13 @@ class YjsProjectBridge {
           exportOptions.preRenderMermaid = window.MermaidPreRenderer.preRender.bind(window.MermaidPreRenderer);
         }
         
+        this.logElpxExportPhase('bridge:exporter:run:start', {}, trace);
         const result = await exporter.export(exportOptions);
+        this.logElpxExportPhase('bridge:exporter:run:end', {
+          success: !!result?.success,
+          bytes: result?.data?.byteLength ?? null,
+          filename: result?.filename || null,
+        }, trace);
         if (result.success && result.data) {
           // Use sanitized filename from exporter (lowercase, no accents, no special chars)
           const exportFilename = result.filename || 'export.elpx';
@@ -2721,20 +2958,68 @@ class YjsProjectBridge {
           // Check if Electron mode - use Electron save API for desktop behavior
           // eslint-disable-next-line no-undef
           if (eXeLearning?.config?.isOfflineInstallation && window.electronAPI?.saveBuffer) {
-            // Convert ArrayBuffer to base64 for IPC transfer
             const uint8Array = new Uint8Array(result.data);
-            let binary = '';
-            for (let i = 0; i < uint8Array.length; i++) {
-              binary += String.fromCharCode(uint8Array[i]);
-            }
-            const base64Data = btoa(binary);
             const key = window.__currentProjectId || 'default';
+            const saveBufferStartElapsed = trace
+              ? Math.round(this.getElpxExportDebugNow() - trace.startedMs)
+              : 0;
+            this.logElpxExportPhase('bridge:electron:save-buffer:start', {
+              filename: exportFilename,
+              bytes: uint8Array.byteLength,
+            }, trace);
+            this.logElpxExportPhase('bridge:electron:dialog:start', {
+              filename: exportFilename,
+            }, trace);
             // saveBuffer returns false when the user cancels the OS save dialog
-            const saved = await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
-            if (!saved) return { saved: false };
+            const rawSaveResult = await window.electronAPI.saveBuffer(uint8Array, key, exportFilename);
+            const saveResult = this.normalizeElectronSaveResult(rawSaveResult);
+            const promptEndElapsed = saveBufferStartElapsed + saveResult.timings.promptMs;
+            this.appendElpxExportPhaseEntry('bridge:electron:dialog:end', promptEndElapsed, {
+              filename: exportFilename,
+              filePath: saveResult.filePath,
+              canceled: saveResult.canceled,
+            }, trace);
+
+            if (saveResult.timings.normalizeMs > 0 || saveResult.timings.writeMs > 0 || saveResult.saved) {
+              this.appendElpxExportPhaseEntry('bridge:electron:buffer-normalize:start', promptEndElapsed, {
+                filename: exportFilename,
+              }, trace);
+              const normalizeEndElapsed = promptEndElapsed + saveResult.timings.normalizeMs;
+              this.appendElpxExportPhaseEntry('bridge:electron:buffer-normalize:end', normalizeEndElapsed, {
+                filename: exportFilename,
+              }, trace);
+
+              this.appendElpxExportPhaseEntry('bridge:electron:write:start', normalizeEndElapsed, {
+                filename: exportFilename,
+                filePath: saveResult.filePath,
+              }, trace);
+              this.appendElpxExportPhaseEntry('bridge:electron:write:end', normalizeEndElapsed + saveResult.timings.writeMs, {
+                filename: exportFilename,
+                filePath: saveResult.filePath,
+                error: saveResult.error,
+              }, trace);
+            }
+
+            this.appendElpxExportPhaseEntry('bridge:electron:save-buffer:end', saveBufferStartElapsed + saveResult.timings.totalMs, {
+              filename: exportFilename,
+              saved: saveResult.saved,
+              canceled: saveResult.canceled,
+              canceledAt: saveResult.canceledAt,
+              filePath: saveResult.filePath,
+              error: saveResult.error,
+              timings: saveResult.timings,
+            }, trace);
+            this.finalizeElpxExportTrace(saveResult.saved ? 'success' : 'cancelled', {
+              filename: exportFilename,
+            }, trace);
+            if (!saveResult.saved) return { saved: false };
             Logger.log('[YjsProjectBridge] ELPX exported via Electron:', exportFilename);
           } else {
             // Browser mode: direct download
+            this.logElpxExportPhase('bridge:browser-download:start', {
+              filename: exportFilename,
+              bytes: result.data.byteLength || null,
+            }, trace);
             const blob = new Blob([result.data], { type: 'application/zip' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -2744,17 +3029,35 @@ class YjsProjectBridge {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+            this.logElpxExportPhase('bridge:browser-download:end', {
+              filename: exportFilename,
+            }, trace);
+            this.finalizeElpxExportTrace('success', {
+              filename: exportFilename,
+            }, trace);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
           }
           return { saved: true };
         } else {
+          this.finalizeElpxExportTrace('error', {
+            error: result.error || 'Export failed',
+          }, trace);
           throw new Error(result.error || 'Export failed');
         }
       } catch (error) {
+        this.logElpxExportPhase('bridge:error', {
+          message: error?.message || String(error),
+        }, trace);
+        this.finalizeElpxExportTrace('error', {
+          error: error?.message || String(error),
+        }, trace);
         console.error('[YjsProjectBridge] SharedExporters ELPX export failed:', error);
         throw error; // Don't hide errors - let them bubble up for debugging
       }
     } else {
+      this.finalizeElpxExportTrace('error', {
+        error: 'SharedExporters not available',
+      }, trace);
       throw new Error('SharedExporters not available - ELPX export requires exporters.bundle.js');
     }
   }
@@ -3157,12 +3460,12 @@ class YjsProjectBridge {
    * @private
    */
   _uint8ArrayToBase64(uint8Array) {
-    let binary = '';
-    const len = uint8Array.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(uint8Array[i]);
+    const CHUNK = 0x8000;
+    const parts = [];
+    for (let i = 0; i < uint8Array.byteLength; i += CHUNK) {
+      parts.push(String.fromCharCode.apply(null, uint8Array.subarray(i, Math.min(i + CHUNK, uint8Array.byteLength))));
     }
-    return btoa(binary);
+    return btoa(parts.join(''));
   }
 
   /**

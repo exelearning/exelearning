@@ -931,6 +931,125 @@ describe('AssetManager', () => {
       expect(result).toContain('blob:new');
       expect(result).not.toContain('asset://');
     });
+
+    it('adds download attribute for non-image anchor with metadata', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:doc');
+      mockYjsBridge._assetsMap.set(uuid, { filename: 'report.docx', folderPath: '', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 100 });
+
+      const html = `<a href="asset://${uuid}/report.docx">Download</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:doc"');
+      expect(result).toContain('download="report.docx"');
+    });
+
+    it('does NOT add download attribute for image anchors', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:img');
+      mockYjsBridge._assetsMap.set(uuid, { filename: 'photo.jpg', folderPath: '', mime: 'image/jpeg', size: 100 });
+
+      const html = `<a href="asset://${uuid}/photo.jpg">View</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:img"');
+      expect(result).not.toContain('download');
+    });
+
+    it('falls back to filename from URL when metadata unavailable', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:fallback');
+
+      const html = `<a href="asset://${uuid}/presentation.pptx">Download</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:fallback"');
+      expect(result).toContain('download="presentation.pptx"');
+    });
+
+    it('marks anchor assets as missing when not cached', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+      const html = `<a href="asset://${uuid}/file.docx">Download</a>`;
+      assetManager.resolveHTMLAssetsSync(html);
+
+      expect(assetManager.missingAssets.has(uuid)).toBe(true);
+    });
+
+    it('does NOT add download for anchor with no filename in URL and no metadata', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:noname');
+
+      const html = `<a href="asset://${uuid}">Link</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:noname"');
+      expect(result).not.toContain('download');
+    });
+
+    it('skips download for SVG image anchors (by extension)', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:svg');
+
+      const html = `<a href="asset://${uuid}/diagram.svg">View</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:svg"');
+      expect(result).not.toContain('download');
+    });
+
+    it('adds download for PDF anchors', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:pdf');
+
+      const html = `<a href="asset://${uuid}/document.pdf">Download PDF</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('href="blob:pdf"');
+      expect(result).toContain('download="document.pdf"');
+    });
+
+    it('replaces asset:// text content with filename when anchor text is corrupted', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:doc');
+      mockYjsBridge._assetsMap.set(uuid, {
+        id: uuid, filename: 'report.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 1024
+      });
+
+      const html = `<a href="asset://${uuid}/report.docx">asset://${uuid}/report.docx</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('>report.docx</a>');
+      expect(result).not.toContain('asset://');
+    });
+
+    it('does NOT replace anchor text content when it contains child HTML elements', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:img');
+      mockYjsBridge._assetsMap.set(uuid, {
+        id: uuid, filename: 'photo.jpg', mime: 'image/jpeg', size: 2048
+      });
+
+      const html = `<a href="asset://${uuid}/photo.jpg"><img src="asset://${uuid}/photo.jpg"></a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      // The img child should be preserved, not replaced with filename
+      expect(result).toContain('<img');
+      expect(result).not.toContain('>photo.jpg</a>');
+    });
+
+    it('does NOT replace anchor text content when text is normal (not asset://)', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:doc');
+      mockYjsBridge._assetsMap.set(uuid, {
+        id: uuid, filename: 'report.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 1024
+      });
+
+      const html = `<a href="asset://${uuid}/report.docx">Click here to download</a>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('>Click here to download</a>');
+    });
   });
 
   describe('convertBlobURLsToAssetRefs', () => {
@@ -2032,8 +2151,9 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         const cache = global.caches._storage.get(cacheName);
+        const cacheKey = assetManager._getCacheRequestUrl('asset-123');
         expect(cache).toBeDefined();
-        expect(cache.has('/asset/asset-123')).toBe(true);
+        expect(cache.has(cacheKey)).toBe(true);
       });
 
       it('handles Cache API not supported', async () => {
@@ -2051,6 +2171,17 @@ describe('AssetManager', () => {
         // Should not throw
         await assetManager._putToCache('asset-123', new Blob(['test']));
         expect(console.warn).toHaveBeenCalled();
+      });
+
+      it('disables cache persistence after unsupported scheme failures', async () => {
+        global.caches.open = mock(async () => ({
+          put: mock(async () => {
+            throw new Error("Failed to execute 'put' on 'Cache': Request scheme 'app' is unsupported");
+          }),
+        }));
+
+        await assetManager._putToCache('asset-123', new Blob(['test']));
+        expect(assetManager.cachePersistenceDisabled).toBe(true);
       });
     });
 
@@ -2095,7 +2226,7 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         const cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/asset-123')).toBe(false);
+        expect(cache.has(assetManager._getCacheRequestUrl('asset-123'))).toBe(false);
       });
 
       it('handles Cache API not supported', async () => {
@@ -2158,7 +2289,7 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         const cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/asset-uuid-123')).toBe(true);
+        expect(cache.has(assetManager._getCacheRequestUrl('asset-uuid-123'))).toBe(true);
       });
     });
 
@@ -2173,7 +2304,7 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         const cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/blob-id-456')).toBe(true);
+        expect(cache.has(assetManager._getCacheRequestUrl('blob-id-456'))).toBe(true);
       });
     });
 
@@ -2242,7 +2373,7 @@ describe('AssetManager', () => {
 
         const cacheName = assetManager.getCacheName();
         let cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/asset-to-delete')).toBe(true);
+        expect(cache.has(assetManager._getCacheRequestUrl('asset-to-delete'))).toBe(true);
 
         await assetManager.deleteAsset('asset-to-delete');
 
@@ -2254,7 +2385,7 @@ describe('AssetManager', () => {
 
         // Cache should be cleared
         cache = global.caches._storage.get(cacheName);
-        expect(cache.has('/asset/asset-to-delete')).toBe(false);
+        expect(cache.has(assetManager._getCacheRequestUrl('asset-to-delete'))).toBe(false);
       });
     });
   });
@@ -10114,14 +10245,14 @@ describe('resolveHTMLAssetsSync additional branches', () => {
     expect(result).toContain('blob:resolved');
   });
 
-  it('phase2 keeps html asset urls intact', () => {
+  it('phase1.75 resolves html asset anchor href to blob URL', () => {
     const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
     mockBridge._assetsMap.set(uuid, { filename: 'p.html', folderPath: '', mime: 'text/html', size: 1 });
     am.blobURLCache.set(uuid, 'blob:resolved');
     const html = `<a href="asset://${uuid}">link</a>`;
     const result = am.resolveHTMLAssetsSync(html);
-    // HTML assets in phase 2 are kept as asset:// URLs
-    expect(result).toContain(`asset://${uuid}`);
+    // Anchor hrefs are resolved to blob URLs (even for HTML assets)
+    expect(result).toContain('blob:resolved');
   });
 
   it('phase2 marks missing non-html asset as missing and returns placeholder', () => {
@@ -13797,5 +13928,331 @@ describe('extractAssetId - all format branches', () => {
   it('handles simple format: asset://uuid', () => {
     const result = am.extractAssetId('asset://abcd1234-ab12-ab12-ab12-abcdef123456');
     expect(result).toBe('abcd1234-ab12-ab12-ab12-abcdef123456');
+  });
+});
+
+// ============================================================================
+// releaseUploadedBlob tests
+// ============================================================================
+
+describe('releaseUploadedBlob', () => {
+  let am;
+  let mockBridge;
+  let mockCacheStore;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}), warn: mock(() => {}) };
+    mockBridge = createMockYjsBridge();
+    am = new AssetManager('p1');
+    am.setYjsBridge(mockBridge);
+    spyOn(console, 'warn').mockImplementation(() => {});
+    // Set up a mock Cache API that matches the real implementation's URL pattern
+    mockCacheStore = new Map();
+    const mockCache = {
+      match: mock(async (url) => mockCacheStore.get(url) || undefined),
+      put: mock(async (url, response) => mockCacheStore.set(url, response)),
+      delete: mock(async (url) => mockCacheStore.delete(url)),
+    };
+    global.window = { caches: { open: mock(async () => mockCache) } };
+    global.caches = { open: mock(async () => mockCache) };
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+    delete global.caches;
+    delete global.window;
+  });
+
+  it('removes blob from blobCache', () => {
+    const blob = new Blob(['data']);
+    am.blobCache.set('a1', blob);
+
+    am.releaseUploadedBlob('a1');
+
+    expect(am.blobCache.has('a1')).toBe(false);
+  });
+
+  it('does NOT remove from blobURLCache (blob URL stays valid for rendering)', () => {
+    const blob = new Blob(['data']);
+    am.blobCache.set('a1', blob);
+    am.blobURLCache.set('a1', 'blob:http://localhost/fake-url');
+
+    am.releaseUploadedBlob('a1');
+
+    expect(am.blobURLCache.has('a1')).toBe(true);
+    expect(am.blobURLCache.get('a1')).toBe('blob:http://localhost/fake-url');
+  });
+
+  it('does NOT delete from Cache API (preserves fallback for post-save operations)', async () => {
+    const blob = new Blob(['data']);
+    am.blobCache.set('a1', blob);
+    // Put something in cache API
+    await am._putToCache('a1', blob);
+
+    am.releaseUploadedBlob('a1');
+
+    // Cache API entry should still be there
+    const cachedBlob = await am._getFromCache('a1');
+    expect(cachedBlob).not.toBeNull();
+  });
+
+  it('no-ops gracefully when blob not in blobCache', () => {
+    // Should not throw
+    am.releaseUploadedBlob('nonexistent');
+    expect(am.blobCache.has('nonexistent')).toBe(false);
+  });
+});
+
+// ============================================================================
+// getPendingAssetsMetadata tests
+// ============================================================================
+
+describe('getPendingAssetsMetadata', () => {
+  let am;
+  let mockBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}), warn: mock(() => {}) };
+    mockBridge = createMockYjsBridge();
+    am = new AssetManager('p1');
+    am.setYjsBridge(mockBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('returns only assets with uploaded === false', () => {
+    mockBridge._assetsMap.set('a1', { filename: 'f1.jpg', uploaded: false, size: 100 });
+    mockBridge._assetsMap.set('a2', { filename: 'f2.jpg', uploaded: true, size: 200 });
+    mockBridge._assetsMap.set('a3', { filename: 'f3.jpg', uploaded: false, size: 300 });
+
+    const result = am.getPendingAssetsMetadata();
+
+    expect(result.length).toBe(2);
+    expect(result.map(r => r.id).sort()).toEqual(['a1', 'a3']);
+  });
+
+  it('returns empty array when no pending assets', () => {
+    mockBridge._assetsMap.set('a1', { filename: 'f1.jpg', uploaded: true, size: 100 });
+
+    const result = am.getPendingAssetsMetadata();
+
+    expect(result.length).toBe(0);
+  });
+
+  it('returns metadata objects without blob property', () => {
+    mockBridge._assetsMap.set('a1', { filename: 'f1.jpg', uploaded: false, size: 100 });
+    am.blobCache.set('a1', new Blob(['data']));
+
+    const result = am.getPendingAssetsMetadata();
+
+    expect(result.length).toBe(1);
+    expect(result[0].blob).toBeUndefined();
+    expect(result[0].filename).toBe('f1.jpg');
+  });
+});
+
+// ============================================================================
+// getPendingAssetsBatch tests
+// ============================================================================
+
+describe('getPendingAssetsBatch', () => {
+  let am;
+  let mockBridge;
+  let savedWindow;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}), warn: mock(() => {}) };
+    mockBridge = createMockYjsBridge();
+    am = new AssetManager('p1');
+    am.setYjsBridge(mockBridge);
+    savedWindow = global.window;
+    global.window = { caches: undefined };
+    global.caches = { open: mock(async () => ({ match: mock(async () => undefined) })) };
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+    delete global.caches;
+    if (savedWindow) global.window = savedWindow;
+    else delete global.window;
+  });
+
+  it('loads blobs for provided metadata list', async () => {
+    const blob1 = new Blob(['data1']);
+    const blob2 = new Blob(['data2']);
+    am.blobCache.set('a1', blob1);
+    am.blobCache.set('a2', blob2);
+
+    const metadataList = [
+      { id: 'a1', filename: 'f1.jpg', size: 5 },
+      { id: 'a2', filename: 'f2.jpg', size: 5 },
+    ];
+
+    const result = await am.getPendingAssetsBatch(metadataList);
+
+    expect(result.length).toBe(2);
+    expect(result[0].blob).toBe(blob1);
+    expect(result[1].blob).toBe(blob2);
+  });
+
+  it('skips assets with missing blobs', async () => {
+    am.blobCache.set('a1', new Blob(['data1']));
+    // a2 has no blob
+
+    const metadataList = [
+      { id: 'a1', filename: 'f1.jpg', size: 5 },
+      { id: 'a2', filename: 'f2.jpg', size: 5 },
+    ];
+
+    const result = await am.getPendingAssetsBatch(metadataList);
+
+    expect(result.length).toBe(1);
+    expect(result[0].id).toBe('a1');
+  });
+
+  it('injects correct projectId into results', async () => {
+    am.blobCache.set('a1', new Blob(['data']));
+
+    const result = await am.getPendingAssetsBatch([{ id: 'a1', filename: 'f.jpg' }]);
+
+    expect(result[0].projectId).toBe('p1');
+  });
+});
+
+// ============================================================================
+// markAssetUploaded — blob release verification
+// ============================================================================
+
+describe('markAssetUploaded releases blob from blobCache', () => {
+  let am;
+  let mockBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}), warn: mock(() => {}) };
+    mockBridge = createMockYjsBridge();
+    am = new AssetManager('p1');
+    am.setYjsBridge(mockBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('releases blob from blobCache after marking uploaded', async () => {
+    mockBridge._assetsMap.set('a1', { filename: 'f.jpg', uploaded: false, size: 100 });
+    am.blobCache.set('a1', new Blob(['data']));
+
+    await am.markAssetUploaded('a1');
+
+    expect(am.blobCache.has('a1')).toBe(false);
+    expect(mockBridge._assetsMap.get('a1').uploaded).toBe(true);
+  });
+});
+
+// ============================================================================
+// Post-save asset availability tests
+// ============================================================================
+
+describe('post-save asset availability', () => {
+  let am;
+  let mockBridge;
+  let mockCacheStore;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}), warn: mock(() => {}) };
+    mockBridge = createMockYjsBridge();
+    am = new AssetManager('p1');
+    am.setYjsBridge(mockBridge);
+    spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Set up a Cache API mock that matches the real implementation's URL pattern
+    mockCacheStore = new Map();
+    const mockCache = {
+      match: mock(async (url) => mockCacheStore.get(url) || undefined),
+      put: mock(async (url, response) => mockCacheStore.set(url, response)),
+      delete: mock(async (url) => mockCacheStore.delete(url)),
+    };
+    global.window = { caches: { open: mock(async () => mockCache) } };
+    global.caches = { open: mock(async () => mockCache) };
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+    delete global.caches;
+    delete global.window;
+  });
+
+  it('getBlob() returns blob via Cache API fallback after markAssetUploaded + releaseUploadedBlob', async () => {
+    const blob = new Blob(['image-data']);
+    mockBridge._assetsMap.set('a1', { filename: 'photo.jpg', uploaded: false, size: blob.size });
+
+    // Store in both blobCache and Cache API (as putAsset does)
+    am.blobCache.set('a1', blob);
+    await am._putToCache('a1', blob);
+
+    // Simulate save: mark uploaded, then release
+    await am.markAssetUploaded('a1');
+
+    // blobCache should be cleared
+    expect(am.blobCache.has('a1')).toBe(false);
+
+    // But getBlob() should still work via Cache API fallback
+    const retrieved = await am.getBlob('a1');
+    expect(retrieved).not.toBeNull();
+  });
+
+  it('resolveAssetURL() still returns blob URL after markAssetUploaded (from blobURLCache)', async () => {
+    const blob = new Blob(['data']);
+    mockBridge._assetsMap.set('a1', { filename: 'f.jpg', uploaded: false, size: blob.size });
+    am.blobCache.set('a1', blob);
+    am.blobURLCache.set('a1', 'blob:http://localhost/fake-blob-url');
+
+    await am.markAssetUploaded('a1');
+
+    // blobURLCache should be preserved
+    const url = am.resolveAssetURLSync('a1');
+    expect(url).toBe('blob:http://localhost/fake-blob-url');
+  });
+
+  it('repeated markAssetUploaded on same asset is safe (idempotent)', async () => {
+    mockBridge._assetsMap.set('a1', { filename: 'f.jpg', uploaded: false, size: 10 });
+    am.blobCache.set('a1', new Blob(['data']));
+
+    await am.markAssetUploaded('a1');
+    // Second call — already uploaded, blob already released
+    await am.markAssetUploaded('a1');
+
+    expect(mockBridge._assetsMap.get('a1').uploaded).toBe(true);
+  });
+
+  it('after releasing blob, re-save does NOT re-upload already-uploaded assets', () => {
+    mockBridge._assetsMap.set('a1', { filename: 'f.jpg', uploaded: true, size: 10 });
+    mockBridge._assetsMap.set('a2', { filename: 'g.jpg', uploaded: false, size: 20 });
+
+    const pending = am.getPendingAssetsMetadata();
+
+    // Only a2 should be pending — a1 is already uploaded
+    expect(pending.length).toBe(1);
+    expect(pending[0].id).toBe('a2');
+  });
+
+  it('getProjectAssets still returns assets with blobs via Cache API after blob release', async () => {
+    const blob = new Blob(['content']);
+    mockBridge._assetsMap.set('a1', { filename: 'doc.pdf', uploaded: false, size: blob.size, mime: 'application/pdf', folderPath: '' });
+
+    // Store blob in both caches
+    am.blobCache.set('a1', blob);
+    await am._putToCache('a1', blob);
+
+    // Mark uploaded (releases from blobCache)
+    await am.markAssetUploaded('a1');
+
+    // getProjectAssets should still find the blob via Cache API fallback
+    const assets = await am.getProjectAssets();
+    const asset = assets.find(a => a.id === 'a1');
+    expect(asset).toBeDefined();
+    expect(asset.blob).not.toBeNull();
   });
 });
