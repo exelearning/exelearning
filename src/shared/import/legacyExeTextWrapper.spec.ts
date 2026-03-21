@@ -67,7 +67,9 @@ describe('stripLegacyExeTextWrapper', () => {
 
     it('keeps single-quoted feedback siblings after unwrap', () => {
         const input = "<div class='exe-text'><p>Main</p></div><div class='feedback js-feedback js-hidden'>Info</div>";
-        expect(stripLegacyExeTextWrapper(input)).toBe("<p>Main</p><div class='feedback js-feedback js-hidden'>Info</div>");
+        expect(stripLegacyExeTextWrapper(input)).toBe(
+            "<p>Main</p><div class='feedback js-feedback js-hidden'>Info</div>",
+        );
     });
 
     it('keeps html unchanged when trailing content is not legacy feedback', () => {
