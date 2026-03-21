@@ -32,6 +32,17 @@
   margin-left: 3px;
   font-size: 0.9em;
 }
+.rubric td {
+  position: relative;
+}
+.rubric td input[type="checkbox"] {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  margin: 0;
+  width: 14px;
+  height: 14px;
+}
 .rubric .exe-rubrics-calc {
   margin: 0.5em 0 0.25em;
   text-align: right;
@@ -88,6 +99,9 @@
 }
 .rubric table {
   margin-top: 0.2em;
+}
+.rubric table tbody tr:hover > * {
+  background-color: #fff1d6 !important;
 }
 .rubric #exe-rubrics-footer {
   margin-top: 0.9em;
@@ -232,10 +246,13 @@ body.exe-rubrics td span {
 body.exe-rubrics td {
   position: relative;
 }
-body.exe-rubrics td input {
+body.exe-rubrics td input[type="checkbox"] {
   position: absolute;
-  bottom: 0.1cm;
-  right: 0.1cm;
+  bottom: 3px;
+  right: 3px;
+  margin: 0;
+  width: 14px;
+  height: 14px;
 }
 body.exe-rubrics #exe-rubrics-calc {
   margin: 0.35cm 0 0.1cm;
