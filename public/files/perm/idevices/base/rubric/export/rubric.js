@@ -10,28 +10,31 @@
 var $rubric = {
     // Default strings
     ci18n: {
-        rubric: _('Rubric'),
-        activity: _('Activity'),
-        name: _('Name'),
-        fullName: _('Name and surname'),
-        date: _('Date'),
-        score: _('Score'),
-        download: _('Download'),
-        calculateScore: _('Calculate score'),
-        notes: _('Notes'),
-        msgDelete: _('Are you sure you want clear all form fields?'),
-        reset: _('Reset'),
-        print: _('Print'),
-        apply: _('Apply'),
-        newWindow: _('New Window'),
+        rubric: 'Rubric',
+        activity: 'Activity',
+        name: 'Name',
+        fullName: 'Name and surname',
+        date: 'Date',
+        score: 'Score',
+        download: 'Download',
+        calculateScore: 'Calculate score',
+        notes: 'Notes',
+        msgDelete: 'Are you sure you want clear all form fields?',
+        reset: 'Reset',
+        print: 'Print',
+        apply: 'Apply',
+        newWindow: 'New Window',
     },
     idevicePath: '',
 
     init: function () {
-        $('.idevice_node.rubric').each(function (i, ideviceElement) {
-            var table = $('table', this);
+        $('.idevice_node.rubric table, .rubric table, .exe-rubrics-content table').each(function (i) {
+            var table = $(this);
             if (table.length != 1) return;
-            var ul = $('ul.exe-rubrics-strings', this);
+            if (table.attr('data-rubric-enhanced') === '1') return;
+
+            var scope = table.closest('.idevice_node.rubric, .rubric, .exe-rubrics-content');
+            var ul = scope.find('ul.exe-rubrics-strings').first();
             if (ul.length == 1) {
                 // Update $rubric.ci18n to use the custom strings
                 $('li', ul).each(function () {
@@ -41,9 +44,10 @@ var $rubric = {
                 });
             }
 
-            var id = ideviceElement.getAttribute('id');
+            var id = scope.length === 1 ? scope.get(0).getAttribute('id') : '';
 
             $rubric.prepareInteractiveTable(table, id || 'rubric-' + i);
+            table.attr('data-rubric-enhanced', '1');
         });
 
         // Print version
@@ -55,7 +59,7 @@ var $rubric = {
         }
 
         // Clear form button
-        $('#clear').click(function () {
+        $('#clear').off('click.rubric').on('click.rubric', function () {
             $("input[type='checkbox']").prop('checked', false);
             $('#score,#notes').val('');
             var dateField = $('#date');
@@ -67,12 +71,46 @@ var $rubric = {
         });
 
         // Print button
-        $('#print').click(function () {
+        $('#print').off('click.rubric').on('click.rubric', function () {
             try {
                 window.print();
             } catch (e) {
                 //
             }
+        });
+    },
+
+    ensureDynamicInit: function () {
+        if (this._dynamicInitBound) return;
+        this._dynamicInitBound = true;
+
+        var self = this;
+        var safeInit = function () {
+            try {
+                self.init();
+            } catch (e) {
+                // Ignore init errors in dynamic preview updates.
+            }
+        };
+
+        safeInit();
+        setTimeout(safeInit, 60);
+        setTimeout(safeInit, 350);
+
+        if (!window.MutationObserver || !document.body) return;
+
+        this._dynamicObserver = new MutationObserver(function (mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+                if (mutations[i].addedNodes && mutations[i].addedNodes.length > 0) {
+                    safeInit();
+                    return;
+                }
+            }
+        });
+
+        this._dynamicObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
         });
     },
 
@@ -843,5 +881,5 @@ var $rubric = {
 };
 
 $(function () {
-    $rubric.init();
+    $rubric.ensureDynamicInit();
 });

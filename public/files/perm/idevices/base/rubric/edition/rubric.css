@@ -10,6 +10,7 @@
   margin: 1em auto;
   width: 100%;
   min-width: 100px;
+  table-layout: fixed;
   --ri-icon-size: 16px;
   --ri-icon-color: #555;
   --ri-icon-opacity: 0.85;
@@ -19,7 +20,7 @@
   width: 100%;
 }
 #ri_TableEditor {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 #ri_CsvTools {
@@ -115,7 +116,8 @@
 }
 #ri_Table > thead > tr > th:first-child,
 #ri_Table > tbody > tr > th {
-  width: 12%;
+  width: 22%;
+  min-width: 180px;
 }
 #ri_Table > tbody > tr > th input {
   width: 100%;
@@ -143,7 +145,8 @@
 }
 
 #ri_Table caption input {
-  width: 400px;
+  width: min(400px, 100%);
+  max-width: 100%;
   text-align: center;
   font-style: italic;
   font-size: 1.1em;

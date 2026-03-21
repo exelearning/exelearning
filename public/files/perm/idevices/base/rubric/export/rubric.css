@@ -37,11 +37,11 @@
 }
 .rubric td input[type="checkbox"] {
   position: absolute;
-  right: 3px;
-  bottom: 3px;
+  left: 2px;
+  bottom: 2px;
   margin: 0;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 .rubric .exe-rubrics-calc {
   margin: 0.5em 0 0.25em;
@@ -248,11 +248,11 @@ body.exe-rubrics td {
 }
 body.exe-rubrics td input[type="checkbox"] {
   position: absolute;
-  bottom: 3px;
-  right: 3px;
+  left: 2px;
+  bottom: 2px;
   margin: 0;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 body.exe-rubrics #exe-rubrics-calc {
   margin: 0.35cm 0 0.1cm;
