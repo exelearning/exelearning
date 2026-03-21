@@ -607,7 +607,7 @@ var $exeDevice = {
 
                 descriptors.push({
                     weight: self.removeTags(weightInput.val() || ''),
-                    text: self.removeTags(textInput.val() || ''),
+                    text: self.sanitizeDescriptorHtml(textInput.val() || ''),
                 });
             });
 
@@ -1016,7 +1016,7 @@ var $exeDevice = {
             html += '<tr>';
             html += '<th>' + data.categories[i] + '</th>';
             for (z = 0; z < data.scores.length; z++) {
-                html += '<td>' + c[z].text;
+                html += '<td>' + $exeDevice.sanitizeDescriptorHtml(c[z].text || '');
                 if (c[z].weight != '')
                     html += ' <span>(' + c[z].weight + ')</span>';
                 html += '</td>';
@@ -1404,7 +1404,11 @@ var $exeDevice = {
         var descriptions = $("tbody td input[type='text']", table);
         var descriptionErrors = false;
         descriptions.each(function () {
-            this.value = $exeDevice.removeTags(this.value);
+            if (this.id.indexOf('-weight') == -1) {
+                this.value = $exeDevice.sanitizeDescriptorHtml(this.value);
+            } else {
+                this.value = $exeDevice.removeTags(this.value);
+            }
             // The score field can be empty...
             if (this.id.indexOf('-weight') == -1 && this.value == '') {
                 $exeDevice.setFieldError($(this));
@@ -2251,6 +2255,49 @@ var $exeDevice = {
         return wrapper.text();
     },
 
+    // Allow only <b>, <i> and <u> in descriptor text; strip all other tags.
+    sanitizeDescriptorHtml: function (value) {
+        var input = typeof value === 'string' ? value : String(value || '');
+        if (input === '') return '';
+
+        var template = document.createElement('template');
+        template.innerHTML = input;
+
+        var sanitizeNode = function (node) {
+            if (!node) return document.createDocumentFragment();
+
+            if (node.nodeType === Node.TEXT_NODE) {
+                return document.createTextNode(node.nodeValue || '');
+            }
+
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return document.createDocumentFragment();
+            }
+
+            var tag = String(node.tagName || '').toLowerCase();
+            var fragment = document.createDocumentFragment();
+
+            for (var i = 0; i < node.childNodes.length; i++) {
+                fragment.appendChild(sanitizeNode(node.childNodes[i]));
+            }
+
+            if (tag === 'b' || tag === 'i' || tag === 'u') {
+                var allowed = document.createElement(tag);
+                allowed.appendChild(fragment);
+                return allowed;
+            }
+
+            return fragment;
+        };
+
+        var output = document.createElement('div');
+        for (var i = 0; i < template.content.childNodes.length; i++) {
+            output.appendChild(sanitizeNode(template.content.childNodes[i]));
+        }
+
+        return output.innerHTML;
+    },
+
     // Transform the editable table into a normal one
     makeNormal: function () {
         var cells = this.cells;
@@ -2266,7 +2313,7 @@ var $exeDevice = {
                 html = $('#' + id).val();
             } else if (inputs.length == 2) {
                 id = inputs.eq(0).attr('id');
-                html = $('#' + id).val();
+                html = $exeDevice.sanitizeDescriptorHtml($('#' + id).val());
                 id = inputs.eq(1).attr('id');
                 html += ' <span>(' + $('#' + id).val() + ')</span>';
             }
