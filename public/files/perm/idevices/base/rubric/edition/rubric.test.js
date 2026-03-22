@@ -259,4 +259,57 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect(document.querySelector('#rubric_1 .exe-rubrics-wrapper')).toBeNull();
     expect(document.querySelector('#rubric_1 .exe-rubrics-content')).toBeNull();
   });
+
+  it('openCellEditModal shows assessment criteria title and performance level from selected cell', () => {
+    document.body.innerHTML = `
+      <div id="ri_TableEditor"></div>
+      <table id="ri_Table">
+        <thead>
+          <tr>
+            <th><input type="text" value="" /></th>
+            <th><input type="text" value="Nivel Alto" /></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th><input type="text" value="Contenido" /></th>
+            <td>
+              <input type="text" value="Descriptor actual" />
+              <input type="text" class="ri_Weight" value="4" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    $exeDevice.ensureCellEditModal();
+    const td = $('#ri_Table tbody tr td').first();
+    $exeDevice.openCellEditModal(td);
+
+    expect($('#ri_CellEditModalTitle').text()).toBe('Assessment criteria: Contenido');
+    expect($('#ri_CellEditPerformanceInfo').text()).toBe('Performance level: Nivel Alto');
+    expect($('#ri_CellEditContent').val()).toBe('Descriptor actual');
+    expect($('#ri_CellEditScore').val()).toBe('4');
+  });
+
+  it('collectRubricStringsFromForm prioritizes current idevice form when duplicated ci18n ids exist', () => {
+    document.body.innerHTML = `
+      <input id="ci18n_activity" value="Global stale value" />
+      <div class="idevice_node rubric" id="rubric_node">
+        <div id="rubric_body">
+          <div id="ri_IdeviceForm">
+            <input id="ci18n_activity" value="Actividad personalizada" />
+            <input id="ci18n_name" value="Nombre personalizado" />
+          </div>
+        </div>
+      </div>
+    `;
+
+    $exeDevice.ideviceBody = document.getElementById('rubric_body');
+
+    const strings = $exeDevice.collectRubricStringsFromForm();
+
+    expect(strings.activity).toBe('Actividad personalizada');
+    expect(strings.name).toBe('Nombre personalizado');
+  });
 });

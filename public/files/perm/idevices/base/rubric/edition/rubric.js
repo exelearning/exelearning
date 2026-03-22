@@ -1132,10 +1132,17 @@ var $exeDevice = {
     },
 
     collectRubricStringsFromForm: function () {
+        var formScope = $(this.ideviceBody).find('#ri_IdeviceForm').first();
         var strings = {};
         for (var key in $exeDevice.ci18n) {
             if (!Object.prototype.hasOwnProperty.call($exeDevice.ci18n, key)) continue;
-            var customField = $('#ci18n_' + key);
+            var customField = $();
+            if (formScope.length === 1) {
+                customField = formScope.find('#ci18n_' + key).first();
+            }
+            if (customField.length !== 1) {
+                customField = $('#ci18n_' + key).first();
+            }
             var translatedValue = $exeDevice.getTranslatedString(key);
             var value = translatedValue;
 
@@ -1369,8 +1376,19 @@ var $exeDevice = {
         // Set the custom strings
         if (data.i18n) {
             var strings = data.i18n;
+            var formScope = $(this.ideviceBody).find('#ri_IdeviceForm').first();
             for (var z in strings) {
-                $('#ci18n_' + z).val(strings[z]);
+                if (!Object.prototype.hasOwnProperty.call(strings, z)) continue;
+                var customField = $();
+                if (formScope.length === 1) {
+                    customField = formScope.find('#ci18n_' + z).first();
+                }
+                if (customField.length !== 1) {
+                    customField = $('#ci18n_' + z).first();
+                }
+                if (customField.length === 1) {
+                    customField.val(strings[z]);
+                }
             }
         }
 
@@ -1798,13 +1816,14 @@ var $exeDevice = {
             '<div class="modal-content">' +
             '<div class="modal-header">' +
             '<h5 id="ri_CellEditModalTitle" class="modal-title">' +
-            _('Edit cell') +
+            _('Assessment criteria') +
             '</h5>' +
             '<button type="button" id="ri_CellEditClose" class="btn-close" aria-label="' +
             _('Close') +
             '"></button>' +
             '</div>' +
             '<div class="modal-body">' +
+            '<p id="ri_CellEditPerformanceInfo" class="form-text"></p>' +
             '<div class="mb-3">' +
             '<label for="ri_CellEditContent" class="form-label">' +
             _('Descriptor') +
@@ -1852,9 +1871,24 @@ var $exeDevice = {
         this.cellEditTarget = td;
         var contentInput = td.find('input[type="text"]').not('.ri_Weight').first();
         var scoreInput = td.find('input.ri_Weight').first();
+        var row = td.closest('tr');
+        var criterionTitle = row.find('th input[type="text"]').first().val() || '';
+        var colIndex = td.prevAll('td').length + 1;
+        var columnTitle =
+            $('#ri_Table thead th')
+                .eq(colIndex)
+                .find('input[type="text"]')
+                .first()
+                .val() || '';
 
         $('#ri_CellEditContent').val(contentInput.val() || '');
         $('#ri_CellEditScore').val(scoreInput.val() || '');
+        $('#ri_CellEditModalTitle').text(
+            _('Assessment criteria') + (criterionTitle ? ': ' + criterionTitle : '')
+        );
+        $('#ri_CellEditPerformanceInfo').text(
+            _('Performance level') + (columnTitle ? ': ' + columnTitle : '')
+        );
 
         $('#ri_CellEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
         $('body').addClass('modal-open');
