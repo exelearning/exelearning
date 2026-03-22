@@ -243,4 +243,20 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect($exeDevice.isCSVFile({ name: 'rubrica.txt', type: 'text/plain' })).toBe(false);
     expect($exeDevice.isCSVFile({ name: 'rubrica.json', type: 'application/json' })).toBe(false);
   });
+
+  it('removeLegacyRenderedArtifacts removes residual export blocks from idevice root', () => {
+    document.body.innerHTML = `
+      <div class="idevice_node rubric" id="rubric_1">
+        <div class="idevice_body" id="rubric_body"></div>
+        <div class="exe-rubrics-wrapper">legacy export UI</div>
+        <div class="exe-rubrics-content">legacy content</div>
+      </div>
+    `;
+
+    $exeDevice.ideviceBody = document.getElementById('rubric_body');
+    $exeDevice.removeLegacyRenderedArtifacts();
+
+    expect(document.querySelector('#rubric_1 .exe-rubrics-wrapper')).toBeNull();
+    expect(document.querySelector('#rubric_1 .exe-rubrics-content')).toBeNull();
+  });
 });

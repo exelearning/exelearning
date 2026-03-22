@@ -29,35 +29,6 @@ var $exeDevice = {
         newWindow: c_('New Window'),
     },
 
-    debugLog: function (step, details) {
-        try {
-            if (typeof console === 'undefined') return;
-            if (typeof details === 'undefined') {
-                console.log('[rubric-edition] ' + step);
-                return;
-            }
-            console.log('[rubric-edition] ' + step, details);
-        } catch (e) {
-            // Ignore debug logging errors.
-        }
-    },
-
-    debugTrace: function (step, details) {
-        try {
-            if (typeof console === 'undefined') return;
-            if (typeof details === 'undefined') {
-                console.log('[rubric-edition] TRACE ' + step);
-            } else {
-                console.log('[rubric-edition] TRACE ' + step, details);
-            }
-            if (typeof console.trace === 'function') {
-                console.trace('[rubric-edition] trace ' + step);
-            }
-        } catch (e) {
-            // Ignore debug logging errors.
-        }
-    },
-
     // Default rubrics (just one for the moment)
     rubrics: [
         {
@@ -150,7 +121,20 @@ var $exeDevice = {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.removeLegacyRenderedArtifacts();
         this.createForm();
+    },
+
+    removeLegacyRenderedArtifacts: function () {
+        if (!this.ideviceBody) return;
+
+        var container = $(this.ideviceBody).closest('.idevice_node.rubric');
+        if (container.length !== 1) return;
+
+        // Legacy/export wrappers can survive in the node root and overlap the edition form.
+        container
+            .children('.exe-rubrics-wrapper, .exe-rubrics-content')
+            .remove();
     },
 
     createForm: function () {
@@ -220,24 +204,15 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        this.debugLog('loadPreviousValues:start', {
-            hasPreviousData: !!this.idevicePreviousData,
-        });
         var originalHTML = this.idevicePreviousData;
         if (!originalHTML) return;
 
         // Parse previous HTML in-memory to avoid rendering legacy/export markup during edition.
         var div = $('<div></div>').html(originalHTML);
         var dataFromDataGame = this.getStoredRubricData(div);
-        this.debugLog('loadPreviousValues:dataFromDataGame', {
-            hasDataGame: !!dataFromDataGame,
-        });
         var data = dataFromDataGame;
         if (!dataFromDataGame) {
             data = this.tableToJSON(div);
-            this.debugLog('loadPreviousValues:fallbackTableToJSON', {
-                hasTableData: !!data,
-            });
         }
         if (!data) return;
 
@@ -316,7 +291,6 @@ var $exeDevice = {
             });
         }
 
-        this.debugTrace('loadPreviousValues:jsonToTable(edition)');
         this.jsonToTable(data, 'edition');
 
         // Load instructions and text-after into the editors defined in createForm()
@@ -336,9 +310,6 @@ var $exeDevice = {
 
     getStoredRubricData: function (container) {
         var node = $('.exe-rubrics-DataGame', container).first();
-        this.debugLog('getStoredRubricData:node', {
-            found: node.length === 1,
-        });
         if (node.length !== 1) return null;
 
         var encoded = node.text() || '';
@@ -351,15 +322,8 @@ var $exeDevice = {
             var parsed = JSON.parse(raw);
             parsed = this.normalizeStoredRubricData(parsed);
             if (!parsed) return null;
-            this.debugLog('getStoredRubricData:parsed', {
-                rows: parsed.descriptions.length,
-                cols: parsed.scores.length,
-            });
             return parsed;
         } catch (e) {
-            this.debugLog('getStoredRubricData:parseError', {
-                message: e && e.message ? e.message : 'unknown',
-            });
             return null;
         }
     },
@@ -1071,12 +1035,6 @@ var $exeDevice = {
                 .first();
         }
 
-        this.debugLog('tableToJSON:selectedTable', {
-            found: t.length === 1,
-            tableType: t.attr('data-rubric-table-type') || '',
-            tableId: t.attr('id') || '',
-        });
-
         if (t.length != 1) return;
         var data = {};
         data.title = $('caption', t).html();
@@ -1143,11 +1101,6 @@ var $exeDevice = {
 
     // Transform a JSON object into an HTML table
     getTableHTML: function (data) {
-        this.debugTrace('getTableHTML:createEditionTable', {
-            title: data && data.title ? data.title : '',
-            rows: Array.isArray(data && data.descriptions) ? data.descriptions.length : 0,
-            cols: Array.isArray(data && data.scores) ? data.scores.length : 0,
-        });
         var html = "<table class='exe-table exe-rubrics-edition-table' data-rubric-table-type='edition'>";
         html += '<caption>' + data.title + '</caption>';
         html += '<thead>';
@@ -1299,10 +1252,6 @@ var $exeDevice = {
     // If mode is "normal":  Instructions (optional) + serialized rubric data + the rubric footer (authorship, license...) + Custom strings
     // If mode is "edition": Instructions (fieldset) + A table + The max score input + The buttons to reset and add rows and columns + The "Rubric information" fieldset + The i18n tab
     jsonToTable: function (data, mode) {
-        this.debugLog('jsonToTable:start', {
-            mode: mode,
-            title: data && data.title ? data.title : '',
-        });
         // Create the iDevice content
         if (mode == 'normal') {
             var instrEditor = tinyMCE.get('eXeGameInstructions');
@@ -1323,10 +1272,6 @@ var $exeDevice = {
         }
 
         var table = $exeDevice.getTableHTML(data);
-        this.debugLog('jsonToTable:editionTableHtmlCreated', {
-            mode: mode,
-            tableLength: table.length,
-        });
 
         var html = '';
 
@@ -1416,19 +1361,7 @@ var $exeDevice = {
         var ed = $('#ri_TableEditor');
         this.editor = ed;
 
-        this.debugLog('jsonToTable:beforeInjectEditorHtml', {
-            mode: mode,
-            existingTables: ed.find('table').length,
-        });
-
         ed.html(html);
-
-        this.debugTrace('jsonToTable:afterInjectEditorHtml', {
-            mode: mode,
-            tablesNow: ed.find('table').length,
-            exportWrappersNow: ed.find('.exe-rubrics-wrapper').length,
-            exportTablesNow: ed.find('table[data-rubric-table-type="export"], table.exe-rubrics-export-table').length,
-        });
 
         // Init (or reinit) TinyMCE on the new editors inside #ri_TableEditor
         $exeTinyMCE.init('multiple-visible', '.exe-html-editor');
