@@ -29,6 +29,35 @@ var $exeDevice = {
         newWindow: c_('New Window'),
     },
 
+    debugLog: function (step, details) {
+        try {
+            if (typeof console === 'undefined') return;
+            if (typeof details === 'undefined') {
+                console.log('[rubric-edition] ' + step);
+                return;
+            }
+            console.log('[rubric-edition] ' + step, details);
+        } catch (e) {
+            // Ignore debug logging errors.
+        }
+    },
+
+    debugTrace: function (step, details) {
+        try {
+            if (typeof console === 'undefined') return;
+            if (typeof details === 'undefined') {
+                console.log('[rubric-edition] TRACE ' + step);
+            } else {
+                console.log('[rubric-edition] TRACE ' + step, details);
+            }
+            if (typeof console.trace === 'function') {
+                console.trace('[rubric-edition] trace ' + step);
+            }
+        } catch (e) {
+            // Ignore debug logging errors.
+        }
+    },
+
     // Default rubrics (just one for the moment)
     rubrics: [
         {
@@ -125,6 +154,15 @@ var $exeDevice = {
     },
 
     createForm: function () {
+        // Only one Rubric iDevice per page.
+        if ($('.iDevice_wrapper.rubricIdevice').length > 0) {
+            this.ideviceBody.innerHTML =
+                '<p>' +
+                _('You can only add one Rubric iDevice per page.') +
+                '</p>';
+            return;
+        }
+
         const html = `
             <div id="ri_IdeviceForm">
                 <p class="exe-block-info exe-block-dismissible">
@@ -176,21 +214,34 @@ var $exeDevice = {
         `;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
-        this.resetForm();
+        this.renderRubricTemplateControls();
         this.loadPreviousValues();
         this.initCSVTabControls();
     },
 
     loadPreviousValues: function () {
+        this.debugLog('loadPreviousValues:start', {
+            hasPreviousData: !!this.idevicePreviousData,
+        });
         var originalHTML = this.idevicePreviousData;
         if (!originalHTML) return;
 
-        $('#ri_PreviousContent').html(originalHTML);
-        var data = this.tableToJSON('ri_PreviousContent');
+        // Parse previous HTML in-memory to avoid rendering legacy/export markup during edition.
+        var div = $('<div></div>').html(originalHTML);
+        var dataFromDataGame = this.getStoredRubricData(div);
+        this.debugLog('loadPreviousValues:dataFromDataGame', {
+            hasDataGame: !!dataFromDataGame,
+        });
+        var data = dataFromDataGame;
+        if (!dataFromDataGame) {
+            data = this.tableToJSON(div);
+            this.debugLog('loadPreviousValues:fallbackTableToJSON', {
+                hasTableData: !!data,
+            });
+        }
         if (!data) return;
 
         var block, tmp;
-        var div = $('#ri_PreviousContent');
 
         // Rubric instructions
         block = $('.exe-rubrics-instructions', div);
@@ -265,6 +316,7 @@ var $exeDevice = {
             });
         }
 
+        this.debugTrace('loadPreviousValues:jsonToTable(edition)');
         this.jsonToTable(data, 'edition');
 
         // Load instructions and text-after into the editors defined in createForm()
@@ -280,6 +332,74 @@ var $exeDevice = {
         }
 
         this.originalData = data;
+    },
+
+    getStoredRubricData: function (container) {
+        var node = $('.exe-rubrics-DataGame', container).first();
+        this.debugLog('getStoredRubricData:node', {
+            found: node.length === 1,
+        });
+        if (node.length !== 1) return null;
+
+        var encoded = node.text() || '';
+        if (encoded === '') return null;
+
+        var raw = this.decodeEscapedHTML(encoded);
+        if (raw === '') raw = encoded;
+
+        try {
+            var parsed = JSON.parse(raw);
+            parsed = this.normalizeStoredRubricData(parsed);
+            if (!parsed) return null;
+            this.debugLog('getStoredRubricData:parsed', {
+                rows: parsed.descriptions.length,
+                cols: parsed.scores.length,
+            });
+            return parsed;
+        } catch (e) {
+            this.debugLog('getStoredRubricData:parseError', {
+                message: e && e.message ? e.message : 'unknown',
+            });
+            return null;
+        }
+    },
+
+    normalizeStoredRubricData: function (data) {
+        if (!data || typeof data !== 'object') return null;
+
+        var sourceTable = null;
+        if (data.table && typeof data.table === 'object') {
+            sourceTable = data.table;
+        } else {
+            sourceTable = data;
+        }
+
+        if (!Array.isArray(sourceTable.categories) || !Array.isArray(sourceTable.scores) || !Array.isArray(sourceTable.descriptions)) {
+            return null;
+        }
+
+        var normalized = $.extend(true, {}, data);
+        normalized.table = {
+            title: sourceTable.title || '',
+            categories: sourceTable.categories,
+            scores: sourceTable.scores,
+            descriptions: sourceTable.descriptions,
+        };
+        normalized.title = normalized.table.title;
+        normalized.categories = normalized.table.categories;
+        normalized.scores = normalized.table.scores;
+        normalized.descriptions = normalized.table.descriptions;
+
+        return normalized;
+    },
+
+    getIdeviceID: function () {
+        var ideviceid =
+            $('#ri_IdeviceForm')
+                .closest('div.idevice_node.rubric')
+                .attr('id') || '';
+
+        return ideviceid;
     },
 
     // Translate the default rubrics (CECED's won't be translated)
@@ -302,7 +422,7 @@ var $exeDevice = {
     },
 
     // Rebuild the top controls in #ri_RubricsEditor (called on init and after loading CEDEC rubrics)
-    resetForm: function () {
+    renderRubricTemplateControls: function () {
         // Get the available rubrics (a list)
         if (typeof $exeDevice.options == 'undefined')
             $exeDevice.options = $exeDevice.getRubricModels();
@@ -918,7 +1038,7 @@ var $exeDevice = {
 
         $exeDevice.options = html;
 
-        $exeDevice.resetForm();
+        $exeDevice.renderRubricTemplateControls();
 
         $('#ri_LoadCEDECRubrics').remove();
         $('#ri_NewTableOptions').show();
@@ -929,11 +1049,34 @@ var $exeDevice = {
         $('#ri_Cell-2').select();
     },
 
-    // Get the table of #id and return it as a JSON object
-    tableToJSON: function (id) {
+    // Get a table and return it as a JSON object.
+    // Accepts either a container ID (legacy) or a jQuery/DOM container.
+    tableToJSON: function (source) {
         var i,
             z,
-            t = $('#' + id + ' table');
+            t = $(),
+            container = $();
+
+        if (typeof source === 'string') {
+            container = $('#' + source);
+        } else {
+            container = $(source);
+        }
+
+        if (container.is('table')) {
+            t = container.first();
+        } else {
+            t = container
+                .find('table.exe-rubrics-edition-table, table[data-rubric-table-type="edition"], table.exe-table:not(.exe-rubrics-export-table):not([data-rubric-table-type="export"])')
+                .first();
+        }
+
+        this.debugLog('tableToJSON:selectedTable', {
+            found: t.length === 1,
+            tableType: t.attr('data-rubric-table-type') || '',
+            tableId: t.attr('id') || '',
+        });
+
         if (t.length != 1) return;
         var data = {};
         data.title = $('caption', t).html();
@@ -1000,7 +1143,12 @@ var $exeDevice = {
 
     // Transform a JSON object into an HTML table
     getTableHTML: function (data) {
-        var html = "<table class='exe-table'>";
+        this.debugTrace('getTableHTML:createEditionTable', {
+            title: data && data.title ? data.title : '',
+            rows: Array.isArray(data && data.descriptions) ? data.descriptions.length : 0,
+            cols: Array.isArray(data && data.scores) ? data.scores.length : 0,
+        });
+        var html = "<table class='exe-table exe-rubrics-edition-table' data-rubric-table-type='edition'>";
         html += '<caption>' + data.title + '</caption>';
         html += '<thead>';
         html += '<tr>';
@@ -1030,117 +1178,155 @@ var $exeDevice = {
         return html;
     },
 
+    collectRubricStringsFromForm: function () {
+        var strings = {};
+        for (var key in $exeDevice.ci18n) {
+            if (!Object.prototype.hasOwnProperty.call($exeDevice.ci18n, key)) continue;
+            var customField = $('#ci18n_' + key);
+            var translatedValue = $exeDevice.getTranslatedString(key);
+            var value = translatedValue;
+
+            if (customField.length === 1 && customField.val() !== '') {
+                value = customField.val();
+            }
+
+            strings[key] = value;
+        }
+        return strings;
+    },
+
+    buildRubricAuthorshipHTML: function (data) {
+        var author = data.author || '';
+        var authorURL = data['author-url'] || '';
+        var license = data.license || '';
+        var infoVisibility = data['visible-info'] ? '' : ' sr-av';
+
+        if (author === '' && authorURL === '' && license === '') return '';
+
+        var info = '<p class="exe-rubrics-authorship' + infoVisibility + '">';
+        if (author !== '') {
+            if (authorURL !== '') {
+                info +=
+                    '<a href="' +
+                    authorURL +
+                    '" target="_blank" class="author" rel="noopener">' +
+                    author +
+                    '</a>. ';
+            } else {
+                info += '<span class="author">' + author + '</span>. ';
+            }
+        }
+        info += '<span class="title"><em>' + (data.title || '') + '</em></span> ';
+        if (license !== '') {
+            info += '<span class="license">(';
+            if (license.indexOf('CC') === 0) {
+                info +=
+                    '<a href="https://creativecommons.org/licenses/" rel="license nofollow noopener" target="_blank" title="Creative Commons ' +
+                    license +
+                    '">' +
+                    license.replace('CC-', 'CC ') +
+                    '</a>';
+            } else if (license === 'gnu-gpl') {
+                info += 'GNU/GPL';
+            } else if (license === 'copyright') {
+                info += _('All Rights Reserved');
+            } else if (license === 'pd') {
+                info += _('Public Domain');
+            }
+            info += ')</span>';
+        }
+        info += '</p>';
+        return info;
+    },
+
+    buildRubricStringsHTML: function (strings) {
+        var lang = '<ul class="exe-rubrics-strings">';
+        var map = strings || {};
+        for (var key in map) {
+            if (!Object.prototype.hasOwnProperty.call(map, key)) continue;
+            lang += '<li class="' + key + '">' + map[key] + '</li>';
+        }
+        lang += '</ul>';
+        return lang;
+    },
+
+    buildRichTextDataHTML: function (instructions, textAfter) {
+        return (
+            '<div class="exe-rubrics-richtext-data sr-av">' +
+                '<span class="exe-rubrics-instructions-data">' +
+                this.encodeEscapedHTML(instructions || '') +
+                '</span>' +
+                '<span class="exe-rubrics-text-after-data">' +
+                this.encodeEscapedHTML(textAfter || '') +
+                '</span>' +
+            '</div>'
+        );
+    },
+
+    buildSerializedRubricHTML: function (data, instructions, textAfter, options) {
+        var cfg = options || {};
+        var wrapperClass = cfg.wrapperClass || '';
+        var includeWrapper = !!cfg.includeWrapper;
+        var instructionsClass = cfg.instructionsClass || 'exe-rubrics-instructions';
+
+        var instructionsHTML = (instructions || '').trim() !== ''
+            ? '<div class="' + instructionsClass + '">' + (instructions || '') + '</div>'
+            : '';
+        var textAfterHTML = (textAfter || '').trim() !== ''
+            ? '<div class="exe-rubrics-text-after">' + (textAfter || '') + '</div>'
+            : '';
+
+        var dataPayload = this.encodeEscapedHTML(JSON.stringify(data));
+        var dataBlock =
+            '<div class="rubric">' +
+                '<div class="exe-rubrics-DataGame js-hidden">' + dataPayload + '</div>' +
+                this.buildRubricAuthorshipHTML(data) +
+                this.buildRubricStringsHTML(data.i18n) +
+            '</div>';
+
+        var body =
+            instructionsHTML +
+            dataBlock +
+            textAfterHTML +
+            this.buildRichTextDataHTML(instructions, textAfter);
+
+        if (!includeWrapper) return body;
+
+        return '<div class="' + wrapperClass + '">' + body + '</div>';
+    },
+
     // Tranform the JSON data into:
-    // If mode is "normal":  Instructions (optional) + A table + the rubric footer (authorship, license...) + Custom strings
+    // If mode is "normal":  Instructions (optional) + serialized rubric data + the rubric footer (authorship, license...) + Custom strings
     // If mode is "edition": Instructions (fieldset) + A table + The max score input + The buttons to reset and add rows and columns + The "Rubric information" fieldset + The i18n tab
     jsonToTable: function (data, mode) {
-        var table = $exeDevice.getTableHTML(data);
-
+        this.debugLog('jsonToTable:start', {
+            mode: mode,
+            title: data && data.title ? data.title : '',
+        });
         // Create the iDevice content
         if (mode == 'normal') {
-            var intro = '';
             var instrEditor = tinyMCE.get('eXeGameInstructions');
             var instructions = instrEditor ? instrEditor.getContent() : ($('#eXeGameInstructions').val() || '');
-            if (instructions.trim() !== '')
-                intro = '<div class="exe-rubrics-instructions">' + instructions + '</div>';
-
-            var info = '';
-            var author = $('#ri_RubricAuthor').val();
-            var authorURL = $('#ri_RubricAuthorURL').val();
-            var license = $('#ri_RubricLicense').val();
-
-            var visibility = ' sr-av';
-            if ($('#ri_ShowRubricInfo').prop('checked')) visibility = '';
-            if (author != '' || authorURL != '' || license != '') {
-                var info =
-                    '<p class="exe-rubrics-authorship' + visibility + '">';
-                if (author != '') {
-                    if (authorURL != '')
-                        info +=
-                            '<a href="' +
-                            authorURL +
-                            '" target="_blank" class="author" rel="noopener">' +
-                            author +
-                            '</a>. ';
-                    else info += '<span class="author">' + author + '</span>. ';
-                }
-                info +=
-                    '<span class="title"><em>' + data.title + '</em></span> ';
-                if (license != '') {
-                    info += '<span class="license">(';
-                    if (license.indexOf('CC') == 0)
-                        info +=
-                            '<a href="https://creativecommons.org/licenses/" rel="license nofollow noopener" target="_blank" title="Creative Commons ' +
-                            license +
-                            '">' +
-                            license.replace('CC-', 'CC ') +
-                            '</a>';
-                    else if (license == 'gnu-gpl') info += 'GNU/GPL';
-                    else if (license == 'copyright')
-                        info += _('All Rights Reserved');
-                    else if (license == 'pd') info += _('Public Domain');
-                    info += ')</span>';
-                }
-                info += '</p>';
-            }
-
-            // Custom texts - get fresh translations or custom values from form
-            // English defaults (for comparison to detect customization)
-            var englishDefaults = {
-                rubric: 'Rubric',
-                activity: 'Activity',
-                name: 'Name',
-                date: 'Date',
-                score: 'Score',
-                notes: 'Notes',
-                download: 'Download',
-                msgDelete: 'Are you sure you want clear all form fields?',
-                reset: 'Reset',
-                print: 'Print',
-                apply: 'Apply',
-                newWindow: 'New Window',
-            };
-            var lang = '<ul class="exe-rubrics-strings">';
-            for (var i in $exeDevice.ci18n) {
-                var customField = $('#ci18n_' + i);
-                var translatedValue = $exeDevice.getTranslatedString(i);
-                var value;
-                if (customField.length === 1 && customField.val() !== '') {
-                    var fieldValue = customField.val();
-                    // Use custom value only if it differs from both English default AND current translation
-                    // This ensures we use translated values when user hasn't customized
-                    if (fieldValue !== englishDefaults[i] && fieldValue !== translatedValue) {
-                        value = fieldValue;
-                    } else {
-                        value = translatedValue;
-                    }
-                } else {
-                    value = translatedValue;
-                }
-                lang +=
-                    '<li class="' + i + '">' + value + '</li>';
-            }
-            lang += '</ul>';
+            data['visible-info'] = $('#ri_ShowRubricInfo').prop('checked');
+            data.author = $('#ri_RubricAuthor').val() || '';
+            data['author-url'] = $('#ri_RubricAuthorURL').val() || '';
+            data.license = $('#ri_RubricLicense').val() || '';
+            data.i18n = this.collectRubricStringsFromForm();
 
             var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
             var textAfter = textAfterEditor ? textAfterEditor.getContent() : ($('#eXeIdeviceTextAfter').val() || '');
-            var textAfterHTML = textAfter.trim() !== ''
-                ? '<div class="exe-rubrics-text-after">' + textAfter + '</div>'
-                : '';
 
-            // New format: keep escaped copies for backward/forward-compatible recovery
-            var richTextData =
-                '<div class="exe-rubrics-richtext-data sr-av">' +
-                '<span class="exe-rubrics-instructions-data">' +
-                $exeDevice.encodeEscapedHTML(instructions) +
-                '</span>' +
-                '<span class="exe-rubrics-text-after-data">' +
-                $exeDevice.encodeEscapedHTML(textAfter) +
-                '</span>' +
-                '</div>';
-
-            return intro + table + info + lang + textAfterHTML + richTextData;
+            return this.buildSerializedRubricHTML(data, instructions, textAfter, {
+                includeWrapper: false,
+                instructionsClass: 'exe-rubrics-instructions',
+            });
         }
+
+        var table = $exeDevice.getTableHTML(data);
+        this.debugLog('jsonToTable:editionTableHtmlCreated', {
+            mode: mode,
+            tableLength: table.length,
+        });
 
         var html = '';
 
@@ -1230,7 +1416,19 @@ var $exeDevice = {
         var ed = $('#ri_TableEditor');
         this.editor = ed;
 
+        this.debugLog('jsonToTable:beforeInjectEditorHtml', {
+            mode: mode,
+            existingTables: ed.find('table').length,
+        });
+
         ed.html(html);
+
+        this.debugTrace('jsonToTable:afterInjectEditorHtml', {
+            mode: mode,
+            tablesNow: ed.find('table').length,
+            exportWrappersNow: ed.find('.exe-rubrics-wrapper').length,
+            exportTablesNow: ed.find('table[data-rubric-table-type="export"], table.exe-rubrics-export-table').length,
+        });
 
         // Init (or reinit) TinyMCE on the new editors inside #ri_TableEditor
         $exeTinyMCE.init('multiple-visible', '.exe-html-editor');
@@ -1421,10 +1619,27 @@ var $exeDevice = {
         });
         if (descriptionErrors) return false;
 
-        // Make the table normal
-        this.makeNormal();
+        var tableData = this.tableEditorToJSON();
+        if (!tableData) {
+            this.alert(_('The rubric is empty...'));
+            return false;
+        }
 
-        var data = this.tableToJSON('ri_TableEditor');
+        var data = {
+            typeGame: 'Rubric',
+            version: 2,
+            id:
+                this.getIdeviceID() ||
+                (this.originalData && this.originalData.id
+                    ? this.originalData.id
+                    : ''),
+            table: tableData,
+            // Keep legacy flat fields for backward compatibility.
+            title: tableData.title,
+            categories: tableData.categories,
+            scores: tableData.scores,
+            descriptions: tableData.descriptions,
+        };
 
         // Get the rubric instructions and add them to the data
         var instrEditor = tinyMCE.get('eXeGameInstructions');
@@ -1440,11 +1655,18 @@ var $exeDevice = {
         var license = $('#ri_RubricLicense').val();
         if (license != '') data.license = license;
 
-        // Note: Custom strings (i18n) are now handled directly in jsonToTable('normal')
-        // by reading from the form fields at save time
+        data.i18n = this.collectRubricStringsFromForm();
 
-        // Return the HTML to save
-        return this.jsonToTable(data, 'normal');
+        var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
+        var textAfter = textAfterEditor
+            ? textAfterEditor.getContent()
+            : ($('#eXeIdeviceTextAfter').val() || '');
+
+        return this.buildSerializedRubricHTML(data, instructions, textAfter, {
+            includeWrapper: true,
+            wrapperClass: 'rubric-IDevice',
+            instructionsClass: 'exe-rubrics-instructions gameQP-instructions',
+        });
     },
 
     // Make the table editable

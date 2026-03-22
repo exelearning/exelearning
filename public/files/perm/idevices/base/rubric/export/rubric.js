@@ -11,6 +11,8 @@ var $rubric = {
     // Default strings
     ci18n: {
         rubric: 'Rubric',
+        error: 'Error',
+        onlyOne: 'Only one rubric per page.',
         activity: 'Activity',
         name: 'Name',
         fullName: 'Name and surname',
@@ -26,105 +28,295 @@ var $rubric = {
         newWindow: 'New Window',
     },
     idevicePath: '',
+    options: [],
+    activities: $(),
+    initialized: false,
+
+    debugLog: function (step, details) {
+        try {
+            if (typeof console === 'undefined') return;
+            if (typeof details === 'undefined') {
+                console.log('[rubric-export] ' + step);
+                return;
+            }
+            console.log('[rubric-export] ' + step, details);
+        } catch (e) {
+            // Ignore debug logging errors.
+        }
+    },
+
+    debugTrace: function (step, details) {
+        try {
+            if (typeof console === 'undefined') return;
+            if (typeof details === 'undefined') {
+                console.log('[rubric-export] TRACE ' + step);
+            } else {
+                console.log('[rubric-export] TRACE ' + step, details);
+            }
+            if (typeof console.trace === 'function') {
+                console.trace('[rubric-export] trace ' + step);
+            }
+        } catch (e) {
+            // Ignore debug logging errors.
+        }
+    },
 
     init: function () {
-        $('.idevice_node.rubric table, .rubric table, .exe-rubrics-content table').each(function (i) {
-            var table = $(this);
-            if (table.length != 1) return;
-            if (table.attr('data-rubric-enhanced') === '1') return;
+        if (this.initialized) {
+            this.debugLog('init:alreadyInitialized');
+            return;
+        }
+        this.initialized = true;
+        this.debugLog('init:start');
+        this.loadGame();
+        this.debugLog('init:end');
+    },
 
-            var scope = table.closest('.idevice_node.rubric, .rubric, .exe-rubrics-content');
-            var ul = scope.find('ul.exe-rubrics-strings').first();
-            if (ul.length == 1) {
-                // Update $rubric.ci18n to use the custom strings
-                $('li', ul).each(function () {
-                    if ($rubric.ci18n[this.className]) {
-                        $rubric.ci18n[this.className] = $(this).text();
-                    }
-                });
-            }
+    loadGame: function () {
+        this.debugLog('loadGame:start');
 
-            var id = scope.length === 1 ? scope.get(0).getAttribute('id') : '';
-
-            $rubric.prepareInteractiveTable(table, id || 'rubric-' + i);
-            table.attr('data-rubric-enhanced', '1');
+        this.options = [];
+        this.activities = this.getActivitiesFromDataGame();
+        this.debugLog('loadGame:activities', {
+            count: this.activities.length,
         });
 
-        // Print version
-        if ($('body').hasClass('exe-rubrics')) {
-            var printTable = $('table').first();
-            if (printTable.length === 1) {
-                $rubric.prepareInteractiveTable(printTable, 'print');
+        if (this.activities.length === 0) return;
+        if (this.activities.length > 1) {
+            var msg =
+                (this.ci18n.error || 'Error') +
+                ' - ' +
+                (this.ci18n.onlyOne || 'Only one rubric per page.');
+            if (
+                typeof eXe !== 'undefined' &&
+                eXe.app &&
+                typeof eXe.app.alert === 'function'
+            ) {
+                eXe.app.alert(msg);
+            } else {
+                alert(msg);
             }
+            return false;
         }
 
-        // Clear form button
-        $('#clear').off('click.rubric').on('click.rubric', function () {
-            $("input[type='checkbox']").prop('checked', false);
-            $('#score,#notes').val('');
-            var dateField = $('#date');
-            if (dateField.length === 1) {
-                dateField.val($rubric.getCurrentDate());
-            }
-            $('#activity').val('');
-            $('#name').val('').focus();
-        });
-
-        // Print button
-        $('#print').off('click.rubric').on('click.rubric', function () {
-            try {
-                window.print();
-            } catch (e) {
-                //
-            }
-        });
-    },
-
-    ensureDynamicInit: function () {
-        if (this._dynamicInitBound) return;
-        this._dynamicInitBound = true;
-
         var self = this;
-        var safeInit = function () {
-            try {
-                self.init();
-            } catch (e) {
-                // Ignore init errors in dynamic preview updates.
-            }
-        };
+        this.activities.each(function (i) {
+            var scope = $(this);
+            self.debugLog('loadGame:activityScope', {
+                index: i,
+                scopeId: scope.attr('id') || '',
+                mode: scope.attr('mode') || '',
+            });
+            var data = self.getGameData(scope, i);
+            if (!data) return;
 
-        safeInit();
-        setTimeout(safeInit, 60);
-        setTimeout(safeInit, 350);
+            self.options.push(data);
 
-        if (!window.MutationObserver || !document.body) return;
-
-        this._dynamicObserver = new MutationObserver(function (mutations) {
-            for (var i = 0; i < mutations.length; i++) {
-                if (mutations[i].addedNodes && mutations[i].addedNodes.length > 0) {
-                    safeInit();
-                    return;
-                }
-            }
-        });
-
-        this._dynamicObserver.observe(document.body, {
-            childList: true,
-            subtree: true,
+            self.createInterface(data);
+            self.prepareInteractiveTable(data.table, data.scopeId, data.strings);
+            self.initializeInteractiveState(data.table);
+            self.addEvents(data.table, data.strings);
         });
     },
 
-    prepareInteractiveTable: function (table, tableId) {
+    getActivitiesFromDataGame: function () {
+        var scopes = [];
+        var seen = [];
+
+        $('.exe-rubrics-DataGame').each(function () {
+            var node = $(this);
+            var scope = node.closest('.idevice_node.rubric');
+
+            if (scope.length !== 1) {
+                scope = node.closest('.rubric');
+            }
+
+            if (scope.length !== 1) {
+                scope = node.parent();
+            }
+
+            if (scope.length !== 1) return;
+
+            var domNode = scope.get(0);
+            if (seen.indexOf(domNode) !== -1) return;
+
+            seen.push(domNode);
+            scopes.push(domNode);
+        });
+
+        this.debugLog('getActivitiesFromDataGame:result', {
+            count: scopes.length,
+        });
+
+        return $(scopes);
+    },
+
+    getGameData: function (scope, instance) {
+        scope = $(scope);
+        if (scope.length !== 1) return null;
+
+        var stored = this.loadDataGame(scope);
+        this.debugLog('getGameData:storedData', {
+            scopeId: scope.attr('id') || '',
+            hasData: !!stored,
+        });
+        if (!stored) return null;
+
+        // Source of truth in export: serialized data payload, never existing DOM tables.
+        var table = this.createTableFromData(stored);
+        this.debugTrace('getGameData:createTableFromData', {
+            scopeId: scope.attr('id') || '',
+            rows: Array.isArray(stored.descriptions) ? stored.descriptions.length : 0,
+            cols: Array.isArray(stored.scores) ? stored.scores.length : 0,
+        });
+
+        // Avoid duplicated legacy tables if present in old saved markup.
+        scope
+            .find('table.exe-table')
+            .remove();
+        this.debugLog('getGameData:tablePreparedForInsertion', {
+            scopeId: scope.attr('id') || '',
+            tablesInScopeAfterCleanup: scope.find('table').length,
+        });
+
+        var id = scope.length === 1 ? scope.get(0).getAttribute('id') : '';
+        var instanceId = typeof instance === 'number' ? instance : 0;
+
+        return {
+            table: table,
+            scope: scope,
+            scopeId: id || 'rubric-' + instanceId,
+            strings: this.getStringsFromData(stored),
+            raw: stored,
+        };
+    },
+
+    loadDataGame: function (scope) {
+        var node = $(scope).find('.exe-rubrics-DataGame').first();
+        if (node.length !== 1) return null;
+
+        var encoded = node.text() || '';
+        if (encoded === '') return null;
+
+        var raw = encoded;
+        try {
+            raw = unescape(encoded);
+        } catch (e) {
+            raw = encoded;
+        }
+
+        try {
+            var parsed = JSON.parse(raw);
+            return this.normalizeDataGame(parsed);
+        } catch (e) {
+            return null;
+        }
+    },
+
+    normalizeDataGame: function (data) {
+        if (!data || typeof data !== 'object') return null;
+
+        var sourceTable = null;
+        if (data.table && typeof data.table === 'object') {
+            sourceTable = data.table;
+        } else {
+            sourceTable = data;
+        }
+
+        if (!Array.isArray(sourceTable.categories) || !Array.isArray(sourceTable.scores) || !Array.isArray(sourceTable.descriptions)) {
+            return null;
+        }
+
+        var normalized = $.extend(true, {}, data);
+        normalized.table = {
+            title: sourceTable.title || '',
+            categories: sourceTable.categories,
+            scores: sourceTable.scores,
+            descriptions: sourceTable.descriptions,
+        };
+        normalized.title = normalized.table.title;
+        normalized.categories = normalized.table.categories;
+        normalized.scores = normalized.table.scores;
+        normalized.descriptions = normalized.table.descriptions;
+
+        return normalized;
+    },
+
+    // Backward-compatible alias
+    getStoredRubricData: function (scope) {
+        return this.loadDataGame(scope);
+    },
+
+    createTableFromData: function (data) {
+        this.debugLog('createTableFromData:start', {
+            title: data && data.title ? data.title : '',
+            categories: Array.isArray(data && data.categories) ? data.categories.length : 0,
+            scores: Array.isArray(data && data.scores) ? data.scores.length : 0,
+        });
+        var html = '<table class="exe-table exe-rubrics-export-table" data-rubric-table-type="export">';
+        html += '<caption>' + (data.title || '') + '</caption>';
+        html += '<thead><tr><th>&nbsp;</th>';
+
+        for (var i = 0; i < data.scores.length; i++) {
+            html += '<th>' + (data.scores[i] || '') + '</th>';
+        }
+
+        html += '</tr></thead><tbody>';
+
+        for (var r = 0; r < data.categories.length; r++) {
+            var row = data.descriptions[r] || [];
+            html += '<tr>';
+            html += '<th>' + (data.categories[r] || '') + '</th>';
+
+            for (var c = 0; c < data.scores.length; c++) {
+                var cell = row[c] || { text: '', weight: '' };
+                html += '<td>' + (cell.text || '');
+                if (cell.weight !== '') {
+                    html += ' <span>(' + cell.weight + ')</span>';
+                }
+                html += '</td>';
+            }
+
+            html += '</tr>';
+        }
+
+        html += '</tbody></table>';
+        this.debugTrace('createTableFromData:end');
+        return $(html);
+    },
+
+    getStringsFromData: function (data) {
+        var strings = $.extend({}, this.ci18n);
+        if (!data || typeof data !== 'object' || !data.i18n || typeof data.i18n !== 'object') return strings;
+
+        Object.keys(data.i18n).forEach(function (key) {
+            if (Object.prototype.hasOwnProperty.call(strings, key) && typeof data.i18n[key] === 'string') {
+                strings[key] = data.i18n[key];
+            }
+        });
+
+        return strings;
+    },
+
+
+    prepareInteractiveTable: function (table, tableId, strings) {
         var $table = $(table);
+        strings = strings || this.ci18n;
+        this.debugLog('prepareInteractiveTable:start', {
+            tableId: tableId || '',
+            hasTable: $table.length === 1,
+        });
         if ($table.length !== 1) return;
+
+        $table
+            .addClass('exe-rubrics-export-table')
+            .attr('data-rubric-table-type', 'export');
 
         // Remove rubric title line above the table in export view.
         $table.find('caption').remove();
 
         var scopeId = tableId || 'rubric';
         $table.attr('data-rubric-scope', scopeId);
-
-        this.ensureHeaderAndFooter($table, scopeId);
 
         $table.find('tbody tr').each(function (rowIndex) {
             $(this)
@@ -166,28 +358,24 @@ var $rubric = {
                 });
         });
 
-        $table.find('tbody input[type="checkbox"]').off('change.rubric').on('change.rubric', function () {
-            if (this.checked) {
-                $("input[name='" + this.name + "']").prop('checked', false);
-                $(this).prop('checked', true);
-            }
-
-            var result = $rubric.calculateTableScore($table);
-            $rubric.renderTableScore($table, result);
-            $rubric.saveRubricData($table);
-        });
+            $rubric.debugLog('prepareInteractiveTable:checkboxesCreated', {
+                tableId: tableId || '',
+                checkboxCount: $table.find('tbody input[type="checkbox"]').length,
+            });
 
         var dataScope = this.getDataScope($table);
-        this.getFields(dataScope)
-            .off('input.rubric change.rubric')
-            .on('input.rubric change.rubric', function () {
-                $rubric.saveRubricData($table);
-            });
 
         // Legacy cleanup: remove old manual score controls and message area.
         $table.next('.exe-rubrics-calc, #exe-rubrics-calc').remove();
 
-        this.ensureActionButtons($table);
+        this.ensureActionButtons($table, strings);
+    },
+
+    initializeInteractiveState: function (table) {
+        var $table = $(table);
+        if ($table.length !== 1) return;
+        var dataScope = this.getDataScope($table);
+
         this.restoreRubricData($table);
 
         var scoreField = this.getField(dataScope, 'score');
@@ -200,6 +388,129 @@ var $rubric = {
             dateField.val(this.getCurrentDate());
             this.saveRubricData($table);
         }
+    },
+
+    addEvents: function (table, strings) {
+        this.addCheckboxEvents(table);
+        this.addFieldEvents(table);
+        this.addActionEvents(table, strings);
+    },
+
+    addCheckboxEvents: function (table) {
+        var $table = $(table);
+        $table.find('tbody input[type="checkbox"]').off('change.rubric').on('change.rubric', function () {
+            if (this.checked) {
+                $("input[name='" + this.name + "']").prop('checked', false);
+                $(this).prop('checked', true);
+            }
+
+            var result = $rubric.calculateTableScore($table);
+            $rubric.renderTableScore($table, result);
+            $rubric.saveRubricData($table);
+        });
+    },
+
+    addFieldEvents: function (table) {
+        var $table = $(table);
+        var dataScope = this.getDataScope($table);
+        this.getFields(dataScope)
+            .off('input.rubric change.rubric')
+            .on('input.rubric change.rubric', function () {
+                $rubric.saveRubricData($table);
+            });
+    },
+
+    addActionEvents: function (table, strings) {
+        var $table = $(table);
+        var $actions = this.getDataScope($table).find('.exe-rubrics-actions').first();
+        if ($actions.length !== 1) return;
+        strings = strings || this.ci18n;
+
+        $actions.find('.exe-rubrics-reset').off('click.rubric').on('click.rubric', function () {
+            if (confirm(strings.msgDelete || 'Are you sure you want clear all form fields?')) {
+                $rubric.resetRubricData($table);
+            }
+        });
+
+        $actions.find('.exe-rubrics-download').off('click.rubric').on('click.rubric', function () {
+            $rubric.saveAsPdf($table);
+        });
+    },
+
+    createInterface: function (data) {
+        var root = $(data.scope);
+        var $table = $(data.table);
+        var strings = data.strings || this.ci18n;
+        var safeScopeId = String(data.scopeId || 'rubric').replace(/[^a-zA-Z0-9_-]/g, '-');
+
+        this.debugLog('createInterface:start', {
+            scopeId: data.scopeId || '',
+            rootFound: root.length === 1,
+        });
+
+        if (root.length !== 1) return $();
+
+        var activityId = 'rubric-activity-' + safeScopeId;
+        var nameId = 'rubric-name-' + safeScopeId;
+        var scoreId = 'rubric-score-' + safeScopeId;
+        var dateId = 'rubric-date-' + safeScopeId;
+        var notesId = 'rubric-notes-' + safeScopeId;
+
+        var html = `
+            <div class="exe-rubrics-wrapper" data-rubric-interface="${safeScopeId}">
+                <div class="exe-rubrics-content" data-rubric-content="${safeScopeId}">
+                    <div id="exe-rubrics-header">
+                        <p class="exe-rubrics-header-line">
+                            <label for="${activityId}">${strings.activity}:</label>
+                            <input type="text" id="${activityId}" class="form-control form-control-sm" data-rubric-field="activity" />
+                            <label for="${nameId}">${strings.name}:</label>
+                            <input type="text" id="${nameId}" class="form-control form-control-sm" data-rubric-field="name" />
+                            <label for="${scoreId}">${strings.score}:</label>
+                            <input type="text" id="${scoreId}" class="form-control form-control-sm" data-rubric-field="score" />
+                            <label for="${dateId}">${strings.date}:</label>
+                            <input type="text" id="${dateId}" class="form-control form-control-sm" data-rubric-field="date" value="${this.getCurrentDate()}" />
+                        </p>
+                    </div>
+                    <div class="exe-rubrics-table-slot" data-rubric-table-slot="${safeScopeId}"></div>
+                    <p class="exe-rubrics-actions">
+                        <button type="button" class="exe-rubrics-download btn btn-primary btn-sm">${strings.download}</button>
+                        <button type="button" class="exe-rubrics-reset btn btn-primary btn-sm">${strings.reset}</button>
+                    </p>
+                    <div id="exe-rubrics-footer">
+                        <p>
+                            <label for="${notesId}">${strings.notes}:</label>
+                            <textarea id="${notesId}" class="form-control form-control-sm" data-rubric-field="notes" cols="32" rows="1"></textarea>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        var $interface = $(html);
+        if ($table.length === 1) {
+            $interface.find('.exe-rubrics-table-slot').first().append($table);
+            this.debugTrace('createInterface:slot.append(table)', {
+                scopeId: safeScopeId,
+            });
+        }
+
+        root.find('.exe-rubrics-wrapper').remove();
+        root.find('.exe-rubrics-content').remove();
+
+        var dataNode = root.find('.exe-rubrics-DataGame').first();
+        if (dataNode.length === 1) {
+            dataNode.before($interface).remove();
+            this.debugTrace('createInterface:dataNode.before(interface).remove()', {
+                scopeId: safeScopeId,
+            });
+        } else {
+            root.append($interface);
+            this.debugTrace('createInterface:root.append(interface)', {
+                scopeId: safeScopeId,
+            });
+        }
+
+        return $interface;
     },
 
     getDataScope: function (table) {
@@ -225,47 +536,6 @@ var $rubric = {
         var byData = $scope.find('[data-rubric-field="activity"], [data-rubric-field="name"], [data-rubric-field="date"], [data-rubric-field="score"], [data-rubric-field="notes"]');
         if (byData.length > 0) return byData;
         return $scope.find('#activity, #name, #date, #score, #notes');
-    },
-
-    ensureHeaderAndFooter: function (table, scopeId) {
-        var $table = $(table);
-        var root = this.getDataScope($table);
-        if (root.length !== 1) return;
-
-        var safeScopeId = String(scopeId || 'rubric').replace(/[^a-zA-Z0-9_-]/g, '-');
-
-        if (root.find('#exe-rubrics-header').length === 0) {
-            var activityId = 'rubric-activity-' + safeScopeId;
-            var nameId = 'rubric-name-' + safeScopeId;
-            var scoreId = 'rubric-score-' + safeScopeId;
-            var dateId = 'rubric-date-' + safeScopeId;
-            var header =
-                '<div id="exe-rubrics-header">' +
-                    '<p class="exe-rubrics-header-line">' +
-                        '<label for="' + activityId + '">' + this.ci18n.activity + ':</label> ' +
-                        '<input type="text" id="' + activityId + '" class="form-control form-control-sm" data-rubric-field="activity" />' +
-                        '<label for="' + nameId + '">' + this.ci18n.name + ':</label> ' +
-                        '<input type="text" id="' + nameId + '" class="form-control form-control-sm" data-rubric-field="name" />' +
-                        '<label for="' + scoreId + '">' + this.ci18n.score + ':</label> ' +
-                        '<input type="text" id="' + scoreId + '" class="form-control form-control-sm" data-rubric-field="score" />' +
-                        '<label for="' + dateId + '">' + this.ci18n.date + ':</label> ' +
-                        '<input type="text" id="' + dateId + '" class="form-control form-control-sm" data-rubric-field="date" value="' + this.getCurrentDate() + '" />' +
-                    '</p>' +
-                '</div>';
-            $table.before(header);
-        }
-
-        if (root.find('#exe-rubrics-footer').length === 0) {
-            var notesId = 'rubric-notes-' + safeScopeId;
-            var footer =
-                '<div id="exe-rubrics-footer">' +
-                    '<p>' +
-                        '<label for="' + notesId + '">' + this.ci18n.notes + ':</label> ' +
-                        '<textarea id="' + notesId + '" class="form-control form-control-sm" data-rubric-field="notes" cols="32" rows="1"></textarea>' +
-                    '</p>' +
-                '</div>';
-            $table.after(footer);
-        }
     },
 
     getStorageKey: function (table) {
@@ -361,9 +631,10 @@ var $rubric = {
         this.saveRubricData($table);
     },
 
-    ensureActionButtons: function (table) {
+    ensureActionButtons: function (table, strings) {
         var $table = $(table);
-        var $actions = $table.next('.exe-rubrics-actions');
+        strings = strings || this.ci18n;
+        var $actions = this.getDataScope($table).find('.exe-rubrics-actions').first();
         if ($actions.length === 0) {
             $actions = $(
                 '<p class="exe-rubrics-actions">' +
@@ -371,23 +642,13 @@ var $rubric = {
                     '<button type="button" class="exe-rubrics-reset btn btn-primary btn-sm"></button>' +
                 '</p>'
             );
-            $table.after($actions);
+            this.getDataScope($table).append($actions);
         }
 
         $actions.find('.exe-rubrics-download, .exe-rubrics-reset').addClass('btn btn-primary btn-sm');
 
-        $actions.find('.exe-rubrics-download').text(this.ci18n.download || 'Download');
-        $actions.find('.exe-rubrics-reset').text(this.ci18n.reset || 'Reset');
-
-        $actions.find('.exe-rubrics-reset').off('click.rubric').on('click.rubric', function () {
-            if (confirm($rubric.ci18n.msgDelete || 'Are you sure you want clear all form fields?')) {
-                $rubric.resetRubricData($table);
-            }
-        });
-
-        $actions.find('.exe-rubrics-download').off('click.rubric').on('click.rubric', function () {
-            $rubric.saveAsPdf($table);
-        });
+        $actions.find('.exe-rubrics-download').text(strings.download || 'Download');
+        $actions.find('.exe-rubrics-reset').text(strings.reset || 'Reset');
     },
 
     saveAsPdf: function (table) {
@@ -451,11 +712,7 @@ var $rubric = {
                     useCORS: true,
                     logging: false,
                     onclone: function (clonedDoc) {
-                        // In /viewer context html2canvas may clone into a document
-                        // that cannot resolve SW-only relative CSS paths.
-                        // Remove external stylesheets to avoid 404 noise and rely
-                        // on inline computed styles copied into the capture target.
-                        var links = clonedDoc.querySelectorAll('link[rel="stylesheet"]');
+                         var links = clonedDoc.querySelectorAll('link[rel="stylesheet"]');
                         for (var i = 0; i < links.length; i++) {
                             links[i].parentNode && links[i].parentNode.removeChild(links[i]);
                         }
@@ -508,9 +765,6 @@ var $rubric = {
         if (footer.length !== 1) {
             footer = scope.find('#exe-rubrics-footer').first();
         }
-
-        // Capturamos siempre solo el bloque visible de la rúbrica
-        // para evitar metadatos/elementos auxiliares en previsualización eXe.
         var temp = document.createElement('div');
         temp.className = 'exe-rubrics-content exe-rubrics-capture-shell rubric';
         temp.setAttribute('data-rubric-capture-temp', '1');
@@ -548,8 +802,6 @@ var $rubric = {
 
         var computed = window.getComputedStyle(sourceNode);
         if (computed) {
-            // Copy all computed properties to make capture independent from
-            // external stylesheet loading inside html2canvas clone documents.
             for (var i = 0; i < computed.length; i++) {
                 var prop = computed[i];
                 var value = computed.getPropertyValue(prop);
@@ -713,7 +965,6 @@ var $rubric = {
         var $table = $(table);
         var activityField = $();
 
-        // Prefer the header logically associated with this table.
         var siblingHeader = $table.prevAll('#exe-rubrics-header').first();
         if (siblingHeader.length === 1) {
             activityField = siblingHeader.find('[data-rubric-field="activity"], #activity').first();
@@ -776,110 +1027,9 @@ var $rubric = {
         return this.getColumnScore(table, colIndex);
     },
 
-    printRubric: function (tit, html, rubricId) {
-        if (document.getElementById('workarea')) {
-            eXe.app.alert(_('Please export the content to apply the rubric.'));
-            return false;
-        }
-        if (window.location.host == 'localhost:41309') {
-            return false; // To review (Electron)
-        }
-        var rubricStyle, rubricScript, jqueryScript;
-        var isBlob = window.location.protocol === 'blob:';
-        if (isBlob) {
-            // Preview mode: use absolute paths to server assets
-            var origin = window.location.origin.replace('blob:', '');
-            rubricStyle = origin + '/files/perm/idevices/base/rubric/export/rubric.css';
-            rubricScript = origin + '/files/perm/idevices/base/rubric/export/rubric.js';
-            jqueryScript = origin + '/libs/jquery/jquery.min.js';
-        } else {
-            // Export mode: use relative paths
-            var isIndex = $('html').attr('id') == 'exe-index';
-            var basePath = 'idevices/rubric/';
-            if (!isIndex) basePath = '../' + basePath;
-            rubricStyle = basePath + 'rubric.css';
-            rubricScript = basePath + 'rubric.js';
-            jqueryScript = 'libs/jquery/jquery.min.js';
-            if (!isIndex) jqueryScript = '../' + jqueryScript;
-        }
-        // Strings
-        var i18n = this.ci18n;
-        var a = window.open(tit);
-        a.document.open('text/html');
-        a.document.write(
-            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">'
-        );
-        a.document.write(
-            '<html xmlns="http://www.w3.org/1999/xhtml" class="exe-rubrics">'
-        );
-        a.document.write('<head>');
-        a.document.write('<title>' + tit + '</title>');
-        a.document.write(
-            '<link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />'
-        );
-        a.document.write(
-            '<link href="' +
-                rubricStyle +
-                '" rel="stylesheet" type="text/css" />'
-        );
-        a.document.write(
-            '<script type="text/javascript" src="' +
-                jqueryScript +
-                '"></script>'
-        );
-        a.document.write(
-            '<script type="text/javascript" src="' +
-                rubricScript +
-                '"></script>'
-        );
-        a.document.write('</head>');
-        a.document.write('<body class="exe-rubrics">');
-        a.document.write('<div class="exe-rubrics-wrapper">');
-        a.document.write('<div class="exe-rubrics-content">');
-        a.document.write('<div id="exe-rubrics-header">');
-        a.document.write('<p>');
-        a.document.write(
-            '<label for="activity">' +
-            i18n.activity +
-            ':</label> <input type="text" id="activity" class="form-control form-control-sm" />'
-        );
-        a.document.write(
-            '<label for="name">' +
-            i18n.name +
-                ':</label> <input type="text" id="name" class="form-control form-control-sm" />'
-        );
-        a.document.write(
-            '<label for="score">' +
-                i18n.score +
-                ':</label> <input type="text" id="score" class="form-control form-control-sm" />'
-        );
-        a.document.write(
-            '<label for="date">' +
-                i18n.date +
-                ':</label> <input type="text" id="date" class="form-control form-control-sm" value="' +
-                this.getCurrentDate() +
-                '" />'
-        );
-        a.document.write('</p>');
-        a.document.write('</div>');
-        a.document.write('<table class="exe-table" data-rubric-id="' + (rubricId || 'print') + '">' + html + '</table>');
-        a.document.write('<div id="exe-rubrics-footer">');
-        a.document.write('<p>');
-        a.document.write(
-            '<label for="notes">' +
-                i18n.notes +
-                ':</label> <textarea id="notes" class="form-control form-control-sm" cols="32" rows="1"></textarea>'
-        );
-        a.document.write('</p>');
-        a.document.write('</div>');
-        a.document.write('</div>');
-        a.document.write('</div>');
-        a.document.write('</body>');
-        a.document.write('</html>');
-        a.document.close();
-    },
+
 };
 
 $(function () {
-    $rubric.ensureDynamicInit();
+    $rubric.init();
 });
