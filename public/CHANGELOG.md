@@ -17,16 +17,15 @@
 
 ### Fixed
 
-- Base style: iDevices with titles had no background color in edit mode
-- Application crash on Chrome versions older than 105
 - Box titles were always displayed in dark color instead of adapting to the selected style
 - Cross-page and same-page anchor links
 - ABC music notation viewer presentation issues
 - TinyMCE link plugin: unnecessary `id` attribute added to all links
 - TinyMCE link plugin: "Include File Information" option did not retrieve file size and extension
-- Base style: document height in iframe increased unexpectedly
 - Table center alignment not applied in the "Nova" style
 - prettyPhoto (`a[rel^='lightbox']`) issues with iframe, audio, and video
+- Base style: document height in iframe increased unexpectedly
+- Base style: iDevices with titles had no background color in edit mode
 - Missing Accessibility Toolbar in projects without iDevices
 - Incorrect icon colors in the Utilities menu
 - License strings not translated in properties and export
@@ -48,6 +47,7 @@
 - Fixed `.elpx` download issues in SCORM and IMS exports
 - `make clean-local` command EBUSY error
 - `make run-app` workflow: installed missing Electron libraries required at runtime
+- Application crash on Chrome versions older than 105
 - Excluded jsdom and its full dependency tree from the bundle
 - Fixed Homebrew cask publish job
 - CI/CD pipelines for forks: skip signing and external publishing when secrets are unavailable
