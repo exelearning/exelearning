@@ -312,4 +312,30 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect(strings.activity).toBe('Actividad personalizada');
     expect(strings.name).toBe('Nombre personalizado');
   });
+
+  it('collectRubricStringsFromForm reads all ci18n fields from active form scope', () => {
+    document.body.innerHTML = `
+      <div class="idevice_node rubric" id="rubric_node_2">
+        <div id="rubric_body_2">
+          <div id="ri_IdeviceForm">
+            <input id="ci18n_activity" value="Act" />
+            <input id="ci18n_name" value="Nom" />
+            <input id="ci18n_date" value="Fec" />
+            <input id="ci18n_score" value="Punt" />
+            <input id="ci18n_notes" value="Notas" />
+          </div>
+        </div>
+      </div>
+    `;
+
+    $exeDevice.ideviceBody = document.getElementById('rubric_body_2');
+
+    const strings = $exeDevice.collectRubricStringsFromForm();
+
+    expect(strings.activity).toBe('Act');
+    expect(strings.name).toBe('Nom');
+    expect(strings.date).toBe('Fec');
+    expect(strings.score).toBe('Punt');
+    expect(strings.notes).toBe('Notas');
+  });
 });

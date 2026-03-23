@@ -1133,6 +1133,25 @@ var $exeDevice = {
 
     collectRubricStringsFromForm: function () {
         var formScope = $(this.ideviceBody).find('#ri_IdeviceForm').first();
+        var scopedFields = $();
+        if (formScope.length === 1) {
+            scopedFields = formScope.find('input[id^="ci18n_"]');
+        }
+
+        if (scopedFields.length > 0) {
+            var scopedStrings = {};
+            scopedFields.each(function () {
+                var id = ($(this).attr('id') || '').trim();
+                if (id.indexOf('ci18n_') !== 0) return;
+
+                var key = id.replace(/^ci18n_/, '');
+                if (!key) return;
+
+                scopedStrings[key] = $(this).val() || '';
+            });
+            return scopedStrings;
+        }
+
         var strings = {};
         for (var key in $exeDevice.ci18n) {
             if (!Object.prototype.hasOwnProperty.call($exeDevice.ci18n, key)) continue;
@@ -1377,17 +1396,28 @@ var $exeDevice = {
         if (data.i18n) {
             var strings = data.i18n;
             var formScope = $(this.ideviceBody).find('#ri_IdeviceForm').first();
-            for (var z in strings) {
-                if (!Object.prototype.hasOwnProperty.call(strings, z)) continue;
-                var customField = $();
-                if (formScope.length === 1) {
-                    customField = formScope.find('#ci18n_' + z).first();
-                }
-                if (customField.length !== 1) {
-                    customField = $('#ci18n_' + z).first();
-                }
-                if (customField.length === 1) {
-                    customField.val(strings[z]);
+            var scopedFields = $();
+            if (formScope.length === 1) {
+                scopedFields = formScope.find('input[id^="ci18n_"]');
+            }
+
+            if (scopedFields.length > 0) {
+                scopedFields.each(function () {
+                    var id = ($(this).attr('id') || '').trim();
+                    if (id.indexOf('ci18n_') !== 0) return;
+
+                    var key = id.replace(/^ci18n_/, '');
+                    if (!Object.prototype.hasOwnProperty.call(strings, key)) return;
+
+                    $(this).val(strings[key]);
+                });
+            } else {
+                for (var z in strings) {
+                    if (!Object.prototype.hasOwnProperty.call(strings, z)) continue;
+                    var customField = $('#ci18n_' + z).first();
+                    if (customField.length === 1) {
+                        customField.val(strings[z]);
+                    }
                 }
             }
         }
