@@ -15,7 +15,7 @@ function createMockBlob(content: string | Uint8Array): Blob {
 
 // Mock AssetManager interface
 interface MockAssetManagerInterface {
-    getProjectAssets(): Promise<
+    getProjectAssets(options?: { includeBlobs?: boolean }): Promise<
         Array<{
             id: string;
             blob: Blob;
@@ -25,6 +25,19 @@ interface MockAssetManagerInterface {
             folderPath?: string;
         }>
     >;
+    getAllAssetsMetadata?(): Array<{
+        id: string;
+        filename?: string;
+        folderPath?: string;
+        mime?: string;
+    }>;
+    getAssetMetadata?(assetId: string): {
+        id: string;
+        filename?: string;
+        folderPath?: string;
+        mime?: string;
+    } | null;
+    getBlob?(assetId: string, options?: { restoreToMemory?: boolean }): Promise<Blob | null>;
     getAsset?(assetId: string): Promise<{ id: string; blob: Blob; mime: string } | null>;
     resolveAssetURL?(assetUrl: string): Promise<string | null>;
 }
@@ -36,6 +49,8 @@ class MockAssetManager implements MockAssetManagerInterface {
         { id: string; blob: Blob; mime: string; filename?: string; originalPath?: string; folderPath?: string }
     > = new Map();
     private urlMap: Map<string, string> = new Map();
+    public getProjectAssetsCalls = 0;
+    public getBlobCalls: Array<{ id: string; restoreToMemory?: boolean }> = [];
 
     addAsset(
         id: string,
@@ -66,7 +81,7 @@ class MockAssetManager implements MockAssetManagerInterface {
         this.urlMap.set(assetId, url);
     }
 
-    async getProjectAssets(): Promise<
+    async getProjectAssets(options?: { includeBlobs?: boolean }): Promise<
         Array<{
             id: string;
             blob: Blob;
@@ -76,7 +91,47 @@ class MockAssetManager implements MockAssetManagerInterface {
             folderPath?: string;
         }>
     > {
+        this.getProjectAssetsCalls++;
+        if (options?.includeBlobs === false) {
+            return Array.from(this.assets.values()).map(asset => ({ ...asset, blob: null as any }));
+        }
         return Array.from(this.assets.values());
+    }
+
+    getAllAssetsMetadata(): Array<{
+        id: string;
+        filename?: string;
+        folderPath?: string;
+        mime?: string;
+    }> {
+        return Array.from(this.assets.values()).map(asset => ({
+            id: asset.id,
+            filename: asset.filename,
+            folderPath: asset.folderPath || asset.originalPath?.split('/').slice(0, -1).join('/'),
+            mime: asset.mime,
+        }));
+    }
+
+    getAssetMetadata(assetId: string): {
+        id: string;
+        filename?: string;
+        folderPath?: string;
+        mime?: string;
+    } | null {
+        const asset = this.assets.get(assetId);
+        return asset
+            ? {
+                  id: asset.id,
+                  filename: asset.filename,
+                  folderPath: asset.folderPath || asset.originalPath?.split('/').slice(0, -1).join('/'),
+                  mime: asset.mime,
+              }
+            : null;
+    }
+
+    async getBlob(assetId: string, options?: { restoreToMemory?: boolean }): Promise<Blob | null> {
+        this.getBlobCalls.push({ id: assetId, restoreToMemory: options?.restoreToMemory });
+        return this.assets.get(assetId)?.blob || null;
     }
 
     async getAsset(assetId: string): Promise<{ id: string; blob: Blob; mime: string } | null> {
@@ -237,6 +292,11 @@ describe('BrowserAssetProvider', () => {
             expect(result.length).toBe(2);
             expect(result.map(a => a.id)).toContain('asset1');
             expect(result.map(a => a.id)).toContain('asset2');
+            expect(mockManager.getProjectAssetsCalls).toBe(0);
+            expect(mockManager.getBlobCalls).toEqual([
+                { id: 'asset1', restoreToMemory: false },
+                { id: 'asset2', restoreToMemory: false },
+            ]);
         });
 
         it('should convert blobs to Uint8Array', async () => {
@@ -372,6 +432,241 @@ describe('BrowserAssetProvider', () => {
             const result = await errorProvider.resolveAssetUrl('asset://test');
 
             expect(result).toBeNull();
+        });
+    });
+
+    describe('forEachAsset', () => {
+        it('should process each asset sequentially', async () => {
+            mockManager.addAsset('asset1', 'content1', { filename: 'file1.png', mime: 'image/png' });
+            mockManager.addAsset('asset2', 'content2', { filename: 'file2.jpg', mime: 'image/jpeg' });
+
+            const processed: string[] = [];
+            const count = await provider.forEachAsset(async asset => {
+                processed.push(asset.id);
+            });
+
+            expect(count).toBe(2);
+            expect(processed).toContain('asset1');
+            expect(processed).toContain('asset2');
+            expect(mockManager.getProjectAssetsCalls).toBe(0);
+        });
+
+        it('should return 0 for empty asset manager', async () => {
+            const emptyProvider = new BrowserAssetProvider(new MockAssetManager());
+            const count = await emptyProvider.forEachAsset(async () => {});
+
+            expect(count).toBe(0);
+        });
+
+        it('should return 0 for null asset manager', async () => {
+            const nullProvider = new BrowserAssetProvider(null);
+            const count = await nullProvider.forEachAsset(async () => {});
+
+            expect(count).toBe(0);
+        });
+
+        it('should convert blobs to Uint8Array', async () => {
+            const content = 'Test content';
+            mockManager.addAsset('test', content, { filename: 'test.txt', mime: 'text/plain' });
+
+            let assetData: Uint8Array | null = null;
+            await provider.forEachAsset(async asset => {
+                assetData = asset.data as Uint8Array;
+            });
+
+            expect(assetData).toBeInstanceOf(Uint8Array);
+            expect(new TextDecoder().decode(assetData!)).toBe(content);
+        });
+
+        it('should use folderPath for originalPath when set', async () => {
+            mockManager.addAsset('folder-asset', 'content', {
+                filename: 'image.png',
+                folderPath: 'images/subfolder',
+                mime: 'image/png',
+            });
+
+            let originalPath = '';
+            await provider.forEachAsset(async asset => {
+                originalPath = asset.originalPath;
+            });
+
+            expect(originalPath).toBe('images/subfolder/image.png');
+        });
+
+        it('should handle errors gracefully', async () => {
+            const failingManager = {
+                getProjectAssets: async () => {
+                    throw new Error('Failed');
+                },
+            };
+
+            const errorProvider = new BrowserAssetProvider(failingManager as MockAssetManagerInterface);
+            const count = await errorProvider.forEachAsset(async () => {});
+
+            expect(count).toBe(0);
+        });
+    });
+
+    describe('listAssetMetadata', () => {
+        it('should return metadata without binary data', async () => {
+            mockManager.addAsset('asset1', 'content1', {
+                filename: 'file1.png',
+                mime: 'image/png',
+                folderPath: 'images',
+            });
+            mockManager.addAsset('asset2', 'content2', { filename: 'file2.jpg', mime: 'image/jpeg' });
+
+            const metadata = await provider.listAssetMetadata();
+
+            expect(metadata.length).toBe(2);
+            expect(metadata[0].id).toBe('asset1');
+            expect(metadata[0].filename).toBe('file1.png');
+            expect(metadata[0].folderPath).toBe('images');
+            expect(metadata[0].mime).toBe('image/png');
+            // Should NOT have data property
+            expect((metadata[0] as any).data).toBeUndefined();
+        });
+
+        it('should prefer getAllAssetsMetadata over getProjectAssets when available', async () => {
+            // Track whether getProjectAssets was called
+            let getProjectAssetsCalled = false;
+            const managerWithMetadata = {
+                getProjectAssets: async () => {
+                    getProjectAssetsCalled = true;
+                    return [] as any[];
+                },
+                getAllAssetsMetadata: () => [
+                    { id: 'meta1', filename: 'file1.png', mime: 'image/png', folderPath: 'images', size: 100 },
+                    { id: 'meta2', filename: 'file2.jpg', mime: 'image/jpeg', folderPath: '', size: 200 },
+                ],
+            };
+
+            const metaProvider = new BrowserAssetProvider(managerWithMetadata as any);
+            const metadata = await metaProvider.listAssetMetadata();
+
+            expect(metadata.length).toBe(2);
+            expect(metadata[0].id).toBe('meta1');
+            expect(metadata[0].filename).toBe('file1.png');
+            expect(metadata[1].id).toBe('meta2');
+            // Should NOT have called getProjectAssets since getAllAssetsMetadata returned results
+            expect(getProjectAssetsCalled).toBe(false);
+        });
+
+        it('should fall back to getProjectAssets when getAllAssetsMetadata returns empty', async () => {
+            const managerWithEmptyMetadata = {
+                getProjectAssets: async () => [
+                    { id: 'fb1', blob: createMockBlob('data'), mime: 'image/png', filename: 'fallback.png' },
+                ],
+                getAllAssetsMetadata: () => [],
+            };
+
+            const fbProvider = new BrowserAssetProvider(managerWithEmptyMetadata as any);
+            const metadata = await fbProvider.listAssetMetadata();
+
+            expect(metadata.length).toBe(1);
+            expect(metadata[0].id).toBe('fb1');
+        });
+
+        it('should return empty array for null asset manager', async () => {
+            const nullProvider = new BrowserAssetProvider(null);
+            const metadata = await nullProvider.listAssetMetadata();
+
+            expect(metadata).toEqual([]);
+        });
+
+        it('should return empty array for empty asset manager', async () => {
+            const emptyProvider = new BrowserAssetProvider(new MockAssetManager());
+            const metadata = await emptyProvider.listAssetMetadata();
+
+            expect(metadata).toEqual([]);
+        });
+
+        it('should handle errors gracefully', async () => {
+            const failingManager = {
+                getProjectAssets: async () => {
+                    throw new Error('Failed');
+                },
+            };
+
+            const errorProvider = new BrowserAssetProvider(failingManager as MockAssetManagerInterface);
+            const metadata = await errorProvider.listAssetMetadata();
+
+            expect(metadata).toEqual([]);
+        });
+    });
+
+    describe('listAssetMetadata and forEachAsset consistency', () => {
+        it('should return the same asset IDs from both methods', async () => {
+            mockManager.addAsset('asset1', 'content1', { filename: 'file1.png', mime: 'image/png' });
+            mockManager.addAsset('asset2', 'content2', { filename: 'file2.jpg', mime: 'image/jpeg' });
+
+            const meta = await provider.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await provider.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+        });
+
+        it('should return the same asset IDs when using getAllAssetsRaw fallback', async () => {
+            // Create a manager where getProjectAssets returns empty but getAllAssetsRaw has assets
+            const projectId = 'test-project-id';
+            const fallbackManager = {
+                projectId,
+                getProjectAssets: async () =>
+                    [] as Array<{
+                        id: string;
+                        blob: Blob;
+                        mime: string;
+                        filename?: string;
+                        originalPath?: string;
+                        folderPath?: string;
+                        projectId?: string;
+                    }>,
+                getAllAssetsRaw: async () => [
+                    {
+                        id: 'fallback-1',
+                        blob: createMockBlob('data1'),
+                        mime: 'image/png',
+                        filename: 'img1.png',
+                        projectId,
+                    },
+                    {
+                        id: 'fallback-2',
+                        blob: createMockBlob('data2'),
+                        mime: 'image/jpeg',
+                        filename: 'img2.jpg',
+                        projectId,
+                    },
+                    {
+                        // Different project - should be excluded
+                        id: 'other-project',
+                        blob: createMockBlob('data3'),
+                        mime: 'image/gif',
+                        filename: 'img3.gif',
+                        projectId: 'other-id',
+                    },
+                ],
+            };
+
+            const fallbackProvider = new BrowserAssetProvider(fallbackManager as any);
+
+            const meta = await fallbackProvider.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await fallbackProvider.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+            expect(idsFromMeta.size).toBe(2);
+            expect(idsFromMeta.has('fallback-1')).toBe(true);
+            expect(idsFromMeta.has('fallback-2')).toBe(true);
+            expect(idsFromMeta.has('other-project')).toBe(false);
         });
     });
 

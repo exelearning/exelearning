@@ -10,7 +10,7 @@
  * - Assets referenced by the component
  */
 
-import type { ExportBlock, ExportComponent, ExportOptions, ExportResult } from '../interfaces';
+import type { ExportAsset, ExportBlock, ExportComponent, ExportOptions, ExportResult } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 
 /**
@@ -293,7 +293,6 @@ export class ComponentExporter extends BaseExporter {
      */
     private async addComponentAssetsToZip(block: ExportBlock, singleComponent: ExportComponent | null): Promise<void> {
         try {
-            const allAssets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
             const components = singleComponent ? [singleComponent] : block.components || [];
 
@@ -320,7 +319,8 @@ export class ComponentExporter extends BaseExporter {
 
             // Add only used assets at content/resources/ path (same as ELPX export)
             let addedCount = 0;
-            for (const asset of allAssets) {
+
+            const processAsset = async (asset: ExportAsset) => {
                 if (usedAssetIds.has(asset.id)) {
                     const exportPath = exportPathMap.get(asset.id);
                     if (exportPath) {
@@ -332,7 +332,9 @@ export class ComponentExporter extends BaseExporter {
                         console.warn(`[ComponentExporter] No export path for asset: ${asset.id}`);
                     }
                 }
-            }
+            };
+
+            await this.forEachAsset(processAsset);
 
             console.log(`[ComponentExporter] Added ${addedCount} assets to ZIP`);
         } catch (e) {

@@ -171,10 +171,7 @@ export class IdeviceRenderer {
         // Escape HTML entities inside <pre><code> blocks to display code examples correctly
         const escapedContent = this.escapePreCodeContent(fixedContent);
 
-        // Wrap text iDevice content in exe-text div (as per legacy format)
-        const isTextIdevice = type === 'text' || type === 'FreeTextIdevice' || type === 'TextIdevice';
-        const contentHtml =
-            isTextIdevice && escapedContent ? `<div class="exe-text">${escapedContent}</div>` : escapedContent;
+        const contentHtml = escapedContent;
 
         // Generate HTML
         return `<div id="${this.escapeAttr(ideviceId)}" class="${classes.join(' ')}"${dataAttrs}>

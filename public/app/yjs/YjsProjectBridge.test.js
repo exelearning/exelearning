@@ -441,7 +441,30 @@ describe('YjsProjectBridge', () => {
   });
 
   describe('block structure reload detection', () => {
-    it('detects affected page IDs for block additions', () => {
+    it('excludes pure block additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // Pure block additions are empty containers — they must NOT trigger reload
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('detects affected page IDs for block deletions', () => {
       const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
       bridge.documentManager = {
         getNavigation: mock(() => ({
@@ -453,8 +476,8 @@ describe('YjsProjectBridge', () => {
         {
           path: [0, 'blocks'],
           changes: {
-            added: { size: 1 },
-            deleted: { size: 0 },
+            added: { size: 0 },
+            deleted: { size: 1 },
           },
         },
       ];
@@ -486,7 +509,7 @@ describe('YjsProjectBridge', () => {
       expect(Array.from(affected)).toEqual([]);
     });
 
-    it('schedules reload for each affected page on remote transactions', () => {
+    it('schedules reload only for deletions on remote transactions (additions are incremental)', () => {
       const pageMap0 = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
       const pageMap1 = { get: mock((key) => (key === 'id' ? 'page-2' : undefined)) };
 
@@ -521,7 +544,9 @@ describe('YjsProjectBridge', () => {
 
       bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
 
-      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+      // page-1 has a pure addition — handled incrementally, no reload
+      expect(scheduleSpy).not.toHaveBeenCalledWith('page-1');
+      // page-2 has a deletion — needs reload
       expect(scheduleSpy).toHaveBeenCalledWith('page-2');
     });
 
@@ -542,7 +567,7 @@ describe('YjsProjectBridge', () => {
       expect(scheduleSpy).not.toHaveBeenCalled();
     });
 
-    it('schedules reload for local undo/redo transactions', () => {
+    it('schedules reload for local undo/redo transactions (even pure additions)', () => {
       const undoManager = {};
       bridge.documentManager = {
         undoManager,
@@ -553,6 +578,7 @@ describe('YjsProjectBridge', () => {
 
       const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
 
+      // During undo/redo, even pure additions need a reload to restore state
       bridge.scheduleReloadForBlockStructureChanges(
         [
           {
@@ -620,6 +646,245 @@ describe('YjsProjectBridge', () => {
       );
 
       expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('excludes component-level additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A component addition event: path ends with 'components', has added items
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      // Component additions are handled incrementally by renderRemoteComponent,
+      // so they must NOT trigger a destructive page reload.
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('still includes component deletions in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A component deletion event
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('excludes block-level pure additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A block addition event: path is [pageIndex, 'blocks'], pure addition
+      // Block additions are empty containers handled incrementally and must NOT
+      // trigger a destructive page reload, even without a paired component addition
+      // in the same event batch (they may arrive in separate Yjs transactions).
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('still includes block-level deletions in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('still includes block-level mixed add+delete (move) in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('excludes block order-only changes from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks', 1],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+            keys: new Map([['order', { action: 'update' }]]),
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('does not skip component additions during undo/redo (#1532)', () => {
+      bridge.isUndoRedoInProgress = true;
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // Component addition during undo/redo should still trigger reload
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('does not schedule reload for remote component addition (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not schedule reload for remote block-only addition (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      // Block addition arriving alone (component may follow in a separate transaction)
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not schedule reload for remote block order-only change (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks', 1],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+            keys: new Map([['order', { action: 'update' }]]),
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -1717,6 +1982,7 @@ describe('YjsProjectBridge', () => {
 
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
+
   });
 
   describe('asset refresh on late asset arrival', () => {
@@ -2496,8 +2762,10 @@ describe('YjsProjectBridge', () => {
         },
       }];
 
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
       bridge.handleRemoteStructureChanges(events);
-      // Should schedule page reload
+      expect(scheduleSpy).not.toHaveBeenCalled();
     });
 
     it('handles component property updates', () => {
@@ -4451,14 +4719,25 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       global.window.__currentProjectId = 'test-project-123';
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 42,
+            promptMs: 30,
+            normalizeMs: 2,
+            writeMs: 10,
+          },
+        })),
       };
 
       const result = await bridge.exportToElpx();
 
       expect(result).toEqual({ saved: true });
       expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
+        expect.any(Uint8Array),
         'test-project-123',
         'project.elpx'
       );
@@ -4484,7 +4763,18 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       global.window.__currentProjectId = 'test-project-123';
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(false)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: false,
+          canceled: true,
+          canceledAt: 'dialog',
+          filePath: null,
+          timings: {
+            totalMs: 15,
+            promptMs: 15,
+            normalizeMs: 0,
+            writeMs: 0,
+          },
+        })),
       };
 
       const result = await bridge.exportToElpx();
@@ -4513,13 +4803,24 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       delete global.window.__currentProjectId;
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 10,
+            promptMs: 4,
+            normalizeMs: 1,
+            writeMs: 5,
+          },
+        })),
       };
 
       await bridge.exportToElpx();
 
       expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
+        expect.any(Uint8Array),
         'default',
         'project.elpx'
       );
@@ -4527,6 +4828,57 @@ describe('YjsProjectBridge', () => {
       // Cleanup
       delete global.eXeLearning;
       delete global.window.electronAPI;
+    });
+
+    it('stores export debug timeline when enabled', async () => {
+      const mockExporter = {
+        export: mock(() => Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'project.elpx',
+        })),
+      };
+      global.window.SharedExporters = {
+        createExporter: mock(() => mockExporter),
+      };
+
+      global.eXeLearning = { config: { debugElpxExport: true, isOfflineInstallation: true } };
+      global.window.eXeLearning = global.eXeLearning;
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 44,
+            promptMs: 30,
+            normalizeMs: 4,
+            writeMs: 10,
+          },
+        })),
+      };
+
+      const result = await bridge.exportToElpx();
+
+      expect(result).toEqual({ saved: true });
+      expect(global.window.__lastElpxExportSummary).toEqual(
+        expect.objectContaining({
+          outcome: 'success',
+          filename: 'project.elpx',
+          electronSaveMs: 44,
+          electronPromptMs: 30,
+          electronNormalizeMs: 4,
+          electronWriteMs: 10,
+        })
+      );
+      expect(global.window.__lastElpxExportTimeline.length).toBeGreaterThan(0);
+
+      delete global.eXeLearning;
+      delete global.window.eXeLearning;
+      delete global.window.electronAPI;
+      delete global.window.__lastElpxExportSummary;
+      delete global.window.__lastElpxExportTimeline;
     });
 
     it('falls back to browser download when not in Electron mode', async () => {

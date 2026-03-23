@@ -11,6 +11,46 @@
 import * as fflate from 'fflate';
 import type { ZipProvider, ZipArchive } from '../interfaces';
 
+type ZipGenerateStats = {
+    deflatedFiles: number;
+    storedFiles: number;
+    deflatedBytes: number;
+    storedBytes: number;
+};
+
+const DEFLATED_EXTENSIONS = new Set([
+    'css',
+    'csv',
+    'dtd',
+    'htm',
+    'html',
+    'js',
+    'json',
+    'map',
+    'mjs',
+    'ncx',
+    'opf',
+    'svg',
+    'txt',
+    'xhtml',
+    'xlf',
+    'xml',
+    'xsl',
+]);
+
+function getNormalizedExtension(filePath: string): string {
+    const fileName = filePath.split('/').pop() || filePath;
+    const lastDot = fileName.lastIndexOf('.');
+    if (lastDot < 0 || lastDot === fileName.length - 1) {
+        return '';
+    }
+    return fileName.slice(lastDot + 1).toLowerCase();
+}
+
+function shouldDeflatePath(filePath: string): boolean {
+    return DEFLATED_EXTENSIONS.has(getNormalizedExtension(filePath));
+}
+
 /**
  * Convert various content types to Uint8Array
  */
@@ -36,6 +76,12 @@ function toUint8Array(content: string | Uint8Array | Buffer | Blob): Uint8Array 
  */
 export class FflateZipProvider implements ZipProvider, ZipArchive {
     private files: Map<string, Uint8Array> = new Map();
+    private lastGenerateStats: ZipGenerateStats = {
+        deflatedFiles: 0,
+        storedFiles: 0,
+        deflatedBytes: 0,
+        storedBytes: 0,
+    };
 
     /**
      * Create a new ZIP archive (returns self for compatibility)
@@ -71,20 +117,72 @@ export class FflateZipProvider implements ZipProvider, ZipArchive {
     }
 
     /**
-     * Generate the ZIP archive
+     * Generate the ZIP archive using fflate's streaming Zip class.
+     * This avoids building an intermediate Zippable object (~1x uncompressed size saved at peak).
      */
     async generate(): Promise<Uint8Array> {
-        // Convert files map to fflate format
-        const zipData: fflate.Zippable = {};
-
-        for (const [path, data] of this.files) {
-            // fflate expects the data with optional compression options
-            // Use level 6 for good compression/speed balance
-            zipData[path] = [data, { level: 6 }];
+        if (this.files.size === 0) {
+            this.lastGenerateStats = {
+                deflatedFiles: 0,
+                storedFiles: 0,
+                deflatedBytes: 0,
+                storedBytes: 0,
+            };
+            return fflate.zipSync({});
         }
 
-        // Use zipSync for simplicity (async version would use zip())
-        return fflate.zipSync(zipData);
+        const chunks: Uint8Array[] = [];
+        let totalLength = 0;
+        const stats: ZipGenerateStats = {
+            deflatedFiles: 0,
+            storedFiles: 0,
+            deflatedBytes: 0,
+            storedBytes: 0,
+        };
+
+        return new Promise<Uint8Array>((resolve, reject) => {
+            const zipper = new fflate.Zip((err, data, final) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                chunks.push(data);
+                totalLength += data.length;
+                if (final) {
+                    const result = new Uint8Array(totalLength);
+                    let offset = 0;
+                    for (const chunk of chunks) {
+                        result.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+                    resolve(result);
+                }
+            });
+
+            for (const [filePath, data] of this.files) {
+                const shouldDeflate = shouldDeflatePath(filePath);
+                const file = shouldDeflate
+                    ? new fflate.ZipDeflate(filePath, { level: 6 })
+                    : new fflate.ZipPassThrough(filePath);
+                zipper.add(file);
+                file.push(data, true);
+
+                if (shouldDeflate) {
+                    stats.deflatedFiles += 1;
+                    stats.deflatedBytes += data.length;
+                } else {
+                    stats.storedFiles += 1;
+                    stats.storedBytes += data.length;
+                }
+            }
+            this.lastGenerateStats = stats;
+            this.files.clear(); // Free all uncompressed data after loop
+            zipper.end();
+        });
+    }
+
+    getLastGenerateStats(): ZipGenerateStats {
+        return { ...this.lastGenerateStats };
     }
 
     /**

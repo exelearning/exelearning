@@ -8,6 +8,7 @@ import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
+import { invalidateMaintenanceCache } from '../services/maintenance';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
 import { parseRoles } from '../db/types';
@@ -158,6 +159,9 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         version: trans('Version', {}, locale),
         // Common actions
         save: trans('Save', {}, locale),
+        saving: trans('Saving...', {}, locale),
+        saved: trans('Saved', {}, locale),
+        error_saving: trans('Error saving', {}, locale),
         cancel: trans('Cancel', {}, locale),
         edit: trans('Edit', {}, locale),
         delete: trans('Delete', {}, locale),
@@ -166,6 +170,8 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         preview: trans('Preview', {}, locale),
         search: trans('Search', {}, locale),
         required: trans('Required', {}, locale),
+        activate: trans('Activate', {}, locale),
+        deactivate: trans('Deactivate', {}, locale),
         // Common statuses / labels
         active: trans('Active', {}, locale),
         inactive: trans('Inactive', {}, locale),
@@ -235,28 +241,28 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         all_statuses: trans('All statuses', {}, locale),
         all_visibility: trans('All visibility', {}, locale),
         user: trans('User', {}, locale),
-        // Themes management
-        themes_management: trans('Themes Management', {}, locale),
-        no_themes: trans('No themes available.', {}, locale),
+        // Styles management
+        themes_management: trans('Styles Management', {}, locale),
+        no_themes: trans('No styles available.', {}, locale),
         set_default: trans('Set', {}, locale),
         default: trans('Default', {}, locale),
-        cannot_disable_default: trans('Cannot disable the default theme', {}, locale),
-        default_theme_set: trans('Default theme set', {}, locale),
-        theme_uploaded: trans('Theme uploaded successfully', {}, locale),
-        theme_deleted: trans('Theme deleted', {}, locale),
-        upload_theme: trans('Upload Theme', {}, locale),
+        cannot_disable_default: trans('Cannot disable the default style', {}, locale),
+        default_theme_set: trans('Default style set', {}, locale),
+        theme_uploaded: trans('Style uploaded successfully', {}, locale),
+        theme_deleted: trans('Style deleted', {}, locale),
+        upload_theme: trans('Upload style', {}, locale),
         // Templates management
         templates_management: trans('Templates Management', {}, locale),
         no_templates: trans('No templates for this locale.', {}, locale),
         confirm_delete_template: trans('Are you sure you want to delete the template', {}, locale),
-        confirm_delete_theme: trans('Are you sure you want to delete the theme', {}, locale),
+        confirm_delete_theme: trans('Are you sure you want to delete the style', {}, locale),
         template_uploaded: trans('Template uploaded successfully', {}, locale),
         template_deleted: trans('Template deleted', {}, locale),
         upload_template: trans('Upload Template', {}, locale),
         // Settings — general
         platform_and_collaboration: trans('Platform and collaboration', {}, locale),
         enabled_auth_methods: trans('Enabled authentication methods.', {}, locale),
-        allows_install_themes_online: trans('Allows installing themes online.', {}, locale),
+        allows_install_themes_online: trans('Allows installing styles online.', {}, locale),
         allows_install_idevices_online: trans('Allows installing iDevices online.', {}, locale),
         // Settings — storage & quotas
         storage_and_quotas: trans('Storage and quotas', {}, locale),
@@ -303,6 +309,18 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         ),
         custom_assets_empty: trans('No files uploaded yet.', {}, locale),
         custom_assets_copy_url: trans('Copy URL', {}, locale),
+        // Maintenance
+        maintenance: trans('Maintenance', {}, locale),
+        maintenance_mode_setting: trans('Maintenance mode', {}, locale),
+        maintenance_mode_active: trans('Maintenance mode is active', {}, locale),
+        maintenance_mode_active_desc: trans('Non-administrator users cannot access the platform.', {}, locale),
+        maintenance_mode_inactive: trans('Platform is online', {}, locale),
+        maintenance_mode_inactive_desc: trans('All users can access the platform normally.', {}, locale),
+        maintenance_mode_desc: trans(
+            'When enabled, non-administrator users will see a maintenance page. Administrators retain full access.',
+            {},
+            locale,
+        ),
     };
 }
 
@@ -570,6 +588,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     CUSTOM_HEAD_HTML: { value: '', type: 'string' },
     APP_NAME: { value: '', type: 'string' },
     APP_FAVICON_PATH: { value: '', type: 'string' },
+    MAINTENANCE_MODE: { value: process.env.MAINTENANCE_MODE ?? 'false', type: 'boolean' },
 };
 
 // ============================================================================
@@ -726,6 +745,11 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                                 message: `Failed to save ${setting.key}: ${errorMessage}`,
                             };
                         }
+                    }
+
+                    // Invalidate maintenance cache if MAINTENANCE_MODE was changed
+                    if (data.settings.some(s => s.key === 'MAINTENANCE_MODE')) {
+                        invalidateMaintenanceCache();
                     }
 
                     return { success: true, sanitizedValues };

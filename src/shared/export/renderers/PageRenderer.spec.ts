@@ -745,6 +745,37 @@ describe('PageRenderer', () => {
             const html = renderer.renderSinglePage(pages);
             expect(html).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
         });
+
+        it('should use provided detectedLibraries without rescanning all page content', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'component-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<div class="exe-fx">Effects</div>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, {
+                detectedLibraries: ['exe_highlighter'],
+            });
+
+            expect(html).toContain('libs/exe_highlighter/exe_highlighter.js');
+            expect(html).not.toContain('libs/exe_effects/exe_effects.js');
+        });
     });
 
     describe('renderFavicon', () => {
@@ -1137,7 +1168,7 @@ describe('PageRenderer', () => {
             );
         });
 
-        it('should output raw string when license is a non-standard CC like CC0', () => {
+        it('should output a link when license is CC0', () => {
             const page = createTestPage({
                 blocks: [
                     {
@@ -1156,7 +1187,9 @@ describe('PageRenderer', () => {
                 license: 'creative commons: cc0 1.0',
             });
 
-            expect(html).toContain('<span class="exe-prop-license">creative commons: cc0 1.0</span>');
+            expect(html).toContain(
+                '<span class="exe-prop-license"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="license" class="cc cc-0"><span></span>Creative Commons CC0 1.0</a></span>',
+            );
         });
 
         it('should output safe simple text when license is not configured without crashing', () => {
@@ -1497,6 +1530,12 @@ describe('PageRenderer', () => {
 
         it('should detect exe_lightbox by rel attribute', () => {
             const html = '<a rel="lightbox" href="img.jpg"><img src="thumb.jpg"></a>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toContain('exe_lightbox');
+        });
+
+        it('should detect exe_lightbox by rel="lightbox[X]" attribute', () => {
+            const html = '<a rel="lightbox[gallery1]" href="img.jpg"><img src="thumb.jpg"></a>';
             const libs = renderer.detectContentLibraries(html);
             expect(libs).toContain('exe_lightbox');
         });

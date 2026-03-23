@@ -60,7 +60,11 @@ export class ElpxExporter extends Html5Exporter {
         const elpxOptions = options as ElpxExportOptions | undefined;
 
         try {
+            this.logElpxExportDebugPhase('exporter:elpx:start');
             let pages = this.buildPageList();
+            this.logElpxExportDebugPhase('exporter:build-page-list:end', {
+                pages: pages.length,
+            });
             const meta = this.getMetadata();
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
             const themeName = elpxOptions?.theme || meta.theme || 'base';
@@ -70,6 +74,9 @@ export class ElpxExporter extends Html5Exporter {
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
+            this.logElpxExportDebugPhase('exporter:prepare-theme:start', {
+                theme: themeName,
+            });
 
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
@@ -87,13 +94,26 @@ export class ElpxExporter extends Html5Exporter {
 
             // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
+            this.logElpxExportDebugPhase('exporter:prepare-theme:end', {
+                theme: themeName,
+                themeFiles: themeFilesMap?.size || 0,
+            });
 
             // Fetch translated nav button labels for the content language
+            this.logElpxExportDebugPhase('exporter:nav-labels:start', {
+                language: meta.language || 'en',
+            });
             const navLabels = await this.fetchNavLabels(meta.language || 'en');
+            this.logElpxExportDebugPhase('exporter:nav-labels:end', {
+                language: meta.language || 'en',
+            });
 
             // 1.1 Generate HTML pages with optional Mermaid pre-rendering, store for later — manifest script tag injection happens after manifest is created)
             const pageHtmlMap = new Map<string, string>();
             let mermaidWasRendered = false;
+            this.logElpxExportDebugPhase('exporter:generate-pages:start', {
+                pages: pages.length,
+            });
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -132,6 +152,9 @@ export class ElpxExporter extends Html5Exporter {
                 const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
                 pageHtmlMap.set(pageFilename, html);
             }
+            this.logElpxExportDebugPhase('exporter:generate-pages:end', {
+                pages: pageHtmlMap.size,
+            });
 
             // 1.2 Add search_index.js if search box is enabled
             if (meta.addSearchBox) {
@@ -140,6 +163,7 @@ export class ElpxExporter extends Html5Exporter {
             }
 
             // 1.3 Add base CSS (fetch from content/css) and Mermaid pre-rendered CSS
+            this.logElpxExportDebugPhase('exporter:content-css:start');
             const contentCssFiles = await this.resources.fetchContentCss();
             let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
@@ -154,6 +178,9 @@ export class ElpxExporter extends Html5Exporter {
                 baseCss = encoder.encode(baseCssText);
             }
             addFile('content/css/base.css', baseCss);
+            this.logElpxExportDebugPhase('exporter:content-css:end', {
+                files: contentCssFiles.size,
+            });
 
             // 1.4 Add eXeLearning logo for "Made with eXeLearning" footer
             try {
@@ -178,10 +205,14 @@ export class ElpxExporter extends Html5Exporter {
 
             // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
             try {
+                this.logElpxExportDebugPhase('exporter:base-libs:start');
                 const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [libPath, content] of baseLibs) {
                     addFile(`libs/${libPath}`, content);
                 }
+                this.logElpxExportDebugPhase('exporter:base-libs:end', {
+                    files: baseLibs.size,
+                });
             } catch {
                 // Base libraries not available - continue anyway
             }
@@ -191,15 +222,15 @@ export class ElpxExporter extends Html5Exporter {
             addFile('libs/common_i18n.js', i18nContent);
 
             // 1.7 Detect and fetch additional required libraries based on content
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            });
 
             try {
+                this.logElpxExportDebugPhase('exporter:content-libs:start', {
+                    requestedFiles: allRequiredFiles.length,
+                    patterns: patterns.length,
+                });
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
                 for (const [libPath, content] of libFiles) {
                     // Only add if not already added by base libraries
@@ -208,12 +239,18 @@ export class ElpxExporter extends Html5Exporter {
                         addFile(zipPath, content);
                     }
                 }
+                this.logElpxExportDebugPhase('exporter:content-libs:end', {
+                    files: libFiles.size,
+                });
             } catch {
                 // Additional libraries not available - continue anyway
             }
 
             // 1.8 Fetch and add iDevice assets
             const usedIdevices = this.getUsedIdevices(pages);
+            this.logElpxExportDebugPhase('exporter:idevice-resources:start', {
+                idevices: usedIdevices.length,
+            });
             for (const idevice of usedIdevices) {
                 try {
                     // Normalize iDevice type to directory name (e.g., 'FreeTextIdevice' -> 'text')
@@ -227,6 +264,9 @@ export class ElpxExporter extends Html5Exporter {
                     // Many iDevices don't have extra files - this is normal
                 }
             }
+            this.logElpxExportDebugPhase('exporter:idevice-resources:end', {
+                idevices: usedIdevices.length,
+            });
 
             // 1.9 Add project assets
             await this.addAssetsToZipWithResourcePath(fileList);
@@ -285,7 +325,28 @@ export class ElpxExporter extends Html5Exporter {
             // =========================================================================
             // SECTION 3: Generate final ZIP
             // =========================================================================
+            this.logElpxExportDebugPhase('exporter:zip-generate:start', {
+                zipFiles: fileList?.length || this.zip.getFilePaths?.().length || null,
+            });
             const buffer = await this.zip.generateAsync();
+            const zipStats =
+                (
+                    this.zip as {
+                        getLastGenerateStats?: () => {
+                            deflatedFiles: number;
+                            storedFiles: number;
+                            deflatedBytes: number;
+                            storedBytes: number;
+                        };
+                    }
+                ).getLastGenerateStats?.() || null;
+            this.logElpxExportDebugPhase('exporter:zip-generate:end', {
+                bytes: buffer.byteLength,
+                deflatedFiles: zipStats?.deflatedFiles ?? null,
+                storedFiles: zipStats?.storedFiles ?? null,
+                deflatedBytes: zipStats?.deflatedBytes ?? null,
+                storedBytes: zipStats?.storedBytes ?? null,
+            });
 
             return {
                 success: true,
