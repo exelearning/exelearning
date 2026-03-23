@@ -63,7 +63,7 @@
 
 ### Removed
 
-- `open-cli-tools/concurrently` dependency
+- open-cli-tools/concurrently dependency
 
 ---
 
