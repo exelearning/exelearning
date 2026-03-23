@@ -102,6 +102,32 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect(String(firstArg).length).toBeGreaterThan(0);
   });
 
+  it('importCSV overrides previous caption with c_ fallback title when CSV has no title', () => {
+    const csv = [
+      'Criterio,Descripción,Nivel A',
+      'Claridad,Texto base,Descriptor A#4',
+    ].join('\n');
+
+    const originalContentTranslate = global.c_;
+    global.c_ = (text) => (text === 'Imported rubric' ? 'Rúbrica importada' : text);
+
+    document.body.innerHTML += '<input id="ri_Cell-0" value="Título anterior" />';
+
+    const jsonToTableSpy = vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'clearCurrentRubricEdition').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'enableFieldsetToggle').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'setEditionFocus').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'alert').mockImplementation(() => {});
+
+    $exeDevice.importCSV(csv);
+
+    expect(jsonToTableSpy).toHaveBeenCalled();
+    const importedData = jsonToTableSpy.mock.calls[0][0];
+    expect(importedData.title).toBe('Rúbrica importada');
+
+    global.c_ = originalContentTranslate;
+  });
+
   it('rubricDataToCSV exports a valid CSV matrix', () => {
     const data = {
       title: 'Rubrica test',

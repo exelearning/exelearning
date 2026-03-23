@@ -610,11 +610,8 @@ var $exeDevice = {
             return;
         }
 
-        var currentTitle = $('#ri_Cell-0').val();
         if (!parsed.title || parsed.title.trim() === '') {
-            parsed.title = currentTitle && currentTitle.trim() !== ''
-                ? currentTitle
-                : _('Imported rubric');
+            parsed.title = c_('Imported rubric');
         }
 
         this.clearCurrentRubricEdition();

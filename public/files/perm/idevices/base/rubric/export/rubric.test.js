@@ -144,6 +144,73 @@ describe('rubric iDevice export', () => {
     expect(ids).not.toContain('rubric_already_migrated');
   });
 
+  it('loadGame auto-migrates legacy rubric markup before rendering', () => {
+    document.body.innerHTML = `
+      <div class="idevice_node rubric" id="rubric_legacy_autoload">
+        <div class="rubric">
+          <table class="exe-table">
+            <caption>Legacy Autoload</caption>
+            <thead>
+              <tr>
+                <th>&nbsp;</th>
+                <th>L1</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>C1</th>
+                <td>D1 <span>(2)</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    const createInterfaceSpy = vi.spyOn($rubric, 'createInterface');
+
+    $rubric.loadGame();
+
+    const scope = $('#rubric_legacy_autoload');
+    const dataNode = scope.find('.exe-rubrics-DataGame').first();
+    expect(dataNode.length).toBe(1);
+    expect(scope.find('table.exe-table:not([data-rubric-table-type="export"])').length).toBe(0);
+    expect(scope.find('table[data-rubric-table-type="export"]').length).toBe(1);
+    expect(createInterfaceSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('loadGame auto-migrates legacy rubric without idevice_node wrapper', () => {
+    document.body.innerHTML = `
+      <div class="rubric" id="rubric_plain_legacy">
+        <table class="exe-table">
+          <caption>Legacy Plain</caption>
+          <thead>
+            <tr>
+              <th>&nbsp;</th>
+              <th>L1</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>C1</th>
+              <td>D1 <span>(1)</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const createInterfaceSpy = vi.spyOn($rubric, 'createInterface');
+
+    $rubric.loadGame();
+
+    const scope = $('#rubric_plain_legacy');
+    expect(scope.find('.exe-rubrics-DataGame').length).toBe(1);
+    expect(scope.find('table.exe-table:not([data-rubric-table-type="export"])').length).toBe(0);
+    expect(scope.find('table[data-rubric-table-type="export"]').length).toBe(1);
+    expect(createInterfaceSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('createInterface renders notes first, actions below notes, and authorship at the bottom', () => {
     const scope = $('<div class="idevice_node rubric" id="rubric_layout"></div>');
     const table = $('<table class="exe-table"><tbody><tr><th>A</th><td>B</td></tr></tbody></table>');
@@ -493,5 +560,29 @@ describe('rubric iDevice export', () => {
 
     const table = $('#rubric_filename_default table').first();
     expect($rubric.getPdfFileName(table)).toBe('rubric_name.pdf');
+  });
+
+  it('saveAsPdf uses ensureHtml2Canvas when html2canvas is not available', () => {
+    const temp = document.createElement('div');
+    temp.setAttribute('data-rubric-capture-temp', '1');
+    document.body.appendChild(temp);
+
+    const table = $('<table class="exe-table exe-rubrics-export-table"></table>');
+
+    const originalHtml2Canvas = window.html2canvas;
+    window.html2canvas = undefined;
+
+    const buildTargetSpy = vi.spyOn($rubric, 'buildCaptureTarget').mockReturnValue(temp);
+    const ensureHtml2CanvasSpy = vi.spyOn($rubric, 'ensureHtml2Canvas').mockImplementation(() => {});
+
+    $rubric.saveAsPdf(table);
+
+    expect(buildTargetSpy).toHaveBeenCalledTimes(1);
+    expect(ensureHtml2CanvasSpy).toHaveBeenCalledTimes(1);
+
+    if (temp.parentNode) {
+      temp.parentNode.removeChild(temp);
+    }
+    window.html2canvas = originalHtml2Canvas;
   });
 });

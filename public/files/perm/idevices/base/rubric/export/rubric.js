@@ -39,13 +39,10 @@ var $rubric = {
     },
 
     loadGame: function () {
-        // Legacy migration path:
-        // If a rubric scope has interface/table markup but no DataGame payload,
-        // rebuild DataGame first and clean the old interface so the runtime can
-        // render everything from the generated DataGame.
-        this.rebuildMissingDataGameFromInterface();
-
         this.options = [];
+
+        // Auto-migrate legacy rubric markup (2.9-like / early beta exports) on load.
+        this.rebuildMissingDataGameFromInterface();
         this.activities = this.getActivitiesFromDataGame();
 
         if (this.activities.length === 0) return;
@@ -79,184 +76,6 @@ var $rubric = {
             self.initializeInteractiveState(data.table);
             self.addEvents(data.table, data.strings);
         });
-    },
-
-    rebuildMissingDataGameFromInterface: function () {
-        var self = this;
-        var migrated = 0;
-
-        this.getLegacyScopesWithoutDataGame().each(function () {
-            var scope = $(this);
-            var data = self.extractDataGameFromLegacyInterface(scope);
-            if (!data) return;
-
-            self.injectDataGame(scope, data);
-            self.clearLegacyInterfaceArtifacts(scope);
-            migrated++;
-        });
-    },
-
-    getLegacyScopesWithoutDataGame: function () {
-        var scopes = [];
-        var seen = [];
-
-        function tryAddScope($scope) {
-            if (!$scope || $scope.length !== 1) return;
-
-            var domNode = $scope.get(0);
-            if (seen.indexOf(domNode) !== -1) return;
-
-            var hasDataGame = $scope.find('.exe-rubrics-DataGame').length > 0;
-            if (hasDataGame) return;
-
-            var hasTable =
-                $scope.find('table.exe-table, table[data-rubric-table-type], table.exe-rubrics-export-table').length > 0;
-            if (!hasTable) return;
-
-            seen.push(domNode);
-            scopes.push(domNode);
-        }
-
-        $('.idevice_node.rubric').each(function () {
-            tryAddScope($(this));
-        });
-
-        // Fallback for standalone rubric containers not wrapped by .idevice_node
-        $('.rubric').each(function () {
-            var scope = $(this);
-            if (scope.closest('.idevice_node.rubric').length > 0) return;
-            tryAddScope(scope);
-        });
-
-        return $(scopes);
-    },
-
-    extractDataGameFromLegacyInterface: function (scope) {
-        var $scope = $(scope);
-        if ($scope.length !== 1) return null;
-
-        var $table = $scope
-            .find('table.exe-table, table[data-rubric-table-type], table.exe-rubrics-export-table')
-            .first();
-        if ($table.length !== 1) return null;
-
-        var title = ($table.find('caption').first().text() || '').trim();
-
-        var scores = [];
-        $table.find('thead tr').first().children('th,td').each(function (index) {
-            if (index === 0) return;
-            scores.push(($(this).text() || '').trim());
-        });
-
-        var categories = [];
-        var descriptions = [];
-        var $rows = $table.find('tbody tr');
-        if ($rows.length === 0) {
-            $rows = $table.find('tr').slice(scores.length > 0 ? 1 : 0);
-        }
-
-        $rows.each(function () {
-            var $row = $(this);
-            var $cells = $row.children('th,td');
-            if ($cells.length < 2) return;
-
-            categories.push(($cells.eq(0).text() || '').trim());
-
-            var row = [];
-            $cells.slice(1).each(function () {
-                var $cell = $(this).clone();
-                $cell.find('input[type="checkbox"]').remove();
-
-                var weight = '';
-                var $span = $cell.find('span').first();
-                if ($span.length === 1) {
-                    var spanText = ($span.text() || '').trim();
-                    var match = spanText.match(/^\(([^)]+)\)$/);
-                    if (match && match[1]) weight = match[1].trim();
-                    $span.remove();
-                }
-
-                row.push({
-                    text: ($cell.html() || '').trim(),
-                    weight: weight,
-                });
-            });
-
-            descriptions.push(row);
-        });
-
-        if (scores.length === 0) {
-            var maxCols = 0;
-            for (var i = 0; i < descriptions.length; i++) {
-                maxCols = Math.max(maxCols, descriptions[i].length);
-            }
-            for (var j = 0; j < maxCols; j++) scores.push('');
-        }
-
-        if (categories.length === 0 || descriptions.length === 0) return null;
-
-        var i18n = {};
-        $scope.find('.exe-rubrics-strings li, .exe-rubric-strings li').each(function () {
-            var key = ($(this).attr('class') || '').trim();
-            var value = ($(this).text() || '').trim();
-            if (!key || !value) return;
-            i18n[key] = value;
-        });
-
-        var data = {
-            title: title,
-            categories: categories,
-            scores: scores,
-            descriptions: descriptions,
-        };
-
-        if (Object.keys(i18n).length > 0) data.i18n = i18n;
-
-        return data;
-    },
-
-    injectDataGame: function (scope, data) {
-        var $scope = $(scope);
-        if ($scope.length !== 1 || !data) return;
-
-        if ($scope.find('.exe-rubrics-DataGame').length > 0) return;
-
-        var encoded = '';
-        try {
-            encoded = escape(JSON.stringify(data));
-        } catch (e) {
-            encoded = JSON.stringify(data);
-        }
-
-        var $rubricContainer = $scope.find('.rubric').first();
-        if ($rubricContainer.length !== 1) {
-            $rubricContainer = $('<div class="rubric"></div>');
-            $scope.prepend($rubricContainer);
-        }
-
-        $rubricContainer.prepend('<div class="exe-rubrics-DataGame js-hidden">' + encoded + '</div>');
-    },
-
-    clearLegacyInterfaceArtifacts: function (scope) {
-        var $scope = $(scope);
-        if ($scope.length !== 1) return;
-
-        var $dataNode = $scope.find('.exe-rubrics-DataGame').first().detach();
-
-        $scope.find('.exe-rubrics-wrapper, .exe-rubrics-content, .exe-rubrics-actions, #exe-rubrics-header, #exe-rubrics-footer').remove();
-        $scope.find('.exe-rubric-strings, .exe-rubrics-strings').remove();
-        $scope.find('.exe-rubrics-calc, #exe-rubrics-calc').remove();
-        $scope.find('table.exe-table, table[data-rubric-table-type], table.exe-rubrics-export-table').remove();
-        $scope.find('[data-rubric-field], #activity, #name, #date, #score, #notes').remove();
-
-        if ($dataNode.length === 1) {
-            var $rubricContainer = $scope.find('.rubric').first();
-            if ($rubricContainer.length !== 1) {
-                $rubricContainer = $('<div class="rubric"></div>');
-                $scope.prepend($rubricContainer);
-            }
-            $rubricContainer.prepend($dataNode);
-        }
     },
 
     getActivitiesFromDataGame: function () {
@@ -368,6 +187,104 @@ var $rubric = {
     // Backward-compatible alias
     getStoredRubricData: function (scope) {
         return this.loadDataGame(scope);
+    },
+
+    getLegacyScopesWithoutDataGame: function () {
+        var scopes = [];
+        var seen = [];
+
+        $('table.exe-table').each(function () {
+            var $table = $(this);
+            if ($table.attr('data-rubric-table-type') === 'export') return;
+
+            var scope = $table.closest('.idevice_node.rubric');
+            if (scope.length !== 1) {
+                scope = $table.closest('.rubric');
+            }
+            if (scope.length !== 1) return;
+
+            var hasSerializedData = scope.find('.exe-rubrics-DataGame').length > 0;
+            if (hasSerializedData) return;
+
+            var node = scope.get(0);
+            if (seen.indexOf(node) !== -1) return;
+
+            seen.push(node);
+            scopes.push(node);
+        });
+
+        return $(scopes);
+    },
+
+    extractDataGameFromLegacyInterface: function (scope) {
+        var $scope = $(scope);
+        if ($scope.length !== 1) return null;
+
+        var $table = $scope.find('table.exe-table').first();
+        if ($table.length !== 1) return null;
+
+        var data = {
+            title: $table.find('caption').first().text().trim(),
+            categories: [],
+            scores: [],
+            descriptions: [],
+        };
+
+        $table.find('thead th').each(function (idx) {
+            if (idx === 0) return;
+            data.scores.push($(this).text().trim());
+        });
+
+        $table.find('tbody tr').each(function () {
+            var $row = $(this);
+            data.categories.push($row.find('th').first().text().trim());
+
+            var rowDescriptions = [];
+            $row.find('td').each(function () {
+                var $td = $(this);
+                var weight = '';
+                var $weight = $td.find('span').first();
+                if ($weight.length === 1) {
+                    var match = $weight.text().match(/\(([^)]+)\)/);
+                    if (match && match[1]) {
+                        weight = String(match[1]).trim();
+                    }
+                }
+
+                var $clone = $td.clone();
+                $clone.find('span').remove();
+                rowDescriptions.push({
+                    text: $clone.text().trim(),
+                    weight: weight,
+                });
+            });
+
+            data.descriptions.push(rowDescriptions);
+        });
+
+        return data;
+    },
+
+    rebuildMissingDataGameFromInterface: function () {
+        var scopes = this.getLegacyScopesWithoutDataGame();
+        var self = this;
+
+        scopes.each(function () {
+            var $scope = $(this);
+            var data = self.extractDataGameFromLegacyInterface($scope);
+            if (!data) return;
+
+            var payload = escape(JSON.stringify(data));
+            var $target = $scope.find('.rubric').first();
+            if ($target.length !== 1) {
+                $target = $scope;
+            }
+
+            $target.append('<div class="exe-rubrics-DataGame js-hidden">' + payload + '</div>');
+
+            $scope.find('.exe-rubrics-wrapper, .exe-rubrics-content').remove();
+            $scope.find('table.exe-table').remove();
+        });
     },
 
     createTableFromData: function (data) {
@@ -874,47 +791,61 @@ var $rubric = {
             }
         };
 
+        var runCapture = function () {
+            if (!window.html2canvas) {
+                console.error('Error al capturar la rúbrica: html2canvas no disponible');
+                return;
+            }
+
+            target.classList.add(captureClass);
+            window.html2canvas(target, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                onclone: function (clonedDoc) {
+                     var links = clonedDoc.querySelectorAll('link[rel="stylesheet"]');
+                    for (var i = 0; i < links.length; i++) {
+                        links[i].parentNode && links[i].parentNode.removeChild(links[i]);
+                    }
+                },
+            })
+                .then(function (canvas) {
+                    if (window.jspdf && window.jspdf.jsPDF) {
+                        if (!toPdf(canvas)) toPng(canvas);
+                    } else {
+                        $rubric.ensureJsPDF(
+                            function () {
+                                if (!toPdf(canvas)) toPng(canvas);
+                            },
+                            function () {
+                                toPng(canvas);
+                            }
+                        );
+                    }
+                })
+                .catch(function (e) {
+                    console.error('Error al capturar la rúbrica:', e);
+                })
+                .finally(function () {
+                    target.classList.remove(captureClass);
+                    if (target && target.getAttribute('data-rubric-capture-temp') === '1') {
+                        target.parentNode && target.parentNode.removeChild(target);
+                    }
+                });
+        };
+
+        if (window.html2canvas) {
+            runCapture();
+            return;
+        }
+
         this.ensureHtml2Canvas(
             function () {
-                target.classList.add(captureClass);
-                window.html2canvas(target, {
-                    backgroundColor: '#ffffff',
-                    scale: 2,
-                    useCORS: true,
-                    logging: false,
-                    onclone: function (clonedDoc) {
-                         var links = clonedDoc.querySelectorAll('link[rel="stylesheet"]');
-                        for (var i = 0; i < links.length; i++) {
-                            links[i].parentNode && links[i].parentNode.removeChild(links[i]);
-                        }
-                    },
-                })
-                    .then(function (canvas) {
-                        if (window.jspdf && window.jspdf.jsPDF) {
-                            if (!toPdf(canvas)) toPng(canvas);
-                        } else {
-                            $rubric.ensureJsPDF(
-                                function () {
-                                    if (!toPdf(canvas)) toPng(canvas);
-                                },
-                                function () {
-                                    toPng(canvas);
-                                }
-                            );
-                        }
-                    })
-                    .catch(function (e) {
-                        console.error('Error al capturar la rúbrica:', e);
-                    })
-                    .finally(function () {
-                        target.classList.remove(captureClass);
-                        if (target && target.getAttribute('data-rubric-capture-temp') === '1') {
-                            target.parentNode && target.parentNode.removeChild(target);
-                        }
-                    });
+                runCapture();
             },
             function () {
-                console.error('No se pudo cargar html2canvas');
+                console.error('Error al capturar la rúbrica: no se pudo cargar html2canvas');
                 if (target && target.getAttribute('data-rubric-capture-temp') === '1') {
                     target.parentNode && target.parentNode.removeChild(target);
                 }
