@@ -61,6 +61,10 @@
 - docker/metadata-action: 5 → 6
 - docker/setup-buildx-action: 3 → 4
 
+### Removed
+
+- `open-cli-tools/concurrently` dependency
+
 ---
 
 ## v4.0.0-beta2 – 2026-03-10
