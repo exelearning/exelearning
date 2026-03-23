@@ -503,7 +503,11 @@ var $rubric = {
 
     addCheckboxEvents: function (table) {
         var $table = $(table);
-        $table.find('tbody input[type="checkbox"]').off('change.rubric').on('change.rubric', function () {
+        $table
+            .find('tbody input[type="checkbox"]')
+            .off('change')
+            .off('change.rubric')
+            .on('change.rubric', function () {
             if (this.checked) {
                 $("input[name='" + this.name + "']").prop('checked', false);
                 $(this).prop('checked', true);
@@ -519,6 +523,7 @@ var $rubric = {
         var $table = $(table);
         var dataScope = this.getDataScope($table);
         this.getFields(dataScope)
+            .off('input change')
             .off('input.rubric change.rubric')
             .on('input.rubric change.rubric', function () {
                 $rubric.saveRubricData($table);
@@ -531,13 +536,21 @@ var $rubric = {
         if ($actions.length !== 1) return;
         strings = strings || this.ci18n;
 
-        $actions.find('.exe-rubrics-reset').off('click.rubric').on('click.rubric', function () {
+        $actions
+            .find('.exe-rubrics-reset')
+            .off('click')
+            .off('click.rubric')
+            .on('click.rubric', function () {
             if (confirm(strings.msgDelete || 'Are you sure you want clear all form fields?')) {
                 $rubric.resetRubricData($table);
             }
         });
 
-        $actions.find('.exe-rubrics-download').off('click.rubric').on('click.rubric', function () {
+        $actions
+            .find('.exe-rubrics-download')
+            .off('click')
+            .off('click.rubric')
+            .on('click.rubric', function () {
             $rubric.saveAsPdf($table);
         });
     },
@@ -625,16 +638,22 @@ var $rubric = {
             <div class="exe-rubrics-wrapper" data-rubric-interface="${safeScopeId}">
                 <div class="exe-rubrics-content" data-rubric-content="${safeScopeId}">
                     <div id="exe-rubrics-header">
-                        <p class="exe-rubrics-header-line">
+                        <div>
                             <label for="${activityId}">${strings.activity}:</label>
                             <input type="text" id="${activityId}" class="form-control form-control-sm" data-rubric-field="activity" />
+                        </div>
+                        <div>
                             <label for="${nameId}">${strings.name}:</label>
                             <input type="text" id="${nameId}" class="form-control form-control-sm" data-rubric-field="name" />
+                        </div>
+                        <div>
                             <label for="${scoreId}">${strings.score}:</label>
                             <input type="text" id="${scoreId}" class="form-control form-control-sm" data-rubric-field="score" />
+                        </div>
+                        <div>
                             <label for="${dateId}">${strings.date}:</label>
                             <input type="text" id="${dateId}" class="form-control form-control-sm" data-rubric-field="date" value="${this.getCurrentDate()}" />
-                        </p>
+                        </div>
                     </div>
                     <div class="exe-rubrics-table-slot" data-rubric-table-slot="${safeScopeId}"></div>
                     <div id="exe-rubrics-footer">
@@ -1205,29 +1224,33 @@ var $rubric = {
         return text;
     },
 
-    getNormalizedActivityName: function (table) {
+    getNormalizedNameValue: function (table) {
         var $table = $(table);
-        var activityField = $();
+        var nameField = $();
 
         var siblingHeader = $table.prevAll('#exe-rubrics-header').first();
         if (siblingHeader.length === 1) {
-            activityField = siblingHeader.find('[data-rubric-field="activity"], #activity').first();
+            nameField = siblingHeader.find('[data-rubric-field="name"], #name').first();
         }
 
-        if (activityField.length !== 1) {
+        if (nameField.length !== 1) {
             var root = this.getDataScope(table);
             if (root.length !== 1) return '';
-            activityField = this.getField(root, 'activity');
+            nameField = this.getField(root, 'name');
         }
 
-        return this.normalizeFileNameToken(activityField.val());
+        return this.normalizeFileNameToken(nameField.val());
+    },
+
+    // Backward-compatible alias
+    getNormalizedActivityName: function (table) {
+        return this.getNormalizedNameValue(table);
     },
 
     getPdfFileName: function (table) {
         var rubricLabel = this.ci18n.rubric || 'Rubric';
         var rubricPrefix = this.normalizeFileNameToken(rubricLabel) || 'rubric';
-        var normalizedName = this.getNormalizedActivityName(table);
-        if (!normalizedName) return rubricPrefix + '.pdf';
+        var normalizedName = this.getNormalizedNameValue(table) || 'name';
         return rubricPrefix + '_' + normalizedName + '.pdf';
     },
 

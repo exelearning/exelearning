@@ -381,4 +381,117 @@ describe('rubric iDevice export', () => {
       capture.parentNode.removeChild(capture);
     }
   });
+
+  it('addActionEvents removes previous click handlers from download button', () => {
+    const scope = $('<div class="idevice_node rubric" id="rubric_download_off_on"></div>');
+    const table = $('<table class="exe-table"><tbody><tr><th>A</th><td>B</td></tr></tbody></table>');
+
+    $rubric.createInterface({
+      scope,
+      table,
+      scopeId: 'rubric_download_off_on',
+      strings: {
+        activity: 'Activity',
+        name: 'Name',
+        score: 'Score',
+        date: 'Date',
+        notes: 'Notes',
+        download: 'Download',
+        reset: 'Reset',
+      },
+      raw: {},
+    });
+
+    const button = scope.find('.exe-rubrics-download').first();
+    let legacyCalls = 0;
+    button.on('click', () => {
+      legacyCalls += 1;
+    });
+
+    const saveSpy = vi.spyOn($rubric, 'saveAsPdf').mockImplementation(() => {});
+
+    $rubric.addActionEvents(table, $rubric.ci18n);
+    button.trigger('click');
+
+    expect(legacyCalls).toBe(0);
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('addActionEvents removes previous click handlers from reset button', () => {
+    const scope = $('<div class="idevice_node rubric" id="rubric_reset_off_on"></div>');
+    const table = $('<table class="exe-table"><tbody><tr><th>A</th><td>B</td></tr></tbody></table>');
+
+    $rubric.createInterface({
+      scope,
+      table,
+      scopeId: 'rubric_reset_off_on',
+      strings: {
+        activity: 'Activity',
+        name: 'Name',
+        score: 'Score',
+        date: 'Date',
+        notes: 'Notes',
+        download: 'Download',
+        reset: 'Reset',
+        msgDelete: 'Confirm reset?',
+      },
+      raw: {},
+    });
+
+    const button = scope.find('.exe-rubrics-reset').first();
+    let legacyCalls = 0;
+    button.on('click', () => {
+      legacyCalls += 1;
+    });
+
+    const confirmMock = vi.fn(() => true);
+    globalThis.confirm = confirmMock;
+    const resetSpy = vi.spyOn($rubric, 'resetRubricData').mockImplementation(() => {});
+
+    $rubric.addActionEvents(table, {
+      ...$rubric.ci18n,
+      msgDelete: 'Confirm reset?',
+    });
+    button.trigger('click');
+
+    expect(legacyCalls).toBe(0);
+    expect(confirmMock).toHaveBeenCalledTimes(1);
+    expect(resetSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('getPdfFileName uses rubric_name pattern from name field', () => {
+    document.body.innerHTML = `
+      <div class="idevice_node rubric" id="rubric_filename_name">
+        <div class="exe-rubrics-content">
+          <div id="exe-rubrics-header">
+            <p>
+              <input type="text" data-rubric-field="name" value="Juan Perez" />
+            </p>
+          </div>
+          <table class="exe-table exe-rubrics-export-table"><tbody><tr><th>A</th><td>B</td></tr></tbody></table>
+        </div>
+      </div>
+    `;
+
+    const table = $('#rubric_filename_name table').first();
+    expect($rubric.getPdfFileName(table)).toBe('rubric_juan_perez.pdf');
+  });
+
+  it('getPdfFileName defaults to rubric_name when name field is empty', () => {
+    document.body.innerHTML = `
+      <div class="idevice_node rubric" id="rubric_filename_default">
+        <div class="exe-rubrics-content">
+          <div id="exe-rubrics-header">
+            <p>
+              <input type="text" data-rubric-field="name" value="" />
+            </p>
+          </div>
+          <table class="exe-table exe-rubrics-export-table"><tbody><tr><th>A</th><td>B</td></tr></tbody></table>
+        </div>
+      </div>
+    `;
+
+    const table = $('#rubric_filename_default table').first();
+    expect($rubric.getPdfFileName(table)).toBe('rubric_name.pdf');
+  });
 });
