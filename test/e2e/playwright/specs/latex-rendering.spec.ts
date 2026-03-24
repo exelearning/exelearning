@@ -1519,7 +1519,7 @@ test.describe('LaTeX Rendering', () => {
 
                     while (elapsed < maxWait) {
                         const titleElements = body.querySelectorAll(
-                            'h1.package-title, h2.exe-title, .exe-title, header h1, header h2',
+                            '.package-title, h2.exe-title, .exe-title, header h1, header h2',
                         );
                         for (const titleEl of titleElements) {
                             const mjx = titleEl.querySelector('mjx-container');
@@ -1540,7 +1540,7 @@ test.describe('LaTeX Rendering', () => {
 
                     // MathJax didn't render - collect info for debugging
                     const titleElements = body.querySelectorAll(
-                        'h1.package-title, h2.exe-title, .exe-title, header h1, header h2',
+                        '.package-title, h2.exe-title, .exe-title, header h1, header h2',
                     );
                     let rawLatexInTitle = false;
                     let titleHtml = '';
