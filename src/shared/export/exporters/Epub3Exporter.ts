@@ -15,6 +15,7 @@
  */
 
 import type {
+    ExportAsset,
     ExportPage,
     ExportMetadata,
     ExportOptions,
@@ -26,6 +27,7 @@ import type {
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { VOID_ELEMENTS } from '../../utils/html-constants';
 
 /**
  * EPUB3 XML namespaces
@@ -42,26 +44,6 @@ export const EPUB3_NAMESPACES = {
  * EPUB3 MIME type
  */
 export const EPUB3_MIMETYPE = 'application/epub+zip';
-
-/**
- * Void HTML elements that must be self-closed in XHTML
- */
-const VOID_ELEMENTS = [
-    'area',
-    'base',
-    'br',
-    'col',
-    'embed',
-    'hr',
-    'img',
-    'input',
-    'link',
-    'meta',
-    'param',
-    'source',
-    'track',
-    'wbr',
-];
 
 /**
  * MIME types for EPUB manifest
@@ -269,13 +251,9 @@ export class Epub3Exporter extends BaseExporter {
             }
 
             // 7. Detect and fetch required libraries
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            });
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
@@ -770,13 +748,12 @@ export class Epub3Exporter extends BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) {
-                    continue;
+                    return;
                 }
 
                 // Store in EPUB/content/resources/{exportPath} (matching HTML references)
@@ -790,7 +767,9 @@ export class Epub3Exporter extends BaseExporter {
                 this.addManifestItem(this.generateUniqueId(`asset-${asset.id}`), zipPath, mimeType);
 
                 assetsAdded++;
-            }
+            };
+
+            await this.forEachAsset(processAsset);
         } catch (e) {
             console.warn('[Epub3Exporter] Failed to add assets:', e);
         }

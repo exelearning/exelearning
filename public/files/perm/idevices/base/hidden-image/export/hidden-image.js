@@ -154,6 +154,57 @@ var $eXeHiddenImage = {
         }
     },
 
+    getRevealDelayMs: function (revealTimeInSeconds) {
+        const parsed = Number(revealTimeInSeconds);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+            return 1000;
+        }
+        if (parsed === 0) {
+            return Number.POSITIVE_INFINITY;
+        }
+        return Math.round(parsed * 1000);
+    },
+
+    hideSquareAfterElapsedTime: function ($square, delayMs) {
+        if (!$square || !$square.length) {
+            return;
+        }
+
+        const prevTimerId = $square.data('hiRevealTimerId');
+        if (prevTimerId) {
+            clearTimeout(prevTimerId);
+        }
+
+        if (!Number.isFinite(delayMs) || delayMs <= 0) {
+            return;
+        }
+
+        const now =
+            typeof performance !== 'undefined' &&
+            typeof performance.now === 'function'
+                ? () => performance.now()
+                : () => Date.now();
+
+        const startedAt = now();
+
+        const checkElapsed = function () {
+            const elapsedMs = now() - startedAt;
+            if (elapsedMs >= delayMs) {
+                $square.removeData('hiRevealTimerId');
+                $square.stop(true, true).fadeIn(200);
+                return;
+            }
+
+            const remainingMs = delayMs - elapsedMs;
+            const nextDelayMs = Math.max(16, Math.min(remainingMs, 100));
+            const timerId = setTimeout(checkElapsed, nextDelayMs);
+            $square.data('hiRevealTimerId', timerId);
+        };
+
+        const timerId = setTimeout(checkElapsed, Math.min(delayMs, 100));
+        $square.data('hiRevealTimerId', timerId);
+    },
+
     createInterfacehiP: function (instance) {
         const path = $eXeHiddenImage.idevicePath,
             msgs = $eXeHiddenImage.options[instance].msgs,
@@ -334,8 +385,9 @@ var $eXeHiddenImage = {
                 : '';
         mOptions.id = typeof mOptions.id !== 'undefined' ? mOptions.id : false;
 
-        mOptions.revealTime =
-            mOptions.revealTime == 0 ? 10000000000 : mOptions.revealTime * 1000;
+        mOptions.revealTime = $eXeHiddenImage.getRevealDelayMs(
+            mOptions.revealTime
+        );
 
         imgsLink.each(function () {
             const iq = parseInt($(this).text(), 10);
@@ -513,10 +565,11 @@ var $eXeHiddenImage = {
                 return;
             }
             var $this = $(this);
-            $this.fadeOut(200, function () {
-                setTimeout(function () {
-                    $this.fadeIn(200);
-                }, mOptions.revealTime);
+            $this.stop(true, true).fadeOut(200, function () {
+                $eXeHiddenImage.hideSquareAfterElapsedTime(
+                    $this,
+                    mOptions.revealTime
+                );
             });
             mOptions.attempts = mOptions.attempts - 1;
 

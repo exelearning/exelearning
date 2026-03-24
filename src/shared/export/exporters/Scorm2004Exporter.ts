@@ -234,15 +234,11 @@ export class Scorm2004Exporter extends Html5Exporter {
             commonFiles.push('libs/common_i18n.js');
 
             // 5. Detect and fetch additional required libraries based on content
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                    includeMathJax: meta.addMathJax === true,
-                    skipMathJax: latexWasRendered && !meta.addMathJax,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                includeMathJax: meta.addMathJax === true,
+                skipMathJax: latexWasRendered && !meta.addMathJax,
+            });
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);

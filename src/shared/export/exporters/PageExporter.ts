@@ -145,14 +145,10 @@ export class PageExporter extends Html5Exporter {
 
             // 5.b Detect and fetch additional required libraries based on content
             // This is crucial for things like MathJax, Tooltips, etc.
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                    includeMathJax: meta.addMathJax === true, // MATHJAX is included if requested
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                includeMathJax: meta.addMathJax === true, // MATHJAX is included if requested
+            });
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);

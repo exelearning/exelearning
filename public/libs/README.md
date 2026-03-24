@@ -77,9 +77,6 @@
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
-*   Package: concurrently
-    *   Copyright: Kimmo Brunfeldt
-    *   License: MIT
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT

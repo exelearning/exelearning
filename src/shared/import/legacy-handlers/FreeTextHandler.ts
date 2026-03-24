@@ -82,6 +82,10 @@ export class FreeTextHandler extends BaseLegacyHandler {
             }
         }
 
+        // Legacy eXe 2.9 exports may wrap text content in a top-level
+        // <div class="exe-text">...</div>. Remove only that outer wrapper.
+        content = this.stripLegacyExeTextWrapper(content);
+
         // Check if content already has feedback buttons embedded (legacy ELPs may have them in HTML)
         // This prevents duplicate feedback buttons when importing
         if (this.hasFeedbackButton(content)) {

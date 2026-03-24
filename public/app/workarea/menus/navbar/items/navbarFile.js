@@ -1949,23 +1949,21 @@ export default class NavbarFile {
                     eXeLearning?.config?.isOfflineInstallation &&
                     window.electronAPI?.saveBuffer
                 ) {
-                    // Convert ArrayBuffer to base64 for IPC transfer
                     const uint8Array = new Uint8Array(result.data);
-                    let binary = '';
-                    for (let i = 0; i < uint8Array.length; i++) {
-                        binary += String.fromCharCode(uint8Array[i]);
-                    }
-                    const base64Data = btoa(binary);
                     const key = window.__currentProjectId || 'default';
                     const exportKey = `${key}:${fallbackApiFormat}`;
                     const exportFilename = result.filename || 'export.zip';
 
                     const saved = await window.electronAPI.saveBuffer(
-                        base64Data,
+                        uint8Array,
                         exportKey,
                         exportFilename
                     );
-                    if (!saved) {
+                    const wasSaved =
+                        typeof saved === 'object' && saved !== null
+                            ? saved.saved === true
+                            : saved === true;
+                    if (!wasSaved) {
                         toast.remove();
                         return true; // Handled client-side (cancel should not trigger server fallback)
                     }

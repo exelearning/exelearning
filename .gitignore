@@ -120,4 +120,3 @@ public/app/dist/
 # Electron app generated content
 /app/dist/
 /app/node_modules/
-.claude/

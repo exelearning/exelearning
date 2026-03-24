@@ -1444,7 +1444,7 @@ export default class IdeviceNode {
             // Get the Yjs bridge and document manager
             const yjsBridge = eXeLearning.app.project._yjsBridge;
             if (!yjsBridge) {
-                throw new Error('Yjs bridge not initialized');
+                throw new Error('Collaboration service not ready');
             }
             const documentManager = yjsBridge.documentManager;
             const assetCache = eXeLearning.app.project._assetCache || null;
@@ -3412,13 +3412,18 @@ export default class IdeviceNode {
      *
      */
     loadLegacyExeFunctionalitiesExport() {
+        // Legacy $exe_effects object
+        $exeFX.init();
+        // Legacy $exe_games object
+        $exeGames.init();
+        // Legacy $exe_highlighter object
+        $exeHighlighter.init();
         // Legacy $exeABCmusic object
         $exeABCmusic.init();
-
-        $exeFX.init();
-
-        // Render mermaid diagrams after save
-        $exe.mermaid.init();
+        // Legacy $exe object
+        $exe.init();
+        // a[rel^='lightbox']
+        $exe.setMultimediaGalleries();
     }
 
     /**

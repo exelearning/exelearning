@@ -195,9 +195,7 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
     const generateUniqueFilename = (originalName: string): string => {
         const ext = path.extname(originalName);
         const base = path.basename(originalName, ext);
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(2, 8);
-        return `${base}_${timestamp}_${random}${ext}`;
+        return `${base}_${crypto.randomUUID()}${ext}`;
     };
 
     // ========================================================================

@@ -218,6 +218,7 @@ class SaveManager {
     this.apiUrl = options.apiUrl || `${window.location.origin}/api`;
     this.token = options.token || '';
     this.progressModal = null;
+    this._saveMemoryTrace = null;
 
     // ==========================================
     // Upload Configuration Constants
@@ -248,7 +249,7 @@ class SaveManager {
      * 6-8 concurrent connections per domain. Excess batches queue in the
      * browser's connection pool without blocking JS execution.
      */
-    this.MAX_CONCURRENT_BATCHES = 10;
+    this.MAX_CONCURRENT_BATCHES = 2;
 
     /**
      * Threshold for chunked uploads (20MB).
@@ -279,7 +280,7 @@ class SaveManager {
      * are pending. Each large file may use MAX_CONCURRENT_CHUNKS connections,
      * so 2 files × 6 chunks = 12 active uploads maximum.
      */
-    this.MAX_CONCURRENT_LARGE_FILES = 2;
+    this.MAX_CONCURRENT_LARGE_FILES = 1;
 
     // Saving state
     this.isSaving = false;
@@ -378,6 +379,13 @@ class SaveManager {
   SESSION_BATCH_SIZE = 200;
 
   /**
+   * Maximum total bytes per upload-session batch.
+   * Session uploads still use a single multipart request, so they need the
+   * same kind of byte ceiling as legacy batches to avoid large FormData spikes.
+   */
+  SESSION_BATCH_BYTES = 20 * 1024 * 1024;
+
+  /**
    * Check if WebSocket-based upload sessions are available
    * @returns {boolean}
    */
@@ -389,14 +397,290 @@ class SaveManager {
    * Divide assets into chunks for session-based upload
    * @param {Array} assets - Assets to divide
    * @param {number} maxPerBatch - Maximum files per batch (default: SESSION_BATCH_SIZE)
+   * @param {number} maxBytesPerBatch - Maximum bytes per batch (default: SESSION_BATCH_BYTES)
    * @returns {Array<Array>} Array of chunks
    */
-  createSessionChunks(assets, maxPerBatch = this.SESSION_BATCH_SIZE) {
+  createSessionChunks(assets, maxPerBatch = this.SESSION_BATCH_SIZE, maxBytesPerBatch = this.SESSION_BATCH_BYTES) {
     const chunks = [];
-    for (let i = 0; i < assets.length; i += maxPerBatch) {
-      chunks.push(assets.slice(i, i + maxPerBatch));
+    let currentChunk = [];
+    let currentBytes = 0;
+
+    for (const asset of assets) {
+      const assetSize = asset.size || asset.blob?.size || 0;
+      const exceedsFileLimit = currentChunk.length >= maxPerBatch;
+      const exceedsByteLimit = currentChunk.length > 0 && currentBytes + assetSize > maxBytesPerBatch;
+
+      if (currentChunk.length > 0 && (exceedsFileLimit || exceedsByteLimit)) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+        currentBytes = 0;
+      }
+
+      currentChunk.push(asset);
+      currentBytes += assetSize;
     }
+
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk);
+    }
+
     return chunks;
+  }
+
+  /**
+   * Detect desktop/offline Electron mode where peak memory matters more than max throughput.
+   * @returns {boolean}
+   */
+  isDesktopLikeUploadMode() {
+    return !!window.electronAPI;
+  }
+
+  /**
+   * Get the debug configuration for save-memory investigation.
+   * These flags are intentionally internal and can be set from devtools or
+   * test code without changing the normal save UI.
+   * @returns {Object}
+   */
+  getSaveMemoryDebugConfig() {
+    const config = window.eXeLearning?.config || {};
+    return {
+      enabled: config.debugSaveMemory === true,
+      experiment: config.saveMemoryExperiment || 'auto',
+      sessionBatchBytes:
+        typeof config.saveMemorySessionBatchBytes === 'number'
+          ? config.saveMemorySessionBatchBytes
+          : null,
+      batchBytes:
+        typeof config.saveMemoryBatchBytes === 'number'
+          ? config.saveMemoryBatchBytes
+          : null,
+    };
+  }
+
+  /**
+   * @returns {string}
+   */
+  getSaveMemoryExperiment() {
+    return this.getSaveMemoryDebugConfig().experiment;
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  isSaveMemoryInstrumentationEnabled() {
+    return this.getSaveMemoryDebugConfig().enabled;
+  }
+
+  /**
+   * @returns {number}
+   */
+  getSessionBatchByteLimit() {
+    const config = this.getSaveMemoryDebugConfig();
+    if (typeof config.sessionBatchBytes === 'number') {
+      return config.sessionBatchBytes;
+    }
+    if (config.experiment === 'small-session-batches') {
+      return 5 * 1024 * 1024;
+    }
+    return this.SESSION_BATCH_BYTES;
+  }
+
+  /**
+   * @returns {number}
+   */
+  getDesktopLegacyBatchByteLimit() {
+    const config = this.getSaveMemoryDebugConfig();
+    if (typeof config.batchBytes === 'number') {
+      return config.batchBytes;
+    }
+    if (config.experiment === 'legacy-batches') {
+      return 5 * 1024 * 1024;
+    }
+    return this.MAX_BATCH_BYTES;
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  shouldSkipYjsUploadForExperiment() {
+    return this.getSaveMemoryExperiment() === 'assets-only';
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  shouldSkipAssetUploadForExperiment() {
+    return this.getSaveMemoryExperiment() === 'yjs-only';
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  shouldForceLegacyBatches() {
+    return this.getSaveMemoryExperiment() === 'legacy-batches';
+  }
+
+  /**
+   * Electron defaults to one-file-per-request for small assets because it
+   * minimizes multipart request body size and reduces Chromium buffering spikes.
+   * The baseline experiment can temporarily restore the previous behavior.
+   * @returns {boolean}
+   */
+  shouldUseDesktopSingleAssetUploads() {
+    if (!this.isDesktopLikeUploadMode()) {
+      return false;
+    }
+    const experiment = this.getSaveMemoryExperiment();
+    return experiment !== 'baseline' && experiment !== 'legacy-batches';
+  }
+
+  /**
+   * @returns {number}
+   */
+  getMemoryTimestampMs() {
+    if (globalThis.performance?.now) {
+      return globalThis.performance.now();
+    }
+    return Date.now();
+  }
+
+  /**
+   * Start a memory trace for the current save.
+   */
+  startSaveMemoryTrace() {
+    if (!this.isSaveMemoryInstrumentationEnabled()) {
+      this._saveMemoryTrace = null;
+      return;
+    }
+
+    this._saveMemoryTrace = {
+      startedAt: new Date().toISOString(),
+      startedMs: this.getMemoryTimestampMs(),
+      experiment: this.getSaveMemoryExperiment(),
+      entries: [],
+    };
+  }
+
+  /**
+   * Read memory metrics from Electron and browser APIs when available.
+   * @returns {Promise<Object>}
+   */
+  async collectSaveMemoryUsage() {
+    let electronMetrics = null;
+    let browserMetrics = null;
+    let uaMetrics = null;
+
+    if (typeof window.electronAPI?.getMemoryUsage === 'function') {
+      try {
+        electronMetrics = await window.electronAPI.getMemoryUsage();
+      } catch (error) {
+        Logger.log(`[SaveManager] getMemoryUsage failed: ${error.message}`);
+      }
+    }
+
+    if (typeof globalThis.performance?.measureUserAgentSpecificMemory === 'function') {
+      try {
+        uaMetrics = await globalThis.performance.measureUserAgentSpecificMemory();
+      } catch (_error) {
+        uaMetrics = null;
+      }
+    }
+
+    if (globalThis.performance?.memory) {
+      browserMetrics = globalThis.performance.memory;
+    }
+
+    return {
+      rss: electronMetrics?.process?.rss ?? null,
+      heapUsed:
+        electronMetrics?.process?.heapUsed ??
+        browserMetrics?.usedJSHeapSize ??
+        null,
+      heapTotal:
+        electronMetrics?.process?.heapTotal ??
+        browserMetrics?.totalJSHeapSize ??
+        null,
+      external: electronMetrics?.process?.external ?? null,
+      arrayBuffers: electronMetrics?.process?.arrayBuffers ?? null,
+      rendererWorkingSetSize: electronMetrics?.renderer?.workingSetSize ?? null,
+      rendererPeakWorkingSetSize: electronMetrics?.renderer?.peakWorkingSetSize ?? null,
+      rendererPrivateBytes: electronMetrics?.renderer?.privateBytes ?? null,
+      rendererSharedBytes: electronMetrics?.renderer?.sharedBytes ?? null,
+      uaBytes: uaMetrics?.bytes ?? null,
+    };
+  }
+
+  /**
+   * Sample and log save-memory metrics for a phase.
+   * @param {string} phase
+   * @param {Object} context
+   * @returns {Promise<void>}
+   */
+  async sampleSaveMemory(phase, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._saveMemoryTrace;
+    if (!trace) {
+      return;
+    }
+
+    const entry = {
+      phase,
+      ts: new Date().toISOString(),
+      elapsedMs: Math.round(this.getMemoryTimestampMs() - trace.startedMs),
+      ...await this.collectSaveMemoryUsage(),
+      ...context,
+    };
+
+    trace.entries.push(entry);
+    Logger.log(`[SaveManager][Memory] ${JSON.stringify(entry)}`);
+  }
+
+  /**
+   * Log a compact peak summary for the current trace.
+   * @param {string} outcome
+   */
+  logSaveMemorySummary(outcome) {
+    if (!this._saveMemoryTrace) {
+      return;
+    }
+
+    const { entries, experiment } = this._saveMemoryTrace;
+    const peakFor = (field) => {
+      return entries.reduce((peak, entry) => {
+        if (typeof entry[field] !== 'number') return peak;
+        if (!peak || entry[field] > peak[field]) return entry;
+        return peak;
+      }, null);
+    };
+
+    const summary = {
+      outcome,
+      experiment,
+      samples: entries.length,
+      peakRss: peakFor('rss'),
+      peakHeapUsed: peakFor('heapUsed'),
+      peakExternal: peakFor('external'),
+      peakArrayBuffers: peakFor('arrayBuffers'),
+    };
+
+    window.__lastSaveMemoryTimeline = entries;
+    window.__lastSaveMemorySummary = summary;
+    Logger.log(`[SaveManager][MemorySummary] ${JSON.stringify(summary)}`);
+  }
+
+  /**
+   * Schedule one delayed sample after save completion so that post-upload
+   * retention can be observed without blocking the save result.
+   * @param {string} outcome
+   */
+  scheduleDelayedSaveMemorySample(outcome) {
+    if (!this._saveMemoryTrace) {
+      return;
+    }
+
+    const trace = this._saveMemoryTrace;
+    window.setTimeout(() => {
+      this.sampleSaveMemory('save:delayed+3000ms', { outcome }, trace).catch(() => {});
+    }, 3000);
   }
 
   /**
@@ -414,7 +698,8 @@ class SaveManager {
   async uploadWithSession(projectId, assetManager, pendingAssets, toast, progressOpts = {}) {
     const { onProgress } = progressOpts;
     const totalFiles = pendingAssets.length;
-    const totalBytes = pendingAssets.reduce((sum, a) => sum + (a.blob?.size || 0), 0);
+    const totalBytes = pendingAssets.reduce((sum, a) => sum + (a.size || a.blob?.size || 0), 0);
+    const pendingAssetsById = new Map(pendingAssets.map(asset => [asset.id, asset]));
 
     Logger.log(
       `[SaveManager] Starting session upload: ${totalFiles} files, ` +
@@ -430,7 +715,7 @@ class SaveManager {
     const manifest = pendingAssets.map(asset => ({
       clientId: asset.id,
       filename: asset.filename || `asset-${asset.id}`,
-      size: asset.blob?.size || 0,
+      size: asset.size || asset.blob?.size || 0,
       mimeType: asset.mime || 'application/octet-stream',
     }));
 
@@ -454,7 +739,7 @@ class SaveManager {
       const { clientId, bytesWritten, totalBytes: fileBytes, status, error } = data;
 
       // Find file info
-      const asset = pendingAssets.find(a => a.id === clientId);
+      const asset = pendingAssetsById.get(clientId);
       const currentFile = asset?.filename || clientId.substring(0, 8) + '...';
 
       if (status === 'complete') {
@@ -481,7 +766,13 @@ class SaveManager {
       for (const result of results) {
         if (result.success) {
           try {
+            await this.sampleSaveMemory('save:session-batch:before-mark-uploaded', {
+              assetId: result.clientId,
+            });
             await assetManager.markAssetUploaded(result.clientId);
+            await this.sampleSaveMemory('save:session-batch:after-mark-uploaded', {
+              assetId: result.clientId,
+            });
           } catch (err) {
             console.warn(`[SaveManager] Failed to mark asset uploaded: ${result.clientId}`, err);
           }
@@ -495,23 +786,41 @@ class SaveManager {
 
     try {
       // Split assets into chunks to respect server's 200-file limit per request
-      const chunks = this.createSessionChunks(pendingAssets, this.SESSION_BATCH_SIZE);
+      const sessionBatchBytes = this.getSessionBatchByteLimit();
+      const chunks = this.createSessionChunks(
+        pendingAssets,
+        this.SESSION_BATCH_SIZE,
+        sessionBatchBytes
+      );
       Logger.log(
         `[SaveManager] Uploading ${pendingAssets.length} files in ${chunks.length} session batches ` +
-        `(max ${this.SESSION_BATCH_SIZE} files per batch)`
+        `(max ${this.SESSION_BATCH_SIZE} files / ${(sessionBatchBytes / (1024 * 1024)).toFixed(0)} MB per batch)`
       );
 
       const basePath = window.eXeLearning?.config?.basePath || '';
       const uploadUrl = `${basePath}${session.config.endpoints.batch}`;
 
       // Upload each chunk sequentially (same session token, multiple HTTP requests)
+      // Load blobs per-chunk to avoid loading all blobs into memory at once
       for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
         const chunk = chunks[chunkIndex];
-        const chunkBytes = chunk.reduce((sum, a) => sum + (a.blob?.size || 0), 0);
+        await this.sampleSaveMemory('save:session-batch:before-blob-load', {
+          batchIndex: chunkIndex + 1,
+          totalBatches: chunks.length,
+          batchFiles: chunk.length,
+        });
+        let chunkWithBlobs = await assetManager.getPendingAssetsBatch(chunk, { restoreToMemory: false });
+        const chunkBytes = chunkWithBlobs.reduce((sum, a) => sum + (a.blob?.size || 0), 0);
+        await this.sampleSaveMemory('save:session-batch:after-blob-load', {
+          batchIndex: chunkIndex + 1,
+          totalBatches: chunks.length,
+          batchFiles: chunkWithBlobs.length,
+          batchBytes: chunkBytes,
+        });
 
         Logger.log(
           `[SaveManager] Uploading session batch ${chunkIndex + 1}/${chunks.length} ` +
-          `(${chunk.length} files, ${(chunkBytes / (1024 * 1024)).toFixed(1)} MB)`
+          `(${chunkWithBlobs.length} files, ${(chunkBytes / (1024 * 1024)).toFixed(1)} MB)`
         );
 
         // Reset per-batch counters (cumulative tracking handles overall progress)
@@ -520,10 +829,16 @@ class SaveManager {
         failedFiles = 0;
 
         // Build FormData for this chunk
-        const formData = new FormData();
+        await this.sampleSaveMemory('save:session-batch:before-formdata', {
+          batchIndex: chunkIndex + 1,
+          totalBatches: chunks.length,
+          batchFiles: chunkWithBlobs.length,
+          batchBytes: chunkBytes,
+        });
+        let formData = new FormData();
 
         // Add metadata as JSON
-        const metadata = chunk.map(asset => ({
+        const metadata = chunkWithBlobs.map(asset => ({
           clientId: asset.id,
           filename: asset.filename || `asset-${asset.id}`,
           mimeType: asset.mime || 'application/octet-stream',
@@ -532,7 +847,7 @@ class SaveManager {
         formData.append('metadata', JSON.stringify(metadata));
 
         // Add files for this chunk
-        for (const asset of chunk) {
+        for (const asset of chunkWithBlobs) {
           if (!asset.blob) {
             console.warn('[SaveManager] Asset missing blob:', asset.id);
             continue;
@@ -542,14 +857,35 @@ class SaveManager {
           });
           formData.append('files', file);
         }
+        await this.sampleSaveMemory('save:session-batch:after-formdata', {
+          batchIndex: chunkIndex + 1,
+          totalBatches: chunks.length,
+          batchFiles: chunkWithBlobs.length,
+          batchBytes: chunkBytes,
+        });
 
         // Upload this chunk via HTTP with session token
+        await this.sampleSaveMemory('save:session-batch:before-request', {
+          batchIndex: chunkIndex + 1,
+          totalBatches: chunks.length,
+          batchFiles: chunkWithBlobs.length,
+          batchBytes: chunkBytes,
+        });
         const response = await fetch(uploadUrl, {
           method: 'POST',
           headers: {
             'X-Upload-Session': session.sessionToken,
           },
           body: formData,
+        });
+        formData = null;
+        chunkWithBlobs = null;
+        await Promise.resolve();
+        await this.sampleSaveMemory('save:session-batch:after-request', {
+          batchIndex: chunkIndex + 1,
+          totalBatches: chunks.length,
+          batchFiles: chunk.length,
+          batchBytes: chunkBytes,
         });
 
         if (!response.ok) {
@@ -780,6 +1116,7 @@ class SaveManager {
     }
 
     this.isSaving = true;
+    this.startSaveMemoryTrace();
 
     // Get project info early for toast creation
     const projectId = this.bridge.projectId;
@@ -791,9 +1128,14 @@ class SaveManager {
     const toast = showProgress ? this.createProgressToast(projectTitle) : null;
 
     try {
+      await this.sampleSaveMemory('save:start', {
+        experiment: this.getSaveMemoryExperiment(),
+        desktopMode: this.isDesktopLikeUploadMode(),
+      });
+
       // Get asset manager
       const assetManager = this.bridge.assetManager;
-      let pendingAssets = null;
+      let pendingAssetsMetadata = null;
 
       if (!projectId || !documentManager) {
         throw new Error('Project not initialized');
@@ -801,14 +1143,20 @@ class SaveManager {
 
       if (assetManager && assetManager.projectId) {
         try {
-          pendingAssets = await assetManager.getPendingAssets();
+          // Use metadata-only call — avoids loading all blobs into memory for quota check
+          await this.sampleSaveMemory('save:pending-assets:before-collect');
+          pendingAssetsMetadata = assetManager.getPendingAssetsMetadata();
+          await this.sampleSaveMemory('save:pending-assets:after-collect', {
+            pendingAssets: pendingAssetsMetadata?.length || 0,
+            pendingAssetBytes: this.estimatePendingUploadBytes(pendingAssetsMetadata || []),
+          });
         } catch (assetError) {
-          console.error('[SaveManager] Failed to load pending assets:', assetError);
+          console.error('[SaveManager] Failed to load pending assets metadata:', assetError);
         }
       }
 
-      if (pendingAssets && pendingAssets.length > 0) {
-        const quotaCheck = await this.checkQuotaBeforeSave(pendingAssets);
+      if (pendingAssetsMetadata && pendingAssetsMetadata.length > 0) {
+        const quotaCheck = await this.checkQuotaBeforeSave(pendingAssetsMetadata);
         if (!quotaCheck.allowed) {
           if (eXeLearning?.app?.modals?.alert) {
             eXeLearning.app.modals.alert.show({
@@ -820,9 +1168,20 @@ class SaveManager {
         }
       }
 
-      // Calculate progress weights based on actual data sizes
-      const yjsBytes = this.estimateYjsStateBytes(documentManager);
-      const assetBytes = this.estimatePendingUploadBytes(pendingAssets || []);
+      // Encode Yjs state once — reuse for both size estimation and upload
+      let encodedYjsState = null;
+      let yjsBytes = 0;
+      try {
+        await this.sampleSaveMemory('save:yjs-serialize:before');
+        encodedYjsState = window.Y.encodeStateAsUpdate(documentManager.ydoc);
+        yjsBytes = encodedYjsState.length;
+        await this.sampleSaveMemory('save:yjs-serialize:after', {
+          yjsBytes,
+        });
+      } catch {
+        yjsBytes = 0;
+      }
+      const assetBytes = this.estimatePendingUploadBytes(pendingAssetsMetadata || []);
       const weights = ProgressTracker.calculateWeights(yjsBytes, assetBytes);
 
       Logger.log(`[SaveManager] Progress weights - Yjs: ${(weights.yjs * 100).toFixed(1)}%, ` +
@@ -836,31 +1195,48 @@ class SaveManager {
       });
 
       // Step 1: Save Yjs document state (weighted based on bytes)
-      Logger.log('[SaveManager] Step 1: Saving Yjs state...');
-      if (toast) {
-        toast.toastBody.innerHTML = _('Saving document...');
-      }
+      if (this.shouldSkipYjsUploadForExperiment()) {
+        Logger.log('[SaveManager] Skipping Yjs upload for save-memory experiment');
+        progressTracker.setPhase('yjs');
+        progressTracker.updatePhaseProgress(100);
+      } else {
+        Logger.log('[SaveManager] Step 1: Saving Yjs state...');
+        if (toast) {
+          toast.toastBody.innerHTML = _('Saving document...');
+        }
 
-      progressTracker.setPhase('yjs');
-      await this.saveYjsState(projectId, documentManager, (percent) => {
-        progressTracker.updatePhaseProgress(percent);
-      });
-      progressTracker.updatePhaseProgress(100);
+        progressTracker.setPhase('yjs');
+        await this.sampleSaveMemory('save:yjs-upload:before', { yjsBytes });
+        await this.saveYjsState(projectId, documentManager, encodedYjsState, (percent) => {
+          progressTracker.updatePhaseProgress(percent);
+        });
+        await this.sampleSaveMemory('save:yjs-upload:after', { yjsBytes });
+        encodedYjsState = null; // Free encoded state after upload
+        progressTracker.updatePhaseProgress(100);
+      }
 
       // Step 2: Upload pending assets (weighted based on bytes)
       progressTracker.setPhase('assets');
-      if (assetManager && assetManager.projectId) {
+      if (this.shouldSkipAssetUploadForExperiment()) {
+        Logger.log('[SaveManager] Skipping asset upload for save-memory experiment');
+      } else if (assetManager && assetManager.projectId) {
         try {
-          if (!pendingAssets) {
-            pendingAssets = await assetManager.getPendingAssets();
+          // Re-check metadata (not loading blobs yet — uploadAssets loads per-batch)
+          if (!pendingAssetsMetadata) {
+            await this.sampleSaveMemory('save:pending-assets:before-recheck');
+            pendingAssetsMetadata = assetManager.getPendingAssetsMetadata();
+            await this.sampleSaveMemory('save:pending-assets:after-recheck', {
+              pendingAssets: pendingAssetsMetadata?.length || 0,
+            });
           }
 
-          if (pendingAssets && pendingAssets.length > 0) {
-            Logger.log(`[SaveManager] Step 2: Uploading ${pendingAssets.length} assets...`);
+          if (pendingAssetsMetadata && pendingAssetsMetadata.length > 0) {
+            Logger.log(`[SaveManager] Step 2: Uploading ${pendingAssetsMetadata.length} assets...`);
             if (toast) {
               toast.toastBody.innerHTML = _('Uploading assets...');
             }
-            await this.uploadAssets(projectId, assetManager, pendingAssets, toast, progressTracker);
+            // Pass metadata directly — upload methods load blobs per-batch to avoid memory spike
+            await this.uploadAssets(projectId, assetManager, pendingAssetsMetadata, toast, progressTracker);
           } else {
             Logger.log('[SaveManager] Step 2: No pending assets to upload');
           }
@@ -880,8 +1256,12 @@ class SaveManager {
       if (toast) {
         toast.toastBody.innerHTML = _('Finalizing...');
       }
+      await this.sampleSaveMemory('save:finalize:before');
       await this.updateProjectMetadata(projectId, metadata);
       progressTracker.updatePhaseProgress(100);
+      await this.sampleSaveMemory('save:end', { outcome: 'success' });
+      this.logSaveMemorySummary('success');
+      this.scheduleDelayedSaveMemorySample('success');
 
       // Success!
       Logger.log('[SaveManager] Save completed successfully');
@@ -906,6 +1286,9 @@ class SaveManager {
       return { success: true, message: _('Project saved successfully') };
     } catch (error) {
       console.error('[SaveManager] Save failed:', error);
+      await this.sampleSaveMemory('save:end', { outcome: 'error', error: error.message });
+      this.logSaveMemorySummary('error');
+      this.scheduleDelayedSaveMemorySample('error');
 
       if (toast) {
         toast.toastBody.innerHTML = error.message || _('Failed to save project');
@@ -945,12 +1328,12 @@ class SaveManager {
    * This is an explicit save (user clicked Save), so we mark the project as saved.
    * @param {string} projectId - Project UUID
    * @param {YjsDocumentManager} documentManager
+   * @param {Uint8Array|null} preEncodedState - Pre-encoded Yjs state (avoids double encoding)
    * @param {Function} onProgress - Progress callback (0-100)
    */
-  async saveYjsState(projectId, documentManager, onProgress) {
-    // Serialize the Yjs document
-    const ydoc = documentManager.ydoc;
-    const state = window.Y.encodeStateAsUpdate(ydoc);
+  async saveYjsState(projectId, documentManager, preEncodedState, onProgress) {
+    // Use pre-encoded state if available, otherwise encode now
+    const state = preEncodedState || window.Y.encodeStateAsUpdate(documentManager.ydoc);
 
     Logger.log(`[SaveManager] Yjs state size: ${state.length} bytes`);
 
@@ -1018,12 +1401,14 @@ class SaveManager {
     const sortedAssets = this.sortAssetsByPriority(pendingAssets);
 
     // Separate large files (chunked upload) from small files (batch/session upload)
-    const largeAssets = sortedAssets.filter(a => (a.blob?.size || 0) > this.CHUNK_UPLOAD_THRESHOLD);
-    const smallAssets = sortedAssets.filter(a => (a.blob?.size || 0) <= this.CHUNK_UPLOAD_THRESHOLD);
+    // Support both metadata-only objects (size property) and blob-loaded objects (blob.size)
+    const getAssetSize = (a) => a.size || a.blob?.size || 0;
+    const largeAssets = sortedAssets.filter(a => getAssetSize(a) > this.CHUNK_UPLOAD_THRESHOLD);
+    const smallAssets = sortedAssets.filter(a => getAssetSize(a) <= this.CHUNK_UPLOAD_THRESHOLD);
 
     // Calculate progress weights based on total bytes
-    const largeTotalBytes = largeAssets.reduce((sum, a) => sum + (a.blob?.size || 0), 0);
-    const smallTotalBytes = smallAssets.reduce((sum, a) => sum + (a.blob?.size || 0), 0);
+    const largeTotalBytes = largeAssets.reduce((sum, a) => sum + getAssetSize(a), 0);
+    const smallTotalBytes = smallAssets.reduce((sum, a) => sum + getAssetSize(a), 0);
     const totalBytes = largeTotalBytes + smallTotalBytes;
 
     // Progress allocation: proportional to bytes
@@ -1055,12 +1440,14 @@ class SaveManager {
       }
     };
 
-    // Execute uploads in parallel: chunked for large files, sessions/batches for small files
-    const uploadPromises = [];
+    // Execute uploads in a memory-aware way. Electron prefers predictable peak
+    // memory over maximum throughput, so run upload streams sequentially there.
+    const runSequentially = this.isDesktopLikeUploadMode();
+    const uploadTasks = [];
 
     // 1. Large assets → chunked upload
     if (largeAssets.length > 0) {
-      uploadPromises.push(
+      uploadTasks.push(() =>
         this.uploadLargeAssetsChunked(projectId, assetManager, largeAssets, null, {
           baseProgress: 0,
           progressRange: 100,
@@ -1076,10 +1463,21 @@ class SaveManager {
 
     // 2. Small assets → TRY session upload, fallback to batch
     if (smallAssets.length > 0) {
-      if (this.isUploadSessionAvailable()) {
+      if (this.shouldUseDesktopSingleAssetUploads()) {
+        Logger.log('[SaveManager] Using single-file upload for small assets in Electron mode');
+        uploadTasks.push(() =>
+          this.uploadSmallAssetsIndividually(projectId, assetManager, smallAssets, null, {
+            onProgress: (uploadedFiles, uploadedBytes) => {
+              smallUploadedFiles = uploadedFiles;
+              smallUploadedBytes = uploadedBytes;
+              updateCombinedProgress();
+            },
+          })
+        );
+      } else if (this.isUploadSessionAvailable() && !this.shouldForceLegacyBatches()) {
         // Use upload sessions for small files (fewer HTTP requests, real-time progress)
         Logger.log('[SaveManager] Using optimized upload session for small assets');
-        uploadPromises.push(
+        uploadTasks.push(() =>
           this.uploadWithSession(projectId, assetManager, smallAssets, null, {
             onProgress: (uploadedFiles, uploadedBytes) => {
               smallUploadedFiles = uploadedFiles;
@@ -1103,7 +1501,7 @@ class SaveManager {
       } else {
         // Fallback: legacy batch upload
         Logger.log('[SaveManager] Using batch upload for small assets (sessions unavailable)');
-        uploadPromises.push(
+        uploadTasks.push(() =>
           this.uploadSmallAssetsBatched(projectId, assetManager, smallAssets, null, {
             baseProgress: 0,
             progressRange: 100,
@@ -1117,8 +1515,10 @@ class SaveManager {
       }
     }
 
-    // Wait for all uploads to complete (parallel execution)
-    const results = await Promise.allSettled(uploadPromises);
+    // Wait for upload streams to complete
+    const results = runSequentially
+      ? await this.runUploadTasksSequentially(uploadTasks)
+      : await Promise.allSettled(uploadTasks.map(task => task()));
 
     // Combine results from all upload streams
     let totalUploaded = 0;
@@ -1167,7 +1567,7 @@ class SaveManager {
     let failedCount = 0;
 
     // Track bytes uploaded for smooth progress
-    const totalBytes = largeAssets.reduce((sum, a) => sum + (a.blob?.size || 0), 0);
+    const totalBytes = largeAssets.reduce((sum, a) => sum + (a.size || a.blob?.size || 0), 0);
     let bytesUploaded = 0;
     const assetBytesUploaded = new Map(); // Track per-asset progress
 
@@ -1183,23 +1583,47 @@ class SaveManager {
       }
     };
 
-    // Upload large files in parallel batches
+    // Upload large files in parallel batches — load blobs per-asset to avoid memory spike
     for (let i = 0; i < largeAssets.length; i += this.MAX_CONCURRENT_LARGE_FILES) {
       const batch = largeAssets.slice(i, i + this.MAX_CONCURRENT_LARGE_FILES);
 
       const results = await Promise.allSettled(
         batch.map(async (asset) => {
-          const assetBytes = asset.blob?.size || 0;
+          // Load blob on-demand for this asset (may be metadata-only)
+          await this.sampleSaveMemory('save:large-asset:before-blob-load', {
+            assetId: asset.id,
+            batchFiles: 1,
+          });
+          const blob = asset.blob || await this.getBlobForUpload(assetManager, asset.id);
+          if (!blob) {
+            Logger.log(`[SaveManager] Skipping large asset ${asset.id}: no local blob`);
+            return { success: false, asset, error: new Error('Missing blob') };
+          }
+          const assetWithBlob = { ...asset, blob };
+          const assetBytes = blob.size || 0;
           const assetSize = assetBytes / (1024 * 1024);
+          await this.sampleSaveMemory('save:large-asset:after-blob-load', {
+            assetId: asset.id,
+            batchFiles: 1,
+            batchBytes: assetBytes,
+          });
 
           try {
-            await this.uploadLargeAsset(projectId, asset, (chunkProgress) => {
+            await this.uploadLargeAsset(projectId, assetWithBlob, (chunkProgress) => {
               // chunkProgress is 0-1 for this asset
               assetBytesUploaded.set(asset.id, chunkProgress * assetBytes);
               updateProgress();
             });
 
+            await this.sampleSaveMemory('save:large-asset:before-mark-uploaded', {
+              assetId: asset.id,
+              batchBytes: assetBytes,
+            });
             await assetManager.markAssetUploaded(asset.id);
+            await this.sampleSaveMemory('save:large-asset:after-mark-uploaded', {
+              assetId: asset.id,
+              batchBytes: assetBytes,
+            });
             assetBytesUploaded.delete(asset.id);
             bytesUploaded += assetBytes;
             updateProgress();
@@ -1244,7 +1668,11 @@ class SaveManager {
     // Split assets into batches respecting priority, file count AND total size limits
     const batches = this.priorityQueue
       ? this.createPriorityBatches(smallAssets)
-      : this.createSizeLimitedBatches(smallAssets);
+      : this.createSizeLimitedBatches(
+        smallAssets,
+        null,
+        this.isDesktopLikeUploadMode() ? this.getDesktopLegacyBatchByteLimit() : null
+      );
 
     Logger.log(`[SaveManager] Processing ${smallAssets.length} small assets in ${batches.length} batches (max ${this.MAX_CONCURRENT_BATCHES} concurrent)`);
 
@@ -1256,21 +1684,51 @@ class SaveManager {
     for (let i = 0; i < batches.length; i += this.MAX_CONCURRENT_BATCHES) {
       const concurrentBatches = batches.slice(i, i + this.MAX_CONCURRENT_BATCHES);
 
-      // Upload batches in parallel using Promise.allSettled (continues on failure)
+      // Load blobs per-batch and upload in parallel (continues on failure)
       const results = await Promise.allSettled(
-        concurrentBatches.map(batch => this.uploadAssetBatch(projectId, batch, assetManager))
+        concurrentBatches.map(async (batch, batchOffset) => {
+          const batchIndex = i + batchOffset + 1;
+          await this.sampleSaveMemory('save:small-batch:before-blob-load', {
+            batchIndex,
+            totalBatches: batches.length,
+            batchFiles: batch.length,
+          });
+          let batchWithBlobs = await assetManager.getPendingAssetsBatch(batch, { restoreToMemory: false });
+          const batchBytes = batchWithBlobs.reduce((sum, a) => sum + (a.blob?.size || a.size || 0), 0);
+          await this.sampleSaveMemory('save:small-batch:after-blob-load', {
+            batchIndex,
+            totalBatches: batches.length,
+            batchFiles: batchWithBlobs.length,
+            batchBytes,
+          });
+          const uploadResult = await this.uploadAssetBatch(projectId, batchWithBlobs, assetManager, {
+            phasePrefix: 'save:small-batch',
+            batchIndex,
+            totalBatches: batches.length,
+            batchFiles: batchWithBlobs.length,
+            batchBytes,
+          });
+          batchWithBlobs = null;
+          return uploadResult;
+        })
       );
 
       // Process results and mark successful uploads
       for (let j = 0; j < results.length; j++) {
         const result = results[j];
         const batch = concurrentBatches[j];
-        const batchBytes = batch.reduce((sum, a) => sum + (a.blob?.size || 0), 0);
+        const batchBytes = batch.reduce((sum, a) => sum + (a.size || a.blob?.size || 0), 0);
 
         if (result.status === 'fulfilled') {
           // Batch succeeded - mark all assets as uploaded
           for (const asset of batch) {
+            await this.sampleSaveMemory('save:small-batch:before-mark-uploaded', {
+              assetId: asset.id,
+            });
             await assetManager.markAssetUploaded(asset.id);
+            await this.sampleSaveMemory('save:small-batch:after-mark-uploaded', {
+              assetId: asset.id,
+            });
             uploadedCount++;
           }
           bytesUploaded += batchBytes;
@@ -1284,6 +1742,86 @@ class SaveManager {
         if (onProgress) {
           onProgress(uploadedCount, bytesUploaded);
         }
+      }
+    }
+
+    return { uploaded: uploadedCount, failed: failedCount };
+  }
+
+  /**
+   * Upload small assets one file per request.
+   * This is slower than batching but reduces multipart body size sharply,
+   * which is valuable for Electron save stability on large projects.
+   * @param {string} projectId
+   * @param {AssetManager} assetManager
+   * @param {Array} smallAssets
+   * @param {Toast|null} toast
+   * @param {Object} progressOpts
+   * @returns {Promise<{uploaded: number, failed: number}>}
+   */
+  async uploadSmallAssetsIndividually(projectId, assetManager, smallAssets, toast, progressOpts = {}) {
+    const { onProgress } = progressOpts;
+    let uploadedCount = 0;
+    let failedCount = 0;
+    let uploadedBytes = 0;
+
+    for (let index = 0; index < smallAssets.length; index++) {
+      const asset = smallAssets[index];
+      const batchIndex = index + 1;
+
+      await this.sampleSaveMemory('save:single-file:before-blob-load', {
+        batchIndex,
+        totalBatches: smallAssets.length,
+        assetId: asset.id,
+        batchFiles: 1,
+      });
+      const [assetWithBlob] = await assetManager.getPendingAssetsBatch([asset], { restoreToMemory: false });
+      const assetBytes = assetWithBlob?.blob?.size || asset.size || 0;
+      await this.sampleSaveMemory('save:single-file:after-blob-load', {
+        batchIndex,
+        totalBatches: smallAssets.length,
+        assetId: asset.id,
+        batchFiles: assetWithBlob ? 1 : 0,
+        batchBytes: assetBytes,
+      });
+
+      if (!assetWithBlob) {
+        failedCount++;
+        continue;
+      }
+
+      try {
+        await this.uploadAssetBatch(projectId, [assetWithBlob], assetManager, {
+          phasePrefix: 'save:single-file',
+          batchIndex,
+          totalBatches: smallAssets.length,
+          assetId: asset.id,
+          batchFiles: 1,
+          batchBytes: assetBytes,
+        });
+        await this.sampleSaveMemory('save:single-file:before-mark-uploaded', {
+          batchIndex,
+          totalBatches: smallAssets.length,
+          assetId: asset.id,
+          batchBytes: assetBytes,
+        });
+        await assetManager.markAssetUploaded(asset.id);
+        await this.sampleSaveMemory('save:single-file:after-mark-uploaded', {
+          batchIndex,
+          totalBatches: smallAssets.length,
+          assetId: asset.id,
+          batchBytes: assetBytes,
+        });
+
+        uploadedCount++;
+        uploadedBytes += assetBytes;
+      } catch (error) {
+        console.error('[SaveManager] Single-file upload failed:', error);
+        failedCount++;
+      }
+
+      if (onProgress) {
+        onProgress(uploadedCount, uploadedBytes);
       }
     }
 
@@ -1379,7 +1917,16 @@ class SaveManager {
    * @returns {Promise<Object>} - Server response
    */
   async uploadChunk(projectId, asset, identifier, chunkNumber, totalChunks, chunkBlob) {
-    const formData = new FormData();
+    const traceContext = {
+      phasePrefix: 'save:chunk-upload',
+      assetId: asset.id,
+      chunkNumber,
+      totalChunks,
+      batchFiles: 1,
+      batchBytes: chunkBlob.size || 0,
+    };
+    await this.sampleSaveMemory('save:chunk-upload:before-formdata', traceContext);
+    let formData = new FormData();
 
     // Add chunk file
     const chunkFile = new File([chunkBlob], asset.filename || `chunk-${chunkNumber}`, {
@@ -1394,7 +1941,9 @@ class SaveManager {
     formData.append('resumableFilename', asset.filename || `asset-${asset.id}`);
     formData.append('resumableType', asset.mime || 'application/octet-stream');
     formData.append('clientId', asset.id);
+    await this.sampleSaveMemory('save:chunk-upload:after-formdata', traceContext);
 
+    await this.sampleSaveMemory('save:chunk-upload:before-request', traceContext);
     const response = await fetch(`${this.apiUrl}/projects/${projectId}/assets/upload-chunk`, {
       method: 'POST',
       headers: {
@@ -1402,6 +1951,9 @@ class SaveManager {
       },
       body: formData,
     });
+    formData = null;
+    await Promise.resolve();
+    await this.sampleSaveMemory('save:chunk-upload:after-request', traceContext);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1449,9 +2001,10 @@ class SaveManager {
    * @param {Array} assets - Batch of assets
    * @param {AssetManager} assetManager
    */
-  async uploadAssetBatch(projectId, assets, assetManager) {
+  async uploadAssetBatch(projectId, assets, assetManager, traceContext = {}) {
     // Build FormData for bulk sync
-    const formData = new FormData();
+    await this.sampleSaveMemory(`${traceContext.phasePrefix || 'save:asset-batch'}:before-formdata`, traceContext);
+    let formData = new FormData();
 
     // Build metadata array
     const metadata = [];
@@ -1473,8 +2026,10 @@ class SaveManager {
 
     // Add metadata as JSON
     formData.append('metadata', JSON.stringify(metadata));
+    await this.sampleSaveMemory(`${traceContext.phasePrefix || 'save:asset-batch'}:after-formdata`, traceContext);
 
     // Send to server
+    await this.sampleSaveMemory(`${traceContext.phasePrefix || 'save:asset-batch'}:before-request`, traceContext);
     const response = await fetch(`${this.apiUrl}/projects/${projectId}/assets/sync`, {
       method: 'POST',
       headers: {
@@ -1482,6 +2037,9 @@ class SaveManager {
       },
       body: formData,
     });
+    formData = null;
+    await Promise.resolve();
+    await this.sampleSaveMemory(`${traceContext.phasePrefix || 'save:asset-batch'}:after-request`, traceContext);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1492,6 +2050,47 @@ class SaveManager {
     Logger.log(`[SaveManager] Batch uploaded:`, result);
 
     return result;
+  }
+
+  /**
+   * Run upload tasks sequentially while preserving Promise.allSettled semantics.
+   * @param {Array<Function>} uploadTasks
+   * @returns {Promise<Array>}
+   */
+  async runUploadTasksSequentially(uploadTasks) {
+    const results = [];
+    for (const task of uploadTasks) {
+      try {
+        results.push({
+          status: 'fulfilled',
+          value: await task(),
+        });
+      } catch (reason) {
+        results.push({
+          status: 'rejected',
+          reason,
+        });
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Read a blob for upload without repopulating blobCache from Cache API when possible.
+   * @param {AssetManager} assetManager
+   * @param {string} assetId
+   * @returns {Promise<Blob|null>}
+   */
+  async getBlobForUpload(assetManager, assetId) {
+    if (typeof assetManager.getBlobForExport === 'function') {
+      return assetManager.getBlobForExport(assetId);
+    }
+
+    if (typeof assetManager.getBlob === 'function') {
+      return assetManager.getBlob(assetId, { restoreToMemory: false });
+    }
+
+    return null;
   }
 
   /**
@@ -1509,7 +2108,7 @@ class SaveManager {
     let currentBatchSize = 0;
 
     for (const asset of assets) {
-      const assetSize = asset.blob?.size || 0;
+      const assetSize = asset.size || asset.blob?.size || 0;
 
       // Check if adding this asset would exceed limits
       const wouldExceedFileLimit = currentBatch.length >= maxFilesLimit;
@@ -1535,7 +2134,7 @@ class SaveManager {
     // Log batch distribution for debugging
     const batchSizes = batches.map(b => ({
       files: b.length,
-      bytes: b.reduce((sum, a) => sum + (a.blob?.size || 0), 0)
+      bytes: b.reduce((sum, a) => sum + (a.size || a.blob?.size || 0), 0)
     }));
     Logger.log(`[SaveManager] Created ${batches.length} batches:`, batchSizes.map(
       s => `${s.files} files/${(s.bytes / (1024 * 1024)).toFixed(1)}MB`

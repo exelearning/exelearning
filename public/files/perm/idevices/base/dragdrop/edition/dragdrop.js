@@ -259,7 +259,7 @@ var $exeDevice = {
                                                 </div>
                                             </div>
                                             <span id="dadETitleAudio">${_('Audio')}</span>
-                                            <div class="DAD-DEInputAudio gap-2" id="dadEInputAudio">
+                                            <div class="DAD-DEInputAudio gap-2" id="dadEInputAudio" data-voice-recorder data-voice-input="#dadEURLAudio">
                                                 <label class="sr-av" for="dadEURLAudio">${_('URL')}</label>
                                                 <input type="text" class="exe-file-picker form-control me-0" id="dadEURLAudio"/>
                                                 <a href="#" id="dadEPlayAudio" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Play audio')}">
@@ -518,6 +518,9 @@ var $exeDevice = {
 
     enableForm: function () {
         $exeDevice.initCards();
+
+        const root = document.getElementById('dragDropIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();

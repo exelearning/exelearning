@@ -55,7 +55,7 @@ import { userRoutes } from './routes/user';
 // import { yjsRoutes } from './routes/yjs';
 // import { createWebSocketRoutes, initialize as initWebSocket, ... } from './websocket/yjs-websocket';
 import { getFilesDir } from './services/file-helper';
-import { db } from './db/client';
+import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
 import { findUserByEmail, createUser } from './db/queries/users';
 import { getSettingNumber } from './services/app-settings';
@@ -421,15 +421,17 @@ bootstrap().catch(err => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
     console.log('SIGTERM received, shutting down...');
     // NOTE: stopWebSocket() disabled in Node.js legacy mode
+    await closeDb();
     process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     console.log('SIGINT received, shutting down...');
     // NOTE: stopWebSocket() disabled in Node.js legacy mode
+    await closeDb();
     process.exit(0);
 });
 

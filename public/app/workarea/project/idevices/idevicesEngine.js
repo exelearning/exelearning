@@ -2582,6 +2582,8 @@ export default class IdevicesEngine {
         $exeABCmusic.init();
         // Legacy $exe object
         $exe.init();
+        // a[rel^='lightbox']
+        $exe.setMultimediaGalleries();
     }
 
     /**
@@ -2952,7 +2954,7 @@ export default class IdevicesEngine {
         const avatar = document.createElement('div');
         avatar.classList.add('idevice-user-avatar');
         // Tooltip with email
-        avatar.title = user.email || `${_('Editing by')} ${user.name || 'User'}`;
+        avatar.title = user.email || `${_('Being edited by')} ${user.name || 'User'}`;
 
         if (user.color) {
             avatar.style.borderColor = user.color;

@@ -1358,25 +1358,142 @@ ipcMain.handle('app:readFile', async (_e, { filePath }) => {
     }
 });
 
+ipcMain.handle('app:getMemoryUsage', async (e) => {
+    let renderer = null;
+    try {
+        if (e?.sender?.getProcessMemoryInfo) {
+            renderer = await e.sender.getProcessMemoryInfo();
+        }
+    } catch (_err) {
+        renderer = null;
+    }
+
+    return {
+        process: process.memoryUsage(),
+        renderer,
+    };
+});
+
+function normalizeBinaryPayload(bufferData, base64Data) {
+    if (bufferData instanceof Uint8Array) {
+        return Buffer.from(bufferData);
+    }
+
+    if (bufferData instanceof ArrayBuffer) {
+        return Buffer.from(new Uint8Array(bufferData));
+    }
+
+    if (Array.isArray(bufferData)) {
+        return Buffer.from(bufferData);
+    }
+
+    if (base64Data) {
+        return Buffer.from(base64Data, 'base64');
+    }
+
+    return null;
+}
+
+function createSaveBufferResponse({
+    saved = false,
+    canceled = false,
+    canceledAt = null,
+    filePath = null,
+    error = null,
+    promptMs = 0,
+    normalizeMs = 0,
+    writeMs = 0,
+    totalMs = 0,
+} = {}) {
+    return {
+        saved,
+        canceled,
+        canceledAt,
+        filePath,
+        error,
+        timings: {
+            totalMs: Math.round(totalMs),
+            promptMs: Math.round(promptMs),
+            normalizeMs: Math.round(normalizeMs),
+            writeMs: Math.round(writeMs),
+        },
+    };
+}
+
 // Save binary data — always prompts for destination (no silent overwrite)
-async function saveBufferWithDialog(e, { base64Data, projectKey, suggestedName }) {
-    if (!base64Data) return false;
+async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, suggestedName }) {
+    const startedAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+    let afterPromptAt = startedAt;
+    let afterNormalizeAt = startedAt;
+    let targetPath = null;
+
+    if (!bufferData && !base64Data) {
+        return createSaveBufferResponse({
+            saved: false,
+            canceled: false,
+            canceledAt: 'write',
+            error: 'Missing buffer data',
+        });
+    }
     try {
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
         const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
         const key = projectKey || 'default';
         const { dir: lastDir, name: storedName } = getLastSaveInfo(key);
 
-        const targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
-        if (!targetPath) return false;
+        targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
+        afterPromptAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        if (!targetPath) {
+            return createSaveBufferResponse({
+                saved: false,
+                canceled: true,
+                canceledAt: 'dialog',
+                promptMs: afterPromptAt - startedAt,
+                totalMs: afterPromptAt - startedAt,
+            });
+        }
         setLastSaveInfo(key, path.dirname(targetPath), path.basename(targetPath));
 
-        const buffer = Buffer.from(base64Data, 'base64');
+        const buffer = normalizeBinaryPayload(bufferData, base64Data);
+        afterNormalizeAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        if (!buffer) {
+            return createSaveBufferResponse({
+                saved: false,
+                canceled: false,
+                canceledAt: 'write',
+                filePath: targetPath,
+                error: 'Failed to normalize binary payload',
+                promptMs: afterPromptAt - startedAt,
+                normalizeMs: afterNormalizeAt - afterPromptAt,
+                totalMs: afterNormalizeAt - startedAt,
+            });
+        }
         fs.writeFileSync(targetPath, buffer);
-        return true;
+        const finishedAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        return createSaveBufferResponse({
+            saved: true,
+            canceled: false,
+            canceledAt: null,
+            filePath: targetPath,
+            promptMs: afterPromptAt - startedAt,
+            normalizeMs: afterNormalizeAt - afterPromptAt,
+            writeMs: finishedAt - afterNormalizeAt,
+            totalMs: finishedAt - startedAt,
+        });
     } catch (err) {
         console.error('[app:saveBuffer] Error:', err);
-        return false;
+        const failedAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        return createSaveBufferResponse({
+            saved: false,
+            canceled: false,
+            canceledAt: 'write',
+            filePath: targetPath,
+            error: err?.message || String(err),
+            promptMs: afterPromptAt - startedAt,
+            normalizeMs: afterNormalizeAt - afterPromptAt,
+            writeMs: failedAt - afterNormalizeAt,
+            totalMs: failedAt - startedAt,
+        });
     }
 }
 ipcMain.handle('app:saveBuffer', saveBufferWithDialog);

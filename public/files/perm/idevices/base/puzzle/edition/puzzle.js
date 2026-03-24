@@ -317,7 +317,7 @@ var $exeDevice = {
                                 <label for="puzzleEDefinition">${_('Statement')}:</label>
                                 <input type="text" id="puzzleEDefinition" class="form-control" />
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap  mb-3">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap  mb-3" data-voice-recorder data-voice-input="#puzzleEURLAudioDefinition">
                                 <label for="puzzleEURLAudioDefinition">${_('Audio')}:</label>
                                 <input type="text" id="puzzleEURLAudioDefinition" class="exe-file-picker PZLE-EURLAudio form-control me-0" />
                                 <a href="#" id="puzzleEPlayAudioDefinition" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
@@ -326,7 +326,7 @@ var $exeDevice = {
                                 <label for="puzzleECluePuzzle">${_('Feedback/Solution')}:</label>
                                 <input type="text" id="puzzleECluePuzzle" class="PZLE-EURLAudio form-control" />
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" data-voice-recorder data-voice-input="#puzzleEURLAudioClue">
                                 <label for="puzzleEURLAudioClue">${_('Audio')}:</label>
                                 <input type="text" id="puzzleEURLAudioClue" class="exe-file-picker PZLE-EURLAudio form-control me-0" />
                                 <a href="#" id="puzzleEPlayAudioClue" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
@@ -375,6 +375,9 @@ var $exeDevice = {
     },
     enableForm: function () {
         $exeDevice.initPuzzles();
+
+        const root = document.getElementById('puzzleIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();

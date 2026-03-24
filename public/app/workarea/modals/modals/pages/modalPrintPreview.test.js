@@ -192,7 +192,7 @@ describe('ModalPrintPreview', () => {
         it('should throw error when Yjs is not enabled', async () => {
             eXeLearning.app.project._yjsEnabled = false;
 
-            await expect(modal.generatePreview()).rejects.toThrow('Print preview requires Yjs mode');
+            await expect(modal.generatePreview()).rejects.toThrow('Print preview requires server mode');
         });
 
         it('should throw error when document manager not available', async () => {
