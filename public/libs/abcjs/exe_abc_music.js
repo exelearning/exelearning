@@ -165,7 +165,7 @@ function setTune(userAction, index) {
     if (!visualObjList) return;
     var visualObj = visualObjList[0];
     var midi = window.ABCJS.synth.getMidiFile(abc[index],{
-        downloadLabel : "MIDI",
+        downloadLabel : $exe_i18n.download,
         fileName : "midi"
     });
     midiButtons[index].innerHTML = midi;
