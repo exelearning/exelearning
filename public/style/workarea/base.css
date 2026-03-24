@@ -753,6 +753,32 @@ html:not(.mode-teacher) .js .teacher-only {
     font-size: 0.95em;
 }
 
+/* Skip navigation link */
+#skipNav {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    background-color: #000;
+    color: #fff;
+    text-align: center;
+    font-weight: bold;
+    font-size: .95em;
+    text-decoration: underline;
+    padding: 0.5em 1em;
+    z-index: 1000;
+    transform: translate(-50%, -100%);
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    display: inline-block;
+}
+
+#skipNav:focus {
+    transform: translate(-50%, 0);
+    outline: 3px solid #fff;
+    outline-offset: -3px;
+    top: 5px;
+}
+
 /* Print styles for header elements */
 @media print {
     body #header,

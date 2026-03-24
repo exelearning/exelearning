@@ -164,7 +164,7 @@ ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadSc
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
+<div class="exe-content exe-export pre-js siteNav-hidden"><a href="#${page.id}" id="skipNav">${trans('Skip to content', {}, language)}</a> ${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${pageContent}
 </div></main>${navButtonsHtml}
