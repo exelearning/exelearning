@@ -586,3 +586,104 @@ describe('rubric iDevice export', () => {
     window.html2canvas = originalHtml2Canvas;
   });
 });
+
+describe('getElectronAPI', () => {
+  afterEach(() => {
+    delete window.electronAPI;
+  });
+
+  it('returns window.electronAPI when present', () => {
+    const fakeAPI = { saveBufferAs: vi.fn() };
+    window.electronAPI = fakeAPI;
+    expect($rubric.getElectronAPI()).toBe(fakeAPI);
+  });
+
+  it('returns null when no electronAPI exists', () => {
+    expect($rubric.getElectronAPI()).toBeNull();
+  });
+});
+
+describe('saveAsPdf Electron path', () => {
+  let mockSaveBufferAs;
+
+  beforeEach(() => {
+    mockSaveBufferAs = vi.fn().mockResolvedValue({ saved: true });
+    window.electronAPI = { saveBufferAs: mockSaveBufferAs };
+  });
+
+  afterEach(() => {
+    delete window.electronAPI;
+  });
+
+  it('toPdf uses electronAPI.saveBufferAs instead of pdf.save when in Electron', async () => {
+    const pdfSaveSpy = vi.fn();
+    const fakeBlob = new Blob(['fake-pdf-data'], { type: 'application/pdf' });
+    window.jspdf = {
+      jsPDF: function () {
+        this.internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
+        this.getImageProperties = () => ({ width: 800, height: 600 });
+        this.addImage = vi.fn();
+        this.addPage = vi.fn();
+        this.output = vi.fn().mockReturnValue(fakeBlob);
+        this.save = pdfSaveSpy;
+      },
+    };
+
+    // Stub canvas.toDataURL since happy-dom doesn't support it
+    const canvas = document.createElement('canvas');
+    canvas.width = 100;
+    canvas.height = 100;
+    canvas.toDataURL = () => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+
+    const temp = document.createElement('div');
+    temp.setAttribute('data-rubric-capture-temp', '1');
+    document.body.appendChild(temp);
+
+    vi.spyOn($rubric, 'buildCaptureTarget').mockReturnValue(temp);
+    window.html2canvas = vi.fn().mockResolvedValue(canvas);
+
+    const table = $('<table class="exe-table exe-rubrics-export-table"></table>');
+    $rubric.saveAsPdf(table);
+
+    // Wait for html2canvas promise and FileReader async callback
+    await new Promise((r) => setTimeout(r, 300));
+
+    expect(pdfSaveSpy).not.toHaveBeenCalled();
+    expect(mockSaveBufferAs).toHaveBeenCalledTimes(1);
+    expect(mockSaveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
+    expect(mockSaveBufferAs.mock.calls[0][2]).toMatch(/\.pdf$/);
+
+    delete window.jspdf;
+    delete window.html2canvas;
+    if (temp.parentNode) temp.parentNode.removeChild(temp);
+  });
+
+  it('toPng uses electronAPI.saveBufferAs when jsPDF is not available', async () => {
+    window.jspdf = undefined;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 100;
+    canvas.height = 100;
+    canvas.toDataURL = () => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+
+    const temp = document.createElement('div');
+    temp.setAttribute('data-rubric-capture-temp', '1');
+    document.body.appendChild(temp);
+
+    vi.spyOn($rubric, 'buildCaptureTarget').mockReturnValue(temp);
+    window.html2canvas = vi.fn().mockResolvedValue(canvas);
+
+    const table = $('<table class="exe-table exe-rubrics-export-table"></table>');
+    $rubric.saveAsPdf(table);
+
+    await new Promise((r) => setTimeout(r, 300));
+
+    expect(mockSaveBufferAs).toHaveBeenCalledTimes(1);
+    expect(mockSaveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
+    expect(mockSaveBufferAs.mock.calls[0][0].length).toBeGreaterThan(0);
+    expect(mockSaveBufferAs.mock.calls[0][2]).toBe('rubric.png');
+
+    delete window.html2canvas;
+    if (temp.parentNode) temp.parentNode.removeChild(temp);
+  });
+});

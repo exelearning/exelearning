@@ -418,13 +418,45 @@ var $rubric = {
         this.addActionEvents(table, strings);
     },
 
+    /**
+     * Get Electron API from current window or parent (for iframe/preview contexts).
+     * Returns null when not running inside Electron.
+     */
+    getElectronAPI: function () {
+        try {
+            if (window.electronAPI) return window.electronAPI;
+            if (window.parent && window.parent !== window && window.parent.electronAPI) {
+                return window.parent.electronAPI;
+            }
+        } catch (_e) {
+            // Cross-origin access blocked
+        }
+        return null;
+    },
+
+    bindScopedEvent: function ($elements, events, handler) {
+        if (!$elements || typeof $elements.off !== 'function' || typeof $elements.on !== 'function') {
+            return;
+        }
+
+        var eventNames = String(events || '')
+            .split(/\s+/)
+            .filter(Boolean);
+
+        eventNames.forEach(function (eventName) {
+            var baseEvent = eventName.split('.')[0];
+            if (baseEvent) {
+                $elements.off(baseEvent);
+            }
+            $elements.off(eventName);
+        });
+
+        $elements.on(events, handler);
+    },
+
     addCheckboxEvents: function (table) {
         var $table = $(table);
-        $table
-            .find('tbody input[type="checkbox"]')
-            .off('change')
-            .off('change.rubric')
-            .on('change.rubric', function () {
+        this.bindScopedEvent($table.find('tbody input[type="checkbox"]'), 'change.rubric', function () {
             if (this.checked) {
                 $("input[name='" + this.name + "']").prop('checked', false);
                 $(this).prop('checked', true);
@@ -439,12 +471,9 @@ var $rubric = {
     addFieldEvents: function (table) {
         var $table = $(table);
         var dataScope = this.getDataScope($table);
-        this.getFields(dataScope)
-            .off('input change')
-            .off('input.rubric change.rubric')
-            .on('input.rubric change.rubric', function () {
-                $rubric.saveRubricData($table);
-            });
+        this.bindScopedEvent(this.getFields(dataScope), 'input.rubric change.rubric', function () {
+            $rubric.saveRubricData($table);
+        });
     },
 
     addActionEvents: function (table, strings) {
@@ -453,21 +482,13 @@ var $rubric = {
         if ($actions.length !== 1) return;
         strings = strings || this.ci18n;
 
-        $actions
-            .find('.exe-rubrics-reset')
-            .off('click')
-            .off('click.rubric')
-            .on('click.rubric', function () {
+        this.bindScopedEvent($actions.find('.exe-rubrics-reset'), 'click.rubric', function () {
             if (confirm(strings.msgDelete || 'Are you sure you want clear all form fields?')) {
                 $rubric.resetRubricData($table);
             }
         });
 
-        $actions
-            .find('.exe-rubrics-download')
-            .off('click')
-            .off('click.rubric')
-            .on('click.rubric', function () {
+        this.bindScopedEvent($actions.find('.exe-rubrics-download'), 'click.rubric', function () {
             $rubric.saveAsPdf($table);
         });
     },
@@ -748,8 +769,21 @@ var $rubric = {
 
         var toPng = function (canvas) {
             try {
+                var dataUrl = canvas.toDataURL('image/png');
+                // In Electron, use IPC save to avoid double-download from will-download handler
+                var electronAPI = $rubric.getElectronAPI();
+                if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                    var base64 = dataUrl.split(',')[1];
+                    var binaryString = atob(base64);
+                    var bytes = new Uint8Array(binaryString.length);
+                    for (var i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    electronAPI.saveBufferAs(bytes, 'rubric-png', 'rubric.png');
+                    return;
+                }
                 var link = document.createElement('a');
-                link.href = canvas.toDataURL('image/png');
+                link.href = dataUrl;
                 link.download = 'rubric.png';
                 link.click();
             } catch (e) {
@@ -781,6 +815,19 @@ var $rubric = {
                     pdf.addPage();
                     pdf.addImage(imgData, 'PNG', xOffset, position, pdfWidth, imgHeight);
                     heightLeft -= pdfHeight;
+                }
+
+                // In Electron, use IPC save to avoid double-download from will-download handler
+                var electronAPI = $rubric.getElectronAPI();
+                if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                    var blob = pdf.output('blob');
+                    var reader = new FileReader();
+                    reader.onload = function () {
+                        var uint8 = new Uint8Array(reader.result);
+                        electronAPI.saveBufferAs(uint8, 'rubric-pdf', pdfFileName);
+                    };
+                    reader.readAsArrayBuffer(blob);
+                    return true;
                 }
 
                 pdf.save(pdfFileName);

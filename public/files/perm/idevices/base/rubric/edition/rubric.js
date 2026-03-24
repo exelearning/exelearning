@@ -2210,6 +2210,7 @@ var $exeDevice = {
         });
 
         this.setMaxScore();
+        this.closeRowEditModal();
     },
 
     ensureColumnEditModal: function () {

@@ -364,4 +364,44 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect(strings.score).toBe('Punt');
     expect(strings.notes).toBe('Notas');
   });
+
+  it('applyRowEditModal saves current draft and closes the row modal', () => {
+    document.body.innerHTML = `
+      <div id="ri_TableEditor"></div>
+      <table id="ri_Table">
+        <thead>
+          <tr>
+            <th><input type="text" value="" /></th>
+            <th><input type="text" value="Nivel Alto" /></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th><input type="text" value="Contenido" /></th>
+            <td>
+              <input type="text" value="Descriptor inicial" />
+              <input type="text" class="ri_Weight" value="2" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    $exeDevice.ensureRowEditModal();
+    const row = $('#ri_Table tbody tr').first();
+    $exeDevice.openRowEditModal(row);
+
+    $('#ri_RowEditContent').val('Descriptor actualizado');
+    $('#ri_RowEditScore').val('5');
+
+    $exeDevice.applyRowEditModal();
+
+    const descriptorInput = row.find('td input[type="text"]').not('.ri_Weight').first();
+    const scoreInput = row.find('td input.ri_Weight').first();
+
+    expect(descriptorInput.val()).toBe('Descriptor actualizado');
+    expect(scoreInput.val()).toBe('5');
+    expect($('#ri_RowEditModal').css('display')).toBe('none');
+    expect($exeDevice.rowEditState).toBeNull();
+  });
 });
