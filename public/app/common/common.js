@@ -145,7 +145,7 @@ var $exe = {
         $exe.math.init();
         $exe.mermaid.init();
         setTimeout(function(){
-            $exe.dl.init();
+            $exe.dl.init(); // #1603
         }, 0);
         // Add a zoom icon to the images using CSS
         $("a.exe-enlarge").each(function (i) {
