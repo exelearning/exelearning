@@ -411,37 +411,3 @@ jobs:
           # version: ${{ github.event.release.tag_name }}          
           token: ${{ env.WINGET_TOKEN }}
           fork-user: exelearning
-
-  publish-homebrew-cask:
-    if: github.event_name == 'release' && github.event.action == 'released' && github.repository == 'exelearning/exelearning'
-    runs-on: macos-latest
-    env:
-      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
-    steps:
-      - name: Set up Homebrew
-        uses: Homebrew/actions/setup-homebrew@main
-
-      - name: Bump Homebrew cask PR
-        if: env.WINGET_TOKEN != ''
-        # Publishes to homebrew/cask via brew bump-cask-pr.
-        # Pre-releases (tags containing -beta or -rc) update the exelearning@beta cask;
-        # stable releases update the main exelearning cask.
-        env:
-          HOMEBREW_GITHUB_API_TOKEN: ${{ env.WINGET_TOKEN }}
-        run: |
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION#v}"
-
-          if [[ "$VERSION" == *-beta* || "$VERSION" == *-rc* ]]; then
-            CASK="exelearning@beta"
-          else
-            CASK="exelearning"
-          fi
-
-          # Force-tap homebrew/cask as a git repo (required by bump-cask-pr to fork & create PR)
-          brew tap homebrew/cask --force
-
-          brew bump-cask-pr "$CASK" \
-            --version "$VERSION" \
-            --no-audit \
-            --no-browse
