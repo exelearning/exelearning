@@ -720,4 +720,218 @@ describe('progress-report iDevice (export)', () => {
       }
     });
   });
+
+  describe('getElectronAPI', () => {
+    afterEach(() => {
+      delete window.electronAPI;
+    });
+
+    it('returns window.electronAPI when present', () => {
+      const fakeAPI = { saveBufferAs: vi.fn() };
+      window.electronAPI = fakeAPI;
+      expect($eXeInforme.getElectronAPI()).toBe(fakeAPI);
+    });
+
+    it('returns null when no electronAPI exists', () => {
+      expect($eXeInforme.getElectronAPI()).toBeNull();
+    });
+  });
+
+  describe('saveReport Electron PDF path', () => {
+    let mockSaveBufferAs;
+    let original$;
+
+    beforeEach(() => {
+      mockSaveBufferAs = vi.fn().mockResolvedValue({ saved: true });
+      window.electronAPI = { saveBufferAs: mockSaveBufferAs };
+      original$ = global.$;
+      // Override $ to support .hide()/.show()/.val() used by saveReport
+      global.$ = (sel) => {
+        if (typeof sel === 'string' && sel.startsWith('#')) {
+          const el = document.querySelector(sel);
+          return {
+            length: el ? 1 : 0,
+            hide: vi.fn(),
+            show: vi.fn(),
+            val: () => ({ trim: () => 'test' }),
+          };
+        }
+        return original$(sel);
+      };
+    });
+
+    afterEach(() => {
+      global.$ = original$;
+      delete window.electronAPI;
+      delete window.jspdf;
+      delete window.html2canvas;
+    });
+
+    it('doPdf uses electronAPI.saveBufferAs with Uint8Array instead of pdf.save', async () => {
+      const pdfSaveSpy = vi.fn();
+      const fakeBlob = new Blob(['fake-pdf-data'], { type: 'application/pdf' });
+
+      const fakeCtx = {
+        clearRect: vi.fn(),
+        drawImage: vi.fn(),
+      };
+
+      // Stub createElement so internally-created canvases have getContext
+      const origCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+        const el = origCreateElement(tag);
+        if (tag === 'canvas') {
+          el.getContext = () => fakeCtx;
+          el.toDataURL = () => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+        }
+        return el;
+      });
+
+      window.jspdf = {
+        jsPDF: function () {
+          this.internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
+          this.getImageProperties = () => ({ width: 800, height: 600 });
+          this.addImage = vi.fn();
+          this.addPage = vi.fn();
+          this.output = vi.fn().mockReturnValue(fakeBlob);
+          this.save = pdfSaveSpy;
+        },
+      };
+
+      document.body.innerHTML = `
+        <div id="informeTable-0">Content</div>
+        <div id="informeButtons-0"></div>
+      `;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 100;
+      canvas.height = 100;
+      window.html2canvas = vi.fn().mockResolvedValue(canvas);
+
+      $eXeInforme.options = {
+        userData: false,
+        msgs: { msgReport: 'report' },
+      };
+      $eXeInforme.saveReport(0);
+
+      await new Promise((r) => setTimeout(r, 300));
+
+      expect(pdfSaveSpy).not.toHaveBeenCalled();
+      expect(mockSaveBufferAs).toHaveBeenCalledTimes(1);
+      expect(mockSaveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
+      expect(mockSaveBufferAs.mock.calls[0][1]).toBe('progress-report-pdf');
+      expect(mockSaveBufferAs.mock.calls[0][2]).toBe('report.pdf');
+
+      vi.restoreAllMocks();
+    });
+
+    it('fallbackPng uses electronAPI.saveBufferAs with Uint8Array when jsPDF unavailable', async () => {
+      window.jspdf = undefined;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 100;
+      canvas.height = 100;
+      canvas.toDataURL = () => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+
+      document.body.innerHTML = `
+        <div id="informeTable-0">Content</div>
+        <div id="informeButtons-0"></div>
+      `;
+      window.html2canvas = vi.fn().mockResolvedValue(canvas);
+
+      $eXeInforme.options = {
+        userData: false,
+        msgs: { msgReport: 'report' },
+      };
+      $eXeInforme.saveReport(0);
+
+      await new Promise((r) => setTimeout(r, 300));
+
+      expect(mockSaveBufferAs).toHaveBeenCalledTimes(1);
+      expect(mockSaveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
+      expect(mockSaveBufferAs.mock.calls[0][0].length).toBeGreaterThan(0);
+      expect(mockSaveBufferAs.mock.calls[0][1]).toBe('progress-report-png');
+      expect(mockSaveBufferAs.mock.calls[0][2]).toBe('report.png');
+    });
+  });
+
+  describe('saveReport browser fallback', () => {
+    let original$;
+
+    beforeEach(() => {
+      original$ = global.$;
+      global.$ = (sel) => {
+        if (typeof sel === 'string' && sel.startsWith('#')) {
+          const el = document.querySelector(sel);
+          return {
+            length: el ? 1 : 0,
+            hide: vi.fn(),
+            show: vi.fn(),
+            val: () => ({ trim: () => 'test' }),
+          };
+        }
+        return original$(sel);
+      };
+    });
+
+    afterEach(() => {
+      global.$ = original$;
+      delete window.jspdf;
+      delete window.html2canvas;
+    });
+
+    it('doPdf calls pdf.save when not in Electron', async () => {
+      const pdfSaveSpy = vi.fn();
+
+      const fakeCtx = {
+        clearRect: vi.fn(),
+        drawImage: vi.fn(),
+      };
+
+      // Stub createElement so internally-created canvases have getContext
+      const origCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+        const el = origCreateElement(tag);
+        if (tag === 'canvas') {
+          el.getContext = () => fakeCtx;
+          el.toDataURL = () => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+        }
+        return el;
+      });
+
+      window.jspdf = {
+        jsPDF: function () {
+          this.internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
+          this.getImageProperties = () => ({ width: 800, height: 600 });
+          this.addImage = vi.fn();
+          this.addPage = vi.fn();
+          this.output = vi.fn();
+          this.save = pdfSaveSpy;
+        },
+      };
+
+      document.body.innerHTML = `
+        <div id="informeTable-0">Content</div>
+        <div id="informeButtons-0"></div>
+      `;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 100;
+      canvas.height = 100;
+      window.html2canvas = vi.fn().mockResolvedValue(canvas);
+
+      $eXeInforme.options = {
+        userData: false,
+        msgs: { msgReport: 'informe' },
+      };
+      $eXeInforme.saveReport(0);
+
+      await new Promise((r) => setTimeout(r, 300));
+
+      expect(pdfSaveSpy).toHaveBeenCalledTimes(1);
+      expect(pdfSaveSpy).toHaveBeenCalledWith('informe.pdf');
+
+      vi.restoreAllMocks();
+    });
+  });
 });
