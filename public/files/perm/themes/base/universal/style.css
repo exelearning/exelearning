@@ -454,6 +454,9 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 }
 
 /* Navigation menu */
+#skipNav:focus {
+    top: 4px;
+}
 #sidebar-nav.fixed {
     position: fixed;
 }
@@ -1132,7 +1135,8 @@ body.exe-web-site {
     html.exe-dark-mode
         :is(img, video, iframe):not(.exe-icon img):not(
             #siteBreadcrumbsHome img
-        ) {
+        ),
+        html.exe-dark-mode #skipNav {
         filter: invert(100%) hue-rotate(180deg);
     }
     html.exe-dark-mode #siteNav,
