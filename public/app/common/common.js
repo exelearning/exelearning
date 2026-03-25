@@ -144,8 +144,9 @@ var $exe = {
         $exe.hasTooltips();
         $exe.math.init();
         $exe.mermaid.init();
-        $exe.dl.init();
-        $exe.sfHover();
+        setTimeout(function(){
+            $exe.dl.init(); // #1603
+        }, 0);
         // Add a zoom icon to the images using CSS
         $("a.exe-enlarge").each(function (i) {
             var e = $(this);
