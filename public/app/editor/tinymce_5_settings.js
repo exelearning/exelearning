@@ -14,7 +14,7 @@ var $exeTinyMCE = {
     buttons3:
         'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exemermaid | exeaudio abcmusic | codemagic | fullscreen',
     browser_spellcheck: true,
-    fontsize_formats: '50%=0.5rem 75%=0.75rem 100%=1rem 125%=1.25rem 150%=1.5rem 200%=2rem 300%=3rem',
+    fontsize_formats: '80%=0.8rem 90%=0.9rem 100%=1rem 110%=1.1rem 115%=1.15rem 120%=1.2rem 125%=1.25rem 130%=1.3rem 140%=1.4rem 150%=1.5rem 160%=1.6rem 170%=1.7rem 200%=2rem 250%=2.5rem 300%=3rem',
 
     menubar: 'edit insert format table tools',
     menu: {
