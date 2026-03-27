@@ -766,6 +766,7 @@ var $rubric = {
         if (!target) return;
         var captureClass = 'exe-rubrics-capture';
         var pdfFileName = this.getPdfFileName($table);
+        var pngFileName = pdfFileName.replace(/\.pdf$/i, '.png');
 
         var toPng = function (canvas) {
             try {
@@ -779,12 +780,12 @@ var $rubric = {
                     for (var i = 0; i < binaryString.length; i++) {
                         bytes[i] = binaryString.charCodeAt(i);
                     }
-                    electronAPI.saveBufferAs(bytes, 'rubric-png', 'rubric.png');
+                    electronAPI.saveBufferAs(bytes, 'rubric-png', pngFileName);
                     return;
                 }
                 var link = document.createElement('a');
                 link.href = dataUrl;
-                link.download = 'rubric.png';
+                link.download = pngFileName;
                 link.click();
             } catch (e) {
                 console.error('Error al descargar PNG:', e);

@@ -290,7 +290,9 @@ function proposeSavePath(lastDir, effectiveName = null) {
 }
 
 async function promptSave(owner, suggestedName = null, lastDir = null, storedName = null) {
-    const effectiveName = storedName || suggestedName;
+    // suggestedName (caller-computed, dynamic) takes priority over storedName (last saved filename).
+    // lastDir is used as the directory regardless, so the remembered folder is preserved.
+    const effectiveName = suggestedName || storedName;
     const inferredExt = getExt(effectiveName) || DEFAULT_EXTENSION;
     const filter = getDialogFilterForExt(inferredExt);
     const isProject = inferredExt === '.elpx';
