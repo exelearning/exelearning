@@ -14,6 +14,7 @@ var $exeTinyMCE = {
     buttons3:
         'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exemermaid | exeaudio abcmusic | codemagic | fullscreen',
     browser_spellcheck: true,
+    fontsize_formats: '50%=0.5rem 75%=0.75rem 100%=1rem 125%=1.25rem 150%=1.5rem 200%=2rem 300%=3rem',
 
     menubar: 'edit insert format table tools',
     menu: {
@@ -303,6 +304,7 @@ var $exeTinyMCE = {
             content_css: this.getContentCSS(),
             contextmenu: this.contextmenu,
             browser_spellcheck: this.browser_spellcheck,
+            fontsize_formats: this.fontsize_formats,
             templates: this.getTemplates(),
             table_default_styles: this.table_default_styles,
             table_class_list: this.getAvailableClasses(),
