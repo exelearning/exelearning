@@ -130,6 +130,15 @@ export default class App {
         await this.flushPendingStaticOpenFilesWhenReady();
         // Process any pending Electron file-open events after project init.
         await this.flushPendingElectronOpenFilesWhenReady();
+        // Show deferred URL import error from static mode (set by ?url= handler)
+        if (window.__exeStaticUrlError && this.modals?.alert) {
+            this.modals.alert.show({
+                title: _('Import Error'),
+                body: window.__exeStaticUrlError,
+                contentId: 'error',
+            });
+            window.__exeStaticUrlError = null;
+        }
         // "Not for production use" warning
         await this.showProvisionalDemoWarning();
         // To review (showProvisionalToDoWarning might be useful for future beta releases)

@@ -1196,6 +1196,40 @@ describe('App utility methods', () => {
     });
   });
 
+  describe('deferred URL error from static mode', () => {
+    it('shows alert when __exeStaticUrlError is set during init', async () => {
+      window.__exeStaticUrlError = 'Could not download file: HTTP 404 Not Found';
+      const alertShowSpy = vi.fn();
+
+      appInstance.initializedToasts = vi.fn();
+      appInstance.initializedModals = vi.fn();
+      appInstance.loadApiParameters = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadLocale = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadIdevicesInstalled = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadThemesInstalled = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadUser = vi.fn().mockResolvedValue(undefined);
+      appInstance.showModalLopd = vi.fn().mockResolvedValue(undefined);
+      appInstance.showProvisionalDemoWarning = vi.fn().mockResolvedValue(undefined);
+      appInstance.tmpStringList = vi.fn().mockResolvedValue(undefined);
+      appInstance.addNoTranslateForGoogle = vi.fn().mockResolvedValue(undefined);
+      appInstance.runCustomJavaScriptCode = vi.fn().mockResolvedValue(undefined);
+      appInstance.initializedShortcuts = vi.fn().mockResolvedValue(undefined);
+      appInstance.bindElectronDownloadToasts = vi.fn();
+      appInstance.bindElectronFileOpenHandler = vi.fn();
+      appInstance.initExePackageProtocolHandler = vi.fn();
+      appInstance.modals = { alert: { show: alertShowSpy } };
+
+      await appInstance.init();
+
+      expect(alertShowSpy).toHaveBeenCalledWith({
+        title: 'Import Error',
+        body: 'Could not download file: HTTP 404 Not Found',
+        contentId: 'error',
+      });
+      expect(window.__exeStaticUrlError).toBeNull();
+    });
+  });
+
   describe('initializedToasts', () => {
     it('calls toasts.init', async () => {
       const initSpy = vi.fn();
