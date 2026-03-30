@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## v4.0.0-beta4 – 2026-04-07
+
+### Added
+
+- Teacher-only content indicator now uses an icon instead of a border for clearer visual distinction
+- Improved accessibility in exported content: proper heading structure and skip navigation link
+
+### Fixed
+
+- TinyMCE: usability and accessibility improvements across the editor
+- TinyMCE media plugin: YouTube Live and Shorts URLs are now recognized correctly
+- TinyMCE: toolbar visibility is preserved between editing sessions in the desktop app
+- Checklist and Progress Report iDevices: fixed double save dialog, and improved PDF/PNG output quality.
+- Definition lists inside animation effects now render correctly in the desktop version
+- Legacy .elp internal links now work correctly in the workarea editor
+- Platform name string was incorrectly displayed in the online version
+- Improved "User not found" error message with more helpful context
+- Further reduced peak memory usage during save, preview, and export for large projects
+
+### Upgraded
+
+- typescript: 5.9.3 → 6.0.2
+
+### Removed
+
+- Homebrew distribution support
+
+---
+
 ## v4.0.0-beta3 – 2026-03-23
 
 ### Added
