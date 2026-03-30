@@ -15,6 +15,7 @@ import { parseRoles } from '../db/types';
 import type { JwtPayload } from './auth';
 import {
     findUserById as findUserByIdDefault,
+    findUsersByIds as findUsersByIdsDefault,
     findUserByEmail as findUserByEmailDefault,
     updateUserRoles as updateUserRolesDefault,
     deleteUser as deleteUserDefault,
@@ -41,7 +42,14 @@ import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
 import { trans } from '../services/translation';
 import { getBasePath } from '../utils/basepath.util';
+import { logActivity } from '../services/activity-logger';
 import { getSystemInfo } from '../services/system-info';
+import {
+    getActiveUserMetrics as getActiveUserMetricsDefault,
+    getActivityTimeSeries as getActivityTimeSeriesDefault,
+    getPeakUsage as getPeakUsageDefault,
+} from '../db/queries/admin-analytics';
+import { getConnectedClientsDetail } from '../websocket/yjs-websocket';
 import { createFileHelper, type FileHelper } from '../services/file-helper';
 import * as pathModule from 'path';
 import {
@@ -75,6 +83,7 @@ type AppSettingsDb = Kysely<Database & { app_settings: AppSettingsTable }>;
  */
 export interface AdminQueries {
     findUserById: typeof findUserByIdDefault;
+    findUsersByIds: typeof findUsersByIdsDefault;
     findUserByEmail: typeof findUserByEmailDefault;
     findUsersPaginated: typeof findUsersPaginatedDefault;
     countAdmins: typeof countAdminsDefault;
@@ -112,6 +121,7 @@ const defaultDependencies: AdminDependencies = {
     db: defaultDb,
     queries: {
         findUserById: findUserByIdDefault,
+        findUsersByIds: findUsersByIdsDefault,
         findUserByEmail: findUserByEmailDefault,
         findUsersPaginated: findUsersPaginatedDefault,
         countAdmins: countAdminsDefault,
@@ -666,6 +676,55 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 return await getSystemInfo();
             })
 
+            // GET /api/admin/analytics/activity?days=30
+            .get('/api/admin/analytics/activity', async ({ query }) => {
+                const days = Math.min(Math.max(Number(query.days) || 30, 1), 365);
+                const series = await getActivityTimeSeriesDefault(db, days);
+                return {
+                    labels: series.labels,
+                    datasets: {
+                        logins: series.logins,
+                        projectsCreated: series.projectsCreated,
+                    },
+                };
+            })
+
+            // GET /api/admin/analytics/users
+            .get('/api/admin/analytics/users', async () => {
+                const [metrics, peak] = await Promise.all([getActiveUserMetricsDefault(db), getPeakUsageDefault(db)]);
+                return {
+                    dau: metrics.dau,
+                    wau: metrics.wau,
+                    mau: metrics.mau,
+                    peakHour: peak.peakHour,
+                    peakDay: peak.peakDay,
+                    peakHourCount: peak.peakHourCount,
+                    peakDayCount: peak.peakDayCount,
+                };
+            })
+
+            // GET /api/admin/online-users
+            .get('/api/admin/online-users', async () => {
+                const clients = getConnectedClientsDetail();
+
+                // Batch-resolve emails from users table using the userId list
+                const uniqueUserIds = [...new Set(clients.map(c => c.userId))];
+                const userRows = await queries.findUsersByIds(db, uniqueUserIds);
+                const emailMap = new Map<number, string>();
+                for (const user of userRows) {
+                    emailMap.set(user.id, user.email);
+                }
+
+                const users = clients.map(c => ({
+                    userId: c.userId,
+                    email: emailMap.get(c.userId) ?? null,
+                    projectUuid: c.projectUuid,
+                    connectedSince: c.connectedAt,
+                }));
+
+                return { count: users.length, users };
+            })
+
             // =====================================================
             // APP SETTINGS
             // =====================================================
@@ -818,6 +877,11 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         impersonatedUserId: targetUserId,
                         startedByIp: clientIp,
                         startedUserAgent: userAgent,
+                    });
+
+                    logActivity(db, {
+                        eventType: 'admin.impersonation_start',
+                        userId: adminUserId,
                     });
 
                     const impersonatedPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
