@@ -35,6 +35,8 @@ globalThis.$exeTinyMCEToggler = {}; // Placeholder if needed
 const tinyMCEModule = require('./tinymce_5_settings.js');
 globalThis.$exeTinyMCE = tinyMCEModule.$exeTinyMCE;
 globalThis.$exeTinyMCEToggler = tinyMCEModule.$exeTinyMCEToggler;
+// Capture real init before any test can replace it (e.g. 'startEditor triggers TinyMCE init')
+const realExeTinyMCEInit = tinyMCEModule.$exeTinyMCE.init;
 
 const createJqueryMock = () => {
   const wrap = (nodes) => {
@@ -1594,6 +1596,7 @@ describe('TinyMCE 5 Settings', () => {
 
       expect(document.getElementById('editor-toggler')).toBeNull();
       expect(startSpy).toHaveBeenCalledWith('editor', true);
+      startSpy.mockRestore();
     });
 
     it('startEditor triggers TinyMCE init', () => {
@@ -1666,6 +1669,10 @@ describe('TinyMCE 5 Settings', () => {
   // ─── paste_preprocess ────────────────────────────────────────────────────────
 
   describe('paste_preprocess', () => {
+    beforeEach(() => {
+      globalThis.$exeTinyMCE.init = realExeTinyMCEInit;
+    });
+
     function getPastePreprocess() {
       globalThis.$exeTinyMCE._blobPasteWarningToast = null;
       globalThis.$exeTinyMCE.init('single', '#editor');
@@ -1762,6 +1769,10 @@ describe('TinyMCE 5 Settings', () => {
   // ─── images_upload_handler – missing branches ─────────────────────────────
 
   describe('images_upload_handler – additional branches', () => {
+    beforeEach(() => {
+      globalThis.$exeTinyMCE.init = realExeTinyMCEInit;
+    });
+
     it('uses "image.png" as fallback when blobInfo.filename() returns undefined', async () => {
       globalThis.$exeTinyMCE.init('single', '#editor');
       const config = globalThis.tinymce.init.mock.calls[0][0];
@@ -1846,6 +1857,10 @@ describe('TinyMCE 5 Settings', () => {
   // ─── init_instance_callback – MutationObserver ────────────────────────────
 
   describe('init_instance_callback – MutationObserver', () => {
+    beforeEach(() => {
+      globalThis.$exeTinyMCE.init = realExeTinyMCEInit;
+    });
+
     function getInitInstanceCallback() {
       const resolveAssetSpy = vi
         .spyOn(globalThis.$exeTinyMCE, 'resolveAssetUrlsInEditor')
@@ -1917,6 +1932,140 @@ describe('TinyMCE 5 Settings', () => {
       const mockEditor = { getBody: () => null, on: vi.fn() };
       expect(() => cb(mockEditor)).not.toThrow();
       expect(mockEditor.on).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── additional branch coverage ───────────────────────────────────────────
+
+  describe('additional branch coverage', () => {
+    beforeEach(() => {
+      globalThis.$exeTinyMCE.init = realExeTinyMCEInit;
+    });
+
+    it('init uses empty width when documentWidth is undefined', () => {
+      const savedWidth = globalThis.$exeTinyMCEToggler.documentWidth;
+      delete globalThis.$exeTinyMCEToggler.documentWidth;
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      expect(config).toBeDefined();
+      globalThis.$exeTinyMCEToggler.documentWidth = savedWidth;
+    });
+
+    it('file_picker_callback with HTML asset and active editor inserts iframe', () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      const insertContent = vi.fn();
+      const close = vi.fn();
+      globalThis.tinymce.activeEditor = { insertContent, windowManager: { close } };
+      window.eXeLearning.app.modals = {
+        filemanager: {
+          show: ({ onSelect }) => {
+            onSelect({
+              asset: { mime: 'text/html', filename: 'page.html', id: 'html-asset-id' },
+              assetUrl: 'asset://html-asset-id/page.html',
+              blobUrl: 'blob:https://localhost/html-blob',
+            });
+          },
+        },
+      };
+      config.file_picker_callback(vi.fn(), '', { filetype: 'media' });
+      expect(insertContent).toHaveBeenCalled();
+      expect(close).toHaveBeenCalled();
+      delete globalThis.tinymce.activeEditor;
+    });
+
+    it('file_picker_callback with HTML asset and no active editor skips insert', () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      globalThis.tinymce.activeEditor = null;
+      window.eXeLearning.app.modals = {
+        filemanager: {
+          show: ({ onSelect }) => {
+            onSelect({
+              asset: { mime: 'text/html', filename: 'page.html', id: 'html-asset-id' },
+              assetUrl: 'asset://html-asset-id/page.html',
+              blobUrl: 'blob:https://localhost/html-blob',
+            });
+          },
+        },
+      };
+      expect(() => config.file_picker_callback(vi.fn(), '', { filetype: 'media' })).not.toThrow();
+      delete globalThis.tinymce.activeEditor;
+    });
+
+    it('file_picker_callback with image already in reverseBlobCache skips cache update', () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      const blobUrl = 'blob:https://localhost/cached-img';
+      const reverseBlobCache = new Map([[blobUrl, 'cached-id']]);
+      const blobURLCache = new Map();
+      window.eXeLearning.app.project = {
+        _yjsBridge: { assetManager: { reverseBlobCache, blobURLCache } },
+      };
+      const cb = vi.fn();
+      window.eXeLearning.app.modals = {
+        filemanager: {
+          show: ({ onSelect }) => {
+            onSelect({
+              asset: { mime: 'image/png', filename: 'img.png', id: 'cached-id' },
+              assetUrl: 'asset://cached-id/img.png',
+              blobUrl,
+            });
+          },
+        },
+      };
+      config.file_picker_callback(cb, '', { filetype: 'image' });
+      // Cache should not be modified (blob was already present)
+      expect(reverseBlobCache.size).toBe(1);
+      expect(reverseBlobCache.get(blobUrl)).toBe('cached-id');
+    });
+
+    it('addLinkAndToggle with hide=false does not call toggle', () => {
+      const toggleSpy = vi.spyOn(globalThis.$exeTinyMCEToggler, 'toggle').mockImplementation(() => {});
+      const label = globalThis.$(document.createElement('label'));
+      const link = globalThis.$(document.createElement('a'));
+      globalThis.$exeTinyMCEToggler.addLinkAndToggle('editor', label, link, false);
+      expect(toggleSpy).not.toHaveBeenCalled();
+      toggleSpy.mockRestore();
+    });
+
+    it('toggle without iframe in parent does not crash', () => {
+      const button = document.createElement('a');
+      button.id = 'editor-toggler';
+      button.classList.add('visible-editor');
+      // No iframe added to DOM
+      expect(() => globalThis.$exeTinyMCEToggler.toggle('editor', button)).not.toThrow();
+    });
+
+    it('createViewer sets documentWidth when it is undefined', () => {
+      const savedWidth = globalThis.$exeTinyMCEToggler.documentWidth;
+      delete globalThis.$exeTinyMCEToggler.documentWidth;
+      const textarea = document.getElementById('editor');
+      const wrapper = globalThis.$(textarea);
+      expect(() => globalThis.$exeTinyMCEToggler.createViewer(wrapper)).not.toThrow();
+      expect(typeof globalThis.$exeTinyMCEToggler.documentWidth).not.toBe('undefined');
+      globalThis.$exeTinyMCEToggler.documentWidth = savedWidth;
+    });
+
+    it('setup calls createViewer when mode is conditional and textarea has content', () => {
+      const originalMode = globalThis.$exeTinyMCEToggler.mode;
+      globalThis.$exeTinyMCEToggler.mode = 'conditional';
+      const textarea = document.getElementById('editor');
+      textarea.value = '<p>some content</p>';
+      const createViewerSpy = vi.spyOn(globalThis.$exeTinyMCEToggler, 'createViewer').mockImplementation(() => {});
+      const eds = { each: (cb) => cb.call(textarea) };
+      globalThis.$exeTinyMCEToggler.setup(eds);
+      expect(createViewerSpy).toHaveBeenCalled();
+      createViewerSpy.mockRestore();
+      globalThis.$exeTinyMCEToggler.mode = originalMode;
+    });
+
+    it('createEditorLink with no help link found takes the empty else branch', () => {
+      const textarea = document.getElementById('editor');
+      const wrapper = globalThis.$(textarea);
+      // No links in DOM → getHelpLink returns '' → else branch (comment-only, no-op)
+      expect(() => globalThis.$exeTinyMCEToggler.createEditorLink(wrapper, 'editor')).not.toThrow();
+      expect(document.getElementById('editor-toggler')).toBeNull();
     });
   });
 });
