@@ -12607,7 +12607,7 @@
       </trans-unit>
       <trans-unit id="1mykynd" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nevalida nomo de dosierujo. Evitu specialajn signojn kiel / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nevalida nomo de dosierujo. Evitu specialajn signojn kiel / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="yl4dp1z" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12623,7 +12623,7 @@
       </trans-unit>
       <trans-unit id="cqk7z62" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nomo de dosiero ne valida. Evitu specialajn signojn kiel / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nomo de dosiero ne valida. Evitu specialajn signojn kiel / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="sva1lkb" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -14136,6 +14136,14 @@
       <trans-unit id="f372j71" resname="Caption Link">
         <source>Caption Link</source>
         <target>~Bildoligilo</target>
+      </trans-unit>
+      <trans-unit id="ddy60g2" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Antaŭdifinitaj klasoj</target>
+      </trans-unit>
+      <trans-unit id="25bysk8" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>~Klasoj de la aktuala stilo</target>
       </trans-unit>
     </body>
   </file>

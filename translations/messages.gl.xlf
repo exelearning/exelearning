@@ -12607,7 +12607,7 @@
       </trans-unit>
       <trans-unit id="ezaipg9" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nome de cartafol non válido. Evita caracteres especiais como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nome de cartafol non válido. Evita caracteres especiais como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="i031vms" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12623,7 +12623,7 @@
       </trans-unit>
       <trans-unit id="xa5n0eo" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nome de ficheiro non válido. Evita caracteres especiais como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nome de ficheiro non válido. Evita caracteres especiais como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="b71dv5i" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -14136,6 +14136,14 @@
       <trans-unit id="29nre23" resname="Caption Link">
         <source>Caption Link</source>
         <target>~Ligazón do pé de foto</target>
+      </trans-unit>
+      <trans-unit id="nvihfej" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Clases predefinidas</target>
+      </trans-unit>
+      <trans-unit id="indkaji" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>~Clases do estilo actual</target>
       </trans-unit>
     </body>
   </file>

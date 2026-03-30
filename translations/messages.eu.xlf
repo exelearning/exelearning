@@ -12607,7 +12607,7 @@
       </trans-unit>
       <trans-unit id="rlt1q2v" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Folder izen baliogabea. Saihestu karaktere bereziak hala nola / \\ : * ? " < > |</target>
+        <target><![CDATA[~Folder izen baliogabea. Saihestu karaktere bereziak hala nola / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="wbepz91" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12623,7 +12623,7 @@
       </trans-unit>
       <trans-unit id="z014ui6" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Fitxategi izena ez da baliogarria. Saihestu karaktere bereziak hala nola / \\ : * ? " < > |</target>
+        <target><![CDATA[~Fitxategi izena ez da baliogarria. Saihestu karaktere bereziak hala nola / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="6x9ovyt" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -14136,6 +14136,14 @@
       <trans-unit id="sxnlush" resname="Caption Link">
         <source>Caption Link</source>
         <target>~Azpitituluaren esteka</target>
+      </trans-unit>
+      <trans-unit id="simqeyn" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Aurrez definitutako klaseak</target>
+      </trans-unit>
+      <trans-unit id="r0i72e1" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>~Uneko estiloaren klaseak</target>
       </trans-unit>
     </body>
   </file>

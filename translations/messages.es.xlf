@@ -14140,6 +14140,14 @@
         <source>Caption Link</source>
         <target>Enlace del pie de foto</target>
       </trans-unit>
+      <trans-unit id="0l5xm6f" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>Clases predeterminadas</target>
+      </trans-unit>
+      <trans-unit id="8g3d529" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>Clases del estilo actual</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

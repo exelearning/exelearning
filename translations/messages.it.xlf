@@ -12618,7 +12618,7 @@
       </trans-unit>
       <trans-unit id="08m8k8y" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nombre de carpeta no válido. Evita caracteres especiales como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nombre de carpeta no válido. Evita caracteres especiales como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="cheqecf" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12634,7 +12634,7 @@
       </trans-unit>
       <trans-unit id="1fgodwq" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nombre de archivo no válido. Evita caracteres especiales como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nombre de archivo no válido. Evita caracteres especiales como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="mkokinf" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -14139,6 +14139,14 @@
       <trans-unit id="7omhv3v" resname="Caption Link">
         <source>Caption Link</source>
         <target>~Collegamento della didascalia</target>
+      </trans-unit>
+      <trans-unit id="m3bunkp" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Classi predefinite</target>
+      </trans-unit>
+      <trans-unit id="8nxavnz" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>~Classi dello stile corrente</target>
       </trans-unit>
     </body>
   </file>

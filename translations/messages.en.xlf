@@ -14140,6 +14140,14 @@
         <source>Caption Link</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="66wo1wn" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="90ni9fn" resname="Current style classes">
+        <source>Current style classes</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

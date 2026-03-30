@@ -12607,7 +12607,7 @@
       </trans-unit>
       <trans-unit id="alcm2yi" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nombre de carpeta no válido. Evita caracteres especiales como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nombre de carpeta no válido. Evita caracteres especiales como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="yxxeui1" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12623,7 +12623,7 @@
       </trans-unit>
       <trans-unit id="w3944rj" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nom d'arxiu no vàlid. Evita caràcters especials com / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nom d'arxiu no vàlid. Evita caràcters especials com / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="pf2o28u" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -14136,6 +14136,14 @@
       <trans-unit id="3hr1oui" resname="Caption Link">
         <source>Caption Link</source>
         <target>~Enllaç del peu de foto</target>
+      </trans-unit>
+      <trans-unit id="bkf2sth" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Classes predefinides</target>
+      </trans-unit>
+      <trans-unit id="y6ss27s" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>~Classes de l'estil actual</target>
       </trans-unit>
     </body>
   </file>

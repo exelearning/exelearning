@@ -12131,7 +12131,7 @@
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>~Sie müssen %s&percnt; des Inhalts der Aktivität überprüfen, bevor Sie den Fragebogen ausfüllen.</target>
+        <target><![CDATA[~Sie müssen %s&percnt; des Inhalts der Aktivität überprüfen, bevor Sie den Fragebogen ausfüllen.]]></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
@@ -12618,7 +12618,7 @@
       </trans-unit>
       <trans-unit id="mvc0zjk" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Ungültiger Ordnername. Vermeiden Sie Sonderzeichen wie / \\ : * ? " < > |</target>
+        <target><![CDATA[~Ungültiger Ordnername. Vermeiden Sie Sonderzeichen wie / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="bzp79do" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12634,7 +12634,7 @@
       </trans-unit>
       <trans-unit id="q89mpc9" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Ungültiger Dateiname. Vermeiden Sie Sonderzeichen wie / \\ : * ? " < > |</target>
+        <target><![CDATA[~Ungültiger Dateiname. Vermeiden Sie Sonderzeichen wie / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="x3ffemc" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -14139,6 +14139,14 @@
       <trans-unit id="1yxj4ci" resname="Caption Link">
         <source>Caption Link</source>
         <target>~Beschriftungslink</target>
+      </trans-unit>
+      <trans-unit id="gsbmxqh" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Vordefinierte Klassen</target>
+      </trans-unit>
+      <trans-unit id="qjlml9s" resname="Current style classes">
+        <source>Current style classes</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>
