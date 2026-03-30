@@ -14116,6 +14116,30 @@
         <source>creative commons: cc0 1.0</source>
         <target>~Creative Commons: CC0 1.0 Universal (dominio público)</target>
       </trans-unit>
+      <trans-unit id="kl4jih6" resname="Skip to content">
+        <source>Skip to content</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ahlkgnp" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ngyn62q" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1494paf" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1su5dy6" resname="Caption Text">
+        <source>Caption Text</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kz2v3f9" resname="Caption Link">
+        <source>Caption Link</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
