@@ -14118,27 +14118,27 @@
       </trans-unit>
       <trans-unit id="kl4jih6" resname="Skip to content">
         <source>Skip to content</source>
-        <target></target>
+        <target>Saltar al contenido</target>
       </trans-unit>
       <trans-unit id="ahlkgnp" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
         <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
-        <target></target>
+        <target>Usuario no encontrado. Puede que esta persona no haya accedido aún a eXeLearning y no esté registrada en el sistema. Pídele que inicie sesión antes de compartir.</target>
       </trans-unit>
       <trans-unit id="ngyn62q" resname="Temporary files detected">
         <source>Temporary files detected</source>
-        <target></target>
+        <target>Archivos temporales detectados</target>
       </trans-unit>
       <trans-unit id="1494paf" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
         <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
-        <target></target>
+        <target>Algunos archivos de este contenido usan enlaces blob: que solo funcionarán en esta página. Si pegas este contenido en otro lugar, es posible que falten imágenes o archivos. Para reutilizar contenido con archivos, añádelos desde el Gestor de archivos o clona el iDevice.</target>
       </trans-unit>
       <trans-unit id="1su5dy6" resname="Caption Text">
         <source>Caption Text</source>
-        <target></target>
+        <target>Texto del pie de foto</target>
       </trans-unit>
       <trans-unit id="kz2v3f9" resname="Caption Link">
         <source>Caption Link</source>
-        <target></target>
+        <target>Enlace del pie de foto</target>
       </trans-unit>
     </body>
   </file>

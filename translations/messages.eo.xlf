@@ -14115,27 +14115,27 @@
       </trans-unit>
       <trans-unit id="de9b2ql" resname="Skip to content">
         <source>Skip to content</source>
-        <target></target>
+        <target>~Salti al enhavo</target>
       </trans-unit>
       <trans-unit id="4ju9kk3" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
         <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
-        <target></target>
+        <target>~Uzanto ne trovita. Eble ĉi tiu persono ankoraŭ ne aliris eXeLearning kaj ne estas registrita en la sistemo. Petu ilin ensaluti antaŭ ol kunhavigi.</target>
       </trans-unit>
       <trans-unit id="j78iiye" resname="Temporary files detected">
         <source>Temporary files detected</source>
-        <target></target>
+        <target>~Provizоraj dosieroj detektitaj</target>
       </trans-unit>
       <trans-unit id="0m95uwa" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
         <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
-        <target></target>
+        <target>~Kelkaj dosieroj en ĉi tiu enhavo uzas blob:-ligilojn, kiuj funkcias nur sur ĉi tiu paĝo. Se vi algluas ĉi tion aliloke, bildoj aŭ dosieroj povas manki. Por reuzadi enhavon kun dosieroj, aldonu ilin el la Dosieristo aŭ klonu la iDevice-on.</target>
       </trans-unit>
       <trans-unit id="ut73ykh" resname="Caption Text">
         <source>Caption Text</source>
-        <target></target>
+        <target>~Bildoteksto</target>
       </trans-unit>
       <trans-unit id="f372j71" resname="Caption Link">
         <source>Caption Link</source>
-        <target></target>
+        <target>~Bildoligilo</target>
       </trans-unit>
     </body>
   </file>

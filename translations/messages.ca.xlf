@@ -14115,27 +14115,27 @@
       </trans-unit>
       <trans-unit id="k1oq7dk" resname="Skip to content">
         <source>Skip to content</source>
-        <target></target>
+        <target>~Vés al contingut</target>
       </trans-unit>
       <trans-unit id="2xohfcl" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
         <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
-        <target></target>
+        <target>~Usuari no trobat. Pot ser que aquesta persona no hagi accedit encara a eXeLearning i no estigui registrada al sistema. Demaneu-li que iniciï sessió abans de compartir.</target>
       </trans-unit>
       <trans-unit id="vjxqz26" resname="Temporary files detected">
         <source>Temporary files detected</source>
-        <target></target>
+        <target>~Fitxers temporals detectats</target>
       </trans-unit>
       <trans-unit id="1foe2r8" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
         <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
-        <target></target>
+        <target>~Alguns fitxers d'aquest contingut utilitzen enllaços blob: que només funcionen en aquesta pàgina. Si enganxeu aquest contingut en un altre lloc, és possible que falten imatges o fitxers. Per reutilitzar contingut amb fitxers, afegiu-los des del Gestor de fitxers o cloneu l'iDevice.</target>
       </trans-unit>
       <trans-unit id="e1pj16g" resname="Caption Text">
         <source>Caption Text</source>
-        <target></target>
+        <target>~Text del peu de foto</target>
       </trans-unit>
       <trans-unit id="wutfm8x" resname="Caption Link">
         <source>Caption Link</source>
-        <target></target>
+        <target>~Enllaç del peu de foto</target>
       </trans-unit>
     </body>
   </file>

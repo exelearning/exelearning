@@ -14115,27 +14115,27 @@
       </trans-unit>
       <trans-unit id="sarz3lc" resname="Skip to content">
         <source>Skip to content</source>
-        <target></target>
+        <target>~Salt la conținut</target>
       </trans-unit>
       <trans-unit id="0uqrmd0" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
         <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
-        <target></target>
+        <target>~Utilizatorul nu a fost găsit. Este posibil ca această persoană să nu fi accesat încă eXeLearning și să nu fie înregistrată în sistem. Rugați-o să se conecteze înainte de a partaja.</target>
       </trans-unit>
       <trans-unit id="uxirrzm" resname="Temporary files detected">
         <source>Temporary files detected</source>
-        <target></target>
+        <target>~Fișiere temporare detectate</target>
       </trans-unit>
       <trans-unit id="6lq7u1q" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
         <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
-        <target></target>
+        <target>~Unele fișiere din acest conținut utilizează link-uri blob: care funcționează doar pe această pagină. Dacă lipiți acest conținut în altă parte, este posibil ca imagini sau fișiere să lipsească. Pentru a reutiliza conținut cu fișiere, adăugați-le din Managerul de fișiere sau clonați iDevice-ul.</target>
       </trans-unit>
       <trans-unit id="s6qju87" resname="Caption Text">
         <source>Caption Text</source>
-        <target></target>
+        <target>~Text legendă</target>
       </trans-unit>
       <trans-unit id="imzfl35" resname="Caption Link">
         <source>Caption Link</source>
-        <target></target>
+        <target>~Legătură legendă</target>
       </trans-unit>
     </body>
   </file>

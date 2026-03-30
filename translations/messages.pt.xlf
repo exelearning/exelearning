@@ -14115,27 +14115,27 @@
       </trans-unit>
       <trans-unit id="76ro7cw" resname="Skip to content">
         <source>Skip to content</source>
-        <target></target>
+        <target>~Ir para o conteúdo</target>
       </trans-unit>
       <trans-unit id="jbe9x5e" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
         <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
-        <target></target>
+        <target>~Utilizador não encontrado. É possível que esta pessoa ainda não tenha acedido ao eXeLearning e não esteja registada no sistema. Peça-lhe que inicie sessão antes de partilhar.</target>
       </trans-unit>
       <trans-unit id="lyvlw08" resname="Temporary files detected">
         <source>Temporary files detected</source>
-        <target></target>
+        <target>~Ficheiros temporários detetados</target>
       </trans-unit>
       <trans-unit id="dinulrv" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
         <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
-        <target></target>
+        <target>~Alguns ficheiros neste conteúdo utilizam ligações blob: que só funcionam nesta página. Se colar este conteúdo noutro lugar, imagens ou ficheiros podem estar em falta. Para reutilizar conteúdo com ficheiros, adicione-os a partir do Gestor de ficheiros ou clone o iDevice.</target>
       </trans-unit>
       <trans-unit id="kllo4fv" resname="Caption Text">
         <source>Caption Text</source>
-        <target></target>
+        <target>~Texto da legenda</target>
       </trans-unit>
       <trans-unit id="vgofaly" resname="Caption Link">
         <source>Caption Link</source>
-        <target></target>
+        <target>~Ligação da legenda</target>
       </trans-unit>
     </body>
   </file>
