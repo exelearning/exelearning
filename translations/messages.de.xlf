@@ -13232,10 +13232,6 @@
         <source>This user is already a collaborator</source>
         <target>~Dieser Benutzer ist bereits Mitarbeiter</target>
       </trans-unit>
-      <trans-unit id="30tks16" resname="User not found">
-        <source>User not found</source>
-        <target>~Benutzer nicht gefunden</target>
-      </trans-unit>
       <trans-unit id="5slq9fo" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target>~Fehler beim Einladen des Benutzers</target>

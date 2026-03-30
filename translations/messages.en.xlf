@@ -13232,10 +13232,6 @@
         <source>This user is already a collaborator</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="kam5sbf" resname="User not found">
-        <source>User not found</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="sdbqlpo" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target></target>

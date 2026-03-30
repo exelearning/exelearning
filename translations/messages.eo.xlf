@@ -13225,10 +13225,6 @@
         <source>This user is already a collaborator</source>
         <target>~Ĉi tiu uzanto jam estas kunlaboranto</target>
       </trans-unit>
-      <trans-unit id="xj3gvja" resname="User not found">
-        <source>User not found</source>
-        <target>~Uzanto ne trovita</target>
-      </trans-unit>
       <trans-unit id="483r77d" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target>~Eraro dum invitado de la uzanto</target>

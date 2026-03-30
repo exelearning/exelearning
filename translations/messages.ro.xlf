@@ -13225,10 +13225,6 @@
         <source>This user is already a collaborator</source>
         <target>~Acest utilizator este deja colaborator</target>
       </trans-unit>
-      <trans-unit id="jhsudis" resname="User not found">
-        <source>User not found</source>
-        <target>~Utilizator nerecunoscut</target>
-      </trans-unit>
       <trans-unit id="it6lcc7" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target>~Eroare la invitarea utilizatorului</target>

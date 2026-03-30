@@ -13225,10 +13225,6 @@
         <source>This user is already a collaborator</source>
         <target>~Aquesta usuària ja és col·laboradora</target>
       </trans-unit>
-      <trans-unit id="rm9hzzs" resname="User not found">
-        <source>User not found</source>
-        <target>~Usuària no trobada</target>
-      </trans-unit>
       <trans-unit id="c1wcktf" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target>~Error en convidar a l'usuària</target>
