@@ -115,6 +115,16 @@ describe('translation service', () => {
             const result = trans('test.key', {}, 'es');
             expect(typeof result).toBe('string');
         });
+
+        it('should replace %s format parameters', () => {
+            const result = trans('Send to %s', { s: 'Moodle' });
+            expect(result).toBe('Send to Moodle');
+        });
+
+        it('should not replace partial matches like %str with %s', () => {
+            const result = trans('Send to %str', { s: 'Moodle' });
+            expect(result).toBe('Send to %str');
+        });
     });
 
     describe('translateValue', () => {
