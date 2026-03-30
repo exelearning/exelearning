@@ -1662,4 +1662,261 @@ describe('TinyMCE 5 Settings', () => {
       expect(() => globalThis.$exeTinyMCEToggler.toggle('editor', button)).not.toThrow();
     });
   });
+
+  // ─── paste_preprocess ────────────────────────────────────────────────────────
+
+  describe('paste_preprocess', () => {
+    function getPastePreprocess() {
+      globalThis.$exeTinyMCE._blobPasteWarningToast = null;
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      return globalThis.tinymce.init.mock.calls[0][0].paste_preprocess;
+    }
+
+    it('does nothing when args.content is empty', () => {
+      const createToast = vi.fn();
+      window.eXeLearning.app.toasts = { createToast };
+      getPastePreprocess()(null, { content: '' });
+      expect(createToast).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when content has no blob: URL', () => {
+      const createToast = vi.fn();
+      window.eXeLearning.app.toasts = { createToast };
+      getPastePreprocess()(null, { content: '<img src="asset://abc.jpg">' });
+      expect(createToast).not.toHaveBeenCalled();
+    });
+
+    it('shows warning when content has blob: URL and no AssetManager', () => {
+      const createToast = vi.fn(() => ({ toastElement: document.createElement('div') }));
+      window.eXeLearning.app.toasts = { createToast };
+      delete window.eXeLearning.app.project;
+      getPastePreprocess()(null, { content: '<img src="blob:https://localhost/abc">' });
+      expect(createToast).toHaveBeenCalledOnce();
+      expect(createToast.mock.calls[0][0].icon).toBe('warning');
+    });
+
+    it('shows warning when blob URL is not in reverseBlobCache', () => {
+      const createToast = vi.fn(() => ({ toastElement: document.createElement('div') }));
+      window.eXeLearning.app.toasts = { createToast };
+      window.eXeLearning.app.project = {
+        _yjsBridge: { assetManager: { reverseBlobCache: new Map() } },
+      };
+      getPastePreprocess()(null, { content: '<img src="blob:https://localhost/abc">' });
+      expect(createToast).toHaveBeenCalledOnce();
+    });
+
+    it('does NOT warn when all blob URLs are known (in reverseBlobCache)', () => {
+      const createToast = vi.fn();
+      window.eXeLearning.app.toasts = { createToast };
+      const cache = new Map([['blob:https://localhost/abc', 'asset-1']]);
+      window.eXeLearning.app.project = {
+        _yjsBridge: { assetManager: { reverseBlobCache: cache } },
+      };
+      getPastePreprocess()(null, { content: '<img src="blob:https://localhost/abc">' });
+      expect(createToast).not.toHaveBeenCalled();
+    });
+
+    it('warns when at least one blob URL is unknown', () => {
+      const createToast = vi.fn(() => ({ toastElement: document.createElement('div') }));
+      window.eXeLearning.app.toasts = { createToast };
+      const cache = new Map([['blob:https://localhost/known', 'asset-1']]);
+      window.eXeLearning.app.project = {
+        _yjsBridge: { assetManager: { reverseBlobCache: cache } },
+      };
+      getPastePreprocess()(null, {
+        content: '<img src="blob:https://localhost/known"><img src="blob:https://localhost/unknown">',
+      });
+      expect(createToast).toHaveBeenCalledOnce();
+    });
+
+    it('does not show duplicate toast when one is already visible', () => {
+      const createToast = vi.fn();
+      window.eXeLearning.app.toasts = { createToast };
+      const connectedDiv = document.createElement('div');
+      document.body.appendChild(connectedDiv);
+      const pp = getPastePreprocess();
+      globalThis.$exeTinyMCE._blobPasteWarningToast = { toastElement: connectedDiv };
+      pp(null, { content: '<img src="blob:https://localhost/abc">' });
+      expect(createToast).not.toHaveBeenCalled();
+      connectedDiv.remove();
+    });
+
+    it('does not crash when toastsManager is absent', () => {
+      delete window.eXeLearning.app.toasts;
+      const pp = getPastePreprocess();
+      expect(() =>
+        pp(null, { content: '<img src="blob:https://localhost/abc">' })
+      ).not.toThrow();
+    });
+
+    it('stores the toast reference in _blobPasteWarningToast', () => {
+      const toastObj = { toastElement: document.createElement('div') };
+      const createToast = vi.fn(() => toastObj);
+      window.eXeLearning.app.toasts = { createToast };
+      delete window.eXeLearning.app.project;
+      getPastePreprocess()(null, { content: '<img src="blob:https://localhost/abc">' });
+      expect(globalThis.$exeTinyMCE._blobPasteWarningToast).toBe(toastObj);
+    });
+  });
+
+  // ─── images_upload_handler – missing branches ─────────────────────────────
+
+  describe('images_upload_handler – additional branches', () => {
+    it('uses "image.png" as fallback when blobInfo.filename() returns undefined', async () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      const blobData = new Blob(['data'], { type: 'image/png' });
+      const blobInfo = {
+        blobUri: () => 'blob:new-no-name',
+        blob: () => blobData,
+        filename: () => undefined,
+      };
+      window.eXeLearning.app.project = {
+        _yjsBridge: {
+          assetManager: {
+            reverseBlobCache: new Map(),
+            blobURLCache: new Map(),
+            insertImage: vi.fn().mockResolvedValue('asset://asset-fn/image.png'),
+            extractAssetId: vi.fn().mockReturnValue('asset-fn'),
+          },
+        },
+      };
+      globalThis.URL.createObjectURL = vi.fn(() => 'blob:fn-created');
+      const success = vi.fn();
+
+      await config.images_upload_handler(blobInfo, success, vi.fn());
+
+      expect(success).toHaveBeenCalledWith('blob:fn-created', { 'data-asset-id': 'asset-fn' });
+    });
+
+    it('uses cached blob URL from blobURLCache when getBlobURLSynced is not available', async () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      const blobInfo = {
+        blobUri: () => 'blob:cached',
+        blob: () => new Blob(['data'], { type: 'image/png' }),
+        filename: () => 'img.png',
+      };
+      window.eXeLearning.app.project = {
+        _yjsBridge: {
+          assetManager: {
+            reverseBlobCache: new Map(),
+            blobURLCache: new Map([['asset-cached', 'blob:from-cache']]),
+            insertImage: vi.fn().mockResolvedValue('asset://asset-cached/img.png'),
+            extractAssetId: vi.fn().mockReturnValue('asset-cached'),
+          },
+        },
+      };
+      const success = vi.fn();
+
+      await config.images_upload_handler(blobInfo, success, vi.fn());
+
+      expect(success).toHaveBeenCalledWith('blob:from-cache', { 'data-asset-id': 'asset-cached' });
+    });
+
+    it('syncs reverseBlobCache when blob URL exists but is missing from it', async () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      const reverseBlobCache = new Map();
+      const blobInfo = {
+        blobUri: () => 'blob:sync-test',
+        blob: () => new Blob(['data'], { type: 'image/png' }),
+        filename: () => 'img.png',
+      };
+      window.eXeLearning.app.project = {
+        _yjsBridge: {
+          assetManager: {
+            reverseBlobCache,
+            blobURLCache: new Map([['asset-sync', 'blob:existing-url']]),
+            getBlobURLSynced: vi.fn(() => 'blob:existing-url'),
+            insertImage: vi.fn().mockResolvedValue('asset://asset-sync/img.png'),
+            extractAssetId: vi.fn().mockReturnValue('asset-sync'),
+          },
+        },
+      };
+      const success = vi.fn();
+
+      await config.images_upload_handler(blobInfo, success, vi.fn());
+
+      expect(reverseBlobCache.get('blob:existing-url')).toBe('asset-sync');
+      expect(success).toHaveBeenCalledWith('blob:existing-url', { 'data-asset-id': 'asset-sync' });
+    });
+  });
+
+  // ─── init_instance_callback – MutationObserver ────────────────────────────
+
+  describe('init_instance_callback – MutationObserver', () => {
+    function getInitInstanceCallback() {
+      const resolveAssetSpy = vi
+        .spyOn(globalThis.$exeTinyMCE, 'resolveAssetUrlsInEditor')
+        .mockImplementation(() => {});
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const cb = globalThis.tinymce.init.mock.calls[0][0].init_instance_callback;
+      return { cb, resolveAssetSpy };
+    }
+
+    it('resolves assets when a child element with asset:// src is added', async () => {
+      const editorBody = document.createElement('div');
+      document.body.appendChild(editorBody);
+      const eventHandlers = {};
+      const mockEditor = {
+        getBody: () => editorBody,
+        on: (event, fn) => { eventHandlers[event] = fn; },
+      };
+      const { cb, resolveAssetSpy } = getInitInstanceCallback();
+      cb(mockEditor);
+
+      const audio = document.createElement('audio');
+      audio.setAttribute('src', 'asset://abc.mp3');
+      editorBody.appendChild(audio);
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(resolveAssetSpy).toHaveBeenCalledWith(mockEditor);
+      resolveAssetSpy.mockRestore();
+      editorBody.remove();
+    });
+
+    it('does not resolve assets when added element has no asset:// src', async () => {
+      const editorBody = document.createElement('div');
+      document.body.appendChild(editorBody);
+      const mockEditor = {
+        getBody: () => editorBody,
+        on: vi.fn(),
+      };
+      const { cb, resolveAssetSpy } = getInitInstanceCallback();
+      cb(mockEditor);
+
+      editorBody.appendChild(document.createElement('p'));
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(resolveAssetSpy).not.toHaveBeenCalled();
+      resolveAssetSpy.mockRestore();
+      editorBody.remove();
+    });
+
+    it('calls observer.disconnect() when editor remove event fires', () => {
+      const editorBody = document.createElement('div');
+      document.body.appendChild(editorBody);
+      const eventHandlers = {};
+      const mockEditor = {
+        getBody: () => editorBody,
+        on: (event, fn) => { eventHandlers[event] = fn; },
+      };
+      const { cb, resolveAssetSpy } = getInitInstanceCallback();
+      cb(mockEditor);
+
+      expect(() => eventHandlers['remove']?.()).not.toThrow();
+      resolveAssetSpy.mockRestore();
+      editorBody.remove();
+    });
+
+    it('does nothing when editor body is null', () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const cb = globalThis.tinymce.init.mock.calls[0][0].init_instance_callback;
+      const mockEditor = { getBody: () => null, on: vi.fn() };
+      expect(() => cb(mockEditor)).not.toThrow();
+      expect(mockEditor.on).not.toHaveBeenCalled();
+    });
+  });
 });
