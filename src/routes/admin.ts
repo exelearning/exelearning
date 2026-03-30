@@ -102,6 +102,9 @@ export interface AdminQueries {
     hardDeleteProject: typeof hardDeleteProjectDefault;
     findProjectsByOwnerId: typeof findProjectsByOwnerIdDefault;
     createImpersonationAuditSession: typeof createImpersonationAuditSessionDefault;
+    getActiveUserMetrics: typeof getActiveUserMetricsDefault;
+    getActivityTimeSeries: typeof getActivityTimeSeriesDefault;
+    getPeakUsage: typeof getPeakUsageDefault;
 }
 
 /**
@@ -111,6 +114,7 @@ export interface AdminDependencies {
     db: Kysely<Database>;
     queries: AdminQueries;
     fileHelper?: FileHelper;
+    getConnectedClientsDetail?: typeof getConnectedClientsDetail;
 }
 
 // ============================================================================
@@ -140,8 +144,12 @@ const defaultDependencies: AdminDependencies = {
         hardDeleteProject: hardDeleteProjectDefault,
         findProjectsByOwnerId: findProjectsByOwnerIdDefault,
         createImpersonationAuditSession: createImpersonationAuditSessionDefault,
+        getActiveUserMetrics: getActiveUserMetricsDefault,
+        getActivityTimeSeries: getActivityTimeSeriesDefault,
+        getPeakUsage: getPeakUsageDefault,
     },
     fileHelper: createFileHelper(),
+    getConnectedClientsDetail: getConnectedClientsDetail,
 };
 
 // Get JWT secret (same as auth.ts)
@@ -610,6 +618,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
  */
 export function createAdminRoutes(deps: AdminDependencies = defaultDependencies) {
     const { db, queries, fileHelper = createFileHelper() } = deps;
+    const connectedClientsDetail = deps.getConnectedClientsDetail ?? getConnectedClientsDetail;
 
     return (
         new Elysia({ name: 'admin-routes' })
@@ -679,7 +688,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // GET /api/admin/analytics/activity?days=30
             .get('/api/admin/analytics/activity', async ({ query }) => {
                 const days = Math.min(Math.max(Number(query.days) || 30, 1), 365);
-                const series = await getActivityTimeSeriesDefault(db, days);
+                const series = await queries.getActivityTimeSeries(db, days);
                 return {
                     labels: series.labels,
                     datasets: {
@@ -691,7 +700,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
             // GET /api/admin/analytics/users
             .get('/api/admin/analytics/users', async () => {
-                const [metrics, peak] = await Promise.all([getActiveUserMetricsDefault(db), getPeakUsageDefault(db)]);
+                const [metrics, peak] = await Promise.all([queries.getActiveUserMetrics(db), queries.getPeakUsage(db)]);
                 return {
                     dau: metrics.dau,
                     wau: metrics.wau,
@@ -705,7 +714,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
             // GET /api/admin/online-users
             .get('/api/admin/online-users', async () => {
-                const clients = getConnectedClientsDetail();
+                const clients = connectedClientsDetail();
 
                 // Batch-resolve emails from users table using the userId list
                 const uniqueUserIds = [...new Set(clients.map(c => c.userId))];

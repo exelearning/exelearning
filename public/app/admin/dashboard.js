@@ -126,6 +126,8 @@ function startPolling() {
     refreshIntervalId = setInterval(loadOnlineUsers, 30000);
 }
 
+export { fetchApi, updateEl, loadKPICards, loadActivityChart, renderActivityChart, loadOnlineUsers, refreshDashboard, startPolling };
+
 // Init: IIFE since script is loaded at bottom of page (DOM is ready)
 (function () {
     const dashSection = document.getElementById('dashboard');
