@@ -478,4 +478,357 @@ describe('ModalShare', () => {
       expect(modal.escapeHtml('<script>')).toBe('&lt;script&gt;');
     });
   });
+
+  describe('close', () => {
+    it('should return focus to last focused element', () => {
+      const focusEl = { focus: vi.fn() };
+      modal.lastFocusedElement = focusEl;
+      modal.close();
+      expect(focusEl.focus).toHaveBeenCalled();
+    });
+
+    it('should not throw when lastFocusedElement is null', () => {
+      modal.lastFocusedElement = null;
+      expect(() => modal.close()).not.toThrow();
+    });
+  });
+
+  describe('loadProjectData', () => {
+    it('should show error when response is not OK', async () => {
+      window.eXeLearning.app.api.getProject.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+        detail: 'Not found',
+      });
+      const errorSpy = vi.spyOn(modal, 'showError');
+      const result = await modal.loadProjectData('proj-123');
+      expect(result).toBe(false);
+      expect(errorSpy).toHaveBeenCalledWith('Not found');
+    });
+
+    it('should show fallback error when detail is missing', async () => {
+      window.eXeLearning.app.api.getProject.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+      });
+      const errorSpy = vi.spyOn(modal, 'showError');
+      await modal.loadProjectData('proj-123');
+      expect(errorSpy).toHaveBeenCalled();
+    });
+
+    it('should show error on network exception', async () => {
+      window.eXeLearning.app.api.getProject.mockRejectedValueOnce(new Error('Network error'));
+      const errorSpy = vi.spyOn(modal, 'showError');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const result = await modal.loadProjectData('proj-123');
+      expect(result).toBe(false);
+      expect(errorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('behaviour - keyboard events', () => {
+    it('should call handleInvite on Enter key in email input', () => {
+      const inviteSpy = vi.spyOn(modal, 'handleInvite').mockImplementation(() => {});
+      modal.behaviour();
+      const event = new KeyboardEvent('keypress', { key: 'Enter' });
+      Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+      modal.inviteEmail.dispatchEvent(event);
+      expect(inviteSpy).toHaveBeenCalled();
+    });
+
+    it('should not call handleInvite on non-Enter key', () => {
+      const inviteSpy = vi.spyOn(modal, 'handleInvite').mockImplementation(() => {});
+      modal.behaviour();
+      modal.inviteEmail.dispatchEvent(new KeyboardEvent('keypress', { key: 'a' }));
+      expect(inviteSpy).not.toHaveBeenCalled();
+    });
+
+    it('should call close on Escape key', () => {
+      const closeSpy = vi.spyOn(modal, 'close').mockImplementation(() => {});
+      modal.behaviour();
+      mockElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(closeSpy).toHaveBeenCalled();
+    });
+
+    it('should not call close on non-Escape key', () => {
+      const closeSpy = vi.spyOn(modal, 'close').mockImplementation(() => {});
+      modal.behaviour();
+      mockElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      expect(closeSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleInvite - additional branches', () => {
+    it('should return early when not owner', async () => {
+      modal.currentUserIsOwner = false;
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await modal.handleInvite();
+      expect(window.eXeLearning.app.api.addProjectCollaborator).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('should show error for USER_NOT_FOUND response', async () => {
+      modal.currentUserIsOwner = true;
+      modal.inviteEmail.value = 'notfound@example.com';
+      window.eXeLearning.app.api.addProjectCollaborator.mockResolvedValueOnce({
+        responseMessage: 'USER_NOT_FOUND',
+      });
+      const errorSpy = vi.spyOn(modal, 'showInviteError');
+      await modal.handleInvite();
+      expect(errorSpy).toHaveBeenCalled();
+    });
+
+    it('should show generic error for unknown response', async () => {
+      modal.currentUserIsOwner = true;
+      modal.inviteEmail.value = 'user@example.com';
+      window.eXeLearning.app.api.addProjectCollaborator.mockResolvedValueOnce({
+        responseMessage: 'UNKNOWN_ERROR',
+        detail: 'Something went wrong',
+      });
+      const errorSpy = vi.spyOn(modal, 'showInviteError');
+      await modal.handleInvite();
+      expect(errorSpy).toHaveBeenCalledWith('Something went wrong');
+    });
+
+    it('should show invite error on API exception', async () => {
+      modal.currentUserIsOwner = true;
+      modal.inviteEmail.value = 'user@example.com';
+      window.eXeLearning.app.api.addProjectCollaborator.mockRejectedValueOnce(new Error('fail'));
+      const errorSpy = vi.spyOn(modal, 'showInviteError');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await modal.handleInvite();
+      expect(errorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('handleRemove', () => {
+    beforeEach(() => {
+      window.eXeLearning.app.api.removeProjectCollaborator = vi.fn().mockResolvedValue({
+        responseMessage: 'OK',
+      });
+      modal.projectData = { collaborators: [], visibility: 'private' };
+    });
+
+    it('should do nothing when user cancels confirm', async () => {
+      window.confirm = vi.fn(() => false);
+      await modal.handleRemove(2, 'editor@example.com');
+      expect(window.eXeLearning.app.api.removeProjectCollaborator).not.toHaveBeenCalled();
+    });
+
+    it('should remove collaborator and reload on success', async () => {
+      window.confirm = vi.fn(() => true);
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      const announceSpy = vi.spyOn(modal, 'announce');
+      await modal.handleRemove(2, 'editor@example.com');
+      expect(window.eXeLearning.app.api.removeProjectCollaborator).toHaveBeenCalledWith('proj-123', 2);
+      expect(announceSpy).toHaveBeenCalled();
+    });
+
+    it('should show error on failed response', async () => {
+      window.confirm = vi.fn(() => true);
+      window.eXeLearning.app.api.removeProjectCollaborator.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+        detail: 'Cannot remove',
+      });
+      const errorSpy = vi.spyOn(modal, 'showError');
+      await modal.handleRemove(2, 'editor@example.com');
+      expect(errorSpy).toHaveBeenCalledWith('Cannot remove');
+    });
+
+    it('should show error on API exception', async () => {
+      window.confirm = vi.fn(() => true);
+      window.eXeLearning.app.api.removeProjectCollaborator.mockRejectedValueOnce(new Error('fail'));
+      const errorSpy = vi.spyOn(modal, 'showError');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await modal.handleRemove(2, 'editor@example.com');
+      expect(errorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('handleMakeOwner', () => {
+    beforeEach(() => {
+      window.eXeLearning.app.api.transferProjectOwnership = vi.fn().mockResolvedValue({
+        responseMessage: 'OK',
+      });
+      modal.projectData = { collaborators: [], visibility: 'private', isOwner: false };
+    });
+
+    it('should do nothing when user cancels confirm', async () => {
+      window.confirm = vi.fn(() => false);
+      await modal.handleMakeOwner(2, 'editor@example.com');
+      expect(window.eXeLearning.app.api.transferProjectOwnership).not.toHaveBeenCalled();
+    });
+
+    it('should transfer ownership and re-render on success', async () => {
+      window.confirm = vi.fn(() => true);
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      const announceSpy = vi.spyOn(modal, 'announce');
+      await modal.handleMakeOwner(2, 'editor@example.com');
+      expect(window.eXeLearning.app.api.transferProjectOwnership).toHaveBeenCalledWith('proj-123', 2);
+      expect(announceSpy).toHaveBeenCalled();
+    });
+
+    it('should update share button pill after ownership transfer', async () => {
+      window.confirm = vi.fn(() => true);
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      const updatePillSpy = vi.fn();
+      window.eXeLearning.app.interface = {
+        shareButton: { updateVisibilityPill: updatePillSpy },
+      };
+      await modal.handleMakeOwner(2, 'editor@example.com');
+      expect(updatePillSpy).toHaveBeenCalledWith('private');
+    });
+
+    it('should show error on failed response', async () => {
+      window.confirm = vi.fn(() => true);
+      window.eXeLearning.app.api.transferProjectOwnership.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+        detail: 'Not allowed',
+      });
+      const errorSpy = vi.spyOn(modal, 'showError');
+      await modal.handleMakeOwner(2, 'editor@example.com');
+      expect(errorSpy).toHaveBeenCalledWith('Not allowed');
+    });
+
+    it('should show error on API exception', async () => {
+      window.confirm = vi.fn(() => true);
+      window.eXeLearning.app.api.transferProjectOwnership.mockRejectedValueOnce(new Error('fail'));
+      const errorSpy = vi.spyOn(modal, 'showError');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await modal.handleMakeOwner(2, 'editor@example.com');
+      expect(errorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('handleVisibilityChange - additional branches', () => {
+    it('should do nothing when new visibility equals current', async () => {
+      modal.currentUserIsOwner = true;
+      modal.projectData = { visibility: 'public' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      await modal.handleVisibilityChange('public');
+      expect(window.eXeLearning.app.api.updateProjectVisibility).not.toHaveBeenCalled();
+    });
+
+    it('should update share button pill on successful visibility change', async () => {
+      modal.currentUserIsOwner = true;
+      modal.projectData = { visibility: 'private' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.api.updateProjectVisibility.mockResolvedValueOnce({ responseMessage: 'OK' });
+      const updatePillSpy = vi.fn();
+      window.eXeLearning.app.interface = {
+        shareButton: { updateVisibilityPill: updatePillSpy },
+      };
+      await modal.handleVisibilityChange('public');
+      expect(updatePillSpy).toHaveBeenCalledWith('public');
+    });
+  });
+
+  describe('handleCopyLink - additional branches', () => {
+    it('should return early when linkInput has no value', async () => {
+      modal.linkInput.value = '';
+      await modal.handleCopyLink();
+      expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+    });
+
+    it('should show error on clipboard exception', async () => {
+      modal.linkInput.value = 'http://link.to/project';
+      navigator.clipboard.writeText = vi.fn().mockRejectedValueOnce(new Error('denied'));
+      const errorSpy = vi.spyOn(modal, 'showError');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await modal.handleCopyLink();
+      expect(errorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('showCopySuccess - setTimeout revert', () => {
+    it('should revert button HTML after 2 seconds', () => {
+      vi.useFakeTimers();
+      const originalHTML = modal.copyButton.innerHTML;
+      modal.showCopySuccess();
+      expect(modal.copyButton.classList.contains('copied')).toBe(true);
+      vi.advanceTimersByTime(2000);
+      expect(modal.copyButton.classList.contains('copied')).toBe(false);
+      expect(modal.copyButton.innerHTML).toBe(originalHTML);
+      vi.useRealTimers();
+    });
+
+    it('should not throw when copyButton is null', () => {
+      modal.copyButton = null;
+      expect(() => modal.showCopySuccess()).not.toThrow();
+    });
+  });
+
+  describe('announce - setTimeout clear', () => {
+    it('should set and then clear ariaLive text', () => {
+      vi.useFakeTimers();
+      modal.announce('Test message');
+      expect(modal.ariaLive.textContent).toBe('Test message');
+      vi.advanceTimersByTime(3000);
+      expect(modal.ariaLive.textContent).toBe('');
+      vi.useRealTimers();
+    });
+
+    it('should not throw when ariaLive is null', () => {
+      modal.ariaLive = null;
+      expect(() => modal.announce('Test')).not.toThrow();
+    });
+  });
+
+  describe('buildShareUrl - no projectUuid', () => {
+    it('should return url without project param when no project uuid', () => {
+      Object.defineProperty(window, 'location', {
+        value: { href: 'http://example.com/' },
+        configurable: true,
+      });
+      window.eXeLearning.app.project = null;
+      const url = modal.buildShareUrl();
+      expect(url).not.toContain('project=');
+    });
+  });
+
+  describe('saveProjectBeforeSharing - no bridge', () => {
+    it('should return early when no _yjsBridge', async () => {
+      window.eXeLearning.app.project._yjsBridge = null;
+      await expect(modal.saveProjectBeforeSharing('test')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('showInviteError / clearInviteError - null guards', () => {
+    it('should not throw when inviteError is null', () => {
+      modal.inviteError = null;
+      expect(() => modal.showInviteError('msg')).not.toThrow();
+      expect(() => modal.clearInviteError()).not.toThrow();
+    });
+  });
+
+  describe('updateVisibilityHelp', () => {
+    it('should add d-none for private visibility', () => {
+      modal.visibilityHelp.classList.remove('d-none');
+      modal.updateVisibilityHelp('private');
+      expect(modal.visibilityHelp.classList.contains('d-none')).toBe(true);
+    });
+
+    it('should not throw when visibilityHelp is null', () => {
+      modal.visibilityHelp = null;
+      expect(() => modal.updateVisibilityHelp('public')).not.toThrow();
+    });
+  });
+
+  describe('renderLinkSection - null guard', () => {
+    it('should return early when linkInput is null', () => {
+      modal.linkInput = null;
+      expect(() => modal.renderLinkSection()).not.toThrow();
+    });
+
+    it('should call buildShareUrl when no shareButton', () => {
+      window.eXeLearning.app.interface = null;
+      const buildSpy = vi.spyOn(modal, 'buildShareUrl').mockReturnValue('http://built/url');
+      modal.renderLinkSection();
+      expect(buildSpy).toHaveBeenCalled();
+      expect(modal.linkInput.value).toBe('http://built/url');
+    });
+  });
 });

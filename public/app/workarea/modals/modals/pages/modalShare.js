@@ -445,7 +445,7 @@ export default class ModalShare extends Modal {
                 if (response.responseMessage === 'ALREADY_COLLABORATOR') {
                     this.showInviteError(_('This user is already a collaborator'));
                 } else if (response.responseMessage === 'USER_NOT_FOUND') {
-                    this.showInviteError(_('User not found'));
+                    this.showInviteError(_('User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.'));
                 } else {
                     this.showInviteError(response.detail || _('Failed to invite user'));
                 }
