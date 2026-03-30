@@ -278,6 +278,7 @@ export default class IdeviceBlockNode {
         if (this.properties.teacherOnly?.value == 'true') {
             this.blockContent.classList.add('exe-teacher-highlight');
         }
+        this.updateTeacherOnlyIndicator();
         // allow toggle
         if (this.properties.allowToggle.value != 'true') {
             // This should always be available while editing:
@@ -320,14 +321,81 @@ export default class IdeviceBlockNode {
                 srText.classList.add('visually-hidden');
                 srText.textContent = _('Hidden from export');
                 indicator.appendChild(srText);
-                
+
                 // Make indicator absolutely positioned to the left so it doesn't displace other items
                 indicator.style.position = 'absolute';
                 indicator.style.left = '-32px';
                 this.headElement.style.position = 'relative';
-                
+
                 // Insert it into the header
                 this.headElement.appendChild(indicator);
+            }
+        }
+        this._repositionBlockIndicators();
+    }
+
+    /**
+     * Update the teacher-only indicator based on the teacherOnly property
+     */
+    updateTeacherOnlyIndicator() {
+        if (!this.headElement) return;
+
+        let indicator = this.headElement.querySelector('.teacher-only-indicator');
+        const isTeacherOnly = this.properties.teacherOnly?.value === 'true';
+
+        if (!isTeacherOnly) {
+            if (indicator) indicator.remove();
+        } else {
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.classList.add('teacher-only-indicator', 'btn', 'disabled', 'd-flex', 'justify-content-center', 'align-items-center');
+                indicator.setAttribute('title', _('Teacher only'));
+                indicator.style.padding = '0.25rem 0.5rem';
+                indicator.style.opacity = '1';
+                indicator.style.border = 'none';
+                indicator.style.background = 'transparent';
+
+                const icon = document.createElement('i');
+                icon.classList.add('small-icon', 'exe-teacher-only-icon');
+                icon.setAttribute('aria-hidden', 'true');
+                indicator.appendChild(icon);
+
+                const srText = document.createElement('span');
+                srText.classList.add('visually-hidden');
+                srText.textContent = _('Teacher only');
+                indicator.appendChild(srText);
+
+                indicator.style.position = 'absolute';
+                indicator.style.left = '-32px';
+                this.headElement.style.position = 'relative';
+
+                this.headElement.appendChild(indicator);
+            }
+        }
+        this._repositionBlockIndicators();
+    }
+
+    /**
+     * Reposition block status indicators so they stack vertically when both are present
+     */
+    _repositionBlockIndicators() {
+        if (!this.headElement) return;
+        const visIndicator = this.headElement.querySelector('.visibility-off-indicator');
+        const teacherIndicator = this.headElement.querySelector('.teacher-only-indicator');
+
+        if (visIndicator && teacherIndicator) {
+            visIndicator.style.top = '2px';
+            visIndicator.style.transform = '';
+            teacherIndicator.style.top = '26px';
+            teacherIndicator.style.transform = '';
+        } else {
+            if (visIndicator) {
+                visIndicator.style.top = '50%';
+                visIndicator.style.transform = 'translateY(-50%)';
+            }
+            if (teacherIndicator) {
+                teacherIndicator.style.top = '50%';
+                teacherIndicator.style.transform = 'translateY(-50%)';
             }
         }
     }
