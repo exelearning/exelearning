@@ -276,6 +276,8 @@ function replaceParameters(text: string, params: Record<string, string>): string
         result = result.replace(new RegExp(`%${key}%`, 'g'), value);
         // Replace {key} format
         result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+        // Replace %key format (for printf-like %s, %d, etc)
+        result = result.replace(new RegExp(`%${key}\\b`, 'g'), value);
     }
 
     return result;
