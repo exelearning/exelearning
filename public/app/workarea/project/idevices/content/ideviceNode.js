@@ -3481,14 +3481,19 @@ export default class IdeviceNode {
                 let isImage = e.classList.contains('exe-image-picker');
                 let css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
 
-                // Determine accept filter based on class and id
-                let accept = null;
-                if (isImage) {
-                    accept = 'image';
-                } else if (id.toLowerCase().includes('audio')) {
-                    accept = 'audio';
-                } else if (id.toLowerCase().includes('video')) {
-                    accept = 'video';
+                // Prefer explicit accept filter from markup (e.g. data-accept="chemical")
+                const dataAccept = e.dataset?.accept?.trim().toLowerCase();
+
+                // Determine accept filter based on class/id only when no explicit data-accept is provided
+                let accept = dataAccept || null;
+                if (!accept) {
+                    if (isImage) {
+                        accept = 'image';
+                    } else if (id.toLowerCase().includes('audio')) {
+                        accept = 'audio';
+                    } else if (id.toLowerCase().includes('video')) {
+                        accept = 'video';
+                    }
                 }
                 // If generic exe-file-picker, accept = null (show all files)
 

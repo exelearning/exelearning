@@ -1309,7 +1309,9 @@ var $exeDevicesEdition = {
                     var isImage = $input.hasClass("exe-image-picker") || $button.hasClass("exe-pick-image");
                     var accept = null;
 
-                    if (isImage) {
+                    if ($input.data('accept')) {
+                        accept = $input.data('accept');
+                    } else if (isImage) {
                         accept = 'image';
                     } else if (inputId && inputId.toLowerCase().indexOf('audio') !== -1) {
                         accept = 'audio';

@@ -2,6 +2,8 @@ import Modal from '../modal.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
+const CHEMICAL_EXTENSIONS = ['mol', 'sdf', 'rxn', 'smi'];
+const CHEMICAL_ACCEPT_VALUE = CHEMICAL_EXTENSIONS.map((ext) => `.${ext}`).join(',');
 
 /**
  * File Manager Modal
@@ -23,7 +25,7 @@ export default class ModalFilemanager extends Modal {
         this.selectedAssets = []; // For multi-select mode
         this.multiSelect = false; // Whether to allow multiple selection
         this.onSelectCallback = null;
-        this.acceptFilter = null; // 'image', 'audio', 'video', or null for all
+        this.acceptFilter = null; // 'image', 'audio', 'video', 'chemical', or null for all
         this.typeFilter = ''; // User-selected type filter from dropdown
         this.assetManager = null;
         this.assetUsageCounts = new Map(); // Cache of asset ID -> usage count in iDevices
@@ -471,11 +473,43 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Configure upload input accept attribute based on current accept filter.
+     * When no filter is set, allow selecting all files.
+     */
+    configureUploadAcceptFilter() {
+        if (!this.uploadInput) return;
+
+        const acceptByFilter = {
+            image: 'image/*',
+            audio: 'audio/*',
+            video: 'video/*',
+            chemical: CHEMICAL_ACCEPT_VALUE,
+        };
+
+        const normalizedFilter = typeof this.acceptFilter === 'string'
+            ? this.acceptFilter.trim().toLowerCase()
+            : '';
+
+        let acceptValue = acceptByFilter[normalizedFilter] || '';
+
+        // Allow callers to pass a raw HTML accept value (e.g. ".txt,.xml" or "application/json")
+        if (!acceptValue && normalizedFilter && (normalizedFilter.includes('.') || normalizedFilter.includes('/'))) {
+            acceptValue = this.acceptFilter;
+        }
+
+        if (acceptValue) {
+            this.uploadInput.setAttribute('accept', acceptValue);
+        } else {
+            this.uploadInput.removeAttribute('accept');
+        }
+    }
+
+    /**
      * Show the modal
      * @param {Object} data - Optional configuration
      * @param {Function} data.onSelect - Callback when asset is inserted
      * @param {boolean} data.multiSelect - Allow multiple selection (default: false)
-     * @param {string} data.accept - Filter by type ('image', 'audio', 'video')
+     * @param {string} data.accept - Filter by type ('image', 'audio', 'video', 'chemical')
      */
     async show(data = {}) {
         this.titleDefault = _('File manager');
@@ -507,6 +541,9 @@ export default class ModalFilemanager extends Modal {
                 this.initElements();
                 this.initBehaviour();
             }
+
+            // Configure upload input type filter for this picker invocation
+            this.configureUploadAcceptFilter();
 
             // Reset reference count toggle (off by default) - after initElements
             this.showRefCount = false;
@@ -885,6 +922,10 @@ export default class ModalFilemanager extends Modal {
                 if (this.acceptFilter === 'image' && !mime.startsWith('image/')) return false;
                 if (this.acceptFilter === 'audio' && !mime.startsWith('audio/')) return false;
                 if (this.acceptFilter === 'video' && !mime.startsWith('video/')) return false;
+                if (this.acceptFilter === 'chemical') {
+                    const ext = (asset.filename || '').split('.').pop().toLowerCase();
+                    if (!CHEMICAL_EXTENSIONS.includes(ext)) return false;
+                }
             }
             // Filter by type (user-selected filter)
             if (this.typeFilter) {

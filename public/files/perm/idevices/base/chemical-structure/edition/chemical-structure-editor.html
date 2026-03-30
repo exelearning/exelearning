@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Chemical Structure Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="./static/css/main.bdf7ea17.css" rel="stylesheet">
+    <script>
+        // Suppress MaxListenersExceededWarning from Ketcher's internal EventEmitter polyfill.
+        // Ketcher leaks one 'convert' listener per export call (getMolfile/generateImage)
+        // and cannot be fixed without patching the minified bundle.
+        // The warning is emitted via process.emitWarning (if available) or console.warn.
+        (function () {
+            var LEAK_KEY = 'MaxListenersExceededWarning';
+
+            var _warn = console.warn.bind(console);
+            console.warn = function () {
+                if (arguments[0] && String(arguments[0]).indexOf(LEAK_KEY) !== -1) return;
+                _warn.apply(console, arguments);
+            };
+
+            if (typeof process !== 'undefined' && typeof process.emitWarning === 'function') {
+                var _emitWarning = process.emitWarning.bind(process);
+                process.emitWarning = function (warning) {
+                    if (warning && String(warning).indexOf(LEAK_KEY) !== -1) return;
+                    _emitWarning.apply(process, arguments);
+                };
+            }
+        })();
+    </script>
+    <style>
+        html, body, #root {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #fff;
+        }
+        #cs-error-banner {
+            display: none;
+            background: #fde8e8;
+            border-bottom: 1px solid #e57373;
+            color: #b00020;
+            font: 13px/1.4 sans-serif;
+            padding: 6px 10px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <div id="cs-error-banner"></div>
+    <div id="root"></div>
+
+    <script defer src="./static/js/main.8f1d38b5.js"></script>
+    <script>
+        /* eslint-disable no-undef */
+        (function () {
+            'use strict';
+
+            var editorReady = false;
+            var pendingLoad = null;
+            var lastDirty = false;
+            var hideUiObserver = null;
+            // Trusted parent origin, captured from the first message received from window.parent.
+            // CS_READY is sent with '*' before any parent message arrives; all subsequent
+            // messages use the captured origin to prevent cross-origin data leaks.
+            var parentOrigin = '*';
+
+            function post(type, payload) {
+                window.parent.postMessage({ type: type, payload: payload || {} }, parentOrigin);
+            }
+
+            function showError(message) {
+                var banner = document.getElementById('cs-error-banner');
+                if (banner) {
+                    banner.textContent = message;
+                    banner.style.display = 'block';
+                }
+                post('CS_ERROR', { message: message });
+            }
+
+            function hideError() {
+                var banner = document.getElementById('cs-error-banner');
+                if (banner) banner.style.display = 'none';
+            }
+
+            function getKetcher() {
+                return window.ketcher || null;
+            }
+
+            function blobToText(blob) {
+                if (blob && typeof blob.text === 'function') return blob.text();
+                return new Promise(function (resolve) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) { resolve(e.target.result || ''); };
+                    reader.onerror = function () { resolve(''); };
+                    reader.readAsText(blob);
+                });
+            }
+
+            function captureSvgFromDom() {
+                try {
+                    var canvasSvg = document.querySelector('svg[data-testid="canvas"]');
+                    if (!canvasSvg) return '';
+
+                    var clone = canvasSvg.cloneNode(true);
+
+                    // Remove invisible Ketcher internal layers (rects and circles with opacity 0)
+                    clone.querySelectorAll('rect, circle').forEach(function (el) {
+                        var op = parseFloat(el.getAttribute('opacity'));
+                        if (op === 0 || el.style.opacity === '0') el.remove();
+                    });
+
+                    // Remove data-testid / data-* test attributes (not needed in output)
+                    clone.querySelectorAll('[data-testid]').forEach(function (el) {
+                        el.removeAttribute('data-testid');
+                    });
+
+                    // Compute tight bounding box around visible content
+                    // We read from the live DOM (not the clone) because getBBox requires a mounted element
+                    var paths = canvasSvg.querySelectorAll('path, text, ellipse');
+                    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    paths.forEach(function (el) {
+                        try {
+                            var bb = el.getBBox();
+                            if (bb.width === 0 && bb.height === 0) return;
+                            if (bb.x < minX) minX = bb.x;
+                            if (bb.y < minY) minY = bb.y;
+                            if (bb.x + bb.width > maxX) maxX = bb.x + bb.width;
+                            if (bb.y + bb.height > maxY) maxY = bb.y + bb.height;
+                        } catch (e) { /* getBBox can fail on hidden elements */ }
+                    });
+
+                    if (!isFinite(minX)) return '';
+
+                    var pad = 20;
+                    var vx = Math.max(0, minX - pad);
+                    var vy = Math.max(0, minY - pad);
+                    var vw = maxX - minX + pad * 2;
+                    var vh = maxY - minY + pad * 2;
+
+                    clone.setAttribute('viewBox', vx + ' ' + vy + ' ' + vw + ' ' + vh);
+                    clone.setAttribute('width', Math.round(vw));
+                    clone.setAttribute('height', Math.round(vh));
+                    clone.removeAttribute('style');
+
+                    return new XMLSerializer().serializeToString(clone);
+                } catch (e) { return ''; }
+            }
+
+            function exportStructure() {
+                var ketcher = getKetcher();
+                if (!ketcher) return Promise.reject(new Error('Ketcher not available'));
+
+                return Promise.resolve().then(function () {
+                    return ketcher.getKet();
+                }).catch(function () {
+                    return '';
+                }).then(function (ket) {
+                    if (!ket || !ket.trim() || ket === '{}') {
+                        return { ket: '', molfile: '', smiles: '', svg: '', structureType: 'molecule', isEmpty: true };
+                    }
+
+                    var hasReaction = false;
+                    try {
+                        hasReaction = (typeof ketcher.containsReaction === 'function') && ketcher.containsReaction();
+                    } catch (e) { /* macro mode or unsupported */ }
+
+                    var molPromise = Promise.resolve().then(function () {
+                        return hasReaction ? ketcher.getRxn('v3000') : ketcher.getMolfile('v3000');
+                    }).catch(function () { return ''; });
+
+                    var smilesPromise = hasReaction
+                        ? Promise.resolve('')
+                        : Promise.resolve().then(function () {
+                            return ketcher.getSmiles();
+                        }).catch(function () { return ''; });
+
+                    var svgPromise = Promise.resolve().then(function () {
+                        return ketcher.generateImage(ket, { outputFormat: 'svg' });
+                    }).then(function (blob) {
+                        return blobToText(blob);
+                    }).catch(function () { return ''; }).then(function (svgText) {
+                        // generateImage may return a valid but empty SVG shell — check for real drawn content
+                        if (svgText && /<(path|text|line|polyline|polygon|ellipse|use)[\s>]/i.test(svgText)) {
+                            return svgText;
+                        }
+                        return captureSvgFromDom();
+                    });
+
+                    return Promise.all([molPromise, smilesPromise, svgPromise]).then(function (results) {
+                        return {
+                            ket: ket,
+                            molfile: hasReaction ? '' : (results[0] || ''),
+                            rxn: hasReaction ? (results[0] || '') : '',
+                            smiles: results[1] || '',
+                            svg: results[2] || '',
+                            structureType: hasReaction ? 'reaction' : 'molecule',
+                            isEmpty: false
+                        };
+                    });
+                });
+            }
+
+            function loadStructure(payload) {
+                var ketcher = getKetcher();
+                if (!ketcher) {
+                    pendingLoad = payload;
+                    return Promise.resolve();
+                }
+
+                var data = payload || {};
+                var structure = data.ket || data.molfile || data.rxn || data.smiles || '';
+
+                if (!structure.trim()) {
+                    return ketcher.setMolecule('').catch(function () {});
+                }
+
+                return ketcher.setMolecule(structure).catch(function (err) {
+                    showError('Failed to load structure: ' + (err && err.message || String(err)));
+                });
+            }
+
+            function bindChangeTracking() {
+                var ketcher = getKetcher();
+                if (!ketcher || !ketcher.editor || typeof ketcher.editor.subscribe !== 'function') return;
+
+                ketcher.editor.subscribe('change', function () {
+                    if (lastDirty) return;
+                    lastDirty = true;
+                    post('CS_DIRTY', { dirty: true });
+                });
+            }
+
+            function handleMessage(event) {
+                var data = event.data || {};
+                var type = data.type;
+                var payload = data.payload || {};
+
+                if (type === 'CS_LOAD_STRUCTURE') {
+                    loadStructure(payload);
+                    hideError();
+
+                } else if (type === 'CS_REQUEST_EXPORT') {
+                    exportStructure().then(function (result) {
+                        lastDirty = false;
+                        hideError();
+                        post('CS_EXPORT_RESULT', result);
+                    }).catch(function (err) {
+                        showError('Export failed: ' + (err && err.message || String(err)));
+                    });
+
+                } else if (type === 'CS_CLEAR') {
+                    var ketcher = getKetcher();
+                    if (!ketcher) { showError('Ketcher not available'); return; }
+                    ketcher.setMolecule('').then(function () {
+                        lastDirty = true;
+                        post('CS_DIRTY', { dirty: true });
+                    }).catch(function (err) {
+                        showError('Clear failed: ' + (err && err.message || String(err)));
+                    });
+                }
+            }
+
+            function init() {
+                var attempts = 0;
+                var maxAttempts = 200; // 20 seconds (standalone may take longer to init)
+
+                var timer = setInterval(function () {
+                    attempts++;
+                    if (getKetcher()) {
+                        clearInterval(timer);
+                        editorReady = true;
+                        bindChangeTracking();
+                        if (pendingLoad) {
+                            loadStructure(pendingLoad);
+                            pendingLoad = null;
+                        }
+                        post('CS_READY');
+                        // Ketcher UI is stable — the MutationObserver for hiding
+                        // unsupported controls is no longer needed.
+                        if (hideUiObserver) {
+                            hideUiObserver.disconnect();
+                            hideUiObserver = null;
+                        }
+                        return;
+                    }
+                    if (attempts >= maxAttempts) {
+                        clearInterval(timer);
+                        showError('Ketcher initialization timed out. Check that static/js/main.*.js is present.');
+                        post('CS_ERROR', { message: 'Ketcher initialization timeout' });
+                    }
+                }, 100);
+            }
+
+            // Ketcher standalone also sends a postMessage with eventType 'init'
+            window.addEventListener('message', function (event) {
+                // Only accept messages from the direct parent frame.
+                if (event.source !== window.parent) return;
+
+                // Capture the parent's origin on the first trusted message so that
+                // subsequent post() calls use a specific target instead of '*'.
+                if (parentOrigin === '*' && event.origin && event.origin !== 'null') {
+                    parentOrigin = event.origin;
+                }
+
+                if (event.data && event.data.eventType === 'init') {
+                    // Ketcher is ready — handled by polling above, but good to know
+                    return;
+                }
+                handleMessage(event);
+            });
+
+            init();
+
+            // Hide unsupported Ketcher UI: Macromolecule toggle + first toolbar group (file ops)
+            (function () {
+                var style = document.createElement('style');
+                // data-testid selectors are stable across Ketcher rebuilds (unlike hashed CSS classes)
+                style.textContent = '[title*="Macromolecule"],[aria-label*="Macromolecule"]{display:none!important}' +
+                    '[data-testid="top-toolbar"]>div:first-child{display:none!important}';
+                document.head.appendChild(style);
+
+                function hideUnsupportedUI() {
+                    document.querySelectorAll('button, [role="button"]').forEach(function (el) {
+                        if (el.textContent.includes('Macromolecule')) {
+                            var target = el.parentElement || el;
+                            target.style.setProperty('display', 'none', 'important');
+                        }
+                    });
+                }
+                hideUiObserver = new MutationObserver(hideUnsupportedUI);
+                hideUiObserver.observe(document.getElementById('root'), { childList: true, subtree: true });
+            })();
+        })();
+    </script>
+</body>
+</html>

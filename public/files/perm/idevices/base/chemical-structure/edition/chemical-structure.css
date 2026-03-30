@@ -1,0 +1,487 @@
+/* Chemical Structure iDevice — Edition styles
+   Prefix: CHEME- (CHEMical Edition)
+   Author: Manuel Narváez Martínez
+   License: CC BY-SA 4.0
+*/
+
+#chemIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
+}
+
+/* ── Main panel ──────────────────────────────────────────────── */
+.CHEME-EPanel {
+    margin: 0.7em auto;
+    padding: 0;
+    position: relative;
+    width: 100%;
+}
+
+/* Two-column layout: editor | options */
+.CHEME-EColumns {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 1em;
+    width: 100%;
+}
+
+.CHEME-EEditorColumn {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 54%;
+    min-width: 340px;
+}
+
+.CHEME-EOptionsColumn {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 260px;
+}
+
+/* ── Ketcher iframe wrapper ──────────────────────────────────── */
+.CHEME-EIframeWrap {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 0.5em;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.CHEME-EIframe {
+    border: 0;
+    display: block;
+    height: 440px;
+    width: 100%;
+}
+
+/* ── Viewer toolbar (below iframe) ───────────────────────────── */
+.CHEME-EToolbar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+    justify-content: flex-start;
+    margin-top: 0.4em;
+    width: 100%;
+}
+
+.CHEME-EToolbarBtn {
+    align-items: center;
+    background: none;
+    border: 1px solid #bdbdbd;
+    border-radius: 0.35em;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.85em;
+    font-weight: 500;
+    height: 2.1em;
+    justify-content: center;
+    padding: 0 0.7em;
+    white-space: nowrap;
+}
+
+.CHEME-EToolbarBtn:hover {
+    background-color: #f0f0f0;
+}
+
+.CHEME-EStatus {
+    color: #888;
+    font-size: 0.82em;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+/* ── SVG preview modal ───────────────────────────────────────── */
+.CHEME-EPreviewModal {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.55);
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 9999;
+}
+
+.CHEME-EPreviewModalInner {
+    background: #fff;
+    border-radius: 0.5em;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    height: 80%;
+    max-height: 80%;
+    max-width: 80%;
+    overflow: auto;
+    padding: 1.5em;
+    position: relative;
+    width: 80%;
+}
+
+.CHEME-EPreviewModalClose {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.4em;
+    line-height: 1;
+    padding: 0.2em 0.4em;
+    position: absolute;
+    right: 0.5em;
+    top: 0.4em;
+}
+
+.CHEME-EPreviewModalClose:hover {
+    opacity: 0.6;
+}
+
+.CHEME-EPreviewModalSvg {
+    align-items: center;
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    text-align: center;
+}
+
+.CHEME-EPreviewModalSvg svg {
+    height: auto;
+    max-height: 100%;
+    max-width: 100%;
+}
+
+/* ── Question block (below columns) ─────────────────────────── */
+.CHEME-EQuestionBlock {
+    width: 100%;
+}
+
+/* ── ChemFig render canvas ───────────────────────────────────── */
+.CHEME-ERenderCanvas {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 0.4em;
+    display: flex;
+    justify-content: center;
+    min-height: 260px;
+    overflow: auto;
+    padding: 0.75em;
+    width: 100%;
+}
+
+.CHEME-ERenderCanvas svg {
+    height: auto;
+    max-width: 100%;
+}
+
+.CHEME-ERenderEmpty {
+    color: #aaa;
+    font-size: 0.85em;
+    margin: 0;
+    text-align: center;
+}
+
+/* ── Code injector ───────────────────────────────────────────── */
+.CHEME-ECodeInjector {
+    width: 100%;
+}
+
+.CHEME-ECodeTextarea {
+    font-family: monospace;
+    font-size: 0.8em;
+    resize: vertical;
+}
+
+.CHEME-EFileBtn {
+    cursor: pointer;
+    flex-shrink: 0;
+    padding-left: 0.75em;
+    padding-right: 0.75em;
+}
+
+.CHEME-EFileInput {
+    display: none;
+}
+
+/* ── Options column fields ───────────────────────────────────── */
+.CHEME-EField {
+    margin-bottom: 0.5em;
+    width: 100%;
+}
+
+.CHEME-EQuestionDiv {
+    margin-bottom: 0.5em;
+    width: 100%;
+}
+.CHEME-EQuestionDiv input {
+    margin-right: 0 !important
+}
+
+.CHEME-EQuestion {
+    width: 98%;
+}
+
+.CHEME-EAnswers {
+    display: grid;
+    gap: 0.6em 0.8em;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.CHEME-EOptionDiv {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+    margin: 0;
+    min-height: 35px;
+    width: 100%;
+}
+
+.CHEME-EOptionInput {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+}
+
+.CHEME-ESolutionSelect {
+    margin-bottom: 0.4em;
+}
+
+.CHEME-ESolutionWord {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5em;
+    margin-bottom: 0.6em;
+}
+
+.CHEME-ESolutionWord label {
+    flex-shrink: 0;
+    text-align: right;
+    width: 10em;
+}
+
+.CHEME-EWordDiv {
+    margin: 0.4em auto;
+    width: 100%;
+}
+
+.CHEME-EOrders {
+    display: none;
+    margin-top: 0.4em;
+}
+
+.CHEME-EOrders > div {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.3em;
+    margin-bottom: 0.4em;
+}
+
+.CHEME-EOrders input[type=text] {
+    width: 100%;
+}
+
+.CHEME-EOrders label {
+    white-space: nowrap;
+}
+
+/* ── Show mode (layout flip) ─────────────────────────────────── */
+.CHEME-ShowMode .CHEME-EIframe {
+    height: 480px;
+}
+
+#chemDescriptionDiv label {
+    margin-bottom: 0;
+}
+
+/* ── Question navigation ─────────────────────────────────────── */
+.CHEME-ENavigationButtons {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin-top: 0.8em;
+    width: 100%;
+}
+
+.CHEME-ENavigationButton {
+    height: 1.7em;
+    min-width: 1.7em;
+    width: 1.7em;
+}
+
+.CHEME-ENumQ {
+    background-size: 100% 100%;
+    display: inline-block;
+    height: 1.5em;
+    width: 1.5em;
+}
+
+.CHEME-ENumQuestionDiv {
+    align-items: center;
+    display: flex;
+    height: 1.5em;
+    justify-content: center;
+    position: absolute;
+    right: 0;
+    top: 0.3em;
+    width: 3em;
+    z-index: 2000;
+}
+
+.CHEME-ENumQuestions {
+    font-weight: bold;
+    height: 1.5em;
+    text-align: center;
+    width: 3.5em;
+}
+
+/* ── Score per question ──────────────────────────────────────── */
+.CHEME-ScoreQuestionDiv {
+    display: none;
+}
+
+.CHEME-EFeedbackP {
+    display: none;
+}
+
+.CHEME-DP {
+    display: none;
+}
+
+/* ── SCORM options (reuse standard game styles) ──────────────── */
+#gameQESCORMoptions {
+    margin-left: 1.5em;
+    visibility: hidden;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────── */
+.exe-form-tabs {
+    list-style: none;
+    margin: 0 0 1.5em 0;
+    padding: 0;
+}
+
+#main .exe-form-tabs li {
+    display: inline;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.exe-form-tabs li:first-child a {
+    border-bottom-left-radius: 4px;
+    border-top-left-radius: 4px;
+}
+
+.exe-form-tabs li:last-child a {
+    border-bottom-right-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.exe-form-tabs a {
+    background: #F9F9F9;
+    border: 1px solid #CCC;
+    color: #666;
+    display: inline-block;
+    padding: 0.5em 1em;
+}
+
+.exe-form-tabs li:not(:last-child) a {
+    border-right: none;
+}
+
+.exe-form-tabs .exe-form-active-tab {
+    background: #FFF;
+    color: #000;
+    font-weight: 500;
+}
+
+/* ── Language tab (Tab 4) ────────────────────────────────────── */
+#chemIdeviceFormTab4 p:first-child {
+    margin-top: 0;
+}
+
+#chemIdeviceFormTab4 {
+    overflow: auto;
+}
+
+#chemIdeviceFormTab4 .ci18n {
+    float: left;
+    width: 50%;
+}
+
+#chemIdeviceForm #chemIdeviceFormTab4 label {
+    color: #0BA1A1;
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.2em;
+}
+
+#chemIdeviceForm #chemIdeviceFormTab4 input {
+    width: 100%;
+}
+
+@media screen and (max-width: 720px) {
+    #chemIdeviceForm #chemIdeviceFormTab4 .ci18n {
+        float: none;
+        width: 100%;
+    }
+}
+
+/* ── Percentages span ────────────────────────────────────────── */
+#chemPercentageSpan {
+    display: none;
+}
+
+/* ── Help tooltip link ───────────────────────────────────────── */
+.GameModeHelpLink {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 auto !important;
+    height: 20px;
+    justify-content: center;
+    margin: 0 2px;
+    vertical-align: middle;
+    width: 20px;
+}
+
+.CHEME-EEvaluationHelp,
+.CHEME-EPasswordHelp {
+    display: none;
+    margin-left: 1.4em;
+}
+
+/* ── Close button for dismissible info blocks ────────────────── */
+.exe-block-close {
+    position: absolute;
+    right: 5px;
+    top: 6px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media screen and (max-width: 680px) {
+    .CHEME-EPreviewModalInner {
+        height: 90%;
+        max-height: 90%;
+        max-width: 95%;
+        width: 95%;
+    }
+
+    .CHEME-EColumns {
+        flex-wrap: wrap;
+    }
+
+    .CHEME-EEditorColumn,
+    .CHEME-EOptionsColumn {
+        flex: 0 0 100%;
+        min-width: unset;
+    }
+
+    .CHEME-EIframe {
+        height: 340px;
+    }
+}

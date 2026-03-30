@@ -1,0 +1,789 @@
+/* Chemical Structure iDevice — Export / Runtime styles
+   Prefix: CHEMP- (CHEMical Player)
+   Author: Manuel Narváez Martínez
+   License: CC BY-SA 4.0
+*/
+
+/* ── Reset links inside the player ──────────────────────────── */
+.CHEMP-MainContainer a,
+.CHEMP-MainContainer a:visited,
+.CHEMP-MainContainer a:focus {
+    border: 0;
+    border-bottom: none;
+    text-decoration: none !important;
+}
+
+/* ── Outer wrapper ───────────────────────────────────────────── */
+.CHEMP-MainContainer {
+    font-size: 1rem;
+    margin: 0 auto;
+    max-width: 850px;
+    padding-bottom: 1em;
+    position: relative;
+    width: 100%;
+}
+
+.CHEMP-MainContainer * {
+    box-sizing: border-box;
+}
+
+.CHEMP-MainContainer p {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ── Game container ──────────────────────────────────────────── */
+.CHEMP-GameContainer {
+    margin: 0 auto;
+    max-width: 850px;
+    padding: 1em 0.3em 0;
+    position: relative;
+    width: 100%;
+}
+
+/* ── Minimized state ─────────────────────────────────────────── */
+.CHEMP-GameMinimize {
+    display: none;
+    margin: 1em auto;
+    width: 100%;
+}
+
+.CHEMP-LinkMaximize {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+.CHEMP-IconMinimize {
+    height: 2em;
+    margin-right: 0.5em;
+    width: 2em;
+}
+
+/* ── Score board ─────────────────────────────────────────────── */
+.CHEMP-GameScoreBoard {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.3em;
+    width: 100%;
+}
+
+.CHEMP-GameScoreBoard p {
+    font-size: 1.4em !important;
+    margin-right: 0.3em !important;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.CHEMP-GameScores {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.CHEMP-LifesGame {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+.CHEMP-NumberLifesGame {
+    display: none;
+}
+
+.CHEMP-TimeNumber {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.CHEMP-PTime {
+    margin-left: 0.3em;
+    min-width: 3.5em;
+    text-align: center;
+}
+
+/* ── Clue area ───────────────────────────────────────────────── */
+.CHEMP-ShowClue {
+    color: #5877c6 !important;
+    font-weight: bold !important;
+    margin: 0.3em auto;
+    min-height: 0.4em;
+    padding: 0;
+    text-align: center !important;
+    width: 100%;
+}
+
+.CHEMP-PShowClue {
+    color: #5877c6 !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    width: 100%;
+}
+
+/* ── Structure display area ──────────────────────────────────── */
+.CHEMP-StructureArea {
+    background-color: transparent;
+    border-radius: 0.6em;
+    margin: 0.3em auto;
+    max-width: 700px;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+/* Aspect ratio padding trick */
+.CHEMP-StructureArea::before {
+    content: '';
+    display: block;
+    padding-top: 65%;
+}
+
+.CHEMP-StructureCanvas {
+    align-items: center;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    left: 0;
+    overflow: hidden;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.CHEMP-StructureCanvas svg {
+    height: 100%;
+    max-height: 100%;
+    max-width: 100%;
+    width: auto;
+    display: block;
+}
+
+.CHEMP-Cover {
+    bottom: 4%;
+    left: 4%;
+    margin: auto;
+    object-fit: contain;
+    position: absolute;
+    right: 4%;
+    top: 4%;
+    width: 92%;
+    height: 92%;
+}
+
+.CHEMP-NoStructure {
+    align-items: center;
+    bottom: 0;
+    color: #aaa;
+    display: flex;
+    font-size: 0.95em;
+    justify-content: center;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+/* ── Game over overlay ───────────────────────────────────────── */
+.CHEMP-GameOver {
+    align-items: center;
+    border-radius: 0.6em;
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    left: 50%;
+    max-width: 700px;
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    width: 100%;
+    z-index: 6;
+}
+
+.CHEMP-DataImage {
+    height: 100%;
+    padding: 0;
+    position: relative;
+    width: 50%;
+}
+
+.CHEMP-DataScore {
+    padding: 0;
+    width: 50%;
+}
+
+.CHEMP-DataScore p { margin: 0.7em; }
+
+.CHEMP-HistGGame,
+.CHEMP-LostGGame {
+    bottom: 0;
+    display: none;
+    left: 0;
+    margin: auto;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 80%;
+}
+
+/* ── Show-mode navigation ────────────────────────────────────── */
+.CHEMP-ShowNavigation {
+    align-items: center;
+    display: none;
+    justify-content: space-between;
+    margin: 0 auto 0.5em;
+    max-width: 700px;
+    width: 100%;
+}
+
+.CHEMP-GameContainer.CHEMP-ShowMode .CHEMP-ShowNavigation {
+    display: flex;
+}
+
+.CHEMP-ShowNavBtn {
+    align-items: center;
+    cursor: pointer;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 2.4em;
+    justify-content: center;
+    width: 2.4em;
+}
+
+.CHEMP-ShowNavIcon,
+.CHEMP-ShowNavImg {
+    height: 100%;
+    width: auto;
+}
+
+.CHEMP-ShowCounter {
+    flex: 1 1 auto;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* ── Fullscreen row ──────────────────────────────────────────── */
+.CHEMP-ShowFullScreenRow {
+    display: none;
+    justify-content: flex-end;
+    margin: 0 auto 0.5em;
+    width: 100%;
+}
+
+.CHEMP-GameContainer.CHEMP-ShowMode .CHEMP-ShowFullScreenRow {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 0.2em;
+}
+
+.CHEMP-ShowFullScreenBtn {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-width: 2.2em;
+}
+
+.CHEMP-ShowFullScreenBtn .exeQuextIcons {
+    height: 2em;
+    margin-right: 0;
+    width: 2em;
+}
+
+/* ── Description (show mode) ─────────────────────────────────── */
+.CHEMP-Description {
+    box-sizing: border-box;
+    margin: 0.4em auto 0.6em;
+    max-width: 700px;
+    min-height: 2em;
+    padding: 0.3em 0.5em;
+    text-align: center;
+    width: 100%;
+}
+
+/* ── Author ──────────────────────────────────────────────────── */
+.CHEMP-AuthorLicence {
+    margin: 0.3em auto 0;
+    min-height: 0.4em;
+    width: 100%;
+}
+
+.CHEMP-AuthorLicence p {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+/* ── Start game link ─────────────────────────────────────────── */
+.CHEMP-StartGame {
+    margin: 1em auto 0;
+    text-align: center;
+    user-select: none;
+    width: 100%;
+}
+
+.CHEMP-StartGame a:hover {
+    text-decoration: underline !important;
+}
+
+/* ── Question area (test mode) ───────────────────────────────── */
+.CHEMP-QuestionDiv {
+    display: none;
+    margin: 0.3em auto;
+    width: 100%;
+}
+
+.CHEMP-Question {
+    border-radius: 0.3em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 0.4em;
+    min-height: 3.2em;
+    padding: 0.3em;
+    text-align: center;
+    user-select: none;
+    width: 100%;
+}
+
+/* ── Multiple-choice options ─────────────────────────────────── */
+.CHEMP-OptionsDiv {
+    display: grid;
+    gap: 0.4em;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0 auto;
+    width: 100%;
+}
+
+.CHEMP-MainContainer a.CHEMP-Options {
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid #777;
+    border-radius: 0.4em;
+    color: #1c1b1b;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    min-height: 3em;
+    padding: 0.3em;
+    text-align: center;
+    user-select: none;
+    width: 100%;
+}
+
+/* ── Submit button row ───────────────────────────────────────── */
+.CHEMP-AnswersDiv {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    padding: 0;
+}
+
+.CHEMP-Answers {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    margin-right: 0.3em;
+    padding: 0;
+    width: 8em;
+}
+
+.CHEMP-AnswersOptions {
+    border-radius: 2px;
+    height: 1.4em;
+    width: 1.4em;
+}
+
+.CHEMP-Answer1 { background-color: #b3092f; border: 1px solid #1c1b1b; border-radius: 3px; margin-left: 0.1em; }
+.CHEMP-Answer2 { background-color: #5877c6; border: 1px solid #1c1b1b; border-radius: 3px; margin-left: 0.1em; }
+.CHEMP-Answer3 { background-color: #00a300; border: 1px solid #1c1b1b; border-radius: 3px; margin-left: 0.1em; }
+.CHEMP-Answer4 { background-color: #f3d55a; border: 1px solid #1c1b1b; border-radius: 2px; margin-left: 0.1em; }
+
+/* ── Word / phrase question ──────────────────────────────────── */
+.CHEMP-WordsDiv {
+    display: none;
+    margin: 0.3em auto;
+    width: 100%;
+}
+
+.CHEMP-Definition {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
+    justify-content: center;
+    margin: 0.5em auto;
+    min-height: 2em;
+    text-align: center;
+    width: 90%;
+}
+
+.CHEMP-Phrase {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0.5em auto;
+    min-height: 3em;
+    width: 97%;
+}
+
+.CHEMP-Word { align-items: center; display: flex; justify-content: center; padding: 6px 6px 2px; }
+
+.CHEMP-Letter {
+    align-items: center;
+    border: 1px solid #555;
+    border-radius: 3px;
+    display: flex;
+    font-size: 1.3em;
+    font-weight: 600;
+    height: 1.8em;
+    justify-content: center;
+    margin: 1px;
+    padding: 0;
+    text-align: center;
+    user-select: none;
+    width: 1.3em;
+}
+
+.CHEMP-Letter.blue  { color: #5877c6; }
+.CHEMP-Letter.green { color: #00a300; }
+.CHEMP-Letter.red   { color: #b3092f; }
+.CHEMP-Letter.black { color: #1c1b1b; }
+
+.CHEMP-DivReply {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.CHEMP-EdReply {
+    margin: auto 0.6em;
+    max-width: 400px;
+    text-align: center;
+    width: 60%;
+}
+
+/* ── Bottom button row ───────────────────────────────────────── */
+.CHEMP-BottonContainerDiv,
+.Games-BottonContainer {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    margin: 0.1em auto;
+    padding: 0;
+    width: 100%;
+}
+
+.CHEMP-BottonContainerDivEnd {
+    justify-content: flex-end;
+    margin-top: 0.3em;
+}
+
+/* ── Feedback overlay ────────────────────────────────────────── */
+.CHEMP-DivFeedBack {
+    align-items: center;
+    background-color: rgba(232, 232, 232, 0.8);
+    border-radius: 0.6em;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: center;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    z-index: 11;
+}
+
+.cheme-feedback-game {
+    background-color: #fff;
+    border: 1px solid #999;
+    border-radius: 0.6em;
+    box-shadow: 0 10px 6px -6px #999;
+    display: none;
+    margin-bottom: 1em;
+    max-height: 80%;
+    min-height: 10em;
+    overflow-y: auto;
+    padding: 1em;
+    width: 95%;
+}
+
+/* ── Whiteboard mode ─────────────────────────────────────────── */
+.CHEMP-DivModeBoard {
+    display: none;
+    justify-content: center;
+    margin-top: 0.8em;
+    position: relative;
+}
+
+a.CHEMP-ModeBoard,
+a.CHEMP-ModeBoardShow {
+    background: #f3f3f3;
+    border: solid 1px #dcdcdc;
+    border-radius: 3px;
+    color: #6e6e6e;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 1em;
+    margin-right: 1em;
+    padding: 0.6em 1em;
+    position: relative;
+    text-align: center;
+    text-decoration: none !important;
+    user-select: none;
+    white-space: nowrap;
+    z-index: 4;
+}
+
+a.CHEMP-ModeBoard:hover,
+a.CHEMP-ModeBoardShow:hover { border-color: #999; color: #333; }
+
+a.CHEMP-ModeBoardShow { bottom: 0; position: absolute; right: 0; }
+
+/* ── Access code overlay ─────────────────────────────────────── */
+.CHEMP-Cubierta {
+    align-items: center;
+    background-color: rgba(255,255,255,0.1);
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 1001;
+}
+
+.CHEMP-CodeAccessDiv {
+    background: #fff;
+    border-radius: 0.5em;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,.2), 0 3px 6px 0 rgba(0,0,0,.19);
+    margin: 0 auto;
+    max-width: 450px;
+    padding: 1.5em 0.5em;
+    width: 95%;
+}
+
+.CHEMP-MessageCodeAccessE { text-align: center; width: 100%; }
+
+.CHEMP-DataCodeAccessE {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin: 0.7em auto 0;
+}
+
+.CHEMP-CodeAccessE { margin: 0 0.3em; max-width: 350px; text-align: center; width: 60%; }
+
+/* ── Extra content after iDevice ─────────────────────────────── */
+.cheme-extra-content { margin-top: 1.7em; }
+.cheme-instructions   { overflow: auto; }
+
+/* ── Icons ───────────────────────────────────────────────────── */
+.CHEMP-GameContainer .exeQuextIcons {
+    background-size: 100% 100%;
+    height: 1.4em;
+    margin-right: 0.3em;
+    width: 1.4em;
+}
+
+.CHEMP-GameContainer .exeQuextIcons-Submit { height: 1.7em; width: 1.7em; }
+
+.CHEMP-MainContainer .exeQuextIcons-Submit {
+    background: url(exequextreply.svg) no-repeat;
+    background-size: 100% 100%;
+}
+
+.CHEMP-MainContainer .exeQuextIcons-MoveOne {
+    background: url(exequextmoveon.svg) no-repeat;
+    background-size: 100% 100%;
+}
+
+.CHEMP-GameContainer .exeQuextIcons-Minimize { background-image: url(exequextmin.svg); background-size: 100% 100%; }
+.CHEMP-GameContainer .exeQuextIcons-Hit      { background-image: url(exequexthits.svg); background-size: 100% 100%; }
+.CHEMP-GameContainer .exeQuextIcons-Error    { background-image: url(exequextrerrors.svg); background-size: 100% 100%; }
+.CHEMP-GameContainer .exeQuextIcons-Score    { background-image: url(exequextscore.svg); background-size: 100% 100%; }
+.CHEMP-GameContainer .exeQuextIcons-Time     { background-image: url(exequexttime.svg); background-size: 100% 100%; }
+.CHEMP-GameContainer .exeQuextIcons-Number   { background-image: url(exequextnumber.svg); background-size: 100% 100%; }
+.CHEMP-GameContainer .exeQuextIcons-Life     { background-image: url(exequextlive.png); background-size: 100% 100%; }
+.CHEMP-GameContainer .exeQuextIcons-FullScreen { background-image: url(exequextfull.svg); background-size: 100% 100%; }
+
+/* ── Active hover effect ─────────────────────────────────────── */
+.CHEMP-Activo {
+    cursor: pointer;
+    filter: drop-shadow(.12em .12em .12em rgba(0,0,0,.5));
+    transition: transform 0.3s;
+}
+
+.CHEMP-LinkMaximize:hover .CHEMP-Activo,
+.CHEMP-Activo:hover { transform: scale(1.1); }
+
+/* ── Fullscreen ──────────────────────────────────────────────── */
+.CHEMP-GameContainer:-webkit-full-screen,
+.CHEMP-GameContainer:-moz-full-screen,
+.CHEMP-GameContainer:-ms-full-screen,
+.CHEMP-GameContainer:fullscreen {
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    font-size: 1.5em;
+    gap: 0.35em;
+    height: 100vh;
+    max-width: none;
+    overflow: hidden;
+    padding: 0.25em 0.4em 0.4em;
+    width: 100%;
+}
+
+.CHEMP-GameContainer.CHEMP-IsFullscreen {
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    font-size: 1.5em;
+    gap: 0.35em;
+    height: 100vh;
+    max-width: none;
+    overflow: hidden;
+    padding: 0.25em 0.4em 0.4em;
+    width: 100%;
+}
+
+.CHEMP-GameContainer:fullscreen .CHEMP-StructureArea,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-StructureArea,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-StructureArea {
+    flex: 1 1 0%;
+    margin: 0;
+    max-width: none;
+    min-height: 0;
+    order: 20;
+    width: 100%;
+}
+
+.CHEMP-GameContainer:fullscreen .CHEMP-StructureArea::before,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-StructureArea::before,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-StructureArea::before {
+    display: none;
+}
+
+.CHEMP-GameContainer:fullscreen .CHEMP-StructureCanvas,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-StructureCanvas,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-StructureCanvas {
+    height: 100%;
+    position: relative;
+    width: 100%;
+}
+
+.CHEMP-GameContainer:fullscreen .CHEMP-GameScoreBoard,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-GameScoreBoard,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-GameScoreBoard { flex: 0 0 auto; order: 10; margin-bottom: 0; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-ShowClue,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-ShowClue,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-ShowClue { flex: 0 0 auto; margin: 0; min-height: 0; order: 23; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-QuestionDiv,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-QuestionDiv,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-QuestionDiv { flex: 0 0 auto; margin: 0; margin-top: auto; order: 30; width: 100%; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-WordsDiv,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-WordsDiv,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-WordsDiv { flex: 0 0 auto; margin: 0; margin-top: auto; order: 31; width: 100%; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-BottonContainerDiv,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-BottonContainerDiv,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-BottonContainerDiv { flex: 0 0 auto; margin: 0; order: 32; width: 100%; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-StartGame,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-StartGame,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-StartGame { flex: 0 0 auto; margin: 0.2em auto 1em; order: 24; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-ShowFullScreenRow,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-ShowFullScreenRow,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-ShowFullScreenRow { flex: 0 0 auto; margin: 0.15em auto 0.2em; order: 22; width: 100%; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-Description,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-Description,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-Description { flex: 0 0 auto; max-width: none; order: 21; width: 100%; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-AuthorLicence,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-AuthorLicence,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-AuthorLicence { flex: 0 0 auto; order: 25; text-align: center; width: 100%; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-DivFeedBack,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-DivFeedBack,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-DivFeedBack { flex: 0 0 auto; order: 33; width: 100%; }
+
+.CHEMP-GameContainer:fullscreen .CHEMP-DivModeBoard,
+.CHEMP-GameContainer:-webkit-full-screen .CHEMP-DivModeBoard,
+.CHEMP-GameContainer.CHEMP-IsFullscreen .CHEMP-DivModeBoard { flex: 0 0 auto; order: 34; width: 100%; }
+
+/* ── Show mode fullscreen navigation ────────────────────────── */
+.CHEMP-GameContainer.CHEMP-ShowMode:fullscreen .CHEMP-ShowNavigation,
+.CHEMP-GameContainer.CHEMP-ShowMode:-webkit-full-screen .CHEMP-ShowNavigation,
+.CHEMP-GameContainer.CHEMP-IsFullscreen.CHEMP-ShowMode .CHEMP-ShowNavigation {
+    display: flex !important;
+    flex: 0 0 auto;
+    justify-content: space-between;
+    margin: 0 auto 0.4em;
+    max-width: none;
+    order: -2;
+    width: 100%;
+}
+
+.CHEMP-GameContainer.CHEMP-ShowMode:fullscreen .CHEMP-ShowFullScreenRow,
+.CHEMP-GameContainer.CHEMP-ShowMode:-webkit-full-screen .CHEMP-ShowFullScreenRow,
+.CHEMP-GameContainer.CHEMP-IsFullscreen.CHEMP-ShowMode .CHEMP-ShowFullScreenRow {
+    display: flex !important;
+    justify-content: flex-end;
+    margin: 0 0 0.2em;
+    order: -4;
+    width: 100%;
+}
+
+/* ── Progress report ─────────────────────────────────────────── */
+.Games-ReportIconDiv {
+    align-items: center;
+    display: flex;
+    gap: 0.1em;
+    justify-content: flex-start;
+    margin-bottom: 6px;
+    width: 100%;
+}
+
+.Games-ReportIconDiv img { display: block; height: 16px; width: 16px; }
+.Games-ReportIconDiv span { font-size: 0.9em; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media screen and (max-width: 550px) {
+    .CHEMP-MainContainer { font-size: 0.9rem; }
+    .CHEMP-LinkFullScreen { display: none; }
+    .CHEMP-LifesGame { display: none; }
+    .CHEMP-NumberLifesGame { align-items: center; display: flex; justify-content: center; }
+}
+
+@media screen and (max-width: 470px) {
+    .CHEMP-MainContainer { font-size: 0.85rem; }
+    .CHEMP-StructureArea { width: 100%; }
+}
+
+@media screen and (max-width: 340px) {
+    .CHEMP-MainContainer { font-size: 0.8rem; }
+    .CHEMP-GameScores { width: 50%; }
+    .CHEMP-TimeNumber { width: 45%; }
+}
+
+/* ── Blink animation (clue) ──────────────────────────────────── */
+@keyframes CHEMP-parpadeo {
+    0%   { opacity: 1; }
+    50%  { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.CHEMP-parpadea {
+    animation: CHEMP-parpadeo 1s linear 5;
+}

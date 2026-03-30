@@ -14,6 +14,13 @@ describe('config', () => {
             expect(ALLOWED_EXTENSIONS).toContain('woff2');
         });
 
+        it('contains chemical structure extensions', () => {
+            expect(ALLOWED_EXTENSIONS).toContain('mol');
+            expect(ALLOWED_EXTENSIONS).toContain('sdf');
+            expect(ALLOWED_EXTENSIONS).toContain('rxn');
+            expect(ALLOWED_EXTENSIONS).toContain('smi');
+        });
+
         it('contains unique extension entries', () => {
             const unique = new Set(ALLOWED_EXTENSIONS);
             expect(unique.size).toBe(ALLOWED_EXTENSIONS.length);

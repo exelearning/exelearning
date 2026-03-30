@@ -5023,6 +5023,32 @@ describe('IdeviceNode', () => {
         it('sets up file picker functionality without throwing', () => {
             expect(() => idevice.legacyExeIdevicesFilePicker()).not.toThrow();
         });
+
+        it('uses data-accept value when present', () => {
+            const showSpy = vi.fn();
+            eXeLearning.app.modals.filemanager = { show: showSpy };
+
+            idevice.ideviceBody.innerHTML = `
+                <input
+                    type="text"
+                    class="exe-file-picker"
+                    id="chemLoadMol"
+                    data-accept="chemical"
+                />
+            `;
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const pickerButton = idevice.ideviceBody.querySelector('.exe-pick-any-file');
+            pickerButton.click();
+
+            expect(showSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    accept: 'chemical',
+                    onSelect: expect.any(Function),
+                })
+            );
+        });
     });
 
     describe('initExeDeviceEdition', () => {

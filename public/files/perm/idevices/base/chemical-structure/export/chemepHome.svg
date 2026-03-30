@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Benzene ring -->
+  <g transform="translate(100,100)">
+    <polygon points="0,-65 56.3,-32.5 56.3,32.5 0,65 -56.3,32.5 -56.3,-32.5"
+             fill="none" stroke="#5b9bd5" stroke-width="4.5" stroke-linejoin="round"/>
+    <circle cx="0" cy="0" r="36" fill="none" stroke="#5b9bd5" stroke-width="3.5"/>
+    <line x1="0" y1="-65" x2="0" y2="-36" stroke="#5b9bd5" stroke-width="3.5"/>
+    <line x1="56.3" y1="32.5" x2="31.2" y2="18" stroke="#5b9bd5" stroke-width="3.5"/>
+    <line x1="-56.3" y1="32.5" x2="-31.2" y2="18" stroke="#5b9bd5" stroke-width="3.5"/>
+  </g>
+</svg>

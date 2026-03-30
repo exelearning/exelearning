@@ -236,6 +236,27 @@ describe('ModalFilemanager', () => {
       });
   });
 
+  describe('configureUploadAcceptFilter', () => {
+    it('should set chemical extensions when acceptFilter is chemical', () => {
+      modal.acceptFilter = 'chemical';
+      modal.configureUploadAcceptFilter();
+      expect(modal.uploadInput.getAttribute('accept')).toBe('.mol,.sdf,.rxn,.smi');
+    });
+
+    it('should remove accept attribute when no acceptFilter is set', () => {
+      modal.uploadInput.setAttribute('accept', 'image/*');
+      modal.acceptFilter = null;
+      modal.configureUploadAcceptFilter();
+      expect(modal.uploadInput.hasAttribute('accept')).toBe(false);
+    });
+
+    it('should allow raw accept values from caller', () => {
+      modal.acceptFilter = '.txt,.xml';
+      modal.configureUploadAcceptFilter();
+      expect(modal.uploadInput.getAttribute('accept')).toBe('.txt,.xml');
+    });
+  });
+
   describe('initBehaviour', () => {
     it('should trigger upload input when upload button clicked', () => {
       const clickSpy = vi.spyOn(modal.uploadInput, 'click');
@@ -397,6 +418,45 @@ describe('ModalFilemanager', () => {
       expect(modal.isSearchMode).toBe(false);
       expect(modal.filteredAssets.length).toBe(1);
       expect(modal.filteredAssets[0].id).toBe('2');
+    });
+
+    it('should filter chemical files when acceptFilter is chemical', () => {
+      modal.acceptFilter = 'chemical';
+      modal.assets = [
+        { id: '1', filename: 'caffeine.mol', mime: 'text/plain' },
+        { id: '2', filename: 'library.sdf', mime: 'text/plain' },
+        { id: '3', filename: 'reaction.rxn', mime: 'text/plain' },
+        { id: '4', filename: 'aspirin.smi', mime: 'text/plain' },
+        { id: '5', filename: 'image.png', mime: 'image/png' },
+        { id: '6', filename: 'audio.mp3', mime: 'audio/mpeg' },
+        { id: '7', filename: 'data.txt', mime: 'text/plain' },
+      ];
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.length).toBe(4);
+      expect(modal.filteredAssets.map(a => a.id)).toEqual(['1', '2', '3', '4']);
+    });
+
+    it('should exclude non-chemical files when acceptFilter is chemical', () => {
+      modal.acceptFilter = 'chemical';
+      modal.assets = [
+        { id: '1', filename: 'image.png', mime: 'image/png' },
+        { id: '2', filename: 'document.pdf', mime: 'application/pdf' },
+      ];
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.length).toBe(0);
+    });
+
+    it('should combine chemical filter with search term', () => {
+      modal.acceptFilter = 'chemical';
+      modal.searchInput.value = 'asp';
+      modal.assets = [
+        { id: '1', filename: 'aspirin.mol', mime: 'text/plain' },
+        { id: '2', filename: 'caffeine.mol', mime: 'text/plain' },
+        { id: '3', filename: 'aspirin.png', mime: 'image/png' },
+      ];
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.length).toBe(1);
+      expect(modal.filteredAssets[0].id).toBe('1');
     });
   });
 

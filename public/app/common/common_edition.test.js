@@ -1290,6 +1290,21 @@ describe('common_edition.js', () => {
       );
     });
 
+    it('init click handler uses data-accept attribute when present', () => {
+      document.body.innerHTML = `
+        <input type="text" id="chemLoadMol" class="exe-file-picker" data-accept="chemical" />
+      `;
+
+      globalThis.$exeDevicesEdition.iDevice.filePicker.init();
+
+      const btn = document.querySelector('.exe-pick-any-file');
+      btn.click();
+
+      expect(globalThis.eXeLearning.app.modals.filemanager.show).toHaveBeenCalledWith(
+        expect.objectContaining({ accept: 'chemical' })
+      );
+    });
+
     it('init click handler detects video from input id', () => {
       document.body.innerHTML = `
         <input type="text" id="myVideoPicker" class="exe-file-picker" />
