@@ -272,6 +272,7 @@ export default class IdeviceNode {
         if (this.properties.teacherOnly?.value == 'true') {
             this.ideviceContent.classList.add('exe-teacher-highlight');
         }
+        this.updateTeacherOnlyIndicator();
     }
 
     /**
@@ -296,16 +297,52 @@ export default class IdeviceNode {
                 indicator.style.border = 'none';
                 indicator.style.background = 'transparent';
                 indicator.innerHTML = `<i class="small-icon exe-visibility-off-green-icon" aria-hidden="true"></i><span class="visually-hidden">${_('Hidden from export')}</span>`;
-                
+
                 // Make indicator absolutely positioned to the far left
                 indicator.style.position = 'absolute';
                 indicator.style.left = '12px';
                 indicator.style.top = '50%';
                 indicator.style.transform = 'translateY(-50%)';
                 indicator.style.marginRight = '0';
-                
+
                 this.ideviceButtons.appendChild(indicator);
             }
+        }
+    }
+
+    /**
+     * Update the teacher-only indicator based on the teacherOnly property
+     */
+    updateTeacherOnlyIndicator() {
+        if (!this.ideviceButtons) return;
+
+        let indicator = this.ideviceButtons.querySelector('.teacher-only-indicator');
+        const isTeacherOnly = this.properties.teacherOnly?.value === 'true';
+
+        if (!isTeacherOnly) {
+            if (indicator) indicator.remove();
+        } else {
+            const hasVisibilityOff = !!this.ideviceButtons.querySelector('.visibility-off-indicator');
+            const leftPosition = hasVisibilityOff ? '41px' : '12px';
+
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.classList.add('teacher-only-indicator', 'btn', 'disabled', 'd-flex', 'justify-content-center', 'align-items-center');
+                indicator.setAttribute('title', _('Teacher only'));
+                indicator.style.padding = '0.25rem 0.5rem';
+                indicator.style.opacity = '1';
+                indicator.style.border = 'none';
+                indicator.style.background = 'transparent';
+                indicator.innerHTML = `<i class="small-icon exe-teacher-only-icon" aria-hidden="true"></i><span class="visually-hidden">${_('Teacher only')}</span>`;
+
+                indicator.style.position = 'absolute';
+                indicator.style.top = '50%';
+                indicator.style.transform = 'translateY(-50%)';
+                indicator.style.marginRight = '0';
+
+                this.ideviceButtons.appendChild(indicator);
+            }
+            indicator.style.left = leftPosition;
         }
     }
 
@@ -447,6 +484,7 @@ export default class IdeviceNode {
         }
         this.addTooltips();
         this.updateVisibilityIndicator();
+        this.updateTeacherOnlyIndicator();
         return this.ideviceButtons;
     }
 
