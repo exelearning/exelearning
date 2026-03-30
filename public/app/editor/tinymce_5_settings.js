@@ -304,7 +304,8 @@ var $exeTinyMCE = {
             content_css: this.getContentCSS(),
             contextmenu: this.contextmenu,
             browser_spellcheck: this.browser_spellcheck,
-            fontsize_formats: this.fontsize_formats,
+            // To review. Uncomment the following line to use relative instead of absolute units to improve accessibility:
+            // fontsize_formats: this.fontsize_formats,
             templates: this.getTemplates(),
             table_default_styles: this.table_default_styles,
             table_class_list: this.getAvailableClasses(),
