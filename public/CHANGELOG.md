@@ -14,6 +14,7 @@
 - TinyMCE: usability and accessibility improvements across the editor
 - TinyMCE media plugin: YouTube Live and Shorts URLs are now recognized correctly
 - TinyMCE: toolbar visibility is preserved between editing sessions in the desktop app
+- TinyMCE: missing CSS style classes in the "Insert/Edit Attributes" selector
 - Warn the user when pasting content that has temporary `blob:` file references that will not work in other contexts
 - Checklist and Progress Report iDevices: fixed double save dialog, and improved PDF/PNG output quality.
 - Definition lists inside animation effects now render correctly in the desktop version
