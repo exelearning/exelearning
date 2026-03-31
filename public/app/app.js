@@ -29,6 +29,8 @@ import DOMTranslator from './locate/domTranslator.js';
 // Unsaved changes helper
 import UnsavedChangesHelper from './utils/unsavedChangesHelper.js';
 window.UnsavedChangesHelper = UnsavedChangesHelper;
+// Blob paste guard
+import BlobPasteGuard from './common/blobPasteGuard.js';
 
 export default class App {
     constructor(eXeLearning) {
@@ -1011,6 +1013,7 @@ export default class App {
      */
     async initializedToasts() {
         this.toasts.init();
+        new BlobPasteGuard({ toastsManager: this.toasts }).start();
     }
 
     /**

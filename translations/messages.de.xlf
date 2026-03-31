@@ -12131,7 +12131,7 @@
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>~Sie müssen %s&percnt; des Inhalts der Aktivität überprüfen, bevor Sie den Fragebogen ausfüllen.</target>
+        <target><![CDATA[~Sie müssen %s&percnt; des Inhalts der Aktivität überprüfen, bevor Sie den Fragebogen ausfüllen.]]></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
@@ -12618,7 +12618,7 @@
       </trans-unit>
       <trans-unit id="mvc0zjk" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Ungültiger Ordnername. Vermeiden Sie Sonderzeichen wie / \\ : * ? " < > |</target>
+        <target><![CDATA[~Ungültiger Ordnername. Vermeiden Sie Sonderzeichen wie / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="bzp79do" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12634,7 +12634,7 @@
       </trans-unit>
       <trans-unit id="q89mpc9" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Ungültiger Dateiname. Vermeiden Sie Sonderzeichen wie / \\ : * ? " < > |</target>
+        <target><![CDATA[~Ungültiger Dateiname. Vermeiden Sie Sonderzeichen wie / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="x3ffemc" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -13231,10 +13231,6 @@
       <trans-unit id="rrdh7vh" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
         <target>~Dieser Benutzer ist bereits Mitarbeiter</target>
-      </trans-unit>
-      <trans-unit id="30tks16" resname="User not found">
-        <source>User not found</source>
-        <target>~Benutzer nicht gefunden</target>
       </trans-unit>
       <trans-unit id="5slq9fo" resname="Failed to invite user">
         <source>Failed to invite user</source>
@@ -14119,6 +14115,38 @@
       <trans-unit id="ada1hdk" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
+      <trans-unit id="e4lmp4s" resname="Skip to content">
+        <source>Skip to content</source>
+        <target>~Zum Inhalt springen</target>
+      </trans-unit>
+      <trans-unit id="o807ldh" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target>~Benutzer nicht gefunden. Es ist möglich, dass diese Person noch nicht auf eXeLearning zugegriffen hat und nicht im System registriert ist. Bitten Sie sie, sich anzumelden, bevor Sie teilen.</target>
+      </trans-unit>
+      <trans-unit id="l7ebsfm" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target>~Temporäre Dateien erkannt</target>
+      </trans-unit>
+      <trans-unit id="6q1a7fk" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target>~Einige Dateien in diesem Inhalt verwenden blob:-Links, die nur auf dieser Seite funktionieren. Wenn Sie diesen Inhalt an anderer Stelle einfügen, fehlen möglicherweise Bilder oder Dateien. Um Inhalte mit Dateien wiederzuverwenden, fügen Sie sie über den Dateimanager hinzu oder klonen Sie das iDevice.</target>
+      </trans-unit>
+      <trans-unit id="6d38kjl" resname="Caption Text">
+        <source>Caption Text</source>
+        <target>~Beschriftungstext</target>
+      </trans-unit>
+      <trans-unit id="1yxj4ci" resname="Caption Link">
+        <source>Caption Link</source>
+        <target>~Beschriftungslink</target>
+      </trans-unit>
+      <trans-unit id="gsbmxqh" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Vordefinierte Klassen</target>
+      </trans-unit>
+      <trans-unit id="qjlml9s" resname="Current style classes">
+        <source>Current style classes</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>
