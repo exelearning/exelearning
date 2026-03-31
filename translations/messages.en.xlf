@@ -13232,10 +13232,6 @@
         <source>This user is already a collaborator</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="kam5sbf" resname="User not found">
-        <source>User not found</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="sdbqlpo" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target></target>
@@ -14119,6 +14115,38 @@
       <trans-unit id="pjwbg0f" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>creative commons: cc0 1.0</target>
+      </trans-unit>
+      <trans-unit id="e5ohszp" resname="Skip to content">
+        <source>Skip to content</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1r2hz10" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kfisrmz" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fuzjl2v" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kl326yu" resname="Caption Text">
+        <source>Caption Text</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ukmxcup" resname="Caption Link">
+        <source>Caption Link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="66wo1wn" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="90ni9fn" resname="Current style classes">
+        <source>Current style classes</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>
