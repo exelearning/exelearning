@@ -726,7 +726,6 @@ function attachEditorWindowCloseGuard(win) {
                 return;
             }
 
-            // Pedir el copy al renderer, con fallback al copy hardcoded
             const copy = (await getCloseCopyFromRenderer(win)) 
                       || getUnsavedChangesCloseCopy();
 
