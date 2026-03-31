@@ -1144,10 +1144,25 @@ ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
 
         // Solution radio buttons
         $('input.CHEME-ESolution[name="slcchemsolution"]').on('change', function () {
-            var solutions = [];
-            $('input.CHEME-ESolution[name="slcchemsolution"]:checked').each(function () {
-                solutions.push($(this).val());
-            });
+            var currentType = parseInt($('input[name="slcchemtypeselect"]:checked').val(), 10);
+            var solutions;
+            if (currentType === 1) {
+                // Order type: preserve click order by updating the existing sequence
+                var letter = $(this).val();
+                var current = $('#chemSolutionSelect').text().split('').filter(Boolean);
+                if ($(this).is(':checked')) {
+                    if (!current.includes(letter)) current.push(letter);
+                } else {
+                    current = current.filter(function (l) { return l !== letter; });
+                }
+                solutions = current;
+            } else {
+                // Select type: DOM order is fine
+                solutions = [];
+                $('input.CHEME-ESolution[name="slcchemsolution"]:checked').each(function () {
+                    solutions.push($(this).val());
+                });
+            }
             $('#chemSolutionSelect').text(solutions.join(''));
         });
 

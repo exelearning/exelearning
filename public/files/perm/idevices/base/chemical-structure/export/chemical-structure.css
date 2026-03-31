@@ -580,6 +580,13 @@ a.CHEMP-ModeBoardShow { bottom: 0; position: absolute; right: 0; }
 
 .CHEMP-CodeAccessE { margin: 0 0.3em; max-width: 350px; text-align: center; width: 60%; }
 
+.CHEMP-Cubierta .exeQuextIcons-Submit {
+    background: url(exequextreply.svg) no-repeat;
+    background-size: 100% 100%;
+    height: 1.7em;
+    width: 1.7em;
+}
+
 /* ── Extra content after iDevice ─────────────────────────────── */
 .cheme-extra-content { margin-top: 1.7em; }
 .cheme-instructions   { overflow: auto; }
