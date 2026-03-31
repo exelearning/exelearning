@@ -226,14 +226,16 @@ export class Epub3Exporter extends BaseExporter {
             this.addManifestItem('css-base', 'content/css/base.css', 'text/css');
 
             // 5b. Add eXeLearning logo for "Made with eXeLearning" footer
-            try {
-                const logoData = await this.resources.fetchExeLogo();
-                if (logoData) {
-                    this.zip.addFile('EPUB/content/img/exe_powered_logo.png', logoData);
-                    this.addManifestItem('exe-logo', 'content/img/exe_powered_logo.png', 'image/png');
+            if (meta.addExeLink !== false) {
+                try {
+                    const logoData = await this.resources.fetchExeLogo();
+                    if (logoData) {
+                        this.zip.addFile('EPUB/content/img/exe_powered_logo.png', logoData);
+                        this.addManifestItem('exe-logo', 'content/img/exe_powered_logo.png', 'image/png');
+                    }
+                } catch {
+                    // Logo not available
                 }
-            } catch {
-                // Logo not available
             }
 
             // 6. Add theme files (already pre-fetched in step 0)
@@ -663,6 +665,7 @@ export class Epub3Exporter extends BaseExporter {
             hideNavigation: true,
             // Hide nav buttons - EPUB reader handles navigation
             hideNavButtons: true,
+            addExeLink: meta.addExeLink ?? true,
             // Page counter (only if user has the option enabled)
             addPagination: meta.addPagination === true,
             totalPages: allPages.length,
