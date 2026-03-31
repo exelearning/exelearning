@@ -1234,6 +1234,17 @@ export default class App {
         ) {
             window.electronAPI.notifyRendererReadyForOpenFile();
         }
+        if (window.electronAPI?.onGetCloseCopy) {
+            window.electronAPI.onGetCloseCopy(() => {
+				window.electronAPI.sendCloseCopy({
+					title:              _('Unsaved changes'),
+					message:            _('You have unsaved changes. Are you sure you want to leave?'),
+					detail:             _('If you close now, your latest changes will be lost. Stay to save the project first.'),
+					stayButtonLabel:    _('Stay'),
+					discardButtonLabel: _('Close without saving?'),
+			   });
+           });
+        }
     }
 
     /**
