@@ -416,6 +416,27 @@ var $exeTinyMCE = {
 
             // Drag and Drop
             paste_data_images: true,
+            // Warn when pasted HTML contains blob: URLs that are not known to the current
+            // AssetManager session. Known blobs (in reverseBlobCache) will be handled
+            // correctly by images_upload_handler; unknown blobs are stale references that
+            // will break and the user should use the Media Library or clone instead.
+            paste_preprocess: function (plugin, args) {
+                if (!args.content || !/blob:https?:\/\//.test(args.content)) return;
+                var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager?.reverseBlobCache) {
+                    var blobs = args.content.match(/blob:https?:\/\/[^\s"'>]+/g) || [];
+                    if (blobs.length > 0 && blobs.every(function (blob) { return assetManager.reverseBlobCache.has(blob); })) return;
+                }
+                if ($exeTinyMCE._blobPasteWarningToast?.toastElement?.isConnected) return;
+                var toastsManager = window.eXeLearning?.app?.toasts;
+                if (toastsManager) {
+                    $exeTinyMCE._blobPasteWarningToast = toastsManager.createToast({
+                        icon: 'warning',
+                        title: _('Temporary files detected'),
+                        body: _('Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.'),
+                    });
+                }
+            },
             // Upload tab?
             image_uploadtab: false,
             images_upload_handler: async function (blobInfo, success, failure) {
@@ -681,6 +702,9 @@ var $exeTinyMCE = {
         var e = '';
         return e;
     },
+
+    // Tracks the active blob-paste warning toast to avoid duplicates
+    _blobPasteWarningToast: null,
 
     lockScreen: function () {
         const loadScreen = document.getElementById('load-screen-node-content');

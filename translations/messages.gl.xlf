@@ -12607,7 +12607,7 @@
       </trans-unit>
       <trans-unit id="ezaipg9" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nome de cartafol non válido. Evita caracteres especiais como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nome de cartafol non válido. Evita caracteres especiais como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="i031vms" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12623,7 +12623,7 @@
       </trans-unit>
       <trans-unit id="xa5n0eo" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nome de ficheiro non válido. Evita caracteres especiais como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nome de ficheiro non válido. Evita caracteres especiais como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="b71dv5i" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -13224,10 +13224,6 @@
       <trans-unit id="7hngq25" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
         <target>~Este usuario xa é colaborador</target>
-      </trans-unit>
-      <trans-unit id="y6gjry9" resname="User not found">
-        <source>User not found</source>
-        <target>~Usuario non atopado</target>
       </trans-unit>
       <trans-unit id="xikh0bl" resname="Failed to invite user">
         <source>Failed to invite user</source>
@@ -14116,6 +14112,38 @@
       <trans-unit id="4uef0iv" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
+      <trans-unit id="fx3ksox" resname="Skip to content">
+        <source>Skip to content</source>
+        <target>~Ir ao contido</target>
+      </trans-unit>
+      <trans-unit id="c85s0kd" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target>~Usuario non atopado. É posible que esta persoa non accedese aínda a eXeLearning e non estea rexistrada no sistema. Pídelle que inicie sesión antes de compartir.</target>
+      </trans-unit>
+      <trans-unit id="b4kyyv3" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target>~Ficheiros temporais detectados</target>
+      </trans-unit>
+      <trans-unit id="kwxfj6r" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target>~Algúns ficheiros deste contido usan ligazóns blob: que só funcionan nesta páxina. Se pegas este contido noutro lugar, é posible que falten imaxes ou ficheiros. Para reutilizar contido con ficheiros, engádeos desde o Xestor de ficheiros ou clona o iDevice.</target>
+      </trans-unit>
+      <trans-unit id="ecp9ibz" resname="Caption Text">
+        <source>Caption Text</source>
+        <target>~Texto do pé de foto</target>
+      </trans-unit>
+      <trans-unit id="29nre23" resname="Caption Link">
+        <source>Caption Link</source>
+        <target>~Ligazón do pé de foto</target>
+      </trans-unit>
+      <trans-unit id="nvihfej" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Clases predefinidas</target>
+      </trans-unit>
+      <trans-unit id="indkaji" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>~Clases do estilo actual</target>
       </trans-unit>
     </body>
   </file>
