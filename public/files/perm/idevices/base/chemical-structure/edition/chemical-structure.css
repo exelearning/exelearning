@@ -314,6 +314,7 @@
 }
 
 .CHEME-ENumQ {
+    background-image: url(quextIENumber.png);
     background-size: 100% 100%;
     display: inline-block;
     height: 1.5em;
@@ -327,7 +328,7 @@
     justify-content: center;
     position: absolute;
     right: 0;
-    top: 0.3em;
+    top: -15px;
     width: 3em;
     z-index: 2000;
 }

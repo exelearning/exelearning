@@ -194,12 +194,22 @@
                     });
 
                     return Promise.all([molPromise, smilesPromise, svgPromise]).then(function (results) {
+                        var molfile = hasReaction ? '' : (results[0] || '');
+                        var rxn = hasReaction ? (results[0] || '') : '';
+                        var smiles = results[1] || '';
+                        var svg = results[2] || '';
+                        // Detect empty structures: no SMILES and MOL/RXN has 0 atoms
+                        var empty = !smiles
+                            && (/COUNTS\s+0\s+0/.test(molfile) || /COUNTS\s+0\s+0/.test(rxn) || (!molfile && !rxn));
+                        if (empty) {
+                            return { ket: '', molfile: '', smiles: '', svg: '', rxn: '', structureType: 'molecule', isEmpty: true };
+                        }
                         return {
                             ket: ket,
-                            molfile: hasReaction ? '' : (results[0] || ''),
-                            rxn: hasReaction ? (results[0] || '') : '',
-                            smiles: results[1] || '',
-                            svg: results[2] || '',
+                            molfile: molfile,
+                            rxn: rxn,
+                            smiles: smiles,
+                            svg: svg,
                             structureType: hasReaction ? 'reaction' : 'molecule',
                             isEmpty: false
                         };

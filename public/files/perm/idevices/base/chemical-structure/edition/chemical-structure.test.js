@@ -167,6 +167,51 @@ describe('chemical-structure iDevice edition', () => {
         });
     });
 
+    describe('save', () => {
+        it('persists SCORM fields in serialized game data', () => {
+            global.$exeDevicesEdition.iDevice.gamification.helpers = {
+                stopSound: vi.fn(),
+            };
+            global.$exeDevices.iDevice.gamification.helpers.encrypt = vi.fn((value) => value);
+            global.$exeDevicesEdition.iDevice.gamification.scorm.getValues = vi.fn(() => ({
+                isScorm: 1,
+                textButtonScorm: 'Send score',
+                repeatActivity: true,
+                weighted: 75,
+            }));
+
+            $exeDevice.ci18n = {};
+            $exeDevice.msgs = { msgNoSuportBrowser: 'Browser not supported' };
+            $exeDevice.validateQuestion = vi.fn(() => true);
+            $exeDevice.validateData = vi.fn(() => ({
+                selectsGame: [],
+                itinerary: {},
+                evaluation: false,
+                evaluationID: '',
+            }));
+            $exeDevice.getEditorContent = vi.fn(() => '');
+            $exeDevice.getIdeviceID = vi.fn(() => 'idevice-1');
+
+            const html = $exeDevice.save();
+            const dataGameMatch = html.match(
+                /<div class="cheme-DataGame js-hidden">([\s\S]*?)<\/div>/
+            );
+
+            expect(dataGameMatch).not.toBeNull();
+
+            const savedData = JSON.parse(dataGameMatch[1]);
+            expect(savedData).toMatchObject({
+                isScorm: 1,
+                textButtonScorm: 'Send score',
+                repeatActivity: true,
+                weighted: 75,
+            });
+            expect(
+                global.$exeDevicesEdition.iDevice.gamification.scorm.getValues
+            ).toHaveBeenCalled();
+        });
+    });
+
     // ──────────────────────────────────────────────────────────────
     // sanitizeSvg
     // ──────────────────────────────────────────────────────────────

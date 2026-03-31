@@ -520,13 +520,15 @@ var $exeDevice = {
         }
 
         if (type === 'CS_DIRTY') {
-            // Auto-export after drawing — debounced so rapid strokes don't flood
+            // Auto-export after drawing — debounced so rapid strokes don't flood.
+            // Flags are read INSIDE the timeout so that when Ketcher fires multiple
+            // CS_DIRTY events (common after clear), the last timer still sees the flag.
             clearTimeout($exeDevice._dirtyTimer);
-            var fromTextarea = !!$exeDevice._loadingFromTextarea;
-            var fromClear    = !!$exeDevice._clearingStructure;
-            $exeDevice._loadingFromTextarea = false;
-            $exeDevice._clearingStructure   = false;
             $exeDevice._dirtyTimer = setTimeout(function () {
+                var fromTextarea = !!$exeDevice._loadingFromTextarea;
+                var fromClear    = !!$exeDevice._clearingStructure;
+                $exeDevice._loadingFromTextarea = false;
+                $exeDevice._clearingStructure   = false;
                 // When the user explicitly cleared the editor the structure is already
                 // reset to empty — skip the export so the textarea isn't overwritten
                 // with the empty MOL V3000 stub that Ketcher emits for blank canvases.
@@ -585,6 +587,11 @@ var $exeDevice = {
             molfile: question.molfile || '',
             rxn:     question.rxn    || '',
         };
+        // Loading an empty structure is equivalent to a clear — flag it so the
+        // CS_DIRTY handler skips the export and doesn't write the V3000 stub.
+        if (!payload.ket && !payload.smiles && !payload.molfile && !payload.rxn) {
+            $exeDevice._clearingStructure = true;
+        }
         if ($exeDevice.ketcherReady) {
             $exeDevice.postToKetcher('CS_LOAD_STRUCTURE', payload);
         } else {
@@ -658,7 +665,15 @@ var $exeDevice = {
         if (!text) return;
         var self = $exeDevice;
         var $status = $('#chemEditorStatus');
-        self.loadStructureIntoKetcher({ smiles: text });
+        var payload = {};
+        if (/\$RXN/i.test(text)) {
+            payload.rxn = text;
+        } else if (/V[23]000/i.test(text) || /M\s+END/i.test(text)) {
+            payload.molfile = text;
+        } else {
+            payload.smiles = text;
+        }
+        self.loadStructureIntoKetcher(payload);
         $status.text(_('Loading…'));
         // Ketcher fires CS_DIRTY once it finishes rendering the loaded structure.
         // The CS_DIRTY handler already debounces at 600ms and calls requestExport.
@@ -684,9 +699,9 @@ var $exeDevice = {
         var $status = $('#chemEditorStatus');
         $status.text(_('Exporting…'));
         $exeDevice.requestExport().then(function (exported) {
+            $status.text('');
             if (exported.isEmpty) {
-                $status.text(_('No structure'));
-                setTimeout(function () { $status.text(''); }, 2000);
+                $exeDevice.showMessage($exeDevice.msgs.msgESelectStructure);
                 return;
             }
             $exeDevice.applyExportToCurrentQuestion(exported);
@@ -1118,7 +1133,7 @@ ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             fetch(blobUrl)
                 .then(function (r) { return r.text(); })
                 .then(function (text) {
-                    text = (text || '').trim();
+                    text = (text || '').replace(/\s+$/, '');
                     if (text) {
                         $('#chemCodeInput').val(text);
                         $exeDevice.loadStructureFromTextarea();
@@ -1337,14 +1352,17 @@ ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             p.options.push(p.typeSelect === 2 ? '' : val);
         });
 
-        if (activityMode === 'test') {
-            var hasStructure = !!(p.ket || p.smiles || p.molfile);
-            if (!hasStructure) {
-                message = msgs.msgESelectStructure;
-            } else if (p.typeSelect !== 2 && p.quextion.length === 0) {
+        var hasStructure = !!(p.smiles || p.rxn
+            || (p.molfile && !/COUNTS\s+0\s+0/.test(p.molfile)));
+        if (!hasStructure) {
+            message = msgs.msgESelectStructure;
+        } else if (activityMode === 'test') {
+            if (p.typeSelect !== 2 && p.quextion.length === 0) {
                 message = msgs.msgECompleteQuestion;
             } else if (p.typeSelect !== 2 && optionEmpty) {
                 message = msgs.msgECompleteAllOptions;
+            } else if (p.typeSelect === 1 && p.solution.length !== p.numberOptions) {
+                message = msgs.msgTypeChoose;
             } else if (p.typeSelect !== 2 && !p.solution) {
                 message = msgs.msgTypeChoose;
             } else if (p.typeSelect === 2 && p.solutionQuestion.trim().length === 0) {
@@ -1475,6 +1493,11 @@ ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             if (fVal !== '') i18n[key] = fVal;
         }
         dataGame.msgs = i18n;
+        var scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        dataGame.isScorm = scorm.isScorm;
+        dataGame.textButtonScorm = scorm.textButtonScorm;
+        dataGame.repeatActivity = scorm.repeatActivity;
+        dataGame.weighted = scorm.weighted || 100;
 
         var json         = JSON.stringify(dataGame);
         var instructions = $exeDevice.getEditorContent('eXeGameInstructions');
