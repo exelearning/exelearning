@@ -14117,6 +14117,34 @@
         <source>creative commons: cc0 1.0</source>
         <target>~creative commons: cc0 1.0</target>
       </trans-unit>
+      <trans-unit id="0w6zkk1" resname="Skip to content">
+        <source>Skip to content</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d2qdopz" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nf6vemu" resname="Caption Text">
+        <source>Caption Text</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cjfngj1" resname="Caption Link">
+        <source>Caption Link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qpigeea" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="g81jwwf" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fmb6ddu" resname="Stay">
+        <source>Stay</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
