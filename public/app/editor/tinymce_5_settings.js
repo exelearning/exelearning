@@ -711,11 +711,11 @@ var $exeTinyMCE = {
                     ed.off('CloseWindow', handler);
                     setTimeout(function () {
                         var body = ed.getBody();
-                        var pending = body?.querySelectorAll(ASSET_URL_MEDIA_SELECTOR);
-                        if (pending && pending.length > 0) {
-                            pending.forEach(function (el) { el.removeAttribute('data-asset-src'); });
-                            $exeTinyMCE.resolveAssetUrlsInEditor(ed);
-                        }
+                        if (!body) return;
+                        body.querySelectorAll(ASSET_URL_MEDIA_SELECTOR).forEach(function (el) {
+                            el.removeAttribute('data-asset-src');
+                        });
+                        $exeTinyMCE.resolveAssetUrlsInEditor(ed);
                     }, 50);
                 };
                 ed.on('CloseWindow', handler);
@@ -846,6 +846,15 @@ var $exeTinyMCE = {
         const body = ed.getBody();
         if (!body) return;
 
+        // Wrap src mutations so they don't create undo levels (visual-only change).
+        function setSrcSilently(el, val) {
+            if (ed.undoManager?.ignore) {
+                ed.undoManager.ignore(function () { el.setAttribute('src', val); });
+            } else {
+                el.setAttribute('src', val);
+            }
+        }
+
         // Find image, audio, video, and iframe elements with asset:// URLs
         const mediaElements = body.querySelectorAll(ASSET_URL_MEDIA_SELECTOR);
 
@@ -884,7 +893,7 @@ var $exeTinyMCE = {
                 if (assetIdMatch) {
                     assetManager.resolveHtmlWithAssets(assetIdMatch[1]).then(function(resolvedUrl) {
                         if (resolvedUrl) {
-                            media.setAttribute('src', resolvedUrl);
+                            setSrcSilently(media, resolvedUrl);
                             // Register in reverseBlobCache so convertBlobUrlsToAssetUrls can restore it
                             assetManager.reverseBlobCache.set(resolvedUrl, assetIdMatch[1]);
                         }
@@ -905,7 +914,7 @@ var $exeTinyMCE = {
                 // Resolve to blob URL asynchronously (for images, audio, video, PDF iframes)
                 assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
                     if (blobUrl) {
-                        media.setAttribute('src', blobUrl);
+                        setSrcSilently(media, blobUrl);
                         // For images: keep data-mce-src = asset:// (set above) so
                         // TinyMCE dialog shows the canonical URL, not the blob.
                     }
@@ -949,7 +958,7 @@ var $exeTinyMCE = {
                 if (assetIdMatch) {
                     assetManager.resolveHtmlWithAssets(assetIdMatch[1]).then(function(resolvedUrl) {
                         if (resolvedUrl) {
-                            innerMedia.setAttribute('src', resolvedUrl);
+                            setSrcSilently(innerMedia, resolvedUrl);
                             // Register in reverseBlobCache so convertBlobUrlsToAssetUrls can restore it
                             assetManager.reverseBlobCache.set(resolvedUrl, assetIdMatch[1]);
                         }
@@ -961,7 +970,7 @@ var $exeTinyMCE = {
                 // Resolve to blob URL asynchronously (for audio, video, PDF iframes)
                 assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
                     if (blobUrl) {
-                        innerMedia.setAttribute('src', blobUrl);
+                        setSrcSilently(innerMedia, blobUrl);
                     }
                 }).catch(function(err) {
                     console.warn('[TinyMCE] Failed to resolve asset URL in preview:', assetUrl, err);
