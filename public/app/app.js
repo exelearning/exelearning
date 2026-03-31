@@ -1244,7 +1244,7 @@ export default class App {
 					message:            _('You have unsaved changes. Are you sure you want to leave?'),
 					detail:             _('If you close now, your latest changes will be lost. Stay to save the project first.'),
 					stayButtonLabel:    _('Stay'),
-					discardButtonLabel: _('Close without saving?'),
+					discardButtonLabel: _('Close without saving'),
 			   });
            });
         }

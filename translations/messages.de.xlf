@@ -14116,32 +14116,6 @@
         <source>creative commons: cc0 1.0</source>
         <target>~creative commons: cc0 1.0</target>
       </trans-unit>
-      <trans-unit id="oi6pk4a" resname="Skip to content">
-        <source>Skip to content</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="zftz5xx" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
-        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="2i7rigo" resname="Caption Text">
-        <source>Caption Text</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="b6hfe0e" resname="Caption Link">
-        <source>Caption Link</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ck335wo" resname="Unsaved changes">
-        <source>Unsaved changes</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="lycgtau" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
-        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="2ih6won" resname="Stay">
-        <source>Stay</source>
       <trans-unit id="e4lmp4s" resname="Skip to content">
         <source>Skip to content</source>
         <target>~Zum Inhalt springen</target>
@@ -14173,6 +14147,22 @@
       <trans-unit id="qjlml9s" resname="Current style classes">
         <source>Current style classes</source>
         <target></target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Nicht gespeicherte Änderungen</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Wenn Sie jetzt schließen, gehen Ihre letzten Änderungen verloren. Bleiben Sie hier, um das Projekt zuerst zu speichern.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Dabeibleiben</target>
+      </trans-unit>
+      <trans-unit id="sdlsd9u" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Ohne Speichern schließen</target>
       </trans-unit>
     </body>
   </file>
