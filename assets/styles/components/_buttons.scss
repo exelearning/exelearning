@@ -91,6 +91,9 @@
         color: var(--text);
         border: 1px solid var(--gray-200) !important;
     }
+    &:focus {
+        color: var(--text);
+    }
     &:active {
         border-color: var(--white) !important;
         border: 1px solid var(--white) !important;
