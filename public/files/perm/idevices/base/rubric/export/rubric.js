@@ -698,10 +698,17 @@ var $rubric = {
             $interface.find('.exe-rubrics-table-slot').first().append($table);
         }
 
+        // Preserve text-after block so it renders after the wrapper
+        var $textAfter = root.find('.exe-rubrics-text-after').detach();
+
         root.find('.exe-rubrics-wrapper').remove();
         root.find('.exe-rubrics-content').remove();
 
         root.append($interface);
+
+        if ($textAfter.length > 0) {
+            root.append($textAfter);
+        }
 
         return $interface;
     },
