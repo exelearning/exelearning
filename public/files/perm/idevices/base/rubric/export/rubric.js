@@ -43,25 +43,9 @@ var $rubric = {
 
         // Auto-migrate legacy rubric markup (2.9-like / early beta exports) on load.
         this.rebuildMissingDataGameFromInterface();
-        this.activities = this.getActivitiesFromDataGame();
+        this.activities = this.getActivities();
 
         if (this.activities.length === 0) return;
-        if (this.activities.length > 1) {
-            var msg =
-                (this.ci18n.error || 'Error') +
-                ' - ' +
-                (this.ci18n.onlyOne || 'Only one rubric per page.');
-            if (
-                typeof eXe !== 'undefined' &&
-                eXe.app &&
-                typeof eXe.app.alert === 'function'
-            ) {
-                eXe.app.alert(msg);
-            } else {
-                alert(msg);
-            }
-            return;
-        }
 
         var self = this;
         this.activities.each(function (i) {
@@ -76,6 +60,12 @@ var $rubric = {
             self.initializeInteractiveState(data.table);
             self.addEvents(data.table, data.strings);
         });
+    },
+
+    getActivities: function () {
+        var scoped = $('.rubric-IDevice');
+        if (scoped.length > 0) return scoped;
+        return this.getActivitiesFromDataGame();
     },
 
     getActivitiesFromDataGame: function () {

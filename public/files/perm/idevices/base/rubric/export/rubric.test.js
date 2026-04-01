@@ -211,6 +211,77 @@ describe('rubric iDevice export', () => {
     expect(createInterfaceSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('getActivities prioritizes rubric-IDevice scopes over raw DataGame nodes', () => {
+    const payload = escape(JSON.stringify({
+      title: 'Rubrica',
+      categories: ['C1'],
+      scores: ['L1'],
+      descriptions: [[{ text: 'D1', weight: '1' }]],
+    }));
+
+    document.body.innerHTML = `
+      <div class="rubric-IDevice" id="rubric_scope_preferred">
+        <div class="rubric">
+          <div class="exe-rubrics-DataGame js-hidden">${payload}</div>
+        </div>
+      </div>
+      <div id="stray">
+        <div class="exe-rubrics-DataGame js-hidden">${payload}</div>
+      </div>
+    `;
+
+    const scopes = $rubric.getActivities();
+    const ids = scopes.map(function () {
+      return this.id;
+    }).get();
+
+    expect(ids).toEqual(['rubric_scope_preferred']);
+  });
+
+  it('loadGame renders multiple rubric activities in the same document without alerting', () => {
+    const payloadA = escape(JSON.stringify({
+      title: 'Rubrica A',
+      categories: ['C1'],
+      scores: ['L1'],
+      descriptions: [[{ text: 'DA1', weight: '1' }]],
+    }));
+    const payloadB = escape(JSON.stringify({
+      title: 'Rubrica B',
+      categories: ['C2'],
+      scores: ['L2'],
+      descriptions: [[{ text: 'DB1', weight: '2' }]],
+    }));
+
+    document.body.innerHTML = `
+      <div class="rubric-IDevice" id="rubric_multi_a">
+        <div class="rubric">
+          <div class="exe-rubrics-DataGame js-hidden">${payloadA}</div>
+        </div>
+      </div>
+      <div class="rubric-IDevice" id="rubric_multi_b">
+        <div class="rubric">
+          <div class="exe-rubrics-DataGame js-hidden">${payloadB}</div>
+        </div>
+      </div>
+    `;
+
+    const originalAlert = globalThis.alert;
+    const alertSpy = vi.fn();
+    globalThis.alert = alertSpy;
+    const createInterfaceSpy = vi.spyOn($rubric, 'createInterface');
+
+    try {
+      $rubric.loadGame();
+    } finally {
+      globalThis.alert = originalAlert;
+    }
+
+    expect(createInterfaceSpy).toHaveBeenCalledTimes(2);
+    expect($('#rubric_multi_a').find('.exe-rubrics-wrapper').length).toBe(1);
+    expect($('#rubric_multi_b').find('.exe-rubrics-wrapper').length).toBe(1);
+    expect(alertSpy).not.toHaveBeenCalled();
+  });
+
   it('createInterface renders notes first, actions below notes, and authorship at the bottom', () => {
     const scope = $('<div class="idevice_node rubric" id="rubric_layout"></div>');
     const table = $('<table class="exe-table"><tbody><tr><th>A</th><td>B</td></tr></tbody></table>');
