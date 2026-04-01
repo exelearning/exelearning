@@ -224,6 +224,38 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         active_users: trans('Active Users', {}, locale),
         total_projects: trans('Total Projects', {}, locale),
         active_projects: trans('Active Projects', {}, locale),
+        // Dashboard — KPI help text
+        total_users_help: trans('Total number of registered accounts in the platform.', {}, locale),
+        active_projects_help: trans('Projects that have been opened or edited recently.', {}, locale),
+        logins_today: trans('Logins Today', {}, locale),
+        logins_today_help: trans('Number of unique users who logged in during the last 24 hours.', {}, locale),
+        online_now: trans('Online Now', {}, locale),
+        online_now_help: trans(
+            'Number of users currently connected and editing in real time. Refreshes every 30 seconds.',
+            {},
+            locale,
+        ),
+        peak_hour: trans('Peak Hour', {}, locale),
+        peak_hour_help: trans(
+            'The hour of the day with the highest number of logins over the last 30 days.',
+            {},
+            locale,
+        ),
+        // Dashboard — activity chart
+        activity_last_30_days: trans('Activity (Last 30 Days)', {}, locale),
+        activity_chart_help: trans(
+            'Shows the number of logins and projects created each day over the last 30 days.',
+            {},
+            locale,
+        ),
+        no_activity_data: trans(
+            'No activity data yet. The chart will populate as users log in and create projects.',
+            {},
+            locale,
+        ),
+        // Dashboard — chart labels
+        logins: trans('Logins', {}, locale),
+        projects_created: trans('Projects Created', {}, locale),
         // Sections
         users: trans('Users', {}, locale),
         projects: trans('Projects', {}, locale),

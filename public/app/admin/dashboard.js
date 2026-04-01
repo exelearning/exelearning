@@ -72,7 +72,7 @@ function renderActivityChart(data) {
             labels: data.labels,
             datasets: [
                 {
-                    label: 'Logins',
+                    label: (typeof T !== 'undefined' && T.logins) || 'Logins',
                     data: data.datasets.logins,
                     borderColor: '#0BA1A1',
                     backgroundColor: 'rgba(11, 161, 161, 0.1)',
@@ -80,7 +80,7 @@ function renderActivityChart(data) {
                     tension: 0.3,
                 },
                 {
-                    label: 'Projects Created',
+                    label: (typeof T !== 'undefined' && T.projects_created) || 'Projects Created',
                     data: data.datasets.projectsCreated,
                     borderColor: '#059669',
                     backgroundColor: 'rgba(5, 150, 105, 0.1)',
