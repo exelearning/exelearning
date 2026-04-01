@@ -12535,7 +12535,7 @@
       </trans-unit>
       <trans-unit id="kao0ia0" resname="Do you want to optimize the selected images?">
         <source>Do you want to optimize the selected images?</source>
-        <target>~¿Queres optimizar as imaxes seleccionadas?</target>
+        <target>~Queres optimizar as imaxes seleccionadas?</target>
       </trans-unit>
       <trans-unit id="26jbyii" resname="Optimizing...">
         <source>Optimizing...</source>
@@ -12611,15 +12611,15 @@
       </trans-unit>
       <trans-unit id="i031vms" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
-        <target>~¿Seguro que queres eliminar o cartafol "%1" e todos os %2 ficheiros que contén?</target>
+        <target>~Seguro que queres eliminar o cartafol "%1" e todos os %2 ficheiros que contén?</target>
       </trans-unit>
       <trans-unit id="1wgjjd6" resname="Are you sure you want to delete the empty folder &quot;%1&quot;?">
         <source>Are you sure you want to delete the empty folder "%1"?</source>
-        <target>~¿Seguro que queres eliminar o cartafol baleiro "%1"?</target>
+        <target>~Seguro que queres eliminar o cartafol baleiro "%1"?</target>
       </trans-unit>
       <trans-unit id="ts331fl" resname="Delete &quot;%1&quot;?">
         <source>Delete "%1"?</source>
-        <target>~¿Eliminar "%1"?</target>
+        <target>~Eliminar "%1"?</target>
       </trans-unit>
       <trans-unit id="xa5n0eo" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
@@ -12855,7 +12855,7 @@
       </trans-unit>
       <trans-unit id="xrx3ij4" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target>~¿Eliminar %1 ficheiros seleccionados?</target>
+        <target>~Eliminar %1 ficheiros seleccionados?</target>
       </trans-unit>
       <trans-unit id="nlcmalg" resname="Failed to delete file">
         <source>Failed to delete file</source>
@@ -13083,7 +13083,7 @@
       </trans-unit>
       <trans-unit id="hg4vwji" resname="Delete this project?">
         <source>Delete this project?</source>
-        <target>~¿Eliminar este proxecto?</target>
+        <target>~Eliminar este proxecto?</target>
       </trans-unit>
       <trans-unit id="b9ri339" resname="Deleting...">
         <source>Deleting...</source>
@@ -13099,11 +13099,11 @@
       </trans-unit>
       <trans-unit id="m66d719" resname="Are you sure you want to delete this project?">
         <source>Are you sure you want to delete this project?</source>
-        <target>~¿Seguro que queres eliminar este proxecto?</target>
+        <target>~Seguro que queres eliminar este proxecto?</target>
       </trans-unit>
       <trans-unit id="xiv3xf7" resname="Are you sure you want to delete %s projects?">
         <source>Are you sure you want to delete %s projects?</source>
-        <target>~¿Estás seguro de que quieres eliminar %s proxectos?</target>
+        <target>~Estás seguro de que quieres eliminar %s proxectos?</target>
       </trans-unit>
       <trans-unit id="rhec4f2" resname="Delete projects">
         <source>Delete projects</source>
@@ -13231,7 +13231,7 @@
       </trans-unit>
       <trans-unit id="udpq0vv" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target>~¿Eliminar a autorización de acceso a {email}?</target>
+        <target>~Eliminar a autorización de acceso a {email}?</target>
       </trans-unit>
       <trans-unit id="tk5amge" resname="Removed {email}">
         <source>Removed {email}</source>
@@ -13243,7 +13243,7 @@
       </trans-unit>
       <trans-unit id="4n6ht1f" resname="Transfer ownership to {email}? You will become an editor.">
         <source>Transfer ownership to {email}? You will become an editor.</source>
-        <target>~¿Transferir a propiedade a {email}? Pasarás a ser editor.</target>
+        <target>~Transferir a propiedade a {email}? Pasarás a ser editor.</target>
       </trans-unit>
       <trans-unit id="q3lpmbv" resname="Ownership transferred to {email}">
         <source>Ownership transferred to {email}</source>
@@ -13691,7 +13691,7 @@
       </trans-unit>
       <trans-unit id="b5b5svu" resname="Reload game?">
         <source>Reload game?</source>
-        <target>~¿Reiniciar o xogo?</target>
+        <target>~Reiniciar o xogo?</target>
       </trans-unit>
       <trans-unit id="bh18gws" resname="Click Play to start">
         <source>Click Play to start</source>
@@ -13755,11 +13755,11 @@
       </trans-unit>
       <trans-unit id="o90nim5" resname="Close without saving?">
         <source>Close without saving?</source>
-        <target>~¿Pechar sen gardar?</target>
+        <target>~Pechar sen gardar?</target>
       </trans-unit>
       <trans-unit id="r7zt13f" resname="This set has unsaved changes. Close anyway?">
         <source>This set has unsaved changes. Close anyway?</source>
-        <target>~Este conxunto ten cambios sen gardar. ¿Pechar de todos xeitos?</target>
+        <target>~Este conxunto ten cambios sen gardar. Pechar de todos xeitos?</target>
       </trans-unit>
       <trans-unit id="2uzraub" resname="Rename set">
         <source>Rename set</source>
@@ -13815,7 +13815,7 @@
       </trans-unit>
       <trans-unit id="xgoek4v" resname="Need help? Visit %s">
         <source>Need help? Visit %s</source>
-        <target>~¿Necesitas axuda? Visita %s</target>
+        <target>~Necesitas axuda? Visita %s</target>
       </trans-unit>
       <trans-unit id="1jguzkj" resname="Mermaid diagram">
         <source>Mermaid diagram</source>
@@ -14144,6 +14144,22 @@
       <trans-unit id="indkaji" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Clases do estilo actual</target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>Cambios sen gardar</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se pechas agora, perderanse os teus cambios máis recentes. Podes quedarte para gardar o proxecto antes de saír.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Permanecer</target>
+      </trans-unit>
+      <trans-unit id="ln6aboy" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Pechar sen gardar</target>
       </trans-unit>
     </body>
   </file>

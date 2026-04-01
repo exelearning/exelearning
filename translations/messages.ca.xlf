@@ -14145,6 +14145,22 @@
         <source>Current style classes</source>
         <target>~Classes de l’estil actual</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Canvis sense desar</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Si tanques ara, es perdran els darrers canvis. Queda't per desar el projecte primer.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Queda't</target>
+      </trans-unit>
+      <trans-unit id="wqrwca1" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Tancar sense guardar</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

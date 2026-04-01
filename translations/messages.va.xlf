@@ -13755,7 +13755,7 @@
       </trans-unit>
       <trans-unit id="uta6y1q" resname="Close without saving?">
         <source>Close without saving?</source>
-        <target>~¿Pechar sen gardar?</target>
+        <target>~Tancar sense guardar?</target>
       </trans-unit>
       <trans-unit id="09ujasr" resname="This set has unsaved changes. Close anyway?">
         <source>This set has unsaved changes. Close anyway?</source>
@@ -14144,6 +14144,22 @@
       <trans-unit id="y6ss27s" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Classes de l'estil actual</target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Canvis sense guardar</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Si tanques ara, se perdran els últims canvis. Queda't per a guardar el projecte primer.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Quedar-se</target>
+      </trans-unit>
+      <trans-unit id="3nta8f7" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Tancar sense guardar</target>
       </trans-unit>
     </body>
   </file>
