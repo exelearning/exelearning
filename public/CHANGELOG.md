@@ -7,6 +7,7 @@
 - Teacher-only content indicator now uses an icon instead of a border for clearer visual distinction
 - Improved accessibility in exported content, including proper heading structure and a skip navigation link
 - New `make translations-sort` command to reorder `<trans-unit>` elements in XLF files to match the order in `messages.en.xlf`
+- Updated development documentation for the Translation System
 - Support for `?url=` query parameter to open remote files in the static editor
 - Updated Spanish (ES) translation
 - Added automated placeholder translations for incomplete translations
