@@ -14161,6 +14161,10 @@
         <source>Close without saving</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="i7odfbn" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
