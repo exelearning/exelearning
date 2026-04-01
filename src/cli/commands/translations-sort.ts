@@ -13,9 +13,38 @@ import { extractTranslationKeys, addKeysToXlf, unescapeXml } from './translation
 import * as fs from 'fs';
 import * as path from 'path';
 
-const TRANSLATIONS_DIR = path.join(process.cwd(), 'translations');
-const EN_XLF = path.join(TRANSLATIONS_DIR, 'messages.en.xlf');
-const TEMP_XLF = path.join(TRANSLATIONS_DIR, 'messages.tmp.xlf');
+interface Deps {
+    extractKeys: () => Promise<Set<string>>;
+    /** Used to re-read messages.en.xlf during post-sort verification. Injectable for testing. */
+    readFileForVerification: (filePath: string) => string;
+}
+
+const defaultDeps: Deps = {
+    extractKeys: extractTranslationKeys,
+    readFileForVerification: (filePath: string) => fs.readFileSync(filePath, 'utf-8'),
+};
+
+let deps = defaultDeps;
+
+export function configure(newDeps: Partial<Deps>): void {
+    deps = { ...defaultDeps, ...newDeps };
+}
+
+export function resetDependencies(): void {
+    deps = defaultDeps;
+}
+
+function translationsDir(): string {
+    return path.join(process.cwd(), 'translations');
+}
+
+function enXlf(): string {
+    return path.join(translationsDir(), 'messages.en.xlf');
+}
+
+function tempXlf(): string {
+    return path.join(translationsDir(), 'messages.tmp.xlf');
+}
 
 export interface TranslationsSortResult {
     success: boolean;
@@ -141,13 +170,16 @@ export async function execute(
         };
     }
 
+    const EN_XLF = enXlf();
+    const TEMP_XLF = tempXlf();
+
     if (!fs.existsSync(EN_XLF)) {
         return { success: false, message: `Reference file not found: ${EN_XLF}` };
     }
 
     // Step 1: Extract all keys from source code
     info('Scanning source files for translation keys...');
-    const extractedKeys = await extractTranslationKeys();
+    const extractedKeys = await deps.extractKeys();
     info(`Found ${extractedKeys.size} unique translation keys in source`);
 
     // Step 2: Generate temp XLF based on messages.en.xlf with any new keys appended
@@ -159,23 +191,20 @@ export async function execute(
     const enResnames = getResnames(enContent);
     const tempResnames = getResnames(tempContent);
 
+    // onlyInTemp: keys added by the extraction that are not yet in messages.en.xlf.
+    // Since addKeysToXlf only appends new keys, temp is always a superset of en.xlf,
+    // so the only relevant difference is new keys present in the source but missing
+    // from messages.en.xlf (user must run "make translations" first).
     const onlyInTemp = [...tempResnames].filter(r => !enResnames.has(r));
-    const onlyInEn = [...enResnames].filter(r => !tempResnames.has(r));
 
-    if (onlyInTemp.length > 0 || onlyInEn.length > 0) {
+    if (onlyInTemp.length > 0) {
         fs.unlinkSync(TEMP_XLF);
 
-        const lines: string[] = ['messages.en.xlf is not in sync with the source code.'];
-        if (onlyInTemp.length > 0) {
-            lines.push(`\nStrings found in source but missing from messages.en.xlf (run "make translations"):`);
-            for (const r of onlyInTemp) lines.push(`  + ${r}`);
-        }
-        if (onlyInEn.length > 0) {
-            lines.push(
-                `\nStrings in messages.en.xlf not found in source (run "make translations-cleanup --remove-obsolete"):`,
-            );
-            for (const r of onlyInEn) lines.push(`  - ${r}`);
-        }
+        const lines: string[] = [
+            'messages.en.xlf is not in sync with the source code.',
+            `\nStrings found in source but missing from messages.en.xlf (run "make translations"):`,
+        ];
+        for (const r of onlyInTemp) lines.push(`  + ${r}`);
         return { success: false, message: lines.join('\n') };
     }
 
@@ -186,7 +215,7 @@ export async function execute(
     let sortedCount = 0;
 
     for (const locale of localesToSort) {
-        const xlfPath = path.join(TRANSLATIONS_DIR, `messages.${locale}.xlf`);
+        const xlfPath = path.join(translationsDir(), `messages.${locale}.xlf`);
         if (!fs.existsSync(xlfPath)) {
             warning(`XLF file not found, skipping: messages.${locale}.xlf`);
             continue;
@@ -199,7 +228,7 @@ export async function execute(
     }
 
     // Step 5: Re-verify messages.en.xlf against temp file
-    const enAfter = fs.readFileSync(EN_XLF, 'utf-8');
+    const enAfter = deps.readFileForVerification(EN_XLF);
     const enAfterResnames = getResnames(enAfter);
     const tempResnames2 = getResnames(tempContent);
     const diffAfter = [...tempResnames2].filter(r => !enAfterResnames.has(r));
