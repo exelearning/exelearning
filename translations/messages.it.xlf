@@ -13506,7 +13506,7 @@
       </trans-unit>
       <trans-unit id="enfs0qn" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
-        <target>~Tienes cambios sin guardar. ¿Seguro que quieres salir?</target>
+        <target>~Hai modifiche non salvate. Sei sicuro di voler uscire?</target>
       </trans-unit>
       <trans-unit id="qtl6e5j" resname="Project not ready for collaboration">
         <source>Project not ready for collaboration</source>
@@ -13758,7 +13758,7 @@
       </trans-unit>
       <trans-unit id="4yw386h" resname="Close without saving?">
         <source>Close without saving?</source>
-        <target>~¿Cerrar sin guardar?</target>
+        <target>~Chiudere senza salvare?</target>
       </trans-unit>
       <trans-unit id="lh0nu0g" resname="This set has unsaved changes. Close anyway?">
         <source>This set has unsaved changes. Close anyway?</source>
@@ -14147,6 +14147,22 @@
       <trans-unit id="8nxavnz" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Classi dello stile corrente</target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Modifiche non salvate</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se chiudi ora, le ultime modifiche andranno perse. Rimani per salvare il progetto prima di uscire.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Rimani</target>
+      </trans-unit>
+      <trans-unit id="tiqt49t" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Chiudere senza salvare</target>
       </trans-unit>
     </body>
   </file>

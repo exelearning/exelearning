@@ -14145,6 +14145,22 @@
         <source>Current style classes</source>
         <target>~Classes do estilo atual</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Alterações não guardadas</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se fechar agora, as suas últimas alterações serão perdidas. Permaneça para guardar o projeto primeiro.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Permanecer</target>
+      </trans-unit>
+      <trans-unit id="2sfln5z" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Fechar sem salvar</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
