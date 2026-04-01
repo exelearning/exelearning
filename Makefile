@@ -320,6 +320,12 @@ translations: check-bun
 translations-cleanup: check-bun
 	@$(CLI) translations --clean-only --remove-obsolete $(if $(LOCALE),--locale=$(LOCALE),)
 
+# Reorder trans-units in XLF files to match the order in messages.en.xlf
+# Usage: make translations-sort [LOCALE=es]
+.PHONY: translations-sort
+translations-sort: check-bun
+	@$(CLI) translations:sort $(if $(LOCALE),--locale=$(LOCALE),)
+
 # Update license information in public/libs/README.md
 # Usage: make update-licenses [DRY_RUN=1]
 .PHONY: update-licenses
@@ -939,6 +945,7 @@ help:
 	@echo "  make tmp-cleanup [MAX_AGE=86400]              Clean temp files"
 	@echo "  make translations [LOCALE=es]                 Extract/clean translations"
 	@echo "  make translations-cleanup                     Remove obsolete translation strings"
+	@echo "  make translations-sort [LOCALE=es]            Sort trans-units to match messages.en.xlf"
 	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
 	@echo ""
 	@echo "ELPX Processing:"

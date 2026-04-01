@@ -12233,6 +12233,18 @@
         <source>Finish</source>
         <target>Finalizar</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>Cambios sen gardar</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se pechas agora, perderanse os teus cambios máis recentes. Podes quedarte para gardar o proxecto antes de saír.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Permanecer</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>Contido eXeLearning (.elpx)</target>
@@ -12261,7 +12273,7 @@
         <source>Status</source>
         <target>Estado</target>
       </trans-unit>
-            <trans-unit id="ieeaupo" resname="Default AI Assistant">
+      <trans-unit id="ieeaupo" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Asistente de IA predeterminado</target>
       </trans-unit>
@@ -14144,18 +14156,6 @@
       <trans-unit id="indkaji" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Clases do estilo actual</target>
-      </trans-unit>
-      <trans-unit id="h72md8e" resname="Unsaved changes">
-        <source>Unsaved changes</source>
-        <target>Cambios sen gardar</target>
-      </trans-unit>
-      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
-        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
-        <target>~Se pechas agora, perderanse os teus cambios máis recentes. Podes quedarte para gardar o proxecto antes de saír.</target>
-      </trans-unit>
-      <trans-unit id="u7vmbw9" resname="Stay">
-        <source>Stay</source>
-        <target>~Permanecer</target>
       </trans-unit>
       <trans-unit id="ln6aboy" resname="Close without saving">
         <source>Close without saving</source>

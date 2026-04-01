@@ -85,7 +85,7 @@ function isInvalidKey(key: string): boolean {
 /**
  * Extract translation keys from source files
  */
-async function extractTranslationKeys(): Promise<Set<string>> {
+export async function extractTranslationKeys(): Promise<Set<string>> {
     const keys = new Set<string>();
 
     // Patterns for static single/double-quoted strings.
@@ -178,7 +178,7 @@ function generateTransUnitId(): string {
 /**
  * Add new keys to XLF file
  */
-function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: string; added: number } {
+export function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: string; added: number } {
     // Find existing keys in XLF
     const existingKeys = new Set<string>();
     const resnamePattern = /resname="([^"]+)"/g;
@@ -221,7 +221,7 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
 /**
  * Escape XML special characters
  */
-function escapeXml(str: string): string {
+export function escapeXml(str: string): string {
     return str
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -241,7 +241,7 @@ function escapeXmlText(str: string): string {
 /**
  * Unescape XML entities back to plain characters
  */
-function unescapeXml(str: string): string {
+export function unescapeXml(str: string): string {
     return str
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')

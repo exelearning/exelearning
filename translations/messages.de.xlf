@@ -12229,7 +12229,6 @@
         <source>Adds additional information to the main title.</source>
         <target>~Fügt dem Haupttitel zusätzliche Informationen hinzu.</target>
       </trans-unit>
-      <!-- Error page translations -->
       <trans-unit id="error.page_not_found" resname="Page not found">
         <source>Page not found</source>
         <target>Page not found</target>
@@ -12270,7 +12269,6 @@
         <source>Server error</source>
         <target>Server error</target>
       </trans-unit>
-      <!-- Logical exception translations -->
       <trans-unit id="project_props_001" resname="Project Properties">
         <source>Project Properties</source>
         <target>Project Properties</target>
@@ -12307,7 +12305,6 @@
         <source>Status</source>
         <target>~Status</target>
       </trans-unit>
-      <!-- Global Search Modal translations -->
       <trans-unit id="gs_001" resname="Search pages and content...">
         <source>Search pages and content...</source>
         <target>~Seiten und Inhalte durchsuchen...</target>
@@ -12324,7 +12321,19 @@
         <source>in</source>
         <target>~in</target>
       </trans-unit>
-                <trans-unit id="bfzdpmo" resname="Default AI Assistant">
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Nicht gespeicherte Änderungen</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Wenn Sie jetzt schließen, gehen Ihre letzten Änderungen verloren. Bleiben Sie hier, um das Projekt zuerst zu speichern.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Dabeibleiben</target>
+      </trans-unit>
+      <trans-unit id="bfzdpmo" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Standardmäßiger KI-Assistent</target>
       </trans-unit>
@@ -14147,18 +14156,6 @@
       <trans-unit id="qjlml9s" resname="Current style classes">
         <source>Current style classes</source>
         <target></target>
-      </trans-unit>
-      <trans-unit id="h72md8e" resname="Unsaved changes">
-        <source>Unsaved changes</source>
-        <target>~Nicht gespeicherte Änderungen</target>
-      </trans-unit>
-      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
-        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
-        <target>~Wenn Sie jetzt schließen, gehen Ihre letzten Änderungen verloren. Bleiben Sie hier, um das Projekt zuerst zu speichern.</target>
-      </trans-unit>
-      <trans-unit id="u7vmbw9" resname="Stay">
-        <source>Stay</source>
-        <target>~Dabeibleiben</target>
       </trans-unit>
       <trans-unit id="sdlsd9u" resname="Close without saving">
         <source>Close without saving</source>
