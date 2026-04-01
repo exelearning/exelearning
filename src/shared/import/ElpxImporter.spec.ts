@@ -562,6 +562,123 @@ describe('ElpxImporter', () => {
 
             ydoc.destroy();
         });
+
+        it('should remap exe-node: internal links in properties.textTextarea for text idevices', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-7',
+                    title: 'Home',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'text',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'text',
+                                    title: 'Text',
+                                    icon: 'text',
+                                    position: 0,
+                                    htmlView: '<p><a href="exe-node:page-9">Go to page 9</a></p>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-9',
+                    title: 'Target Page',
+                    parent_id: null,
+                    position: 1,
+                    blocks: [],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+
+            const newPage9Id = pageStructures[1].id;
+            expect(newPage9Id).not.toBe('page-9');
+
+            // htmlView should be remapped (already works)
+            const htmlView = pageStructures[0].blocks[0].components[0].htmlView;
+            expect(htmlView).toContain(`exe-node:${newPage9Id}`);
+            expect(htmlView).not.toContain('exe-node:page-9');
+
+            // properties.textTextarea must ALSO be remapped — this is what the workarea renders
+            const props = pageStructures[0].blocks[0].components[0].properties;
+            expect(props.textTextarea).toBeDefined();
+            expect(props.textTextarea).toContain(`exe-node:${newPage9Id}`);
+            expect(props.textTextarea).not.toContain('exe-node:page-9');
+
+            ydoc.destroy();
+        });
+
+        it('should remap exe-node: links in nested properties objects', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-3',
+                    title: 'Source',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'custom',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'custom-idevice',
+                                    title: 'Custom',
+                                    icon: 'custom',
+                                    position: 0,
+                                    htmlView: '',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {
+                                        someField: '<a href="exe-node:page-5#intro">link</a>',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-5',
+                    title: 'Target',
+                    parent_id: null,
+                    position: 1,
+                    blocks: [],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+
+            const newPage5Id = pageStructures[1].id;
+            expect(newPage5Id).not.toBe('page-5');
+
+            const props = pageStructures[0].blocks[0].components[0].properties;
+            expect(props.someField).toContain(`exe-node:${newPage5Id}#intro`);
+            expect(props.someField).not.toContain('exe-node:page-5');
+
+            ydoc.destroy();
+        });
     });
 });
 

@@ -14,6 +14,7 @@ var $exeTinyMCE = {
     buttons3:
         'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exemermaid | exeaudio abcmusic | codemagic | fullscreen',
     browser_spellcheck: true,
+    fontsize_formats: '80%=0.8rem 90%=0.9rem 100%=1rem 110%=1.1rem 115%=1.15rem 120%=1.2rem 125%=1.25rem 130%=1.3rem 140%=1.4rem 150%=1.5rem 160%=1.6rem 170%=1.7rem 200%=2rem 250%=2.5rem 300%=3rem',
 
     menubar: 'edit insert format table tools',
     menu: {
@@ -303,6 +304,8 @@ var $exeTinyMCE = {
             content_css: this.getContentCSS(),
             contextmenu: this.contextmenu,
             browser_spellcheck: this.browser_spellcheck,
+            // To review. Uncomment the following line to use relative instead of absolute units to improve accessibility:
+            // fontsize_formats: this.fontsize_formats,
             templates: this.getTemplates(),
             table_default_styles: this.table_default_styles,
             table_class_list: this.getAvailableClasses(),
@@ -413,6 +416,27 @@ var $exeTinyMCE = {
 
             // Drag and Drop
             paste_data_images: true,
+            // Warn when pasted HTML contains blob: URLs that are not known to the current
+            // AssetManager session. Known blobs (in reverseBlobCache) will be handled
+            // correctly by images_upload_handler; unknown blobs are stale references that
+            // will break and the user should use the Media Library or clone instead.
+            paste_preprocess: function (plugin, args) {
+                if (!args.content || !/blob:https?:\/\//.test(args.content)) return;
+                var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager?.reverseBlobCache) {
+                    var blobs = args.content.match(/blob:https?:\/\/[^\s"'>]+/g) || [];
+                    if (blobs.length > 0 && blobs.every(function (blob) { return assetManager.reverseBlobCache.has(blob); })) return;
+                }
+                if ($exeTinyMCE._blobPasteWarningToast?.toastElement?.isConnected) return;
+                var toastsManager = window.eXeLearning?.app?.toasts;
+                if (toastsManager) {
+                    $exeTinyMCE._blobPasteWarningToast = toastsManager.createToast({
+                        icon: 'warning',
+                        title: _('Temporary files detected'),
+                        body: _('Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.'),
+                    });
+                }
+            },
             // Upload tab?
             image_uploadtab: false,
             images_upload_handler: async function (blobInfo, success, failure) {
@@ -678,6 +702,9 @@ var $exeTinyMCE = {
         var e = '';
         return e;
     },
+
+    // Tracks the active blob-paste warning toast to avoid duplicates
+    _blobPasteWarningToast: null,
 
     lockScreen: function () {
         const loadScreen = document.getElementById('load-screen-node-content');

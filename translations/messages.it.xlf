@@ -12618,7 +12618,7 @@
       </trans-unit>
       <trans-unit id="08m8k8y" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nombre de carpeta no válido. Evita caracteres especiales como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nombre de carpeta no válido. Evita caracteres especiales como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="cheqecf" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12634,7 +12634,7 @@
       </trans-unit>
       <trans-unit id="1fgodwq" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nombre de archivo no válido. Evita caracteres especiales como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nombre de archivo no válido. Evita caracteres especiales como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="mkokinf" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -13231,10 +13231,6 @@
       <trans-unit id="dnpal7u" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
         <target>~Este usuario ya es colaborador</target>
-      </trans-unit>
-      <trans-unit id="0s1agev" resname="User not found">
-        <source>User not found</source>
-        <target>~Usuario no encontrado</target>
       </trans-unit>
       <trans-unit id="epy7etv" resname="Failed to invite user">
         <source>Failed to invite user</source>
@@ -14119,6 +14115,38 @@
       <trans-unit id="83bm3tj" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
+      <trans-unit id="dkr3cok" resname="Skip to content">
+        <source>Skip to content</source>
+        <target>~Vai al contenuto</target>
+      </trans-unit>
+      <trans-unit id="ny8oqa6" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target>~Utente non trovato. È possibile che questa persona non abbia ancora effettuato l'accesso a eXeLearning e non sia registrata nel sistema. Chiedigli di accedere prima di condividere.</target>
+      </trans-unit>
+      <trans-unit id="ktdd22j" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target>~File temporanei rilevati</target>
+      </trans-unit>
+      <trans-unit id="26sgs93" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target>~Alcuni file in questo contenuto utilizzano link blob: che funzionano solo su questa pagina. Se si incolla questo contenuto altrove, alcune immagini o file potrebbero mancare. Per riutilizzare contenuto con file, aggiungili dal Gestore file o clona l'iDevice.</target>
+      </trans-unit>
+      <trans-unit id="6wt9c0q" resname="Caption Text">
+        <source>Caption Text</source>
+        <target>~Testo della didascalia</target>
+      </trans-unit>
+      <trans-unit id="7omhv3v" resname="Caption Link">
+        <source>Caption Link</source>
+        <target>~Collegamento della didascalia</target>
+      </trans-unit>
+      <trans-unit id="m3bunkp" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Classi predefinite</target>
+      </trans-unit>
+      <trans-unit id="8nxavnz" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>~Classi dello stile corrente</target>
       </trans-unit>
     </body>
   </file>

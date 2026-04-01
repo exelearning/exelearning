@@ -13225,10 +13225,6 @@
         <source>This user is already a collaborator</source>
         <target>~Acest utilizator este deja colaborator</target>
       </trans-unit>
-      <trans-unit id="jhsudis" resname="User not found">
-        <source>User not found</source>
-        <target>~Utilizator nerecunoscut</target>
-      </trans-unit>
       <trans-unit id="it6lcc7" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target>~Eroare la invitarea utilizatorului</target>
@@ -14116,6 +14112,38 @@
       <trans-unit id="2e5y7vp" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
+      <trans-unit id="sarz3lc" resname="Skip to content">
+        <source>Skip to content</source>
+        <target>~Salt la conținut</target>
+      </trans-unit>
+      <trans-unit id="0uqrmd0" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target>~Utilizatorul nu a fost găsit. Este posibil ca această persoană să nu fi accesat încă eXeLearning și să nu fie înregistrată în sistem. Rugați-o să se conecteze înainte de a partaja.</target>
+      </trans-unit>
+      <trans-unit id="uxirrzm" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target>~Fișiere temporare detectate</target>
+      </trans-unit>
+      <trans-unit id="6lq7u1q" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target>~Unele fișiere din acest conținut utilizează link-uri blob: care funcționează doar pe această pagină. Dacă lipiți acest conținut în altă parte, este posibil ca imagini sau fișiere să lipsească. Pentru a reutiliza conținut cu fișiere, adăugați-le din Managerul de fișiere sau clonați iDevice-ul.</target>
+      </trans-unit>
+      <trans-unit id="s6qju87" resname="Caption Text">
+        <source>Caption Text</source>
+        <target>~Text legendă</target>
+      </trans-unit>
+      <trans-unit id="imzfl35" resname="Caption Link">
+        <source>Caption Link</source>
+        <target>~Legătură legendă</target>
+      </trans-unit>
+      <trans-unit id="qfj2u4j" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="50n1sqk" resname="Current style classes">
+        <source>Current style classes</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>

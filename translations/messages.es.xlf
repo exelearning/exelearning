@@ -13232,10 +13232,6 @@
         <source>This user is already a collaborator</source>
         <target>Este usuario ya es colaborador</target>
       </trans-unit>
-      <trans-unit id="z7kvqls" resname="User not found">
-        <source>User not found</source>
-        <target>Usuario no encontrado</target>
-      </trans-unit>
       <trans-unit id="q9kulk7" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target>Error al invitar al usuario</target>
@@ -14119,6 +14115,38 @@
       <trans-unit id="aaugony" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>~Creative Commons: CC0 1.0 Universal (dominio público)</target>
+      </trans-unit>
+      <trans-unit id="kl4jih6" resname="Skip to content">
+        <source>Skip to content</source>
+        <target>Saltar al contenido</target>
+      </trans-unit>
+      <trans-unit id="ahlkgnp" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target>Usuario no encontrado. Puede que esta persona no haya accedido aún a eXeLearning y no esté registrada en el sistema. Pídele que inicie sesión antes de compartir.</target>
+      </trans-unit>
+      <trans-unit id="ngyn62q" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target>Archivos temporales detectados</target>
+      </trans-unit>
+      <trans-unit id="1494paf" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target>Algunos archivos de este contenido usan enlaces blob: que solo funcionarán en esta página. Si pegas este contenido en otro lugar, es posible que falten imágenes o archivos. Para reutilizar contenido con archivos, añádelos desde el Gestor de archivos o clona el iDevice.</target>
+      </trans-unit>
+      <trans-unit id="1su5dy6" resname="Caption Text">
+        <source>Caption Text</source>
+        <target>Texto del pie de foto</target>
+      </trans-unit>
+      <trans-unit id="kz2v3f9" resname="Caption Link">
+        <source>Caption Link</source>
+        <target>Enlace del pie de foto</target>
+      </trans-unit>
+      <trans-unit id="0l5xm6f" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>Clases predeterminadas</target>
+      </trans-unit>
+      <trans-unit id="8g3d529" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>Clases del estilo actual</target>
       </trans-unit>
     </body>
   </file>
