@@ -1098,13 +1098,15 @@ var $exeDevice = {
 
     // Transform a JSON object into an HTML table
     getTableHTML: function (data) {
+        var i, z, c;
+        var tableTitle = this.escapeHtml(this.removeTags(data.title || ''));
         var html = "<table class='exe-table exe-rubrics-edition-table' data-rubric-table-type='edition'>";
-        html += '<caption>' + data.title + '</caption>';
+        html += '<caption>' + tableTitle + '</caption>';
         html += '<thead>';
         html += '<tr>';
         html += '<th>&nbsp;</th>';
         for (i = 0; i < data.scores.length; i++) {
-            html += '<th>' + data.scores[i] + '</th>';
+            html += '<th>' + this.escapeHtml(this.removeTags(data.scores[i] || '')) + '</th>';
         }
         html += '</tr>';
         html += '</thead>';
@@ -1112,11 +1114,12 @@ var $exeDevice = {
         for (i = 0; i < data.descriptions.length; i++) {
             c = data.descriptions[i];
             html += '<tr>';
-            html += '<th>' + data.categories[i] + '</th>';
+            html += '<th>' + this.escapeHtml(this.removeTags(data.categories[i] || '')) + '</th>';
             for (z = 0; z < data.scores.length; z++) {
                 html += '<td>' + $exeDevice.sanitizeDescriptorHtml(c[z].text || '');
-                if (c[z].weight != '')
-                    html += ' <span>(' + c[z].weight + ')</span>';
+                var safeWeight = this.removeTags(c[z].weight || '');
+                if (safeWeight != '')
+                    html += ' <span>(' + this.escapeHtml(safeWeight) + ')</span>';
                 html += '</td>';
             }
             html += '</tr>';
@@ -1172,10 +1175,11 @@ var $exeDevice = {
     },
 
     buildRubricAuthorshipHTML: function (data) {
-        var author = data.author || '';
-        var authorURL = data['author-url'] || '';
+        var author = this.removeTags(data.author || '');
+        var authorURL = this.sanitizeExternalUrl(data['author-url'] || '');
         var license = data.license || '';
         var infoVisibility = data['visible-info'] ? '' : ' sr-av';
+        var title = this.removeTags(data.title || '');
 
         if (author === '' && authorURL === '' && license === '') return '';
 
@@ -1184,15 +1188,15 @@ var $exeDevice = {
             if (authorURL !== '') {
                 info +=
                     '<a href="' +
-                    authorURL +
+                    this.escapeAttribute(authorURL) +
                     '" target="_blank" class="author" rel="noopener">' +
-                    author +
+                    this.escapeHtml(author) +
                     '</a>. ';
             } else {
-                info += '<span class="author">' + author + '</span>. ';
+                info += '<span class="author">' + this.escapeHtml(author) + '</span>. ';
             }
         }
-        info += '<span class="title"><em>' + (data.title || '') + '</em></span> ';
+        info += '<span class="title"><em>' + this.escapeHtml(title) + '</em></span> ';
         if (license !== '') {
             info += '<span class="license">(';
             if (license.indexOf('CC') === 0) {
@@ -1220,7 +1224,9 @@ var $exeDevice = {
         var map = strings || {};
         for (var key in map) {
             if (!Object.prototype.hasOwnProperty.call(map, key)) continue;
-            lang += '<li class="' + key + '">' + map[key] + '</li>';
+            var safeKey = String(key || '').replace(/[^a-zA-Z0-9_-]/g, '');
+            if (!safeKey) continue;
+            lang += '<li class="' + safeKey + '">' + this.escapeHtml(map[key]) + '</li>';
         }
         lang += '</ul>';
         return lang;
@@ -1280,8 +1286,8 @@ var $exeDevice = {
             var instrEditor = tinyMCE.get('eXeGameInstructions');
             var instructions = instrEditor ? instrEditor.getContent() : ($('#eXeGameInstructions').val() || '');
             data['visible-info'] = $('#ri_ShowRubricInfo').prop('checked');
-            data.author = $('#ri_RubricAuthor').val() || '';
-            data['author-url'] = $('#ri_RubricAuthorURL').val() || '';
+            data.author = this.removeTags($('#ri_RubricAuthor').val() || '');
+            data['author-url'] = this.sanitizeExternalUrl($('#ri_RubricAuthorURL').val() || '');
             data.license = $('#ri_RubricLicense').val() || '';
             data.i18n = this.collectRubricStringsFromForm();
 
@@ -1306,7 +1312,7 @@ var $exeDevice = {
                 <div class="ri-table-controls-left">\
                     <label for="ri_MaxScore">' +
                         _('Maximum score:') +
-                        '</label> <input type="text" id="ri_MaxScore" readonly="readonly" value="" /> <span id="ri_MaxScoreInstructions">' +
+                        '</label> <input type="text" id="ri_MaxScore" readonly="readonly" aria-readonly="true" value="" /> <span id="ri_MaxScoreInstructions">' +
                         _('The result of adding the scores of the first level.') +
                         '</span>\
                 </div>\
@@ -1330,6 +1336,8 @@ var $exeDevice = {
         if (data.author) author = data.author;
         if (data['author-url']) authorLink = data['author-url'];
         if (data.license) license = data.license;
+        var authorEscaped = this.escapeAttribute(author);
+        var authorLinkEscaped = this.escapeAttribute(authorLink);
         html +=
                         '\
                 <div id="ri_RubricInformation" class="exe-rubric-information">\
@@ -1347,14 +1355,14 @@ var $exeDevice = {
               <label for="ri_RubricAuthor">' +
             _('Source/Author') +
             ':</label> <input type="text" id="ri_RubricAuthor" value="' +
-            author +
+            authorEscaped +
             '" /> \
             </p>\
             <p>\
               <label for="ri_RubricAuthorURL">' +
             _('Source/Author Link') +
             ':</label> <input type="text" id="ri_RubricAuthorURL" value="' +
-            authorLink +
+            authorLinkEscaped +
             '" /> \
             </p>\
             <p>\
@@ -1626,9 +1634,9 @@ var $exeDevice = {
 
         // Get the rubric information and add it to data
         data['visible-info'] = $('#ri_ShowRubricInfo').prop('checked');
-        var author = $('#ri_RubricAuthor').val();
+        var author = this.removeTags($('#ri_RubricAuthor').val() || '');
         if (author != '') data.author = author;
-        var authorURL = $('#ri_RubricAuthorURL').val();
+        var authorURL = this.sanitizeExternalUrl($('#ri_RubricAuthorURL').val() || '');
         if (authorURL != '') data['author-url'] = authorURL;
         var license = $('#ri_RubricLicense').val();
         if (license != '') data.license = license;
@@ -1668,7 +1676,7 @@ var $exeDevice = {
                 html[0] +
                 '" />';
             if ($(this).prop('tagName') == 'TD') {
-                if (html.length == '2') {
+                if (html.length === 2) {
                     try {
                         // Try to get anything between ()
                         html = html[1].match(/\(([^)]+)\)/)[1];
@@ -1736,9 +1744,9 @@ var $exeDevice = {
         });
         // Delete row
         $('.ri_DeleteTR').click(function () {
-            $exeDevice.tmp = $(this).parents('tr:first');
+            var row = $(this).parents('tr:first');
             eXe.app.confirm(_('Row'), _('Delete the row?'), function () {
-                $exeDevice.tmp.remove();
+                row.remove();
             });
             return false;
         });
@@ -1811,11 +1819,11 @@ var $exeDevice = {
                 $exeDevice.alert(_('There should be at least one level.'));
                 return false;
             }
-            $exeDevice.tmp = $(this).closest('th').prevAll('th').length;
+            var colIndex = $(this).closest('th').prevAll('th').length;
             eXe.app.confirm(_('Column'), _('Delete the column?'), function () {
                 $('#ri_Table tr').each(function () {
                     $('th,td', this).each(function (i) {
-                        if (i == $exeDevice.tmp) $(this).remove();
+                        if (i == colIndex) $(this).remove();
                     });
                 });
             });
@@ -2472,6 +2480,37 @@ var $exeDevice = {
         return wrapper.text();
     },
 
+    escapeHtml: function (str) {
+        var value = typeof str === 'string' ? str : String(str || '');
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    escapeAttribute: function (str) {
+        return this.escapeHtml(str);
+    },
+
+    sanitizeExternalUrl: function (url) {
+        var value = typeof url === 'string' ? url.trim() : '';
+        if (value === '') return '';
+
+        // Block executable schemes while keeping regular and relative links working.
+        var normalized = value.replace(/[\u0000-\u001F\u007F\s]+/g, '').toLowerCase();
+        if (
+            normalized.indexOf('javascript:') === 0 ||
+            normalized.indexOf('data:') === 0 ||
+            normalized.indexOf('vbscript:') === 0
+        ) {
+            return '';
+        }
+
+        return value;
+    },
+
     // Allow only <b>, <i> and <u> in descriptor text; strip all other tags.
     sanitizeDescriptorHtml: function (value) {
         var input = typeof value === 'string' ? value : String(value || '');
@@ -2518,6 +2557,7 @@ var $exeDevice = {
     // Transform the editable table into a normal one
     makeNormal: function () {
         var cells = this.cells;
+        if (!cells || typeof cells.each !== 'function' || cells.length === 0) return;
         cells.each(function (i) {
             var id, val;
             var html = this.innerHTML;

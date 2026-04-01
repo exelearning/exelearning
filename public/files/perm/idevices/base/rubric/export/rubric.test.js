@@ -296,6 +296,21 @@ describe('rubric iDevice export', () => {
     expect(allAuthorship.text()).toContain('CC BY-SA');
   });
 
+  it('buildAuthorshipFooter escapes author text from raw data payload', () => {
+    const html = $rubric.buildAuthorshipFooter({
+      author: 'Alice <img src=x onerror=alert(1)>',
+      license: 'CC-BY-SA',
+      'visible-info': true,
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+
+    expect(wrapper.querySelector('img')).toBeNull();
+    expect(wrapper.textContent).toContain('Alice');
+    expect(wrapper.textContent).toContain('CC BY SA');
+  });
+
   it('createInterface updates rich authorship title with current rubric title', () => {
     const scope = $(`
       <div class="idevice_node rubric" id="rubric_authorship_title_sync">
@@ -339,6 +354,33 @@ describe('rubric iDevice export', () => {
     expect(authorship.find('a.author').attr('href')).toBe('https://example.com');
   });
 
+  it('createInterface escapes injected i18n strings in labels and buttons', () => {
+    const scope = $('<div class="idevice_node rubric" id="rubric_escape_strings"></div>');
+    const table = $('<table class="exe-table"><tbody><tr><th>A</th><td>B</td></tr></tbody></table>');
+
+    $rubric.createInterface({
+      scope,
+      table,
+      scopeId: 'rubric_escape_strings',
+      strings: {
+        activity: '<img src=x onerror=alert(1)>',
+        name: '<script>alert(1)</script>Name',
+        score: 'Score',
+        date: 'Date',
+        notes: 'Notes',
+        download: '<b>Download</b>',
+        reset: '<i>Reset</i>',
+      },
+      raw: {},
+    });
+
+    expect(scope.find('script').length).toBe(0);
+    expect(scope.find('img').length).toBe(0);
+    expect(scope.find('label[for^="rubric-activity-"]').text()).toContain('<img src=x onerror=alert(1)>');
+    expect(scope.find('.exe-rubrics-download').text()).toBe('<b>Download</b>');
+    expect(scope.find('.exe-rubrics-reset').text()).toBe('<i>Reset</i>');
+  });
+
   it('prepareInteractiveTable keeps caption visible in export', () => {
     const table = $rubric.createTableFromData({
       title: 'Titulo de Rubrica',
@@ -351,6 +393,42 @@ describe('rubric iDevice export', () => {
 
     expect(table.find('caption').length).toBe(1);
     expect(table.find('caption').text()).toContain('Titulo de Rubrica');
+  });
+
+  it('prepareInteractiveTable adds accessible aria-label to criterion checkboxes', () => {
+    const table = $rubric.createTableFromData({
+      title: 'Rubrica',
+      categories: ['Comprension'],
+      scores: ['Nivel alto'],
+      descriptions: [[{ text: 'Descriptor', weight: '3' }]],
+    });
+
+    $rubric.prepareInteractiveTable(table, 'rubric_aria', {
+      ...$rubric.ci18n,
+      apply: 'Apply',
+    });
+
+    const checkbox = table.find('tbody input[type="checkbox"]').first();
+    expect(checkbox.length).toBe(1);
+    expect(checkbox.attr('aria-label')).toBe('Apply: Comprension / Nivel alto');
+  });
+
+  it('createTableFromData strips dangerous descriptor tags but keeps allowed formatting', () => {
+    const table = $rubric.createTableFromData({
+      title: 'Rubrica',
+      categories: ['C1'],
+      scores: ['L1'],
+      descriptions: [[{
+        text: '<b>Bold</b><script>alert(1)</script><img src=x onerror=alert(1)><u>Under</u>',
+        weight: '2',
+      }]],
+    });
+
+    const cellHtml = table.find('tbody td').first().html();
+    expect(cellHtml).toContain('<b>Bold</b>');
+    expect(cellHtml).toContain('<u>Under</u>');
+    expect(cellHtml).not.toContain('<script>');
+    expect(cellHtml).not.toContain('<img');
   });
 
   it('renderTableScore shows normalized format as 10 (24/24)', () => {
@@ -681,7 +759,7 @@ describe('saveAsPdf Electron path', () => {
     expect(mockSaveBufferAs).toHaveBeenCalledTimes(1);
     expect(mockSaveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
     expect(mockSaveBufferAs.mock.calls[0][0].length).toBeGreaterThan(0);
-    expect(mockSaveBufferAs.mock.calls[0][2]).toBe('rubric.png');
+    expect(mockSaveBufferAs.mock.calls[0][2]).toBe('rubric_name.png');
 
     delete window.html2canvas;
     if (temp.parentNode) temp.parentNode.removeChild(temp);

@@ -60,7 +60,7 @@ var $rubric = {
             } else {
                 alert(msg);
             }
-            return false;
+            return;
         }
 
         var self = this;
@@ -289,11 +289,11 @@ var $rubric = {
 
     createTableFromData: function (data) {
         var html = '<table class="exe-table exe-rubrics-export-table" data-rubric-table-type="export">';
-        html += '<caption>' + (data.title || '') + '</caption>';
+        html += '<caption>' + this.escapeHtml(this.stripTags(data.title || '')) + '</caption>';
         html += '<thead><tr><th>&nbsp;</th>';
 
         for (var i = 0; i < data.scores.length; i++) {
-            html += '<th>' + (data.scores[i] || '') + '</th>';
+            html += '<th>' + this.escapeHtml(this.stripTags(data.scores[i] || '')) + '</th>';
         }
 
         html += '</tr></thead><tbody>';
@@ -301,13 +301,14 @@ var $rubric = {
         for (var r = 0; r < data.categories.length; r++) {
             var row = data.descriptions[r] || [];
             html += '<tr>';
-            html += '<th>' + (data.categories[r] || '') + '</th>';
+            html += '<th>' + this.escapeHtml(this.stripTags(data.categories[r] || '')) + '</th>';
 
             for (var c = 0; c < data.scores.length; c++) {
                 var cell = row[c] || { text: '', weight: '' };
-                html += '<td>' + (cell.text || '');
-                if (cell.weight !== '') {
-                    html += ' <span>(' + cell.weight + ')</span>';
+                html += '<td>' + this.sanitizeDescriptorHtml(cell.text || '');
+                var safeWeight = this.stripTags(cell.weight || '');
+                if (safeWeight !== '') {
+                    html += ' <span>(' + this.escapeHtml(safeWeight) + ')</span>';
                 }
                 html += '</td>';
             }
@@ -330,6 +331,68 @@ var $rubric = {
         });
 
         return strings;
+    },
+
+    stripTags: function (value) {
+        var wrapper = document.createElement('div');
+        wrapper.innerHTML = typeof value === 'string' ? value : String(value || '');
+        return wrapper.textContent || wrapper.innerText || '';
+    },
+
+    escapeHtml: function (value) {
+        var text = typeof value === 'string' ? value : String(value || '');
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    escapeAttribute: function (value) {
+        return this.escapeHtml(value);
+    },
+
+    sanitizeDescriptorHtml: function (value) {
+        var input = typeof value === 'string' ? value : String(value || '');
+        if (input === '') return '';
+
+        var template = document.createElement('template');
+        template.innerHTML = input;
+
+        var sanitizeNode = function (node) {
+            if (!node) return document.createDocumentFragment();
+
+            if (node.nodeType === Node.TEXT_NODE) {
+                return document.createTextNode(node.nodeValue || '');
+            }
+
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return document.createDocumentFragment();
+            }
+
+            var tag = String(node.tagName || '').toLowerCase();
+            var fragment = document.createDocumentFragment();
+
+            for (var i = 0; i < node.childNodes.length; i++) {
+                fragment.appendChild(sanitizeNode(node.childNodes[i]));
+            }
+
+            if (tag === 'b' || tag === 'i' || tag === 'u') {
+                var allowed = document.createElement(tag);
+                allowed.appendChild(fragment);
+                return allowed;
+            }
+
+            return fragment;
+        };
+
+        var output = document.createElement('div');
+        for (var i = 0; i < template.content.childNodes.length; i++) {
+            output.appendChild(sanitizeNode(template.content.childNodes[i]));
+        }
+
+        return output.innerHTML;
     },
 
 
@@ -366,6 +429,15 @@ var $rubric = {
                         }
                     }
 
+                    var rowTitle = $(this).closest('tr').find('th').first().text().trim();
+                    var columnTitle = $table.find('thead th').eq(colIndex + 1).text().trim();
+                    var checkboxLabel =
+                        (strings.apply || 'Apply') +
+                        ': ' +
+                        rowTitle +
+                        ' / ' +
+                        columnTitle;
+
                     this.innerHTML +=
                         ' <input type="checkbox" name="criteria-' +
                         scopeId +
@@ -381,6 +453,8 @@ var $rubric = {
                         colIndex +
                         '" value="' +
                         val +
+                        '" aria-label="' +
+                        $rubric.escapeAttribute(checkboxLabel) +
                         '" />';
                 });
         });
@@ -508,12 +582,12 @@ var $rubric = {
         if (!rawData || typeof rawData !== 'object') return '';
         if (rawData['visible-info'] === false) return '';
 
-        var author = typeof rawData.author === 'string' ? rawData.author.trim() : '';
-        var license = this.getLicenseLabel(rawData.license);
+        var author = this.stripTags(rawData.author || '').trim();
+        var license = this.stripTags(this.getLicenseLabel(rawData.license) || '').trim();
 
         var parts = [];
-        if (author) parts.push(author);
-        if (license) parts.push(license);
+        if (author) parts.push(this.escapeHtml(author));
+        if (license) parts.push(this.escapeHtml(license));
 
         if (parts.length === 0) return '';
 
@@ -561,6 +635,16 @@ var $rubric = {
         var root = $(data.scope);
         var $table = $(data.table);
         var strings = data.strings || this.ci18n;
+        var safeStrings = {
+            activity: this.escapeHtml(strings.activity || this.ci18n.activity),
+            name: this.escapeHtml(strings.name || this.ci18n.name),
+            score: this.escapeHtml(strings.score || this.ci18n.score),
+            date: this.escapeHtml(strings.date || this.ci18n.date),
+            notes: this.escapeHtml(strings.notes || this.ci18n.notes),
+            download: this.escapeHtml(strings.download || this.ci18n.download),
+            reset: this.escapeHtml(strings.reset || this.ci18n.reset),
+        };
+        var currentDate = this.escapeAttribute(this.getCurrentDate());
         var safeScopeId = String(data.scopeId || 'rubric').replace(/[^a-zA-Z0-9_-]/g, '-');
 
         if (root.length !== 1) return $();
@@ -577,32 +661,32 @@ var $rubric = {
                 <div class="exe-rubrics-content" data-rubric-content="${safeScopeId}">
                     <div id="exe-rubrics-header">
                         <div>
-                            <label for="${activityId}">${strings.activity}:</label>
+                            <label for="${activityId}">${safeStrings.activity}:</label>
                             <input type="text" id="${activityId}" class="form-control form-control-sm" data-rubric-field="activity" />
                         </div>
                         <div>
-                            <label for="${nameId}">${strings.name}:</label>
+                            <label for="${nameId}">${safeStrings.name}:</label>
                             <input type="text" id="${nameId}" class="form-control form-control-sm" data-rubric-field="name" />
                         </div>
                         <div>
-                            <label for="${scoreId}">${strings.score}:</label>
+                            <label for="${scoreId}">${safeStrings.score}:</label>
                             <input type="text" id="${scoreId}" class="form-control form-control-sm" data-rubric-field="score" />
                         </div>
                         <div>
-                            <label for="${dateId}">${strings.date}:</label>
-                            <input type="text" id="${dateId}" class="form-control form-control-sm" data-rubric-field="date" value="${this.getCurrentDate()}" />
+                            <label for="${dateId}">${safeStrings.date}:</label>
+                            <input type="text" id="${dateId}" class="form-control form-control-sm" data-rubric-field="date" value="${currentDate}" />
                         </div>
                     </div>
                     <div class="exe-rubrics-table-slot" data-rubric-table-slot="${safeScopeId}"></div>
                     <div id="exe-rubrics-footer">
                         <p>
-                            <label for="${notesId}">${strings.notes}:</label>
+                            <label for="${notesId}">${safeStrings.notes}:</label>
                             <textarea id="${notesId}" class="form-control form-control-sm" data-rubric-field="notes" cols="32" rows="1"></textarea>
                         </p>
                     </div>
                     <p class="exe-rubrics-actions">
-                        <button type="button" class="exe-rubrics-download btn btn-primary btn-sm">${strings.download}</button>
-                        <button type="button" class="exe-rubrics-reset btn btn-primary btn-sm">${strings.reset}</button>
+                        <button type="button" class="exe-rubrics-download btn btn-primary btn-sm">${safeStrings.download}</button>
+                        <button type="button" class="exe-rubrics-reset btn btn-primary btn-sm">${safeStrings.reset}</button>
                     </p>
                     ${authorshipFooter}
                 </div>

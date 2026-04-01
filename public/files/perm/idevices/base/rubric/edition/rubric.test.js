@@ -404,4 +404,64 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect($('#ri_RowEditModal').css('display')).toBe('none');
     expect($exeDevice.rowEditState).toBeNull();
   });
+
+  it('getTableHTML does not leak implicit loop variables to global scope', () => {
+    delete globalThis.i;
+    delete globalThis.z;
+    delete globalThis.c;
+
+    $exeDevice.getTableHTML({
+      title: 'Rubrica',
+      categories: ['C1'],
+      scores: ['L1'],
+      descriptions: [[{ text: 'D1', weight: '1' }]],
+    });
+
+    expect(Object.prototype.hasOwnProperty.call(globalThis, 'i')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(globalThis, 'z')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(globalThis, 'c')).toBe(false);
+  });
+
+  it('makeNormal ignores null cells without throwing', () => {
+    $exeDevice.cells = null;
+    expect(() => $exeDevice.makeNormal()).not.toThrow();
+  });
+
+  it('buildRubricAuthorshipHTML sanitizes author, title and unsafe author-url', () => {
+    const html = $exeDevice.buildRubricAuthorshipHTML({
+      author: 'Alice <img src=x onerror=alert(1)>',
+      'author-url': 'javascript:alert(1)',
+      title: '<script>alert(1)</script>Unsafe title',
+      license: '',
+      'visible-info': true,
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+
+    expect(wrapper.querySelector('script')).toBeNull();
+    expect(wrapper.querySelector('a.author')).toBeNull();
+    expect(wrapper.querySelector('.author')?.textContent).toBe('Alice ');
+    expect(wrapper.querySelector('.title em')?.textContent).toBe('alert(1)Unsafe title');
+  });
+
+  it('jsonToTable keeps quoted author values without breaking the author inputs', () => {
+    document.body.innerHTML = '<div id="ri_TableEditor"></div>';
+    $exeDevice.editor = $('#ri_TableEditor');
+
+    $exeDevice.jsonToTable({
+      title: 'Rubrica',
+      categories: ['C1'],
+      scores: ['L1'],
+      descriptions: [[{ text: 'D1', weight: '1' }]],
+      author: 'Author "quoted"',
+      'author-url': 'https://example.com/?q="quoted"',
+      license: '',
+      'visible-info': true,
+      i18n: {},
+    }, 'edition');
+
+    expect($('#ri_RubricAuthor').val()).toBe('Author "quoted"');
+    expect($('#ri_RubricAuthorURL').val()).toBe('https://example.com/?q="quoted"');
+  });
 });
