@@ -12293,6 +12293,18 @@
         <source>in</source>
         <target>in</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Modifiche non salvate</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se chiudi ora, le ultime modifiche andranno perse. Rimani per salvare il progetto prima di uscire.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Rimani</target>
+      </trans-unit>
       <trans-unit id="HdPgTtl1" resname="Hide page title">
         <source>Hide page title</source>
         <target>Nascondi titolo pagina</target>
@@ -14144,18 +14156,6 @@
       <trans-unit id="8nxavnz" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Classi dello stile corrente</target>
-      </trans-unit>
-      <trans-unit id="h72md8e" resname="Unsaved changes">
-        <source>Unsaved changes</source>
-        <target>~Modifiche non salvate</target>
-      </trans-unit>
-      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
-        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
-        <target>~Se chiudi ora, le ultime modifiche andranno perse. Rimani per salvare il progetto prima di uscire.</target>
-      </trans-unit>
-      <trans-unit id="u7vmbw9" resname="Stay">
-        <source>Stay</source>
-        <target>~Rimani</target>
       </trans-unit>
       <trans-unit id="tiqt49t" resname="Close without saving">
         <source>Close without saving</source>
