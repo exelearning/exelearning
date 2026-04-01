@@ -225,32 +225,30 @@ let customEnv;
 let env;
 
 // ──────────────  Save/Export helpers  ──────────────
-const KNOWN_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 const DEFAULT_EXTENSION = '.elpx';
 
 /**
- * Extract a known extension from a file path or suggested name.
- * Returns the lowercase extension (including the leading dot) if known, null otherwise.
+ * Extract a file extension from a file path or suggested name.
+ * Returns the lowercase extension (including the leading dot) if present, null otherwise.
  * @param {string} filePathOrName - File path or suggested filename
- * @returns {string|null} Known extension (e.g., '.elpx') or null
+ * @returns {string|null} Extension (e.g., '.elpx', '.csv') or null
  */
-function getKnownExt(filePathOrName) {
+function getExt(filePathOrName) {
     try {
         const ext = path.extname(filePathOrName || '') || '';
         if (!ext) return null;
-        const lower = ext.toLowerCase();
-        return KNOWN_EXTENSIONS.has(lower) ? lower : null;
+        return ext.toLowerCase();
     } catch (_e) {
         return null;
     }
 }
 
-// Ensures the filePath has an extension; if missing or unknown, appends one inferred from suggestedName.
+// Ensures the filePath has an extension; if missing, appends one inferred from suggestedName.
 function ensureExt(filePath, suggestedName) {
     if (!filePath) return filePath;
-    const known = getKnownExt(filePath);
-    if (known) return filePath;
-    const inferred = getKnownExt(suggestedName);
+    const currentExt = getExt(filePath);
+    if (currentExt) return filePath;
+    const inferred = getExt(suggestedName);
     return inferred ? filePath + inferred : filePath;
 }
 
@@ -264,35 +262,48 @@ function getDialogFilterForExt(ext) {
             return { name: 'EPUB', extensions: ['epub'] };
         case '.xml':
             return { name: 'XML document', extensions: ['xml'] };
-        default:
-            return null;
+        case '.csv':
+            return { name: 'CSV file', extensions: ['csv'] };
+        case '.idevice':
+            return { name: 'eXeLearning iDevice', extensions: ['idevice'] };
+        case '.block':
+            return { name: 'eXeLearning block', extensions: ['block'] };
+        default: {
+            if (!ext) return null;
+            const clean = ext.replace(/^\./, '');
+            return { name: `${clean.toUpperCase()} file`, extensions: [clean] };
+        }
     }
 }
 
-function proposeSavePath(lastDir, suggestedName = null) {
+function proposeSavePath(lastDir, effectiveName = null) {
     try {
-        const ext = getKnownExt(suggestedName) || DEFAULT_EXTENSION;
+        const ext = getExt(effectiveName) || DEFAULT_EXTENSION;
         const dir = lastDir || app.getPath('documents');
-        const base = suggestedName
-            ? path.basename(suggestedName, path.extname(suggestedName))
+        const base = effectiveName
+            ? path.basename(effectiveName, path.extname(effectiveName))
             : 'document';
         return path.join(dir, `${base}${ext}`);
     } catch (_e) {
-        return suggestedName || `document${DEFAULT_EXTENSION}`;
+        return effectiveName || `document${DEFAULT_EXTENSION}`;
     }
 }
 
-async function promptSave(owner, suggestedName = null, lastDir = null) {
-    const inferredExt = getKnownExt(suggestedName) || DEFAULT_EXTENSION;
+async function promptSave(owner, suggestedName = null, lastDir = null, storedName = null) {
+    const effectiveName = storedName || suggestedName;
+    const inferredExt = getExt(effectiveName) || DEFAULT_EXTENSION;
     const filter = getDialogFilterForExt(inferredExt);
+    const isProject = inferredExt === '.elpx';
     const { filePath, canceled } = await dialog.showSaveDialog(owner, {
-        title: tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project'),
-        defaultPath: proposeSavePath(lastDir, suggestedName),
+        title: isProject
+            ? tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project')
+            : tOrDefault('save.downloadTitle', defaultLocale === 'es' ? 'Guardar archivo' : 'Save file'),
+        defaultPath: proposeSavePath(lastDir, effectiveName),
         buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
         ...(filter ? { filters: [filter] } : {}),
     });
     if (canceled || !filePath) return null;
-    return ensureExt(filePath, suggestedName || `document${DEFAULT_EXTENSION}`);
+    return ensureExt(filePath, effectiveName || `document${DEFAULT_EXTENSION}`);
 }
 
 // ──────────────  Simple settings (no external deps)  ──────────────
@@ -328,6 +339,23 @@ function setLastSaveDir(key, dirPath) {
     const s = readSettings();
     s.lastSaveDir = s.lastSaveDir || {};
     s.lastSaveDir[key] = dirPath;
+    writeSettings(s);
+}
+
+function getLastSaveInfo(key) {
+    const s = readSettings();
+    return {
+        dir: s.lastSaveDir?.[key] || null,
+        name: s.lastSaveName?.[key] || null,
+    };
+}
+
+function setLastSaveInfo(key, dirPath, fileName) {
+    const s = readSettings();
+    s.lastSaveDir = s.lastSaveDir || {};
+    s.lastSaveDir[key] = dirPath;
+    s.lastSaveName = s.lastSaveName || {};
+    s.lastSaveName[key] = fileName;
     writeSettings(s);
 }
 
@@ -1288,11 +1316,11 @@ async function saveUrlWithDialog(e, { downloadUrl, projectKey, suggestedName }) 
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
         const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
         const key = projectKey || 'default';
-        const lastDir = getLastSaveDir(key);
+        const { dir: lastDir, name: storedName } = getLastSaveInfo(key);
 
-        const targetPath = await promptSave(owner, suggestedName, lastDir);
+        const targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
         if (!targetPath) return false;
-        setLastSaveDir(key, path.dirname(targetPath));
+        setLastSaveInfo(key, path.dirname(targetPath), path.basename(targetPath));
 
         return await streamToFile(downloadUrl, targetPath, wc);
     } catch (_e) {
@@ -1330,25 +1358,142 @@ ipcMain.handle('app:readFile', async (_e, { filePath }) => {
     }
 });
 
+ipcMain.handle('app:getMemoryUsage', async (e) => {
+    let renderer = null;
+    try {
+        if (e?.sender?.getProcessMemoryInfo) {
+            renderer = await e.sender.getProcessMemoryInfo();
+        }
+    } catch (_err) {
+        renderer = null;
+    }
+
+    return {
+        process: process.memoryUsage(),
+        renderer,
+    };
+});
+
+function normalizeBinaryPayload(bufferData, base64Data) {
+    if (bufferData instanceof Uint8Array) {
+        return Buffer.from(bufferData);
+    }
+
+    if (bufferData instanceof ArrayBuffer) {
+        return Buffer.from(new Uint8Array(bufferData));
+    }
+
+    if (Array.isArray(bufferData)) {
+        return Buffer.from(bufferData);
+    }
+
+    if (base64Data) {
+        return Buffer.from(base64Data, 'base64');
+    }
+
+    return null;
+}
+
+function createSaveBufferResponse({
+    saved = false,
+    canceled = false,
+    canceledAt = null,
+    filePath = null,
+    error = null,
+    promptMs = 0,
+    normalizeMs = 0,
+    writeMs = 0,
+    totalMs = 0,
+} = {}) {
+    return {
+        saved,
+        canceled,
+        canceledAt,
+        filePath,
+        error,
+        timings: {
+            totalMs: Math.round(totalMs),
+            promptMs: Math.round(promptMs),
+            normalizeMs: Math.round(normalizeMs),
+            writeMs: Math.round(writeMs),
+        },
+    };
+}
+
 // Save binary data — always prompts for destination (no silent overwrite)
-async function saveBufferWithDialog(e, { base64Data, projectKey, suggestedName }) {
-    if (!base64Data) return false;
+async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, suggestedName }) {
+    const startedAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+    let afterPromptAt = startedAt;
+    let afterNormalizeAt = startedAt;
+    let targetPath = null;
+
+    if (!bufferData && !base64Data) {
+        return createSaveBufferResponse({
+            saved: false,
+            canceled: false,
+            canceledAt: 'write',
+            error: 'Missing buffer data',
+        });
+    }
     try {
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
-        const owner = BrowserWindow.fromWebContents(wc);
+        const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
         const key = projectKey || 'default';
-        const lastDir = getLastSaveDir(key);
+        const { dir: lastDir, name: storedName } = getLastSaveInfo(key);
 
-        const targetPath = await promptSave(owner, suggestedName, lastDir);
-        if (!targetPath) return false;
-        setLastSaveDir(key, path.dirname(targetPath));
+        targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
+        afterPromptAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        if (!targetPath) {
+            return createSaveBufferResponse({
+                saved: false,
+                canceled: true,
+                canceledAt: 'dialog',
+                promptMs: afterPromptAt - startedAt,
+                totalMs: afterPromptAt - startedAt,
+            });
+        }
+        setLastSaveInfo(key, path.dirname(targetPath), path.basename(targetPath));
 
-        const buffer = Buffer.from(base64Data, 'base64');
+        const buffer = normalizeBinaryPayload(bufferData, base64Data);
+        afterNormalizeAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        if (!buffer) {
+            return createSaveBufferResponse({
+                saved: false,
+                canceled: false,
+                canceledAt: 'write',
+                filePath: targetPath,
+                error: 'Failed to normalize binary payload',
+                promptMs: afterPromptAt - startedAt,
+                normalizeMs: afterNormalizeAt - afterPromptAt,
+                totalMs: afterNormalizeAt - startedAt,
+            });
+        }
         fs.writeFileSync(targetPath, buffer);
-        return true;
+        const finishedAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        return createSaveBufferResponse({
+            saved: true,
+            canceled: false,
+            canceledAt: null,
+            filePath: targetPath,
+            promptMs: afterPromptAt - startedAt,
+            normalizeMs: afterNormalizeAt - afterPromptAt,
+            writeMs: finishedAt - afterNormalizeAt,
+            totalMs: finishedAt - startedAt,
+        });
     } catch (err) {
         console.error('[app:saveBuffer] Error:', err);
-        return false;
+        const failedAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        return createSaveBufferResponse({
+            saved: false,
+            canceled: false,
+            canceledAt: 'write',
+            filePath: targetPath,
+            error: err?.message || String(err),
+            promptMs: afterPromptAt - startedAt,
+            normalizeMs: afterNormalizeAt - afterPromptAt,
+            writeMs: failedAt - afterNormalizeAt,
+            totalMs: failedAt - startedAt,
+        });
     }
 }
 ipcMain.handle('app:saveBuffer', saveBufferWithDialog);

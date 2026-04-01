@@ -333,6 +333,10 @@ var $exeDevice = {
 
         let data = { ...this.idevicePreviousData };
 
+        if (typeof data[this.textareaId] === 'string' && data[this.textareaId]) {
+            data[this.textareaId] = this.stripLegacyExeTextWrapper(data[this.textareaId]);
+        }
+
         // Check for embedded task info or simple feedback in textTextarea.
         // extractTaskInfoFromHtml handles both exe-text-activity (new) and simple feedback (legacy).
         // Use structural markers to detect both modern (feedbacktooglebutton) and
@@ -400,6 +404,33 @@ var $exeDevice = {
                 el.textContent = val;
             }
         }
+    },
+
+    /**
+     * Remove a top-level legacy wrapper <div class="exe-text">...</div> when present.
+     * This is applied when loading old saved content to avoid persisting legacy wrappers.
+     */
+    stripLegacyExeTextWrapper: function (html) {
+        if (!html || typeof html !== 'string') return html;
+
+        const container = document.createElement('div');
+        container.innerHTML = html;
+
+        const significantNodes = Array.from(container.childNodes).filter((node) => {
+            if (node.nodeType === 3) {
+                return !/^[\s\uFEFF]*$/.test(node.textContent || '');
+            }
+            return node.nodeType === 1;
+        });
+
+        if (significantNodes.length !== 1) return html;
+
+        const root = significantNodes[0];
+        if (!root || root.nodeType !== 1) return html;
+        if (root.tagName !== 'DIV') return html;
+        if (!root.classList || !root.classList.contains('exe-text')) return html;
+
+        return root.innerHTML;
     },
 
     /**

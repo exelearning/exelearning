@@ -35,35 +35,45 @@
         var desc = (props.pp_description && props.pp_description.value) ? props.pp_description.value : '-';
         var license = (props.pp_license && props.pp_license.value) ? props.pp_license.value : '-';
 
-        // Format license
         var formattedLicense = license;
         if (license !== '-') {
-            var licenseMappings = [
-                ['creative commons: attribution 4.0', 'by/4.0'],
-                ['creative commons: attribution - non derived work 4.0', 'by-nd/4.0'],
-                ['creative commons: attribution - non derived work - non commercial 4.0', 'by-nc-nd/4.0'],
-                ['creative commons: attribution - non commercial 4.0', 'by-nc/4.0'],
-                ['creative commons: attribution - non commercial - share alike 4.0', 'by-nc-sa/4.0'],
-                ['creative commons: attribution - share alike 4.0', 'by-sa/4.0'],
-                ['creative commons: attribution 3.0', 'by/3.0'],
-                ['creative commons: attribution - non derived work 3.0', 'by-nd/3.0'],
-                ['creative commons: attribution - non derived work - non commercial 3.0', 'by-nc-nd/3.0'],
-                ['creative commons: attribution - non commercial 3.0', 'by-nc/3.0'],
-                ['creative commons: attribution - non commercial - share alike 3.0', 'by-nc-sa/3.0'],
-                ['creative commons: attribution - share alike 3.0', 'by-sa/3.0'],
-                ['creative commons: attribution 2.5', 'by/2.5'],
-                ['creative commons: attribution - non derived work 2.5', 'by-nd/2.5'],
-                ['creative commons: attribution - non derived work - non commercial 2.5', 'by-nc-nd/2.5'],
-                ['creative commons: attribution - non commercial 2.5', 'by-nc/2.5'],
-                ['creative commons: attribution - non commercial - share alike 2.5', 'by-nc-sa/2.5'],
-                ['creative commons: attribution - share alike 2.5', 'by-sa/2.5']
-            ];
-            for (var i = 0; i < licenseMappings.length; i++) {
-                if (licenseMappings[i][0] === license) {
-                    var type = licenseMappings[i][1].replace('/', ' ').toUpperCase();
-                    var css = 'cc cc-' + licenseMappings[i][1].split('/')[0];
-                    formattedLicense = '<a href="https://creativecommons.org/licenses/' + licenseMappings[i][1] + '/" rel="license" class="' + css + '"><span></span>Creative Commons ' + type + '</a>';
-                    break;
+            // CC0 uses a publicdomain URL, not the standard licenses/ path
+            if (license.toLowerCase() === 'creative commons: cc0 1.0') {
+                formattedLicense = '<a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="license" class="cc cc-0"><span></span>Creative Commons CC0 1.0</a>';
+            } else if (license === 'propietary license') {
+                formattedLicense = c_('Proprietary license');
+            } else if (license === 'not appropriate') {
+                formattedLicense = c_('Not appropriate');
+            } else if (license === 'public domain') {
+                formattedLicense = c_('Public domain');
+            } else {
+                var licenseMappings = [
+                    ['creative commons: attribution 4.0', 'by/4.0'],
+                    ['creative commons: attribution - non derived work 4.0', 'by-nd/4.0'],
+                    ['creative commons: attribution - non derived work - non commercial 4.0', 'by-nc-nd/4.0'],
+                    ['creative commons: attribution - non commercial 4.0', 'by-nc/4.0'],
+                    ['creative commons: attribution - non commercial - share alike 4.0', 'by-nc-sa/4.0'],
+                    ['creative commons: attribution - share alike 4.0', 'by-sa/4.0'],
+                    ['creative commons: attribution 3.0', 'by/3.0'],
+                    ['creative commons: attribution - non derived work 3.0', 'by-nd/3.0'],
+                    ['creative commons: attribution - non derived work - non commercial 3.0', 'by-nc-nd/3.0'],
+                    ['creative commons: attribution - non commercial 3.0', 'by-nc/3.0'],
+                    ['creative commons: attribution - non commercial - share alike 3.0', 'by-nc-sa/3.0'],
+                    ['creative commons: attribution - share alike 3.0', 'by-sa/3.0'],
+                    ['creative commons: attribution 2.5', 'by/2.5'],
+                    ['creative commons: attribution - non derived work 2.5', 'by-nd/2.5'],
+                    ['creative commons: attribution - non derived work - non commercial 2.5', 'by-nc-nd/2.5'],
+                    ['creative commons: attribution - non commercial 2.5', 'by-nc/2.5'],
+                    ['creative commons: attribution - non commercial - share alike 2.5', 'by-nc-sa/2.5'],
+                    ['creative commons: attribution - share alike 2.5', 'by-sa/2.5']
+                ];
+                for (var i = 0; i < licenseMappings.length; i++) {
+                    if (licenseMappings[i][0] === license) {
+                        var type = licenseMappings[i][1].replace('/', ' ').toUpperCase();
+                        var css = 'cc cc-' + licenseMappings[i][1].split('/')[0];
+                        formattedLicense = '<a href="https://creativecommons.org/licenses/' + licenseMappings[i][1] + '/" rel="license" class="' + css + '"><span></span>Creative Commons ' + type + '</a>';
+                        break;
+                    }
                 }
             }
         }

@@ -4,7 +4,8 @@
  * Generates a single-page HTML preview for printing.
  * Wraps PageRenderer (Single Page export logic) and patches paths for browser preview.
  */
-import {
+import type {
+    ExportAsset,
     ExportDocument,
     ExportPage,
     ExportComponent,
@@ -12,7 +13,7 @@ import {
     AssetProvider,
     LatexPreRenderResult,
     MermaidPreRenderResult,
-} from '../../interfaces';
+} from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 
@@ -462,14 +463,7 @@ ${logoCss}
         this.assetFilenameMap = new Map();
 
         try {
-            const assets = await this.assets.getAllAssets();
-            console.log(`[PrintPreview] Building asset map for ${assets.length} assets`);
-
-            if (assets.length > 0) {
-                console.log('[PrintPreview] First asset sample:', assets[0]);
-            }
-
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 // Create Blob URL
                 let blobUrl = '';
                 if (asset.data) {
@@ -488,15 +482,32 @@ ${logoCss}
                 }
 
                 if (blobUrl) {
-                    this.assetExportPathMap.set(asset.id, blobUrl);
+                    this.assetExportPathMap!.set(asset.id, blobUrl);
                     if (asset.filename) {
-                        this.assetFilenameMap.set(asset.filename, blobUrl);
+                        this.assetFilenameMap!.set(asset.filename, blobUrl);
                     }
                 }
-            }
+            };
+
+            await this.iterateAssets(processAsset);
             console.log('[PrintPreview] Asset map built. Size:', this.assetExportPathMap.size);
         } catch (e) {
             console.warn('[PrintPreviewExporter] Failed to build asset map:', e);
+        }
+    }
+
+    /**
+     * Iterate over all assets using the most efficient method available.
+     * Uses forEachAsset() when supported (streaming), otherwise falls back to getAllAssets().
+     */
+    private async iterateAssets(callback: (asset: ExportAsset) => Promise<void>): Promise<void> {
+        if (this.assets!.forEachAsset) {
+            await this.assets!.forEachAsset(callback);
+        } else {
+            const assets = await this.assets!.getAllAssets();
+            for (const asset of assets) {
+                await callback(asset);
+            }
         }
     }
 

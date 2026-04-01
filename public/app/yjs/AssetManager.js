@@ -21,7 +21,8 @@
  *
  * Cache API Persistence:
  * - putAsset() and putBlob() write to both memory and Cache API
- * - getBlob() checks memory first, then falls back to Cache API
+ * - getBlob() checks memory first, then falls back to Cache API without
+ *   repopulating blobCache by default
  * - deleteAsset() removes from both memory and Cache API
  * - cleanup() clears the entire project cache
  * - Per-project isolation via cache name: exe-assets-{projectId}
@@ -65,6 +66,40 @@ class AssetManager {
 
     // Yjs bridge reference (set externally) - source of truth for metadata
     this.yjsBridge = null;
+
+    // Cache API persistence may be unavailable under custom schemes such as
+    // app:// in Electron. Disable repeated attempts after the first hard failure
+    // to avoid thousands of slow exceptions during large imports.
+    this.cachePersistenceDisabled = false;
+  }
+
+  /**
+   * Cache API only accepts HTTP(S) requests. In Electron app:// mode we use a
+   * synthetic HTTPS URL so the same cache can still be used when supported.
+   * @param {string} id
+   * @returns {string}
+   * @private
+   */
+  _getCacheRequestUrl(id) {
+    const path = `/asset/${id}`;
+    const protocol = window.location?.protocol || '';
+    if (protocol === 'http:' || protocol === 'https:') {
+      return path;
+    }
+    return `https://cache.exelearning.invalid${path}`;
+  }
+
+  /**
+   * Disable Cache API persistence after an unrecoverable runtime failure.
+   * @param {Error} error
+   * @private
+   */
+  _disableCachePersistence(error) {
+    if (this.cachePersistenceDisabled) {
+      return;
+    }
+    this.cachePersistenceDisabled = true;
+    console.warn('[AssetManager] Cache API persistence disabled:', error.message);
   }
 
   /**
@@ -136,22 +171,43 @@ class AssetManager {
   }
 
   /**
+   * Resolve Cache API storage in browser and test environments.
+   * @returns {CacheStorage|null}
+   * @private
+   */
+  _getCacheStorage() {
+    if (typeof globalThis !== 'undefined' && globalThis.caches) {
+      return globalThis.caches;
+    }
+
+    if (typeof window !== 'undefined' && window.caches) {
+      return window.caches;
+    }
+
+    return null;
+  }
+
+  /**
    * Store blob in Cache API for persistence across page reloads
    * @param {string} id - Asset UUID
    * @param {Blob} blob - Asset blob
    * @private
    */
   async _putToCache(id, blob) {
-    if (!('caches' in window)) return; // Cache API not supported
+    const cacheStorage = this._getCacheStorage();
+    if (!cacheStorage || this.cachePersistenceDisabled) return; // Cache API not supported
 
     try {
-      const cache = await caches.open(this.getCacheName());
+      const cache = await cacheStorage.open(this.getCacheName());
       const response = new Response(blob, {
         headers: { 'Content-Type': blob.type || 'application/octet-stream' }
       });
-      await cache.put(`/asset/${id}`, response);
+      await cache.put(this._getCacheRequestUrl(id), response);
     } catch (e) {
       console.warn('[AssetManager] Cache API write failed:', e.message);
+      if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
+        this._disableCachePersistence(e);
+      }
     }
   }
 
@@ -162,16 +218,20 @@ class AssetManager {
    * @private
    */
   async _getFromCache(id) {
-    if (!('caches' in window)) return null;
+    const cacheStorage = this._getCacheStorage();
+    if (!cacheStorage || this.cachePersistenceDisabled) return null;
 
     try {
-      const cache = await caches.open(this.getCacheName());
-      const response = await cache.match(`/asset/${id}`);
+      const cache = await cacheStorage.open(this.getCacheName());
+      const response = await cache.match(this._getCacheRequestUrl(id));
       if (response) {
         return await response.blob();
       }
     } catch (e) {
       console.warn('[AssetManager] Cache API read failed:', e.message);
+      if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
+        this._disableCachePersistence(e);
+      }
     }
     return null;
   }
@@ -182,11 +242,12 @@ class AssetManager {
    * @private
    */
   async _deleteFromCache(id) {
-    if (!('caches' in window)) return;
+    const cacheStorage = this._getCacheStorage();
+    if (!cacheStorage || this.cachePersistenceDisabled) return;
 
     try {
-      const cache = await caches.open(this.getCacheName());
-      await cache.delete(`/asset/${id}`);
+      const cache = await cacheStorage.open(this.getCacheName());
+      await cache.delete(this._getCacheRequestUrl(id));
     } catch (e) {
       // Ignore delete errors
     }
@@ -197,10 +258,11 @@ class AssetManager {
    * Called on project close or after successful save
    */
   async clearCache() {
-    if (!('caches' in window)) return;
+    const cacheStorage = this._getCacheStorage();
+    if (!cacheStorage || this.cachePersistenceDisabled) return;
 
     try {
-      await caches.delete(this.getCacheName());
+      await cacheStorage.delete(this.getCacheName());
       Logger.log('[AssetManager] Cache cleared');
     } catch (e) {
       console.warn('[AssetManager] Cache clear failed:', e.message);
@@ -444,11 +506,20 @@ class AssetManager {
       createdAt: asset.createdAt || new Date().toISOString()
     });
 
-    // 2. Store blob in memory
+    // 2. Store blob in memory temporarily (for immediate use by callers)
     this.blobCache.set(asset.id, asset.blob);
 
-    // 3. Persist to Cache API (background, non-blocking)
-    this._putToCache(asset.id, asset.blob).catch(() => {});
+    // 3. Persist to Cache API, then evict from memory to save RAM.
+    // Blob URLs (URL.createObjectURL) keep the blob alive via browser ref-counting,
+    // so DOM elements continue to work. Any code needing the raw Blob can use
+    // getBlob() which falls back to Cache API.
+    this._putToCache(asset.id, asset.blob).then(() => {
+      setTimeout(() => {
+        this.blobCache.delete(asset.id);
+      }, 0);
+    }).catch(() => {
+      // Keep in memory if Cache API fails
+    });
   }
 
   /**
@@ -460,29 +531,52 @@ class AssetManager {
    */
   async putBlob(id, blob) {
     this.blobCache.set(id, blob);
-    // Also persist to Cache API
-    this._putToCache(id, blob).catch(() => {});
+    // Persist to Cache API, then evict from memory to save RAM
+    this._putToCache(id, blob).then(() => {
+      setTimeout(() => {
+        this.blobCache.delete(id);
+      }, 0);
+    }).catch(() => {
+      // Keep in memory if Cache API fails
+    });
   }
 
   /**
-   * Get blob from memory
+   * Get blob from memory or Cache API.
    * @param {string} id - Asset UUID
+   * @param {Object} options
+   * @param {boolean} options.restoreToMemory - Rehydrate blobCache from Cache API (default: false)
    * @returns {Promise<Blob|null>}
    */
-  async getBlob(id) {
+  async getBlob(id, options = {}) {
+    const { restoreToMemory = false } = options;
+
     // 1. Check in-memory cache first (fastest)
     const memBlob = this.blobCache.get(id);
     if (memBlob) return memBlob;
 
     // 2. Fallback to Cache API (survives page reload)
+    // Do NOT re-add to blobCache — Cache API is fast enough (~5ms) and
+    // keeping blobs in memory causes unbounded RAM growth for large projects.
     const cachedBlob = await this._getFromCache(id);
     if (cachedBlob) {
-      // Restore to memory cache for faster subsequent access
-      this.blobCache.set(id, cachedBlob);
+      if (restoreToMemory) {
+        this.blobCache.set(id, cachedBlob);
+      }
       return cachedBlob;
     }
 
     return null;
+  }
+
+  /**
+   * Get blob for export/preview without repopulating blobCache from Cache API.
+   * This keeps the editor working set bounded after save().
+   * @param {string} id - Asset UUID
+   * @returns {Promise<Blob|null>}
+   */
+  async getBlobForExport(id) {
+    return this.getBlob(id, { restoreToMemory: false });
   }
 
   /**
@@ -1120,6 +1214,27 @@ class AssetManager {
     if (filename) {
       const ext = filename.toLowerCase().split('.').pop();
       return ext === 'html' || ext === 'htm';
+    }
+    return false;
+  }
+
+  /**
+   * @private
+   */
+  static IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'ico', 'avif', 'tiff', 'tif']);
+
+  /**
+   * Check if a MIME type or filename indicates an image
+   * @param {string} mimeType - MIME type
+   * @param {string} filename - Filename
+   * @returns {boolean} True if image
+   * @private
+   */
+  _isImageAsset(mimeType, filename) {
+    if (mimeType && mimeType.startsWith('image/')) return true;
+    if (filename) {
+      const ext = filename.toLowerCase().split('.').pop();
+      return AssetManager.IMAGE_EXTENSIONS.has(ext);
     }
     return false;
   }
@@ -1769,36 +1884,39 @@ class AssetManager {
   }
 
   /**
-   * Get assets pending upload
+   * Get assets pending upload with blobs loaded.
+   * Loads blobs for ALL pending assets. For memory-efficient uploads,
+   * prefer getPendingAssetsMetadata() + getPendingAssetsBatch().
    * @returns {Promise<Array>}
    */
   async getPendingAssets() {
-    // Get metadata from Yjs and filter by uploaded=false
-    const allMetadata = this.getAllAssetsMetadata();
-    const pendingMetadata = allMetadata.filter(a => a.uploaded === false);
+    const pendingMetadata = this.getPendingAssetsMetadata();
+    if (pendingMetadata.length === 0) return [];
+    return this.getPendingAssetsBatch(pendingMetadata);
+  }
 
-    if (pendingMetadata.length === 0) {
-      return [];
-    }
-
-    // Get blobs for pending assets (needed for upload)
-    const pendingAssets = [];
-    for (const meta of pendingMetadata) {
-      const blob = await this.getBlob(meta.id);
+  /**
+   * Load blobs for a specific batch of asset IDs.
+   * Used for memory-efficient streaming uploads — load blobs only when needed.
+   * @param {Array<Object>} metadataList - Array of metadata objects (from getPendingAssetsMetadata)
+   * @returns {Promise<Array>} Array of assets with blobs loaded
+   */
+  async getPendingAssetsBatch(metadataList, options = {}) {
+    const { restoreToMemory = true } = options;
+    const assets = [];
+    for (const meta of metadataList) {
+      const blob = await this.getBlob(meta.id, { restoreToMemory });
       if (blob) {
-        pendingAssets.push({
+        assets.push({
           ...meta,
           projectId: this.projectId,
           blob
         });
       } else {
-        // Asset metadata exists but blob not cached locally
-        // This can happen when another client added the asset
-        Logger.log(`[AssetManager] Pending asset ${meta.id.substring(0, 8)}... has no local blob`);
+        Logger.log(`[AssetManager] Pending asset ${meta.id.substring(0, 8)}... has no local blob (batch)`);
       }
     }
-
-    return pendingAssets;
+    return assets;
   }
 
   /**
@@ -1819,7 +1937,46 @@ class AssetManager {
       uploaded: true
     });
 
+    // Evict from memory cache - blob is safely on server + Cache API
+    this.releaseUploadedBlob(id);
+
     Logger.log(`[AssetManager] Marked ${id.substring(0, 8)}... as uploaded via Yjs`);
+  }
+
+  /**
+   * Evict a blob from the in-memory cache.
+   * The blob remains available via Cache API fallback in getBlob().
+   * @param {string} id - Asset UUID
+   */
+  evictFromMemoryCache(id) {
+    this.releaseUploadedBlob(id);
+  }
+
+  /**
+   * Release a blob from the in-memory blobCache after successful upload.
+   * Keeps blobURLCache intact so existing blob:// URLs in the editor remain valid.
+   * Cache API entry is intentionally preserved — getBlob() needs it as fallback
+   * for post-save operations (export, preview, re-rendering).
+   * Cache API is cleaned up on project close via cleanup().
+   * @param {string} id - Asset UUID
+   */
+  releaseUploadedBlob(id) {
+    if (this.blobCache.has(id)) {
+      this.blobCache.delete(id);
+      Logger.log(`[AssetManager] Released blob from memory for ${id.substring(0, 8)}...`);
+    }
+  }
+
+  /**
+   * Get metadata-only for pending (not yet uploaded) assets.
+   * Unlike getPendingAssets(), this does NOT load blobs into memory.
+   * @returns {Array} Array of metadata objects (no blob property)
+   */
+  getPendingAssetsMetadata() {
+    const allMetadata = this.getAllAssetsMetadata();
+    return allMetadata
+      .filter(a => a.uploaded === false)
+      .map(meta => ({ ...meta, projectId: this.projectId }));
   }
 
   /**
@@ -2299,6 +2456,43 @@ class AssetManager {
 
       // Not HTML, let Phase 2 handle it
       return fullMatch;
+    });
+
+    // Phase 1.75: Handle <a> tags with asset:// hrefs
+    // Add download="filename" for non-image files so the browser uses the original name.
+    // Images are skipped to preserve lightbox behavior.
+    // Pattern: <a ... href="asset://uuid/filename" ...>...</a>  (self-closing not valid for <a>)
+    const anchorAssetRegex = /(<a\b[^>]*?)href=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.[a-z0-9]+)?(?:\/([^"'&]+))?)\2([^>]*>)([\s\S]*?)(<\/a>)/gi;
+
+    resolvedHTML = resolvedHTML.replace(anchorAssetRegex, (fullMatch, beforeHref, quote, assetUrl, assetId, urlFilename, afterHref, content, closingTag) => {
+      const blobURL = this.blobURLCache.get(assetId);
+      const resolvedUrl = blobURL || (usePlaceholder ? this.generatePlaceholder('Loading...', 'loading') : assetUrl);
+
+      if (!blobURL) {
+        this.missingAssets.add(assetId);
+      }
+
+      // Determine filename: prefer metadata, fallback to URL path
+      const metadata = this.getAssetMetadata(assetId);
+      let filename = metadata?.filename;
+      if (!filename && urlFilename) {
+        try { filename = decodeURIComponent(urlFilename); } catch { filename = urlFilename; }
+      }
+
+      // Add download attribute for non-image files
+      let downloadAttr = '';
+      if (filename && !this._isImageAsset(metadata?.mime, filename)) {
+        downloadAttr = ` download="${filename.replace(/"/g, '&quot;')}"`;
+      }
+
+      // Fix corrupted text content: if anchor text is an asset:// URL (no child HTML elements),
+      // replace it with the filename. This recovers documents where blob URLs were saved as text.
+      let resolvedContent = content;
+      if (filename && !content.includes('<') && /^\s*asset:\/\//.test(content)) {
+        resolvedContent = filename;
+      }
+
+      return `${beforeHref}href=${quote}${resolvedUrl}${quote}${downloadAttr}${afterHref}${resolvedContent}${closingTag}`;
     });
 
     // Phase 2: Handle any remaining asset:// URLs (video, audio, background-image, etc.)
@@ -4129,6 +4323,7 @@ class AssetManager {
           uploaded: true
         };
         await this.putAsset(updatedAsset);
+        await this._putToCache(assetId, blob);
 
         // Create blob URL and cache it
         try {
@@ -4157,6 +4352,7 @@ class AssetManager {
         folderPath: metadata.folderPath !== undefined ? metadata.folderPath : (existing.folderPath || '')
       };
       await this.putAsset(reusedAsset);
+      await this._putToCache(assetId, blob);
       Logger.log(`[AssetManager] Stored asset from server (reused): ${assetId.substring(0, 8)}...`);
       return;
     }
@@ -4177,6 +4373,7 @@ class AssetManager {
     };
 
     await this.putAsset(asset);
+    await this._putToCache(assetId, blob);
     Logger.log(`[AssetManager] Stored asset from server: ${assetId.substring(0, 8)}...`);
   }
 
@@ -4363,10 +4560,12 @@ class AssetManager {
    * @returns {boolean} True if there are unsaved local blobs
    */
   hasUnsavedAssets() {
-    // Check if any assets with local blobs have not been uploaded
+    // Check if any assets have not been uploaded to the server.
+    // The uploaded flag in Yjs metadata is the source of truth —
+    // blobs may have been evicted from blobCache to save memory.
     const allMetadata = this.getAllAssetsMetadata();
     for (const meta of allMetadata) {
-      if (!meta.uploaded && this.blobCache.has(meta.id)) {
+      if (!meta.uploaded) {
         return true;
       }
     }
@@ -4375,13 +4574,13 @@ class AssetManager {
 
   /**
    * Get count of unsaved assets (for UI display)
-   * @returns {number} Number of assets with local blobs not yet uploaded
+   * @returns {number} Number of assets not yet uploaded
    */
   getUnsavedAssetCount() {
     const allMetadata = this.getAllAssetsMetadata();
     let count = 0;
     for (const meta of allMetadata) {
-      if (!meta.uploaded && this.blobCache.has(meta.id)) {
+      if (!meta.uploaded) {
         count++;
       }
     }
@@ -4515,8 +4714,15 @@ window.simplifyMediaElements = function(html) {
 
   let modified = 0;
 
+  // Mark video elements that have <source> children (avoids :has() which is unsupported in Chrome < 105)
+  doc.querySelectorAll('video').forEach((video) => {
+    if (video.querySelector('source')) {
+      video.classList.add('exe-video-with-source');
+    }
+  });
+
   // Find all video elements with class "mediaelement" or with source children
-  doc.querySelectorAll('video.mediaelement, video:has(source)').forEach((video) => {
+  doc.querySelectorAll('video.mediaelement, video.exe-video-with-source').forEach((video) => {
     // Get the source URL - either from <source> child or from video.src
     let src = video.getAttribute('src') || '';
     const sourceEl = video.querySelector('source');
@@ -4534,7 +4740,7 @@ window.simplifyMediaElements = function(html) {
     const width = video.getAttribute('width') || '';
     const height = video.getAttribute('height') || '';
     const poster = video.getAttribute('poster') || '';
-    const className = video.className.replace('mediaelement', '').trim();
+    const className = video.className.replace('mediaelement', '').replace('exe-video-with-source', '').trim();
 
     // Create simple video element
     const newVideo = doc.createElement('video');
@@ -4556,8 +4762,14 @@ window.simplifyMediaElements = function(html) {
     modified++;
   });
 
-  // Also simplify audio elements with source children
-  doc.querySelectorAll('audio:has(source)').forEach((audio) => {
+  // Also simplify audio elements with source children (avoids :has() which is unsupported in Chrome < 105)
+  doc.querySelectorAll('audio').forEach((audio) => {
+    if (audio.querySelector('source')) {
+      audio.classList.add('exe-audio-with-source');
+    }
+  });
+
+  doc.querySelectorAll('audio.exe-audio-with-source').forEach((audio) => {
     let src = audio.getAttribute('src') || '';
     const sourceEl = audio.querySelector('source');
     if (sourceEl) {
@@ -4567,7 +4779,7 @@ window.simplifyMediaElements = function(html) {
     if (!src) return;
 
     const type = sourceEl?.getAttribute('type') || '';
-    const className = audio.className;
+    const className = audio.className.replace('exe-audio-with-source', '').trim();
 
     const newAudio = doc.createElement('audio');
     newAudio.setAttribute('src', src);

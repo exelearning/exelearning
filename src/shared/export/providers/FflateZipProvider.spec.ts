@@ -147,6 +147,41 @@ describe('FflateZipProvider', () => {
                 // Even empty ZIP has header
                 expect(zipBuffer.length).toBeGreaterThan(0);
             });
+
+            it('preserves content and records text vs binary compression stats', async () => {
+                const archive = provider.createZip();
+                archive.addFile('content/page.html', '<html><body>Hello</body></html>');
+                archive.addFile('content/image.png', new Uint8Array([137, 80, 78, 71, 1, 2, 3, 4]));
+
+                const zipBuffer = await archive.generate();
+                const extracted = unzipSync(zipBuffer);
+
+                expect(new TextDecoder().decode(extracted['content/page.html'])).toBe(
+                    '<html><body>Hello</body></html>',
+                );
+                expect(Array.from(extracted['content/image.png'])).toEqual([137, 80, 78, 71, 1, 2, 3, 4]);
+                expect(provider.getLastGenerateStats()).toEqual({
+                    deflatedFiles: 1,
+                    storedFiles: 1,
+                    deflatedBytes: 31,
+                    storedBytes: 8,
+                });
+            });
+
+            it('tracks compression stats for the last generated ZIP', async () => {
+                const archive = provider.createZip();
+                archive.addFile('content/page.html', '<html><body>Hello</body></html>');
+                archive.addFile('content/image.png', new Uint8Array([137, 80, 78, 71, 1, 2, 3, 4]));
+
+                await archive.generate();
+
+                expect(provider.getLastGenerateStats()).toEqual({
+                    deflatedFiles: 1,
+                    storedFiles: 1,
+                    deflatedBytes: 31,
+                    storedBytes: 8,
+                });
+            });
         });
 
         describe('reset', () => {

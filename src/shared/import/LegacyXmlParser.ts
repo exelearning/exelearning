@@ -22,6 +22,7 @@ import type { Logger } from './interfaces';
 import { defaultLogger, FEEDBACK_TRANSLATIONS } from './interfaces';
 import { LegacyHandlerRegistry } from './legacy-handlers';
 import type { IdeviceHandlerContext } from './legacy-handlers';
+import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 
 /**
  * Metadata extracted from legacy Python pickle format
@@ -1454,6 +1455,10 @@ export class LegacyXmlParser {
                         this.logger.log(`[LegacyXmlParser] Handler block properties:`, blockProps);
                     }
                 }
+            }
+
+            if (idevice.htmlView) {
+                idevice.htmlView = stripLegacyExeTextWrapper(idevice.htmlView);
             }
 
             // Apply iDevice type detection based on content

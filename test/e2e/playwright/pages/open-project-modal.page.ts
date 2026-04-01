@@ -368,4 +368,28 @@ export class OpenProjectModalPage {
         );
         return !disabled;
     }
+
+    /**
+     * Get checkbox count for the currently visible project list.
+     */
+    async getVisibleCheckboxCount(): Promise<number> {
+        return await this.projectList.locator('.ode-check').count();
+    }
+
+    /**
+     * Check whether a project exposes the row delete action.
+     */
+    async projectHasDeleteAction(odeId: string): Promise<boolean> {
+        const deleteBtn = this.projectList
+            .locator(`.ode-row[ode-id="${odeId}"] .open-user-ode-file-action-delete`)
+            .first();
+        return (await deleteBtn.count()) > 0;
+    }
+
+    /**
+     * Check whether the modal footer currently shows a bulk delete button.
+     */
+    async hasFooterDeleteButton(): Promise<boolean> {
+        return (await this.deleteButton.count()) > 0 && (await this.deleteButton.isVisible().catch(() => false));
+    }
 }

@@ -38,6 +38,13 @@ const browserAliasPlugin = {
                 return { path: path.join(projectRoot, 'src/shared/export/browser/xml-validator-shim.ts') };
             }
         });
+
+        // Redirect translation service to browser shim (uses fs/path for XLF file reading)
+        build.onResolve({ filter: /services\/translation$/ }, (args) => {
+            if (isFromSourceFiles(args.importer)) {
+                return { path: path.join(projectRoot, 'src/shared/export/browser/translation-shim.ts') };
+            }
+        });
     },
 };
 

@@ -89,7 +89,7 @@ export async function exportPageAndDownload(nodeId, structureEngine) {
     // Get Yjs bridge and dependencies
     const yjsBridge = eXeLearning.app.project._yjsBridge;
     if (!yjsBridge) {
-        throw new Error(_('Yjs bridge not initialized'));
+        throw new Error(_('Collaboration service not ready'));
     }
 
     const documentManager = yjsBridge.documentManager;

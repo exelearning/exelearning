@@ -324,6 +324,80 @@ describe('LegacyXmlParser', () => {
             expect(idevice.icon).toBe('book'); // 'reading' maps to 'book'
         });
 
+        it('should remove outer exe-text wrapper in final parsed htmlView', () => {
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Test Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Free Text Title"/>
+              <string role="key" value="content"/>
+              <unicode value="&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;Imported text&lt;/p&gt;&lt;/div&gt;"/>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+            const idevice = result.pages[0]?.blocks[0]?.idevices[0];
+
+            expect(idevice?.htmlView).toBe('<p>Imported text</p>');
+            expect(idevice?.htmlView).not.toContain('class="exe-text"');
+        });
+
+        it('should remove exe-text wrapper and keep trailing legacy feedback siblings', () => {
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Test Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Free Text"/>
+              <string role="key" value="content"/>
+              <unicode value="&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;Main&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;iDevice_buttons feedback-button js-required&quot;&gt;&lt;input type=&quot;button&quot; class=&quot;feedbackbutton&quot; value=&quot;Info&quot; /&gt;&lt;/div&gt;&lt;div class=&quot;feedback js-feedback js-hidden&quot;&gt;Info content&lt;/div&gt;"/>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+            const idevice = result.pages[0]?.blocks[0]?.idevices[0];
+
+            expect(idevice?.htmlView).toContain('<p>Main</p>');
+            expect(idevice?.htmlView).toContain('iDevice_buttons feedback-button');
+            expect(idevice?.htmlView).toContain('Info content');
+            expect(idevice?.htmlView).not.toContain('<div class="exe-text">');
+        });
+
         it('should handle page hierarchy', () => {
             const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
 <instance class="exe.engine.package.Package" reference="1">

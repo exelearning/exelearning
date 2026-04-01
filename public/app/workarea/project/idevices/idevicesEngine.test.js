@@ -375,6 +375,7 @@ describe('IdevicesEngine', () => {
             expect(engine.mode).toBe('edition');
             expect(engine.nodeContentElement.getAttribute('mode')).toBe('edition');
         });
+
     });
 
     describe('isIdeviceInEdition', () => {
@@ -1802,7 +1803,7 @@ describe('IdevicesEngine', () => {
             global.$exeGames = { init: vi.fn() };
             global.$exeHighlighter = { init: vi.fn() };
             global.$exeABCmusic = { init: vi.fn() };
-            global.$exe = { init: vi.fn() };
+            global.$exe = { init: vi.fn(), setMultimediaGalleries: vi.fn() };
         });
 
         afterEach(() => {
@@ -3303,7 +3304,7 @@ describe('IdevicesEngine', () => {
             global.$exeGames = { init: vi.fn() };
             global.$exeHighlighter = { init: vi.fn() };
             global.$exeABCmusic = { init: vi.fn() };
-            global.$exe = { init: vi.fn() };
+            global.$exe = { init: vi.fn(), setMultimediaGalleries: vi.fn() };
         });
 
         it('initializes $exeFX', () => {

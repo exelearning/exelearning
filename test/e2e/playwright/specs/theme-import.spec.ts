@@ -119,18 +119,18 @@ test.describe('Theme Import from ELPX', () => {
         await expect
             .poll(
                 async () => {
-                    return await page.evaluate(() => {
-                        try {
+                    try {
+                        return await page.evaluate(() => {
                             const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
                             if (!bridge) return 0;
                             const yDoc = bridge.getDocumentManager()?.getDoc();
                             if (!yDoc) return 0;
                             const navigation = yDoc.getArray('navigation');
                             return navigation?.length || 0;
-                        } catch {
-                            return 0;
-                        }
-                    });
+                        });
+                    } catch {
+                        return 0;
+                    }
                 },
                 { timeout: 60000, intervals: [250, 500, 1000] },
             )
@@ -139,22 +139,26 @@ test.describe('Theme Import from ELPX', () => {
         // Ensure page has finished any navigation (ELPX import may reload in online mode)
         await page.waitForLoadState('load');
 
-        // Check theme in Yjs metadata (even if not fully installed, it should be recorded)
-        const themeMetadata = await page.evaluate(() => {
-            try {
-                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-                if (!bridge) return null;
-                const documentManager = bridge.getDocumentManager();
-                if (!documentManager?._initialized) return null;
-                const metadata = documentManager.getMetadata();
-                return metadata?.get('theme') || null;
-            } catch {
-                return null;
-            }
-        });
-
-        // Theme should be recorded in metadata (either 'universal' or fallback to default)
-        expect(themeMetadata).toBeDefined();
+        // Check theme in Yjs metadata with retry; import can trigger navigation mid-read in CI.
+        await expect
+            .poll(
+                async () => {
+                    try {
+                        return await page.evaluate(() => {
+                            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                            if (!bridge) return null;
+                            const documentManager = bridge.getDocumentManager();
+                            if (!documentManager?._initialized) return null;
+                            const metadata = documentManager.getMetadata();
+                            return metadata?.get('theme') || null;
+                        });
+                    } catch {
+                        return null;
+                    }
+                },
+                { timeout: 60000, intervals: [250, 500, 1000] },
+            )
+            .not.toBeNull();
     });
 
     /**

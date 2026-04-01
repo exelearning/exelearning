@@ -273,7 +273,7 @@
         <div id="sidenav-overlay" class="sidenav-overlay"></div>
         <aside id="stylessidenav" class="sidenav" role="complementary">
             <div class="content-styles-header">
-                <h1 class="styles-title">Styles</h1>
+                <h1 class="styles-title" data-i18n="Styles">Styles</h1>
                 <div id="stylessidenavclose" class="navbar-close">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
@@ -285,12 +285,12 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab"
                                 data-bs-target="#exestylescontent" type="button" role="tab"
-                                aria-controls="exestylescontent" aria-selected="true">System</button>
+                                aria-controls="exestylescontent" aria-selected="true" data-i18n="System">System</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="importedstylescontent-tab" data-bs-toggle="tab"
                                 data-bs-target="#importedstylescontent" type="button" role="tab"
-                                aria-controls="importedstylescontent" aria-selected="false">Imported</button>
+                                aria-controls="importedstylescontent" aria-selected="false" data-i18n="Imported">Imported</button>
                     </li>
                 </ul>
             </div>
@@ -489,11 +489,11 @@
                             recentMenu.appendChild(li);
                         }
                     } else {
-                        recentMenu.innerHTML = '<li class="dropdown-item text-muted">No recent projects</li>';
+                        recentMenu.innerHTML = '<li class="dropdown-item text-muted" data-i18n="No recent projects...">No recent projects...</li>';
                     }
                 } catch (e) {
                     console.log('[Static] Could not list IndexedDB databases');
-                    recentMenu.innerHTML = '<li class="dropdown-item text-muted">No recent projects</li>';
+                    recentMenu.innerHTML = '<li class="dropdown-item text-muted" data-i18n="No recent projects...">No recent projects...</li>';
                 }
             }
         }
@@ -515,7 +515,7 @@
 
         // Delete project
         window.deleteProject = async function(uuid) {
-            if (confirm('Delete this project? This cannot be undone.')) {
+            if (confirm(typeof _ === 'function' ? _('Delete this project?') + ' ' + _('This action cannot be undone.') : 'Delete this project?')) {
                 try {
                     await new Promise((resolve, reject) => {
                         const req = indexedDB.deleteDatabase('exelearning-project-' + uuid);

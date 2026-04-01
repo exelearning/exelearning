@@ -187,3 +187,49 @@
 .abcjs-css-warning {
   display: none;
 }
+
+/* Fix presentation issues (to review) */
+p + .inline.abc-container {
+    margin-top: 1.5em;
+}
+.abc-container.paper-container{
+    background: #fcf9bb;
+    padding: 1em;
+    margin:.5em 0 1.5em 0;
+}
+.inline.abc-container .button-wrapper{
+    display:inline
+}
+ .inline.abc-container .button-wrapper input{
+    padding:0;
+    margin-right:1em;
+    background:none;
+    border:none;
+    text-decoration:underline;
+    color:inherit;
+    opacity:.6
+}
+ .inline.abc-container .button-wrapper input:hover, .inline.abc-container .button-wrapper input:focus{
+    opacity:1
+}
+pre.abc-music{
+    border:1px solid #424242;
+    color: #424242;
+    background: #FFF;
+    padding:.5em;
+    margin-top:.5em;
+    border-radius: 4px;
+}
+.abc-container.audio-container {
+    margin-bottom: 1em;
+}
+ .abcjs-audio{
+    max-width:500px;
+    margin-top: .2em;
+}
+.abcjs-btn{
+    line-height: 1em;
+}
+.abcjs-download-midi {
+    margin-top: .5em;
+}

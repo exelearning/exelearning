@@ -20,6 +20,7 @@ import * as path from 'path';
 import type { Kysely } from 'kysely';
 import type { Database, Asset } from '../../../db/types';
 import type { AssetProvider, ExportAsset } from '../interfaces';
+import { EXTENSION_TO_MIME } from '../constants';
 import {
     findAssetByClientId as findAssetByClientIdDefault,
     findAllAssetsForProject as findAllAssetsForProjectDefault,
@@ -39,36 +40,6 @@ export interface DatabaseAssetProviderQueries {
 const defaultQueries: DatabaseAssetProviderQueries = {
     findAssetByClientId: findAssetByClientIdDefault,
     findAllAssetsForProject: findAllAssetsForProjectDefault,
-};
-
-/**
- * Reverse lookup: extension to MIME type
- */
-const EXTENSION_TO_MIME: Record<string, string> = {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.gif': 'image/gif',
-    '.webp': 'image/webp',
-    '.svg': 'image/svg+xml',
-    '.mp3': 'audio/mpeg',
-    '.mp4': 'video/mp4',
-    '.webm': 'video/webm',
-    '.ogg': 'audio/ogg',
-    '.pdf': 'application/pdf',
-    '.doc': 'application/msword',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.xls': 'application/vnd.ms-excel',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    '.ppt': 'application/vnd.ms-powerpoint',
-    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    '.zip': 'application/zip',
-    '.json': 'application/json',
-    '.xml': 'application/xml',
-    '.txt': 'text/plain',
-    '.html': 'text/html',
-    '.css': 'text/css',
-    '.js': 'application/javascript',
 };
 
 /**
@@ -304,6 +275,129 @@ export class DatabaseAssetProvider implements AssetProvider {
         } catch (error) {
             console.warn(`[DatabaseAssetProvider] Error scanning session assets: ${error}`);
         }
+    }
+
+    /**
+     * Process assets one at a time via callback.
+     * Reads each file from disk sequentially.
+     *
+     * @returns Number of assets processed
+     */
+    async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<number> {
+        let count = 0;
+
+        // Database assets
+        const dbAssets = await this.queries.findAllAssetsForProject(this.db, this.projectId);
+        for (const dbAsset of dbAssets) {
+            if (dbAsset.storage_path && (await fs.pathExists(dbAsset.storage_path))) {
+                try {
+                    const content = await fs.readFile(dbAsset.storage_path);
+                    const folderPath = dbAsset.folder_path || '';
+                    const exportPath = folderPath ? `${folderPath}/${dbAsset.filename}` : dbAsset.filename;
+                    await callback({
+                        id: dbAsset.client_id || String(dbAsset.id),
+                        filename: dbAsset.filename,
+                        originalPath: exportPath,
+                        folderPath,
+                        mime: dbAsset.mime_type || 'application/octet-stream',
+                        data: content,
+                    });
+                    count++;
+                } catch (error) {
+                    console.warn(`[DatabaseAssetProvider] Could not read asset ${dbAsset.id}: ${error}`);
+                }
+            }
+        }
+
+        // Session path assets
+        if (this.sessionPath) {
+            const assetsDir = path.join(this.sessionPath, 'assets');
+            if (await fs.pathExists(assetsDir)) {
+                try {
+                    const entries = await fs.readdir(assetsDir, { withFileTypes: true });
+                    for (const entry of entries) {
+                        if (entry.isDirectory()) {
+                            const assetDir = path.join(assetsDir, entry.name);
+                            const files = await fs.readdir(assetDir);
+                            for (const file of files) {
+                                const filePath = path.join(assetDir, file);
+                                const stat = await fs.stat(filePath);
+                                if (stat.isFile()) {
+                                    const content = await fs.readFile(filePath);
+                                    const ext = path.extname(file).toLowerCase();
+                                    await callback({
+                                        id: entry.name,
+                                        filename: file,
+                                        originalPath: `${entry.name}/${file}`,
+                                        mime: EXTENSION_TO_MIME[ext] || 'application/octet-stream',
+                                        data: content,
+                                    });
+                                    count++;
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`[DatabaseAssetProvider] Error in forEachAsset session scan: ${error}`);
+                }
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * List asset metadata without loading binary data.
+     * Verifies each DB asset's storage_path exists on disk to filter out orphaned records.
+     */
+    async listAssetMetadata(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>> {
+        const result: Array<{ id: string; filename: string; folderPath?: string; mime: string }> = [];
+
+        const dbAssets = await this.queries.findAllAssetsForProject(this.db, this.projectId);
+        for (const dbAsset of dbAssets) {
+            if (dbAsset.storage_path && (await fs.pathExists(dbAsset.storage_path))) {
+                result.push({
+                    id: dbAsset.client_id || String(dbAsset.id),
+                    filename: dbAsset.filename,
+                    folderPath: dbAsset.folder_path || '',
+                    mime: dbAsset.mime_type || 'application/octet-stream',
+                });
+            }
+        }
+
+        // Also scan session path if available
+        if (this.sessionPath) {
+            const assetsDir = path.join(this.sessionPath, 'assets');
+            if (await fs.pathExists(assetsDir)) {
+                try {
+                    const entries = await fs.readdir(assetsDir, { withFileTypes: true });
+                    const seenIds = new Set(result.map(r => r.id));
+
+                    for (const entry of entries) {
+                        if (entry.isDirectory() && !seenIds.has(entry.name)) {
+                            const assetDir = path.join(assetsDir, entry.name);
+                            const files = await fs.readdir(assetDir);
+                            for (const file of files) {
+                                const filePath = path.join(assetDir, file);
+                                const stat = await fs.stat(filePath);
+                                if (stat.isFile()) {
+                                    const ext = path.extname(file).toLowerCase();
+                                    result.push({
+                                        id: entry.name,
+                                        filename: file,
+                                        mime: EXTENSION_TO_MIME[ext] || 'application/octet-stream',
+                                    });
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`[DatabaseAssetProvider] Error scanning session assets metadata: ${error}`);
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
