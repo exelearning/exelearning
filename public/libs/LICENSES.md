@@ -24,6 +24,6 @@
 *   License: SIL Open Font License
     *   The text of the SIL Open Font License can be found at [https://openfontlicense.org/](https://openfontlicense.org/)
 *   License: ISC License
-    *   The text of the ISC License can be found at [https://opensource.org/license/isc-license-txt)
+    *   The text of the ISC License can be found at [https://opensource.org/license/isc)
 *   License: Public Domain
     *   Read more about Public Domain at [https://creativecommons.org/public-domain/](https://creativecommons.org/public-domain/)

@@ -466,8 +466,8 @@ describe('PageRenderer', () => {
             expect(html).toContain('class="page-counter"');
             expect(html).toContain('class="page-counter-current-page">3</strong>'); // 2 + 1
             expect(html).toContain('class="page-counter-total">10</strong>');
-            expect(html).toContain('class="package-title">My Project</h1>');
-            expect(html).toContain('class="page-title">My Page</h2>');
+            expect(html).toContain('class="package-title">My Project</p>');
+            expect(html).toContain('class="page-title">My Page</h1>');
         });
 
         it('should NOT render page counter when addPagination is false (default)', () => {

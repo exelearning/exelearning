@@ -12127,7 +12127,7 @@
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>~Você deve revisar %s&percnt; do conteúdo da atividade antes de concluir o questionário.</target>
+        <target><![CDATA[~Você deve revisar %s&percnt; do conteúdo da atividade antes de concluir o questionário.]]></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
@@ -12233,6 +12233,18 @@
         <source>Finish</source>
         <target>~Concluir</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Alterações não guardadas</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se fechar agora, as suas últimas alterações serão perdidas. Permaneça para guardar o projeto primeiro.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Permanecer</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>~Conteúdo eXeLearning (.elpx)</target>
@@ -12261,7 +12273,7 @@
         <source>Status</source>
         <target>~Estado</target>
       </trans-unit>
-            <trans-unit id="ywu5th0" resname="Default AI Assistant">
+      <trans-unit id="ywu5th0" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Assistente de IA padrão</target>
       </trans-unit>
@@ -12607,7 +12619,7 @@
       </trans-unit>
       <trans-unit id="6jsjpzi" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nome da pasta inválido. Evite caracteres especiais como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nome da pasta inválido. Evite caracteres especiais como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="6oau7im" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12623,7 +12635,7 @@
       </trans-unit>
       <trans-unit id="513eb0z" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nome de arquivo inválido. Evite caracteres especiais como / \ : * ? " < > |</target>
+        <target><![CDATA[~Nome de arquivo inválido. Evite caracteres especiais como / \ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="p2d8hsk" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -13224,10 +13236,6 @@
       <trans-unit id="8joxcty" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
         <target>~Este usuário já é colaborador</target>
-      </trans-unit>
-      <trans-unit id="p7wo1dh" resname="User not found">
-        <source>User not found</source>
-        <target>~Usuário não encontrado</target>
       </trans-unit>
       <trans-unit id="fbsxmvi" resname="Failed to invite user">
         <source>Failed to invite user</source>
@@ -14116,6 +14124,42 @@
       <trans-unit id="fijc7cx" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
+      <trans-unit id="76ro7cw" resname="Skip to content">
+        <source>Skip to content</source>
+        <target>~Ir para o conteúdo</target>
+      </trans-unit>
+      <trans-unit id="jbe9x5e" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target>~Utilizador não encontrado. É possível que esta pessoa ainda não tenha acedido ao eXeLearning e não esteja registada no sistema. Peça-lhe que inicie sessão antes de partilhar.</target>
+      </trans-unit>
+      <trans-unit id="lyvlw08" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target>~Ficheiros temporários detetados</target>
+      </trans-unit>
+      <trans-unit id="dinulrv" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target>~Alguns ficheiros neste conteúdo utilizam ligações blob: que só funcionam nesta página. Se colar este conteúdo noutro lugar, imagens ou ficheiros podem estar em falta. Para reutilizar conteúdo com ficheiros, adicione-os a partir do Gestor de ficheiros ou clone o iDevice.</target>
+      </trans-unit>
+      <trans-unit id="kllo4fv" resname="Caption Text">
+        <source>Caption Text</source>
+        <target>~Texto da legenda</target>
+      </trans-unit>
+      <trans-unit id="vgofaly" resname="Caption Link">
+        <source>Caption Link</source>
+        <target>~Ligação da legenda</target>
+      </trans-unit>
+      <trans-unit id="4jqg2fu" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Classes predefinidas</target>
+      </trans-unit>
+      <trans-unit id="gtan01z" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>~Classes do estilo atual</target>
+      </trans-unit>
+      <trans-unit id="2sfln5z" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Fechar sem salvar</target>
       </trans-unit>
     </body>
   </file>

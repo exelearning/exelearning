@@ -21,7 +21,8 @@
  *
  * Cache API Persistence:
  * - putAsset() and putBlob() write to both memory and Cache API
- * - getBlob() checks memory first, then falls back to Cache API
+ * - getBlob() checks memory first, then falls back to Cache API without
+ *   repopulating blobCache by default
  * - deleteAsset() removes from both memory and Cache API
  * - cleanup() clears the entire project cache
  * - Per-project isolation via cache name: exe-assets-{projectId}
@@ -170,16 +171,34 @@ class AssetManager {
   }
 
   /**
+   * Resolve Cache API storage in browser and test environments.
+   * @returns {CacheStorage|null}
+   * @private
+   */
+  _getCacheStorage() {
+    if (typeof globalThis !== 'undefined' && globalThis.caches) {
+      return globalThis.caches;
+    }
+
+    if (typeof window !== 'undefined' && window.caches) {
+      return window.caches;
+    }
+
+    return null;
+  }
+
+  /**
    * Store blob in Cache API for persistence across page reloads
    * @param {string} id - Asset UUID
    * @param {Blob} blob - Asset blob
    * @private
    */
   async _putToCache(id, blob) {
-    if (!('caches' in window) || this.cachePersistenceDisabled) return; // Cache API not supported
+    const cacheStorage = this._getCacheStorage();
+    if (!cacheStorage || this.cachePersistenceDisabled) return; // Cache API not supported
 
     try {
-      const cache = await caches.open(this.getCacheName());
+      const cache = await cacheStorage.open(this.getCacheName());
       const response = new Response(blob, {
         headers: { 'Content-Type': blob.type || 'application/octet-stream' }
       });
@@ -199,10 +218,11 @@ class AssetManager {
    * @private
    */
   async _getFromCache(id) {
-    if (!('caches' in window) || this.cachePersistenceDisabled) return null;
+    const cacheStorage = this._getCacheStorage();
+    if (!cacheStorage || this.cachePersistenceDisabled) return null;
 
     try {
-      const cache = await caches.open(this.getCacheName());
+      const cache = await cacheStorage.open(this.getCacheName());
       const response = await cache.match(this._getCacheRequestUrl(id));
       if (response) {
         return await response.blob();
@@ -222,10 +242,11 @@ class AssetManager {
    * @private
    */
   async _deleteFromCache(id) {
-    if (!('caches' in window) || this.cachePersistenceDisabled) return;
+    const cacheStorage = this._getCacheStorage();
+    if (!cacheStorage || this.cachePersistenceDisabled) return;
 
     try {
-      const cache = await caches.open(this.getCacheName());
+      const cache = await cacheStorage.open(this.getCacheName());
       await cache.delete(this._getCacheRequestUrl(id));
     } catch (e) {
       // Ignore delete errors
@@ -237,10 +258,11 @@ class AssetManager {
    * Called on project close or after successful save
    */
   async clearCache() {
-    if (!('caches' in window) || this.cachePersistenceDisabled) return;
+    const cacheStorage = this._getCacheStorage();
+    if (!cacheStorage || this.cachePersistenceDisabled) return;
 
     try {
-      await caches.delete(this.getCacheName());
+      await cacheStorage.delete(this.getCacheName());
       Logger.log('[AssetManager] Cache cleared');
     } catch (e) {
       console.warn('[AssetManager] Cache clear failed:', e.message);
@@ -484,11 +506,20 @@ class AssetManager {
       createdAt: asset.createdAt || new Date().toISOString()
     });
 
-    // 2. Store blob in memory
+    // 2. Store blob in memory temporarily (for immediate use by callers)
     this.blobCache.set(asset.id, asset.blob);
 
-    // 3. Persist to Cache API (background, non-blocking)
-    this._putToCache(asset.id, asset.blob).catch(() => {});
+    // 3. Persist to Cache API, then evict from memory to save RAM.
+    // Blob URLs (URL.createObjectURL) keep the blob alive via browser ref-counting,
+    // so DOM elements continue to work. Any code needing the raw Blob can use
+    // getBlob() which falls back to Cache API.
+    this._putToCache(asset.id, asset.blob).then(() => {
+      setTimeout(() => {
+        this.blobCache.delete(asset.id);
+      }, 0);
+    }).catch(() => {
+      // Keep in memory if Cache API fails
+    });
   }
 
   /**
@@ -500,29 +531,35 @@ class AssetManager {
    */
   async putBlob(id, blob) {
     this.blobCache.set(id, blob);
-    // Also persist to Cache API
-    this._putToCache(id, blob).catch(() => {});
+    // Persist to Cache API, then evict from memory to save RAM
+    this._putToCache(id, blob).then(() => {
+      setTimeout(() => {
+        this.blobCache.delete(id);
+      }, 0);
+    }).catch(() => {
+      // Keep in memory if Cache API fails
+    });
   }
 
   /**
    * Get blob from memory or Cache API.
    * @param {string} id - Asset UUID
    * @param {Object} options
-   * @param {boolean} options.restoreToMemory - Rehydrate blobCache from Cache API (default: true)
+   * @param {boolean} options.restoreToMemory - Rehydrate blobCache from Cache API (default: false)
    * @returns {Promise<Blob|null>}
    */
   async getBlob(id, options = {}) {
-    const { restoreToMemory = true } = options;
+    const { restoreToMemory = false } = options;
 
     // 1. Check in-memory cache first (fastest)
     const memBlob = this.blobCache.get(id);
     if (memBlob) return memBlob;
 
     // 2. Fallback to Cache API (survives page reload)
+    // Do NOT re-add to blobCache — Cache API is fast enough (~5ms) and
+    // keeping blobs in memory causes unbounded RAM growth for large projects.
     const cachedBlob = await this._getFromCache(id);
     if (cachedBlob) {
-      // Restore to memory cache for faster subsequent access unless this is an
-      // export/preview-only read that must not repopulate the editor working set.
       if (restoreToMemory) {
         this.blobCache.set(id, cachedBlob);
       }
@@ -1847,16 +1884,6 @@ class AssetManager {
   }
 
   /**
-   * Get metadata for assets pending upload (no blobs loaded).
-   * Use this for quota checks and progress estimation without loading all blobs into memory.
-   * @returns {Array} Array of metadata objects (without blob property)
-   */
-  getPendingAssetsMetadata() {
-    const allMetadata = this.getAllAssetsMetadata();
-    return allMetadata.filter(a => a.uploaded === false);
-  }
-
-  /**
    * Get assets pending upload with blobs loaded.
    * Loads blobs for ALL pending assets. For memory-efficient uploads,
    * prefer getPendingAssetsMetadata() + getPendingAssetsBatch().
@@ -1910,12 +1937,19 @@ class AssetManager {
       uploaded: true
     });
 
-    // Release the raw in-memory blob after successful upload.
-    // Local cached access is still preserved through Cache API / blob URLs
-    // for post-save rendering, preview, and export in the current session.
+    // Evict from memory cache - blob is safely on server + Cache API
     this.releaseUploadedBlob(id);
 
     Logger.log(`[AssetManager] Marked ${id.substring(0, 8)}... as uploaded via Yjs`);
+  }
+
+  /**
+   * Evict a blob from the in-memory cache.
+   * The blob remains available via Cache API fallback in getBlob().
+   * @param {string} id - Asset UUID
+   */
+  evictFromMemoryCache(id) {
+    this.releaseUploadedBlob(id);
   }
 
   /**
@@ -1931,6 +1965,18 @@ class AssetManager {
       this.blobCache.delete(id);
       Logger.log(`[AssetManager] Released blob from memory for ${id.substring(0, 8)}...`);
     }
+  }
+
+  /**
+   * Get metadata-only for pending (not yet uploaded) assets.
+   * Unlike getPendingAssets(), this does NOT load blobs into memory.
+   * @returns {Array} Array of metadata objects (no blob property)
+   */
+  getPendingAssetsMetadata() {
+    const allMetadata = this.getAllAssetsMetadata();
+    return allMetadata
+      .filter(a => a.uploaded === false)
+      .map(meta => ({ ...meta, projectId: this.projectId }));
   }
 
   /**
@@ -4277,6 +4323,7 @@ class AssetManager {
           uploaded: true
         };
         await this.putAsset(updatedAsset);
+        await this._putToCache(assetId, blob);
 
         // Create blob URL and cache it
         try {
@@ -4305,6 +4352,7 @@ class AssetManager {
         folderPath: metadata.folderPath !== undefined ? metadata.folderPath : (existing.folderPath || '')
       };
       await this.putAsset(reusedAsset);
+      await this._putToCache(assetId, blob);
       Logger.log(`[AssetManager] Stored asset from server (reused): ${assetId.substring(0, 8)}...`);
       return;
     }
@@ -4325,6 +4373,7 @@ class AssetManager {
     };
 
     await this.putAsset(asset);
+    await this._putToCache(assetId, blob);
     Logger.log(`[AssetManager] Stored asset from server: ${assetId.substring(0, 8)}...`);
   }
 
@@ -4511,10 +4560,12 @@ class AssetManager {
    * @returns {boolean} True if there are unsaved local blobs
    */
   hasUnsavedAssets() {
-    // Check if any assets with local blobs have not been uploaded
+    // Check if any assets have not been uploaded to the server.
+    // The uploaded flag in Yjs metadata is the source of truth —
+    // blobs may have been evicted from blobCache to save memory.
     const allMetadata = this.getAllAssetsMetadata();
     for (const meta of allMetadata) {
-      if (!meta.uploaded && this.blobCache.has(meta.id)) {
+      if (!meta.uploaded) {
         return true;
       }
     }
@@ -4523,13 +4574,13 @@ class AssetManager {
 
   /**
    * Get count of unsaved assets (for UI display)
-   * @returns {number} Number of assets with local blobs not yet uploaded
+   * @returns {number} Number of assets not yet uploaded
    */
   getUnsavedAssetCount() {
     const allMetadata = this.getAllAssetsMetadata();
     let count = 0;
     for (const meta of allMetadata) {
-      if (!meta.uploaded && this.blobCache.has(meta.id)) {
+      if (!meta.uploaded) {
         count++;
       }
     }

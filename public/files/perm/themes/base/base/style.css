@@ -42,6 +42,8 @@ body.exe-web-site {
 .exe-content .package-title {
     font-size: 1.25rem;
     font-weight: 300;
+    margin-bottom: .4em;
+    line-height: 1.2em;
 }
 
 .exe-content .page-title {
@@ -50,7 +52,7 @@ body.exe-web-site {
     text-align: left;
 }
 
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     color: #333;
     font-size: 1.25rem;
     font-weight: 300;

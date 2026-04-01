@@ -438,6 +438,18 @@ var $eXeListaCotejo = {
         return isNaN(num) ? 0 : num;
     },
 
+    getElectronAPI: function () {
+        try {
+            if (window.electronAPI) return window.electronAPI;
+            if (window.parent && window.parent !== window && window.parent.electronAPI) {
+                return window.parent.electronAPI;
+            }
+        } catch (_e) {
+            // Cross-origin access blocked
+        }
+        return null;
+    },
+
     saveReport: function (instance) {
         const mOptions = $eXeListaCotejo.options[instance],
             divElement = document.getElementById('ctjList-' + instance);
@@ -477,12 +489,24 @@ var $eXeListaCotejo = {
 
                 const fallbackPng = function () {
                     try {
-                        const link = document.createElement('a');
-                        link.href = imgData;
-                        link.download =
+                        const pngName =
                             (mOptions.msgs && mOptions.msgs.msgList
                                 ? mOptions.msgs.msgList
                                 : 'lista') + '.png';
+                        const electronAPI = $eXeListaCotejo.getElectronAPI();
+                        if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                            const base64 = imgData.split(',')[1];
+                            const binaryString = atob(base64);
+                            const bytes = new Uint8Array(binaryString.length);
+                            for (let i = 0; i < binaryString.length; i++) {
+                                bytes[i] = binaryString.charCodeAt(i);
+                            }
+                            electronAPI.saveBufferAs(bytes, 'checklist-png', pngName);
+                            return;
+                        }
+                        const link = document.createElement('a');
+                        link.href = imgData;
+                        link.download = pngName;
                         link.click();
                     } catch (e) {
                         console.error('Error al descargar la imagen:', e);
@@ -536,6 +560,19 @@ var $eXeListaCotejo = {
                             (mOptions.msgs && mOptions.msgs.msgList
                                 ? mOptions.msgs.msgList
                                 : 'lista') + '.pdf';
+
+                        const electronAPI = $eXeListaCotejo.getElectronAPI();
+                        if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                            const blob = pdf.output('blob');
+                            const reader = new FileReader();
+                            reader.onload = function () {
+                                const uint8 = new Uint8Array(reader.result);
+                                electronAPI.saveBufferAs(uint8, 'checklist-pdf', fileName);
+                            };
+                            reader.readAsArrayBuffer(blob);
+                            return true;
+                        }
+
                         pdf.save(fileName);
                         return true;
                     } catch (e) {

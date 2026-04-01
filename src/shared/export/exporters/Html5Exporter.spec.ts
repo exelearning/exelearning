@@ -167,6 +167,64 @@ class MockAssetProvider implements AssetProvider {
     }
 }
 
+// Mock asset provider with forEachAsset support (for memory-efficient preview tests)
+class MockAssetProviderWithForEach extends MockAssetProvider {
+    private assetList: Array<{
+        id: string;
+        filename: string;
+        originalPath: string;
+        folderPath?: string;
+        mime: string;
+        data: Buffer;
+    }> = [];
+
+    addAsset(id: string, filename: string, mime: string, data: Buffer, folderPath?: string): void {
+        this.assetList.push({
+            id,
+            filename,
+            originalPath: `${id}/${filename}`,
+            folderPath,
+            mime,
+            data,
+        });
+    }
+
+    async getAllAssets() {
+        return this.assetList.map(a => ({
+            id: a.id,
+            filename: a.filename,
+            path: a.originalPath,
+            originalPath: a.originalPath,
+            folderPath: a.folderPath,
+            mime: a.mime,
+            data: a.data,
+        }));
+    }
+
+    async forEachAsset(
+        callback: (asset: {
+            id: string;
+            filename: string;
+            originalPath: string;
+            folderPath?: string;
+            mime: string;
+            data: Uint8Array | Blob;
+        }) => void | Promise<void>,
+    ): Promise<void> {
+        const assets = await this.getAllAssets();
+        for (const asset of assets) {
+            await callback({
+                id: asset.id,
+                filename: asset.filename,
+                originalPath: asset.originalPath,
+                folderPath: asset.folderPath,
+                mime: asset.mime,
+                data: asset.data,
+            });
+        }
+    }
+}
+
 // Mock zip provider
 class MockZipProvider implements ZipProvider {
     files = new Map<string, string | Buffer>();
@@ -2456,6 +2514,58 @@ describe('Html5Exporter', () => {
             expect(zip.files.has('theme/icons/icon4.jpg')).toBe(true);
             expect(zip.files.has('theme/icons/icon5.jpeg')).toBe(true);
             expect(zip.files.has('theme/icons/icon6.webp')).toBe(true);
+        });
+    });
+
+    describe('generateForPreview with forEachAsset', () => {
+        it('should use forEachAsset for memory-efficient asset loading in preview', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-preview-1', 'photo.jpg', 'image/jpeg', Buffer.from('jpeg-data'));
+            forEachAssets.addAsset('uuid-preview-2', 'doc.pdf', 'application/pdf', Buffer.from('pdf-data'));
+
+            const previewExporter = new Html5Exporter(document, resources, forEachAssets, zip);
+
+            const files = await previewExporter.generateForPreview();
+
+            expect(files.has('content/resources/photo.jpg')).toBe(true);
+            expect(files.has('content/resources/doc.pdf')).toBe(true);
+        });
+
+        it('should fall back to getAllAssets in preview when forEachAsset is not available', async () => {
+            // Use the regular MockAssetProvider (no forEachAsset)
+            const regularAssets = new MockAssetProvider();
+
+            const previewExporter = new Html5Exporter(document, resources, regularAssets, zip);
+
+            const files = await previewExporter.generateForPreview();
+
+            // Should still work (no assets to add)
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should skip assets without export path in forEachAsset preview path', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-known-prev', 'known.png', 'image/png', Buffer.from('png'));
+
+            // Override forEachAsset to also yield an orphan asset
+            const origForEach = forEachAssets.forEachAsset.bind(forEachAssets);
+            forEachAssets.forEachAsset = async (callback: (asset: any) => void | Promise<void>) => {
+                await origForEach(callback);
+                await callback({
+                    id: 'uuid-orphan-prev',
+                    filename: 'orphan.txt',
+                    originalPath: 'orphan.txt',
+                    mime: 'text/plain',
+                    data: Buffer.from('orphan'),
+                });
+            };
+
+            const previewExporter = new Html5Exporter(document, resources, forEachAssets, zip);
+
+            const files = await previewExporter.generateForPreview();
+
+            expect(files.has('content/resources/known.png')).toBe(true);
+            expect(files.has('content/resources/orphan.txt')).toBe(false);
         });
     });
 });

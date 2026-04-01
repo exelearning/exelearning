@@ -12233,6 +12233,18 @@
         <source>Finish</source>
         <target>Terminare</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Modificări nesalvate</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Dacă închizi acum, ultimele modificări vor fi pierdute. Rămâi pentru a salva proiectul mai întâi.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Rămâi</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>~Conținut eXeLearning (.elpx)</target>
@@ -12261,7 +12273,7 @@
         <source>Status</source>
         <target>~Stare</target>
       </trans-unit>
-            <trans-unit id="r54j2rq" resname="Default AI Assistant">
+      <trans-unit id="r54j2rq" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Asistent AI implicit</target>
       </trans-unit>
@@ -12607,7 +12619,7 @@
       </trans-unit>
       <trans-unit id="iot2q4p" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Numele folderului nu este valid. Evită caractere speciale precum / \\ : * ? " < > |</target>
+        <target>~Numele folderului nu este valid. Evită caractere speciale precum / \\ : * ? " &lt; &gt; |</target>
       </trans-unit>
       <trans-unit id="0xzyfnk" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12623,7 +12635,7 @@
       </trans-unit>
       <trans-unit id="pitu10s" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Numele fișierului nu este valid. Evită caracterele speciale precum / \ : * ? " < > |</target>
+        <target>~Numele fișierului nu este valid. Evită caracterele speciale precum / \\ : * ? " &lt; &gt; |</target>
       </trans-unit>
       <trans-unit id="4zpbjjn" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -13224,10 +13236,6 @@
       <trans-unit id="4zakupe" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
         <target>~Acest utilizator este deja colaborator</target>
-      </trans-unit>
-      <trans-unit id="jhsudis" resname="User not found">
-        <source>User not found</source>
-        <target>~Utilizator nerecunoscut</target>
       </trans-unit>
       <trans-unit id="it6lcc7" resname="Failed to invite user">
         <source>Failed to invite user</source>
@@ -14116,6 +14124,42 @@
       <trans-unit id="2e5y7vp" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
+      <trans-unit id="sarz3lc" resname="Skip to content">
+        <source>Skip to content</source>
+        <target>~Salt la conținut</target>
+      </trans-unit>
+      <trans-unit id="0uqrmd0" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target>~Utilizatorul nu a fost găsit. Este posibil ca această persoană să nu fi accesat încă eXeLearning și să nu fie înregistrată în sistem. Rugați-o să se conecteze înainte de a partaja.</target>
+      </trans-unit>
+      <trans-unit id="uxirrzm" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target>~Fișiere temporare detectate</target>
+      </trans-unit>
+      <trans-unit id="6lq7u1q" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target>~Unele fișiere din acest conținut utilizează link-uri blob: care funcționează doar pe această pagină. Dacă lipiți acest conținut în altă parte, este posibil ca imagini sau fișiere să lipsească. Pentru a reutiliza conținut cu fișiere, adăugați-le din Managerul de fișiere sau clonați iDevice-ul.</target>
+      </trans-unit>
+      <trans-unit id="s6qju87" resname="Caption Text">
+        <source>Caption Text</source>
+        <target>~Text legendă</target>
+      </trans-unit>
+      <trans-unit id="imzfl35" resname="Caption Link">
+        <source>Caption Link</source>
+        <target>~Legătură legendă</target>
+      </trans-unit>
+      <trans-unit id="qfj2u4j" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="50n1sqk" resname="Current style classes">
+        <source>Current style classes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4hmrfbd" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Închideți fără a salva</target>
       </trans-unit>
     </body>
   </file>

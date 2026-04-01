@@ -121,7 +121,7 @@
     "http-proxy-middleware": "^3.0.5",
     "kill-port": "^2.0.1",
     "sass": "^1.97.3",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0",
     "vitest": "^4.0.18",
     "wait-on": "^9.0.4"

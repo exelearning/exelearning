@@ -46,6 +46,8 @@ a {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-bottom: .3em;
+    line-height: 1.2em;
 }
 
 .exe-teacher-mode-toggler .page > header .package-title,
@@ -66,7 +68,7 @@ a {
 .exe-epub .page > header .package-title,
 .exe-epub .siteNav-off .page > header .package-title,
 .exe-ims .page > header .package-title,
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     width: 100%;
 }
 
@@ -124,7 +126,7 @@ main header:not(#head) {
 }
 
 .page > header .package-title,
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     padding-left: 32px;
     color: #282573;
 }
@@ -240,7 +242,7 @@ body#tinymce {
 }
 
 .exe-content .package-title,
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     font-size: 1.7rem;
     text-align: left;
     font-weight: 600;
@@ -1128,7 +1130,7 @@ body.siteNav-off button#searchBarTogger {
     } */
     .page > header .package-title,
     .siteNav-off .page > header .package-title,
-    .exe-single-page .package-header h1 {
+    .exe-single-page .package-header .package-title {
         padding-left: 24px;
     }
     .siteNav-off #siteNavToggler .sr-av {
@@ -1258,7 +1260,7 @@ body.siteNav-off button#searchBarTogger {
     .exe-search-on button#siteNavToggler {
         height: 26px;
     }
-    .exe-single-page .package-header h1 {
+    .exe-single-page .package-header .package-title {
         padding-left: 20px;
         overflow: hidden;
         text-overflow: ellipsis;

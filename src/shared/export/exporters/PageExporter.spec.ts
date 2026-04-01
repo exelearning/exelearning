@@ -314,6 +314,24 @@ describe('PageExporter', () => {
             expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
         });
 
+        it('should NOT include made-with-eXe link in HTML when addExeLink is false', async () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            exporter = new PageExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('made-with-eXe');
+        });
+
+        it('should include made-with-eXe link in HTML when addExeLink is true (default)', async () => {
+            document = new MockDocument({}, samplePages);
+            exporter = new PageExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('made-with-eXe');
+        });
+
         it('should handle logo fetch failure gracefully', async () => {
             resources.fetchExeLogo = async () => {
                 throw new Error('Logo not found');

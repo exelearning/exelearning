@@ -451,6 +451,21 @@ describe('BrowserAssetProvider', () => {
             expect(mockManager.getProjectAssetsCalls).toBe(0);
         });
 
+        it('should process each asset via callback', async () => {
+            mockManager.addAsset('asset1', 'content1', { filename: 'file1.png', mime: 'image/png' });
+            mockManager.addAsset('asset2', 'content2', { filename: 'file2.jpg', mime: 'image/jpeg' });
+
+            const collected: Array<{ id: string; filename: string }> = [];
+            const count = await provider.forEachAsset(async asset => {
+                collected.push({ id: asset.id, filename: asset.filename });
+            });
+
+            expect(count).toBe(2);
+            expect(collected.length).toBe(2);
+            expect(collected.map(a => a.id)).toContain('asset1');
+            expect(collected.map(a => a.id)).toContain('asset2');
+        });
+
         it('should return 0 for empty asset manager', async () => {
             const emptyProvider = new BrowserAssetProvider(new MockAssetManager());
             const count = await emptyProvider.forEachAsset(async () => {});
@@ -467,15 +482,15 @@ describe('BrowserAssetProvider', () => {
 
         it('should convert blobs to Uint8Array', async () => {
             const content = 'Test content';
-            mockManager.addAsset('test', content, { filename: 'test.txt', mime: 'text/plain' });
+            mockManager.addAsset('test-asset', content, { filename: 'test.txt', mime: 'text/plain' });
 
-            let assetData: Uint8Array | null = null;
+            let receivedData: Uint8Array | null = null;
             await provider.forEachAsset(async asset => {
-                assetData = asset.data as Uint8Array;
+                receivedData = asset.data as Uint8Array;
             });
 
-            expect(assetData).toBeInstanceOf(Uint8Array);
-            expect(new TextDecoder().decode(assetData!)).toBe(content);
+            expect(receivedData).toBeInstanceOf(Uint8Array);
+            expect(new TextDecoder().decode(receivedData!)).toBe(content);
         });
 
         it('should use folderPath for originalPath when set', async () => {
@@ -485,12 +500,25 @@ describe('BrowserAssetProvider', () => {
                 mime: 'image/png',
             });
 
-            let originalPath = '';
+            let receivedPath = '';
             await provider.forEachAsset(async asset => {
-                originalPath = asset.originalPath;
+                receivedPath = asset.originalPath;
             });
 
-            expect(originalPath).toBe('images/subfolder/image.png');
+            expect(receivedPath).toBe('images/subfolder/image.png');
+        });
+
+        it('should support async callbacks', async () => {
+            mockManager.addAsset('async-asset', 'content', { filename: 'file.txt' });
+
+            const collected: string[] = [];
+            const count = await provider.forEachAsset(async asset => {
+                await new Promise(resolve => setTimeout(resolve, 1));
+                collected.push(asset.id);
+            });
+
+            expect(count).toBe(1);
+            expect(collected).toEqual(['async-asset']);
         });
 
         it('should handle errors gracefully', async () => {
@@ -523,12 +551,10 @@ describe('BrowserAssetProvider', () => {
             expect(metadata[0].filename).toBe('file1.png');
             expect(metadata[0].folderPath).toBe('images');
             expect(metadata[0].mime).toBe('image/png');
-            // Should NOT have data property
             expect((metadata[0] as any).data).toBeUndefined();
         });
 
         it('should prefer getAllAssetsMetadata over getProjectAssets when available', async () => {
-            // Track whether getProjectAssets was called
             let getProjectAssetsCalled = false;
             const managerWithMetadata = {
                 getProjectAssets: async () => {
@@ -548,7 +574,6 @@ describe('BrowserAssetProvider', () => {
             expect(metadata[0].id).toBe('meta1');
             expect(metadata[0].filename).toBe('file1.png');
             expect(metadata[1].id).toBe('meta2');
-            // Should NOT have called getProjectAssets since getAllAssetsMetadata returned results
             expect(getProjectAssetsCalled).toBe(false);
         });
 
@@ -612,7 +637,6 @@ describe('BrowserAssetProvider', () => {
         });
 
         it('should return the same asset IDs when using getAllAssetsRaw fallback', async () => {
-            // Create a manager where getProjectAssets returns empty but getAllAssetsRaw has assets
             const projectId = 'test-project-id';
             const fallbackManager = {
                 projectId,
@@ -642,7 +666,6 @@ describe('BrowserAssetProvider', () => {
                         projectId,
                     },
                     {
-                        // Different project - should be excluded
                         id: 'other-project',
                         blob: createMockBlob('data3'),
                         mime: 'image/gif',

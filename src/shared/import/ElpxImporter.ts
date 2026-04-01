@@ -1378,16 +1378,51 @@ export class ElpxImporter {
         const escapedIds = Array.from(idRemap.keys()).map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
         const pattern = new RegExp(`(exe-node:)(${escapedIds.join('|')})(#[^"'\\s]*)?`, 'g');
 
+        const replacer = (_m: string, prefix: string, oldId: string, fragment: string | undefined) => {
+            const newId = idRemap.get(oldId) ?? oldId;
+            return `${prefix}${newId}${fragment ?? ''}`;
+        };
+
         for (const page of pageStructures) {
             for (const block of page.blocks) {
                 for (const comp of block.components) {
                     if (comp.htmlView?.includes('exe-node:')) {
-                        comp.htmlView = comp.htmlView.replace(pattern, (_m, prefix, oldId, fragment) => {
-                            const newId = idRemap.get(oldId) ?? oldId;
-                            return `${prefix}${newId}${fragment ?? ''}`;
-                        });
+                        comp.htmlView = comp.htmlView.replace(pattern, replacer);
+                    }
+                    // Also remap links in properties (e.g., textTextarea for text idevices).
+                    // The workarea renders text idevice content from jsonProperties.textTextarea,
+                    // not from htmlView, so these must also be remapped.
+                    if (comp.properties) {
+                        this.remapLinksInObject(comp.properties as Record<string, unknown>, pattern, replacer);
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Recursively remap exe-node: links in all string values of an object.
+     * Mirrors LegacyXmlParser.convertLinksInObject() but for ID remapping.
+     */
+    private remapLinksInObject(
+        obj: Record<string, unknown>,
+        pattern: RegExp,
+        replacer: (m: string, prefix: string, oldId: string, fragment: string | undefined) => string,
+    ): void {
+        for (const key of Object.keys(obj)) {
+            const val = obj[key];
+            if (typeof val === 'string' && val.includes('exe-node:')) {
+                obj[key] = val.replace(pattern, replacer);
+            } else if (Array.isArray(val)) {
+                for (let i = 0; i < val.length; i++) {
+                    if (typeof val[i] === 'string' && val[i].includes('exe-node:')) {
+                        val[i] = val[i].replace(pattern, replacer);
+                    } else if (val[i] && typeof val[i] === 'object') {
+                        this.remapLinksInObject(val[i] as Record<string, unknown>, pattern, replacer);
+                    }
+                }
+            } else if (val && typeof val === 'object') {
+                this.remapLinksInObject(val as Record<string, unknown>, pattern, replacer);
             }
         }
     }

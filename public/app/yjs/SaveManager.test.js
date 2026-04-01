@@ -819,6 +819,41 @@ describe('SaveManager', () => {
         'Failed to upload assets: 413 Payload too large'
       );
     });
+
+    it('loads blobs on-demand via assetManager.getBlob when asset has no blob', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      const mockBlob = new Blob(['loaded-on-demand']);
+      const mockAssetManager = {
+        getBlob: vi.fn().mockResolvedValue(mockBlob),
+        markAssetUploaded: vi.fn(),
+      };
+
+      const assets = [
+        { id: 'lazy-asset', filename: 'lazy.txt', mime: 'text/plain', hash: 'h1' },
+      ];
+
+      await manager.uploadAssetBatch('project-123', assets, mockAssetManager);
+
+      expect(mockAssetManager.getBlob).toHaveBeenCalledWith('lazy-asset');
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    it('skips assets when blob is not available from getBlob', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      const mockAssetManager = {
+        getBlob: vi.fn().mockResolvedValue(null),
+        markAssetUploaded: vi.fn(),
+      };
+
+      const assets = [
+        { id: 'no-blob', filename: 'missing.txt', mime: 'text/plain', hash: 'h1' },
+      ];
+
+      await manager.uploadAssetBatch('project-123', assets, mockAssetManager);
+
+      // FormData should have been sent but with no files (metadata-only JSON still sent)
+      expect(mockFetch).toHaveBeenCalled();
+    });
   });
 
   describe('uploadChunk', () => {
@@ -1159,6 +1194,27 @@ describe('SaveManager', () => {
 
       expect(result.failed).toBe(1);
       expect(result.uploaded).toBe(0);
+    });
+
+    it('separates large and small assets using size metadata when blob is absent', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_UPLOAD_THRESHOLD = 1000;
+
+      // Assets with size metadata only (no blob) - simulates lazy loading
+      const smallAsset = { id: 'small', size: 50, filename: 'small.txt', mime: 'text/plain' };
+      const largeAsset = { id: 'large', size: 2000, filename: 'large.bin', mime: 'application/octet-stream' };
+
+      const uploadLargeSpy = vi.spyOn(manager, 'uploadLargeAssetsChunked').mockResolvedValue({ uploaded: 1, failed: 0 });
+      const uploadBatchSpy = vi.spyOn(manager, 'uploadSmallAssetsBatched').mockResolvedValue({ uploaded: 1, failed: 0 });
+
+      await manager.uploadAssets('project-123', mockBridge.assetManager, [smallAsset, largeAsset], null);
+
+      // Should correctly separate based on size metadata
+      expect(uploadLargeSpy).toHaveBeenCalled();
+      const largeArgs = uploadLargeSpy.mock.calls[0];
+      expect(largeArgs[2][0].id).toBe('large');
+
+      expect(uploadBatchSpy).toHaveBeenCalled();
     });
   });
 
@@ -1586,6 +1642,57 @@ describe('SaveManager', () => {
       await expect(manager.uploadWithSession('project-123', mockBridge.assetManager, assets, null))
         .rejects.toThrow('WebSocket error');
     });
+
+    it('loads blobs on-demand via assetManager.getBlob in session upload', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.setWebSocketHandler(mockWsHandler);
+
+      const mockBlob = new Blob(['on-demand-content']);
+      const mockAssetManager = {
+        getBlob: vi.fn().mockResolvedValue(mockBlob),
+        markAssetUploaded: vi.fn(),
+      };
+
+      // Assets with size metadata but no blob (simulates lazy loading)
+      const assets = [
+        { id: 'lazy-1', size: 18, filename: 'lazy1.txt', mime: 'text/plain' },
+      ];
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ uploaded: 1, failed: 0 }),
+      });
+
+      const result = await manager.uploadWithSession('project-123', mockAssetManager, assets, null);
+
+      expect(mockAssetManager.getBlob).toHaveBeenCalledWith('lazy-1');
+      expect(result.uploaded).toBe(1);
+    });
+
+    it('uses asset.size for totalBytes when blob is not present', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.setWebSocketHandler(mockWsHandler);
+
+      const mockAssetManager = {
+        getBlob: vi.fn().mockResolvedValue(new Blob(['data'])),
+        markAssetUploaded: vi.fn(),
+      };
+
+      // Assets with size metadata only
+      const assets = [
+        { id: 'a1', size: 500, filename: 'a1.txt', mime: 'text/plain' },
+        { id: 'a2', size: 300, filename: 'a2.txt', mime: 'text/plain' },
+      ];
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ uploaded: 2, failed: 0 }),
+      });
+
+      const result = await manager.uploadWithSession('project-123', mockAssetManager, assets, null);
+
+      expect(result.uploaded).toBe(2);
+    });
   });
 
   describe('uploadLargeAssetsChunked', () => {
@@ -1655,6 +1762,58 @@ describe('SaveManager', () => {
       );
 
       expect(onProgress).toHaveBeenCalled();
+    });
+
+    it('loads blobs on-demand via assetManager.getBlob when asset has no blob', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+
+      // Asset with metadata only (no blob) — simulates lazy loading
+      const largeAssets = [
+        { id: 'lazy1', size: 100, filename: 'lazy1.bin' },
+      ];
+
+      const mockBlob = new Blob(['x'.repeat(100)]);
+      const mockAssetManager = {
+        getBlob: vi.fn().mockResolvedValue(mockBlob),
+        markAssetUploaded: vi.fn().mockResolvedValue(),
+      };
+
+      vi.spyOn(manager, 'uploadLargeAsset').mockResolvedValue({ success: true });
+
+      const result = await manager.uploadLargeAssetsChunked(
+        'project-123',
+        mockAssetManager,
+        largeAssets,
+        null,
+        { baseProgress: 0, progressRange: 100 }
+      );
+
+      expect(mockAssetManager.getBlob).toHaveBeenCalledWith('lazy1');
+      expect(result.uploaded).toBe(1);
+    });
+
+    it('skips assets when getBlob returns null', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+
+      const largeAssets = [
+        { id: 'missing1', size: 100, filename: 'missing1.bin' },
+      ];
+
+      const mockAssetManager = {
+        getBlob: vi.fn().mockResolvedValue(null),
+        markAssetUploaded: vi.fn().mockResolvedValue(),
+      };
+
+      const result = await manager.uploadLargeAssetsChunked(
+        'project-123',
+        mockAssetManager,
+        largeAssets,
+        null,
+        { baseProgress: 0, progressRange: 100 }
+      );
+
+      expect(result.uploaded).toBe(0);
+      expect(result.failed).toBe(1);
     });
   });
 
@@ -2077,6 +2236,50 @@ describe('SaveManager', () => {
       await manager.uploadAssetBatch('project-123', assets, mockBridge.assetManager);
 
       expect(mockFetch).toHaveBeenCalled();
+    });
+  });
+
+  describe('createSizeLimitedBatches with size metadata', () => {
+    it('uses asset.size when blob is not present', () => {
+      const manager = new SaveManager(mockBridge);
+
+      const assets = [
+        { id: 'a1', size: 5 * 1024 * 1024, filename: 'a1.bin' },
+        { id: 'a2', size: 5 * 1024 * 1024, filename: 'a2.bin' },
+        { id: 'a3', size: 5 * 1024 * 1024, filename: 'a3.bin' },
+      ];
+
+      // With 15MB total across 3 files, at default 20MB batch size limit,
+      // all should fit in one batch
+      const batches = manager.createSizeLimitedBatches(assets);
+
+      expect(batches.length).toBeGreaterThanOrEqual(1);
+      const totalFiles = batches.reduce((sum, b) => sum + b.length, 0);
+      expect(totalFiles).toBe(3);
+    });
+  });
+
+  describe('estimatePendingUploadBytes prefers size over blob.size', () => {
+    it('uses asset.size when available', () => {
+      const manager = new SaveManager(mockBridge);
+
+      const assets = [
+        { id: 'a1', size: 1000 },
+        { id: 'a2', size: 2000 },
+      ];
+
+      expect(manager.estimatePendingUploadBytes(assets)).toBe(3000);
+    });
+
+    it('falls back to blob.size when size is not set', () => {
+      const manager = new SaveManager(mockBridge);
+
+      const assets = [
+        { id: 'a1', blob: { size: 500 } },
+        { id: 'a2', blob: { size: 700 } },
+      ];
+
+      expect(manager.estimatePendingUploadBytes(assets)).toBe(1200);
     });
   });
 

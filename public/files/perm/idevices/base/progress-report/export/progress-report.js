@@ -1800,6 +1800,18 @@ var $eXeInforme = {
             return this.dataIDevices || [];
         }
     },
+    getElectronAPI: function () {
+        try {
+            if (window.electronAPI) return window.electronAPI;
+            if (window.parent && window.parent !== window && window.parent.electronAPI) {
+                return window.parent.electronAPI;
+            }
+        } catch (_e) {
+            // Cross-origin access blocked
+        }
+        return null;
+    },
+
     saveReport: function (instanceIndex) {
         const idx = instanceIndex || 0;
         if ($eXeInforme.options.userData) {
@@ -1911,7 +1923,19 @@ var $eXeInforme = {
                             sY += sliceHeight;
                             y += sliceHeightMM;
                         }
-                        pdf.save(fileBase + '.pdf');
+                        const pdfFileName = fileBase + '.pdf';
+                        const electronAPI = $eXeInforme.getElectronAPI();
+                        if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                            const blob = pdf.output('blob');
+                            const reader = new FileReader();
+                            reader.onload = function () {
+                                const uint8 = new Uint8Array(reader.result);
+                                electronAPI.saveBufferAs(uint8, 'progress-report-pdf', pdfFileName);
+                            };
+                            reader.readAsArrayBuffer(blob);
+                            return true;
+                        }
+                        pdf.save(pdfFileName);
                         return true;
                     } catch (e) {
                         console.error('PDF generation error:', e);
@@ -1921,9 +1945,21 @@ var $eXeInforme = {
 
                 const fallbackPng = function () {
                     try {
+                        const pngName = fileBase + '.png';
+                        const electronAPI = $eXeInforme.getElectronAPI();
+                        if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                            const base64 = imgData.split(',')[1];
+                            const binaryString = atob(base64);
+                            const bytes = new Uint8Array(binaryString.length);
+                            for (let i = 0; i < binaryString.length; i++) {
+                                bytes[i] = binaryString.charCodeAt(i);
+                            }
+                            electronAPI.saveBufferAs(bytes, 'progress-report-png', pngName);
+                            return;
+                        }
                         const link = document.createElement('a');
                         link.href = imgData;
-                        link.download = fileBase + '.png';
+                        link.download = pngName;
                         link.click();
                     } catch (e) {
                         console.error('PNG download error:', e);

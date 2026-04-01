@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## v4.0.0-beta4 – 2026-04-07
+
+### Added
+
+- Teacher-only content indicator now uses an icon instead of a border for clearer visual distinction
+- Improved accessibility in exported content, including proper heading structure and a skip navigation link
+- New `make translations-sort` command to reorder `<trans-unit>` elements in XLF files to match the order in `messages.en.xlf`
+- Updated development documentation for the Translation System
+- Support for `?url=` query parameter to open remote files in the static editor
+- Updated Spanish (ES) translation
+- Added automated placeholder translations for incomplete translations
+
+### Fixed
+
+- TinyMCE: usability and accessibility improvements across the editor
+- TinyMCE media plugin: YouTube Live and Shorts URLs are now correctly recognized
+- TinyMCE: toolbar visibility is now preserved between editing sessions in the desktop app
+- TinyMCE: missing CSS style classes in the "Insert/Edit Attributes" selector
+- Warn the user when pasting content containing temporary `blob:` file references that will not work in other contexts
+- Checklist and Progress Report iDevices: fixed double save dialog and improved PDF/PNG output quality
+- Definition lists inside animation effects now render correctly in the desktop version
+- Legacy `.elp` internal links now work correctly in the workarea editor
+- Platform name string incorrectly displayed in the online version
+- Unsaved changes warning is now displayed in the application's language
+- Improved "User not found" error message with more helpful context
+- "Made with eXeLearning" link and page counter preferences were not respected in exports
+- Further reduction of peak memory usage during save, preview, and export for large projects
+
+### Upgraded
+
+- typescript: 5.9.3 → 6.0.2
+
+### Removed
+
+- Homebrew distribution support
+
+---
+
 ## v4.0.0-beta3 – 2026-03-23
 
 ### Added
