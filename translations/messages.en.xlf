@@ -14148,6 +14148,22 @@
         <source>Current style classes</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5z9cxvw" resname="Close without saving">
+        <source>Close without saving</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

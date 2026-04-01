@@ -12607,7 +12607,7 @@
       </trans-unit>
       <trans-unit id="iot2q4p" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Numele folderului nu este valid. Evită caractere speciale precum / \\ : * ? " < > |</target>
+        <target>~Numele folderului nu este valid. Evită caractere speciale precum / \\ : * ? " &lt; &gt; |</target>
       </trans-unit>
       <trans-unit id="0xzyfnk" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12623,7 +12623,7 @@
       </trans-unit>
       <trans-unit id="pitu10s" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Numele fișierului nu este valid. Evită caracterele speciale precum / \ : * ? " < > |</target>
+        <target>~Numele fișierului nu este valid. Evită caracterele speciale precum / \\ : * ? " &lt; &gt; |</target>
       </trans-unit>
       <trans-unit id="4zpbjjn" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -14144,6 +14144,22 @@
       <trans-unit id="50n1sqk" resname="Current style classes">
         <source>Current style classes</source>
         <target></target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Modificări nesalvate</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Dacă închizi acum, ultimele modificări vor fi pierdute. Rămâi pentru a salva proiectul mai întâi.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Rămâi</target>
+      </trans-unit>
+      <trans-unit id="4hmrfbd" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Închideți fără a salva</target>
       </trans-unit>
     </body>
   </file>

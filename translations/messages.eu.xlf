@@ -13503,7 +13503,7 @@
       </trans-unit>
       <trans-unit id="ntl25n3" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
-        <target>~Beharrezkoa da aldaketak aplikatzeko orria berriro kargatzea. Lehenik eta behin zure proiektua deskargatu ezazu lanaren galera saihesteko. Ondoren, berriro kargatu orria.</target>
+        <target>~Gorde gabeko aldaketak dituzu. Ziur zaude irten nahi duzula?</target>
       </trans-unit>
       <trans-unit id="963g6wz" resname="Project not ready for collaboration">
         <source>Project not ready for collaboration</source>
@@ -14144,6 +14144,22 @@
       <trans-unit id="r0i72e1" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Uneko estiloaren klaseak</target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Gorde gabeko aldaketak</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Orain ixten baduzu, azken aldaketak galduko dira. Geratu proiektua lehenago gordetzeko.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Geratu</target>
+      </trans-unit>
+      <trans-unit id="atbpe78" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Itxi gabe utzi nahi duzu</target>
       </trans-unit>
     </body>
   </file>

@@ -23,5 +23,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   notifyRendererReadyForOpenFile: () => ipcRenderer.send('app:renderer-ready-for-open-file'),
   onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (_e, data) => cb && cb(data)),
   onDownloadDone: (cb) => ipcRenderer.on('download-done', (_e, data) => cb && cb(data)),
-  onOpenFile: (cb) => ipcRenderer.on('app:open-file', (_e, filePath) => cb && cb(filePath))
+  onOpenFile: (cb) => ipcRenderer.on('app:open-file', (_e, filePath) => cb && cb(filePath)),
+  onGetCloseCopy: (cb) => ipcRenderer.on('app:get-close-copy', (_e) => cb && cb()),
+  sendCloseCopy: (copy) => ipcRenderer.send('app:close-copy-response', copy),
 });

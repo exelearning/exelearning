@@ -404,10 +404,80 @@
                 console.log('[Static] Locale validated:', validatedLocale, '(browser:', navigator.language, ')');
             }
 
+            // Check for ?url= parameter to auto-open a remote file
+            await fetchUrlParam();
+
             // Setup File menu handlers after app bundle loads
             setTimeout(() => {
                 setupFileMenuHandlers();
             }, 100);
+        }
+
+        // Show a URL import error on the loading screen and store it for deferred display.
+        function showUrlError(message) {
+            window.__exeStaticUrlError = message;
+            const loadScreen = document.getElementById('load-screen-main');
+            if (loadScreen) {
+                const span = loadScreen.querySelector('span');
+                if (span) span.textContent = message;
+            }
+        }
+
+        // Fetch a remote file specified via ?url= query parameter.
+        async function fetchUrlParam() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const remoteUrl = urlParams.get('url');
+            if (!remoteUrl) return;
+
+            // Validate URL format
+            let parsedUrl;
+            try {
+                parsedUrl = new URL(remoteUrl);
+            } catch (e) {
+                console.error('[Static] Invalid ?url= parameter:', remoteUrl);
+                showUrlError('Invalid URL: ' + remoteUrl);
+                return;
+            }
+
+            // Only allow http/https
+            if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+                console.error('[Static] ?url= must use http or https:', remoteUrl);
+                showUrlError('URL must use http:// or https://');
+                return;
+            }
+
+            // Require a supported file extension
+            const pathname = parsedUrl.pathname.toLowerCase();
+            if (!pathname.endsWith('.elpx') && !pathname.endsWith('.elp') && !pathname.endsWith('.zip')) {
+                console.error('[Static] ?url= file must be .elpx, .elp, or .zip:', remoteUrl);
+                showUrlError('URL must point to an .elpx, .elp, or .zip file');
+                return;
+            }
+
+            // Fetch the remote file
+            console.log('[Static] Fetching remote file:', remoteUrl);
+            try {
+                const response = await fetch(remoteUrl);
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status + ' ' + response.statusText);
+                }
+                const blob = await response.blob();
+                const filename = parsedUrl.pathname.split('/').pop() || 'imported.elpx';
+                const file = new File([blob], filename, { type: 'application/octet-stream' });
+
+                console.log('[Static] Remote file fetched:', filename, file.size, 'bytes');
+                routeIncomingStaticFile(file);
+            } catch (e) {
+                console.error('[Static] Failed to fetch ?url=:', e);
+                showUrlError('Could not download file: ' + e.message);
+                return;
+            }
+
+            // Clean ?url= from the address bar
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.delete('url');
+            const cleanUrl = newUrl.pathname + (newUrl.search || '');
+            window.history.replaceState({}, '', cleanUrl);
         }
 
         // Route an incoming file (from PWA file handlers) to the app when ready.
