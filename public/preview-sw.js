@@ -94,23 +94,26 @@ const EXTERNAL_LINK_HANDLER_SCRIPT = `
             if (extMatch && !/^html?$/i.test(extMatch[1]) && !/^(jpe?g|png|gif|svg|webp|avif|ico|bmp|tiff?)$/i.test(extMatch[1])) {
                 e.preventDefault();
                 e.stopPropagation();
-                // Open blank tab immediately to preserve user gesture (avoids popup blocker)
-                var newTab = window.open('about:blank', '_blank');
+                // Extract original filename from URL path (safe decode)
+                var rawFileName = url.pathname.split('/').pop() || 'download';
+                var fileName = rawFileName;
+                try { fileName = decodeURIComponent(rawFileName); } catch (err) { fileName = rawFileName; }
                 // Fetch from iframe context (intercepted by SW)
                 fetch(url.href).then(function(r) {
                     if (!r.ok) throw new Error(r.status);
                     return r.blob();
                 }).then(function(blob) {
                     var blobUrl = URL.createObjectURL(blob);
-                    if (newTab && !newTab.closed) {
-                        newTab.location.href = blobUrl;
-                    }
+                    var a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
                     setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 60000);
                 }).catch(function() {
                     // Fallback: navigate to original URL
-                    if (newTab && !newTab.closed) {
-                        newTab.location.href = url.href;
-                    }
+                    window.open(url.href, '_blank');
                 });
                 return;
             }

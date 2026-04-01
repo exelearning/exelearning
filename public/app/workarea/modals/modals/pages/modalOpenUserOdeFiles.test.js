@@ -1889,4 +1889,100 @@ describe('modalOpenUserOdeFiles', () => {
       });
     });
   });
+
+  describe('Shared projects must not expose delete/multi-select UI', () => {
+    const sharedOde = {
+      odeId: 'shared-1',
+      role: 'editor',
+      versionName: '1',
+      title: 'Shared Project',
+      fileName: 'shared.elpx',
+      sizeFormatted: '2 MB',
+      updatedAt: new Date().toISOString(),
+      visibility: 'private',
+      ownerEmail: 'owner@example.com',
+      isManualSave: false,
+    };
+
+    const ownedOde = {
+      odeId: 'owned-1',
+      role: 'owner',
+      versionName: '1',
+      title: 'Owned Project',
+      fileName: 'owned.elpx',
+      sizeFormatted: '1 MB',
+      updatedAt: new Date().toISOString(),
+      visibility: 'private',
+      isManualSave: true,
+    };
+
+    it('should not render checkbox for shared projects', () => {
+      const row = modal.renderOdeRow(sharedOde, { principal: true }, false);
+      const checkbox = row.querySelector('.ode-check');
+      expect(checkbox).toBeFalsy();
+    });
+
+    it('should still render checkbox for owned projects', () => {
+      const row = modal.renderOdeRow(ownedOde, { principal: true }, false);
+      const checkbox = row.querySelector('.ode-check');
+      expect(checkbox).toBeTruthy();
+    });
+
+    it('should not allow shared projects to be added to odeFiles selection', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          s1: sharedOde,
+        },
+      };
+      modal.currentTab = 'shared-with-me';
+
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      // There should be no checkboxes in the shared tab
+      const checkboxes = modal.modalElementBodyContent.querySelectorAll('.ode-check');
+      expect(checkboxes.length).toBe(0);
+    });
+
+    it('should not show bulk delete button when on shared-with-me tab', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          s1: sharedOde,
+        },
+      };
+      modal.currentTab = 'shared-with-me';
+
+      // Even if odeFiles is somehow populated, the delete button should not appear
+      modal.odeFiles = ['shared-1'];
+      modal.updateDeleteButtonState();
+
+      // The footer should not contain a delete button
+      const deleteBtn = modal.modalFooterContent.querySelector('.btn-danger');
+      expect(deleteBtn).toBeFalsy();
+    });
+
+    it('should not include shared projects in toggleSelectAll', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          o1: ownedOde,
+          s1: sharedOde,
+        },
+      };
+
+      // Render on my-projects tab first to get owned project
+      modal.currentTab = 'my-projects';
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      modal.toggleSelectAll(true);
+
+      // Only owned project should be selected
+      expect(modal.odeFiles).toContain('owned-1');
+      expect(modal.odeFiles).not.toContain('shared-1');
+    });
+  });
 });

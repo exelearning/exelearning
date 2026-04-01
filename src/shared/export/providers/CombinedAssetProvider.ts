@@ -88,6 +88,80 @@ export class CombinedAssetProvider implements AssetProvider {
     }
 
     /**
+     * Process assets one at a time via callback across all providers.
+     * Deduplicates by asset ID.
+     *
+     * @returns Number of assets processed
+     */
+    async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<number> {
+        const seen = new Set<string>();
+        let count = 0;
+
+        for (const provider of this.providers) {
+            if (provider.forEachAsset) {
+                await provider.forEachAsset(async asset => {
+                    const key = asset.id || asset.originalPath;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        await callback(asset);
+                        count++;
+                    }
+                });
+            } else {
+                // Fallback to getAllAssets for providers without forEachAsset
+                const providerAssets = await provider.getAllAssets();
+                for (const asset of providerAssets) {
+                    const key = asset.id || asset.originalPath;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        await callback(asset);
+                        count++;
+                    }
+                }
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * List asset metadata without loading binary data, across all providers.
+     * Deduplicates by asset ID.
+     */
+    async listAssetMetadata(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>> {
+        const seen = new Set<string>();
+        const result: Array<{ id: string; filename: string; folderPath?: string; mime: string }> = [];
+
+        for (const provider of this.providers) {
+            if (provider.listAssetMetadata) {
+                const metadata = await provider.listAssetMetadata();
+                for (const item of metadata) {
+                    if (!seen.has(item.id)) {
+                        seen.add(item.id);
+                        result.push(item);
+                    }
+                }
+            } else {
+                // Fallback to getAllAssets
+                const assets = await provider.getAllAssets();
+                for (const asset of assets) {
+                    if (!seen.has(asset.id)) {
+                        seen.add(asset.id);
+                        result.push({
+                            id: asset.id,
+                            filename: asset.filename,
+                            folderPath: asset.folderPath,
+                            mime: asset.mime,
+                        });
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Check if an asset exists in any provider
      * @param assetPath - Asset path
      * @returns True if asset exists in any provider

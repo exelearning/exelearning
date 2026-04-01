@@ -24,6 +24,8 @@
 
     // Cache de URLs resueltas para evitar múltiples resoluciones
     const resolvedCache = new Map();
+    // Reverse cache: blobUrl → assetUrl
+    const blobToAssetCache = new Map();
     // Deduplicate in-flight peer requests for missing assets
     const pendingPeerRequests = new Map();
 
@@ -71,6 +73,35 @@
         if (!isAssetUrl(assetUrl)) return null;
         const match = assetUrl.match(/asset:\/\/(?:asset\/+)?([a-z0-9-]+)/i);
         return match ? match[1] : null;
+    }
+
+    /**
+     * Extract the filename from an asset:// URL path component.
+     * e.g. "asset://uuid/report.docx" → "report.docx"
+     * e.g. "asset://uuid.pdf" → null (no path separator, extension-only format)
+     *
+     * @param {string} assetUrl
+     * @returns {string|null}
+     */
+    function extractFilenameFromAssetUrl(assetUrl) {
+        if (!assetUrl) return null;
+        const match = assetUrl.match(/asset:\/\/(?:asset\/+)?[a-z0-9-]+(?:\.[a-z0-9]+)?\/(.+)/i);
+        if (!match) return null;
+        try { return decodeURIComponent(match[1]); } catch { return match[1]; }
+    }
+
+    const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'ico', 'avif', 'tiff', 'tif']);
+
+    /**
+     * Check whether a filename has an image extension.
+     *
+     * @param {string|undefined} filename
+     * @returns {boolean}
+     */
+    function isImageFilename(filename) {
+        if (!filename) return false;
+        const ext = filename.toLowerCase().split('.').pop();
+        return IMAGE_EXTENSIONS.has(ext);
     }
 
     /**
@@ -157,6 +188,7 @@
                 const blobUrl = await assetManager.resolveAssetURL(url);
                 if (blobUrl) {
                     resolvedCache.set(url, blobUrl);
+                    blobToAssetCache.set(blobUrl, url);
                     return blobUrl;
                 }
             } catch (e) {
@@ -559,6 +591,14 @@
                 if (resolved) {
                     el.setAttribute('href', resolved);
                     el.removeAttribute('data-asset-loading');
+
+                    // Set download attribute for non-image files so the browser
+                    // uses the original filename instead of the blob UUID.
+                    // Skip images to avoid breaking lightbox galleries.
+                    const filename = extractFilenameFromAssetUrl(assetUrl);
+                    if (filename && !isImageFilename(filename)) {
+                        el.setAttribute('download', filename);
+                    }
                 }
             });
         });
@@ -644,6 +684,7 @@
          */
         clearCache: function() {
             resolvedCache.clear();
+            blobToAssetCache.clear();
             pendingPeerRequests.clear();
         },
 
@@ -661,6 +702,57 @@
          * @returns {boolean} True if asset:// URL
          */
         isAssetUrl: isAssetUrl,
+
+        /**
+         * Get the asset:// URL that was resolved to a given blob:// URL.
+         * e.g. "blob:http://localhost:8080/d3519ead-..." → "asset://2d982eb3-....png"
+         *
+         * @param {string} blobUrl
+         * @returns {string|null} asset:// URL or null if not found
+         */
+        getAssetUrlFromBlob: function(blobUrl) {
+            if (!blobUrl || !blobUrl.startsWith('blob:')) return null;
+
+            // Fast path: blob was resolved through this resolver
+            const cached = blobToAssetCache.get(blobUrl);
+            if (cached) return cached;
+
+            // Fallback: ask AssetManager (covers blobs resolved by other means)
+            const assetManager = getAssetManager();
+            if (!assetManager) return null;
+            const assetId = assetManager.reverseBlobCache?.get(blobUrl);
+            if (!assetId) return null;
+            const metadata = assetManager.getAssetMetadata(assetId);
+            return metadata?.filename
+                ? `asset://${assetId}/${metadata.filename}`
+                : `asset://${assetId}`;
+        },
+
+        /**
+         * Extract the filename from an asset:// URL path component.
+         * e.g. "asset://uuid/report.docx" → "report.docx"
+         * e.g. "asset://uuid.pdf" → null (no path separator, extension-only format)
+         *
+         * @param {string} assetUrl
+         * @returns {string|null}
+         */
+        extractFilenameFromAssetUrl: extractFilenameFromAssetUrl,
+
+        /**
+         * Extract the filename from a blob:// URL by looking it up in the AssetManager cache.
+         * e.g. "blob:http://localhost:8080/2f2738f5-90c8-4dc9-8076-8c06fa6c39c1" → "report.docx"
+         *
+         * @param {string} blobUrl
+         * @returns {string|null} Filename or null if not found
+         */
+        extractFilenameFromBlob: function(blobUrl) {
+            if (!blobUrl || !blobUrl.startsWith('blob:')) return null;
+            const assetManager = getAssetManager();
+            if (!assetManager) return null;
+            const assetId = assetManager.reverseBlobCache?.get(blobUrl);
+            if (!assetId) return null;
+            return assetManager.getAssetMetadata(assetId)?.filename ?? null;
+        },
 
         /**
          * Stop observing (for cleanup/testing)
@@ -717,6 +809,26 @@
         // External links (http/https) and blob URLs (asset files like PDFs):
         // open in new tab to prevent overwriting the editor
         if (/^(https?:\/\/|blob:)/i.test(href)) {
+            // Skip links that use lightbox (rel="lightbox", "lightbox[X]", or combined values)
+            const rel = link.getAttribute('rel') || '';
+            if (/\blightbox(\[[^\]]*\])?\b/i.test(rel)) {
+                return;
+            }
+            // For blob URLs, add download attribute with original filename for non-image assets.
+            // This ensures the browser uses the original filename instead of the blob UUID.
+            if (href.startsWith('blob:') && !link.hasAttribute('download')) {
+                const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    const assetId = assetManager.reverseBlobCache?.get(href);
+                    if (assetId) {
+                        const metadata = assetManager.getAssetMetadata(assetId);
+                        if (metadata?.filename && !isImageFilename(metadata.filename)) {
+                            link.setAttribute('download', metadata.filename);
+                        }
+                    }
+                }
+            }
+
             link.setAttribute('target', '_blank');
             link.setAttribute('rel', 'noopener noreferrer');
             return;

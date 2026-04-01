@@ -14,6 +14,19 @@ import type {
     ZipProvider,
 } from '../interfaces';
 
+function decodePreviewFile(content: ArrayBuffer | Uint8Array | string | undefined): string {
+    if (typeof content === 'string') {
+        return content;
+    }
+
+    if (!content) {
+        return '';
+    }
+
+    const bytes = content instanceof Uint8Array ? content : new Uint8Array(content);
+    return new TextDecoder().decode(bytes);
+}
+
 // Mock document adapter
 class MockDocument implements ExportDocument {
     private metadata: ExportMetadata;
@@ -151,6 +164,64 @@ class MockAssetProvider implements AssetProvider {
         }>
     > {
         return this.getAllAssets();
+    }
+}
+
+// Mock asset provider with forEachAsset support (for memory-efficient preview tests)
+class MockAssetProviderWithForEach extends MockAssetProvider {
+    private assetList: Array<{
+        id: string;
+        filename: string;
+        originalPath: string;
+        folderPath?: string;
+        mime: string;
+        data: Buffer;
+    }> = [];
+
+    addAsset(id: string, filename: string, mime: string, data: Buffer, folderPath?: string): void {
+        this.assetList.push({
+            id,
+            filename,
+            originalPath: `${id}/${filename}`,
+            folderPath,
+            mime,
+            data,
+        });
+    }
+
+    async getAllAssets() {
+        return this.assetList.map(a => ({
+            id: a.id,
+            filename: a.filename,
+            path: a.originalPath,
+            originalPath: a.originalPath,
+            folderPath: a.folderPath,
+            mime: a.mime,
+            data: a.data,
+        }));
+    }
+
+    async forEachAsset(
+        callback: (asset: {
+            id: string;
+            filename: string;
+            originalPath: string;
+            folderPath?: string;
+            mime: string;
+            data: Uint8Array | Blob;
+        }) => void | Promise<void>,
+    ): Promise<void> {
+        const assets = await this.getAllAssets();
+        for (const asset of assets) {
+            await callback({
+                id: asset.id,
+                filename: asset.filename,
+                originalPath: asset.originalPath,
+                folderPath: asset.folderPath,
+                mime: asset.mime,
+                data: asset.data,
+            });
+        }
     }
 }
 
@@ -467,8 +538,7 @@ describe('Html5Exporter', () => {
             resources.faviconToReturn = 'ico';
             const files = await exporter.generateForPreview();
 
-            const indexHtmlBytes = files.get('index.html') as Uint8Array;
-            const indexHtml = new TextDecoder().decode(indexHtmlBytes);
+            const indexHtml = decodePreviewFile(files.get('index.html'));
             expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico">');
         });
 
@@ -902,8 +972,7 @@ describe('Html5Exporter', () => {
             });
 
             const indexHtml = files.get('index.html');
-            const indexHtmlText =
-                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Uint8Array);
+            const indexHtmlText = decodePreviewFile(indexHtml);
             expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
         });
     });
@@ -1701,11 +1770,9 @@ describe('Html5Exporter', () => {
 
             expect(files.has('index.html')).toBe(true);
             const indexHtml = files.get('index.html');
-            expect(indexHtml).toBeInstanceOf(Uint8Array);
+            expect(indexHtml).toBeInstanceOf(ArrayBuffer);
 
-            // Decode and verify content
-            const decoder = new TextDecoder();
-            const html = decoder.decode(indexHtml as Uint8Array);
+            const html = decodePreviewFile(indexHtml);
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('Introduction');
         });
@@ -1745,11 +1812,11 @@ describe('Html5Exporter', () => {
             expect(files.has('libs/common.js')).toBe(true);
         });
 
-        it('should return Uint8Array content for all files', async () => {
+        it('should return ArrayBuffer content for all files', async () => {
             const files = await exporter.generateForPreview();
 
-            for (const [path, content] of files) {
-                expect(content).toBeInstanceOf(Uint8Array);
+            for (const [, content] of files) {
+                expect(content).toBeInstanceOf(ArrayBuffer);
             }
         });
 
@@ -1942,8 +2009,7 @@ describe('Html5Exporter', () => {
             const baseCss = files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
 
-            const decoder = new TextDecoder();
-            const cssText = decoder.decode(baseCss as Uint8Array);
+            const cssText = decodePreviewFile(baseCss);
             expect(cssText).toContain('exe-math-rendered');
         });
 
@@ -1960,8 +2026,7 @@ describe('Html5Exporter', () => {
             const baseCss = files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
 
-            const decoder = new TextDecoder();
-            const cssText = decoder.decode(baseCss as Uint8Array);
+            const cssText = decodePreviewFile(baseCss);
             expect(cssText).toContain('exe-mermaid-rendered');
         });
 
@@ -2029,10 +2094,7 @@ describe('Html5Exporter', () => {
             expect(files.has('libs/elpx-manifest.js')).toBe(true);
 
             const manifestContent = files.get('libs/elpx-manifest.js');
-            const manifestJs =
-                typeof manifestContent === 'string'
-                    ? manifestContent
-                    : new TextDecoder().decode(manifestContent as Uint8Array);
+            const manifestJs = decodePreviewFile(manifestContent);
             expect(manifestJs).toContain('window.__ELPX_MANIFEST__');
             expect(manifestJs).toContain('"files"');
         });
@@ -2068,10 +2130,7 @@ describe('Html5Exporter', () => {
             const files = await exporter.generateForPreview();
 
             const manifestContent = files.get('libs/elpx-manifest.js');
-            const manifestJs =
-                typeof manifestContent === 'string'
-                    ? manifestContent
-                    : new TextDecoder().decode(manifestContent as Uint8Array);
+            const manifestJs = decodePreviewFile(manifestContent);
 
             const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
             expect(manifestMatch).toBeTruthy();
@@ -2293,8 +2352,7 @@ describe('Html5Exporter', () => {
             const baseCss = files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
 
-            const decoder = new TextDecoder();
-            const cssText = decoder.decode(baseCss as Uint8Array);
+            const cssText = decodePreviewFile(baseCss);
 
             // Should contain both LaTeX and Mermaid CSS
             expect(cssText).toContain('.exe-math-rendered');
@@ -2456,6 +2514,58 @@ describe('Html5Exporter', () => {
             expect(zip.files.has('theme/icons/icon4.jpg')).toBe(true);
             expect(zip.files.has('theme/icons/icon5.jpeg')).toBe(true);
             expect(zip.files.has('theme/icons/icon6.webp')).toBe(true);
+        });
+    });
+
+    describe('generateForPreview with forEachAsset', () => {
+        it('should use forEachAsset for memory-efficient asset loading in preview', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-preview-1', 'photo.jpg', 'image/jpeg', Buffer.from('jpeg-data'));
+            forEachAssets.addAsset('uuid-preview-2', 'doc.pdf', 'application/pdf', Buffer.from('pdf-data'));
+
+            const previewExporter = new Html5Exporter(document, resources, forEachAssets, zip);
+
+            const files = await previewExporter.generateForPreview();
+
+            expect(files.has('content/resources/photo.jpg')).toBe(true);
+            expect(files.has('content/resources/doc.pdf')).toBe(true);
+        });
+
+        it('should fall back to getAllAssets in preview when forEachAsset is not available', async () => {
+            // Use the regular MockAssetProvider (no forEachAsset)
+            const regularAssets = new MockAssetProvider();
+
+            const previewExporter = new Html5Exporter(document, resources, regularAssets, zip);
+
+            const files = await previewExporter.generateForPreview();
+
+            // Should still work (no assets to add)
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should skip assets without export path in forEachAsset preview path', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-known-prev', 'known.png', 'image/png', Buffer.from('png'));
+
+            // Override forEachAsset to also yield an orphan asset
+            const origForEach = forEachAssets.forEachAsset.bind(forEachAssets);
+            forEachAssets.forEachAsset = async (callback: (asset: any) => void | Promise<void>) => {
+                await origForEach(callback);
+                await callback({
+                    id: 'uuid-orphan-prev',
+                    filename: 'orphan.txt',
+                    originalPath: 'orphan.txt',
+                    mime: 'text/plain',
+                    data: Buffer.from('orphan'),
+                });
+            };
+
+            const previewExporter = new Html5Exporter(document, resources, forEachAssets, zip);
+
+            const files = await previewExporter.generateForPreview();
+
+            expect(files.has('content/resources/known.png')).toBe(true);
+            expect(files.has('content/resources/orphan.txt')).toBe(false);
         });
     });
 });

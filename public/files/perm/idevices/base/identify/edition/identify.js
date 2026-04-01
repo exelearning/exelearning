@@ -35,6 +35,9 @@ var $exeDevice = {
 
         this.setMessagesInfo();
         this.createForm();
+
+        const root = document.getElementById('identifyQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     enableForm: function () {
@@ -570,7 +573,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfEInputAudio">
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfEInputAudio" data-voice-recorder data-voice-input="#idfEURLAudio">
                                         <label class="sr-av" for="idfEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker w-100 form-control me-0" id="idfEURLAudio"/>
                                         <a href="#" id="idfEPlayAudio" class="IDFE-ENavigationButton IDFE-EPlayVideo" title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="IDFE-EButtonImage " /></a>

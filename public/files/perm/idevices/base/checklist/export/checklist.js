@@ -438,6 +438,18 @@ var $eXeListaCotejo = {
         return isNaN(num) ? 0 : num;
     },
 
+    getElectronAPI: function () {
+        try {
+            if (window.electronAPI) return window.electronAPI;
+            if (window.parent && window.parent !== window && window.parent.electronAPI) {
+                return window.parent.electronAPI;
+            }
+        } catch (_e) {
+            // Cross-origin access blocked
+        }
+        return null;
+    },
+
     saveReport: function (instance) {
         const mOptions = $eXeListaCotejo.options[instance],
             divElement = document.getElementById('ctjList-' + instance);
@@ -456,18 +468,45 @@ var $eXeListaCotejo = {
             $(this).css('opacity', '0.0');
         });
 
-        html2canvas(divElement)
+        const captureTarget = $eXeListaCotejo.buildCaptureTarget(divElement);
+        html2canvas(captureTarget || divElement, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            onclone: function (clonedDoc) {
+                var links = clonedDoc.querySelectorAll(
+                    'link[rel="stylesheet"]'
+                );
+                for (var i = 0; i < links.length; i++) {
+                    links[i].parentNode &&
+                        links[i].parentNode.removeChild(links[i]);
+                }
+            },
+        })
             .then(function (canvas) {
                 const imgData = canvas.toDataURL('image/png');
 
                 const fallbackPng = function () {
                     try {
-                        const link = document.createElement('a');
-                        link.href = imgData;
-                        link.download =
+                        const pngName =
                             (mOptions.msgs && mOptions.msgs.msgList
                                 ? mOptions.msgs.msgList
                                 : 'lista') + '.png';
+                        const electronAPI = $eXeListaCotejo.getElectronAPI();
+                        if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                            const base64 = imgData.split(',')[1];
+                            const binaryString = atob(base64);
+                            const bytes = new Uint8Array(binaryString.length);
+                            for (let i = 0; i < binaryString.length; i++) {
+                                bytes[i] = binaryString.charCodeAt(i);
+                            }
+                            electronAPI.saveBufferAs(bytes, 'checklist-png', pngName);
+                            return;
+                        }
+                        const link = document.createElement('a');
+                        link.href = imgData;
+                        link.download = pngName;
                         link.click();
                     } catch (e) {
                         console.error('Error al descargar la imagen:', e);
@@ -515,6 +554,19 @@ var $eXeListaCotejo = {
                             (mOptions.msgs && mOptions.msgs.msgList
                                 ? mOptions.msgs.msgList
                                 : 'lista') + '.pdf';
+
+                        const electronAPI = $eXeListaCotejo.getElectronAPI();
+                        if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                            const blob = pdf.output('blob');
+                            const reader = new FileReader();
+                            reader.onload = function () {
+                                const uint8 = new Uint8Array(reader.result);
+                                electronAPI.saveBufferAs(uint8, 'checklist-pdf', fileName);
+                            };
+                            reader.readAsArrayBuffer(blob);
+                            return true;
+                        }
+
                         pdf.save(fileName);
                         return true;
                     } catch (e) {
@@ -540,10 +592,81 @@ var $eXeListaCotejo = {
                 console.error('Error al generar la captura: ', error);
             })
             .finally(function () {
+                if (
+                    captureTarget &&
+                    captureTarget.getAttribute &&
+                    captureTarget.getAttribute(
+                        'data-checklist-capture-temp'
+                    ) === '1'
+                ) {
+                    captureTarget.parentNode &&
+                        captureTarget.parentNode.removeChild(captureTarget);
+                }
                 mmls.each(function (idx) {
                     $(this).css('opacity', originalOpacities[idx]);
                 });
             });
+    },
+
+    buildCaptureTarget: function (sourceElement) {
+        if (!sourceElement) return null;
+
+        var temp = document.createElement('div');
+        temp.className = 'CTJP-MainContainer';
+        temp.setAttribute('data-checklist-capture-temp', '1');
+        temp.style.position = 'fixed';
+        temp.style.left = '-99999px';
+        temp.style.top = '0';
+        temp.style.width = '1200px';
+        temp.style.background = '#fff';
+        temp.style.padding = '16px';
+        temp.style.boxSizing = 'border-box';
+        temp.style.zIndex = '-1';
+
+        temp.appendChild(this.cloneNodeWithComputedStyles(sourceElement));
+        document.body.appendChild(temp);
+        return temp;
+    },
+
+    cloneNodeWithComputedStyles: function (sourceNode) {
+        var clone = sourceNode.cloneNode(true);
+        this.applyComputedStylesRecursive(sourceNode, clone);
+        return clone;
+    },
+
+    applyComputedStylesRecursive: function (sourceNode, targetNode) {
+        if (
+            !sourceNode ||
+            !targetNode ||
+            sourceNode.nodeType !== 1 ||
+            targetNode.nodeType !== 1
+        ) {
+            return;
+        }
+
+        var computed = window.getComputedStyle(sourceNode);
+        if (computed) {
+            for (var i = 0; i < computed.length; i++) {
+                var prop = computed[i];
+                var value = computed.getPropertyValue(prop);
+                if (value && value !== '') {
+                    targetNode.style.setProperty(prop, value);
+                }
+            }
+        }
+
+        var sourceChildren = sourceNode.children;
+        var targetChildren = targetNode.children;
+        var childCount = Math.min(
+            sourceChildren.length,
+            targetChildren.length
+        );
+        for (var j = 0; j < childCount; j++) {
+            this.applyComputedStylesRecursive(
+                sourceChildren[j],
+                targetChildren[j]
+            );
+        }
     },
 
     createItems: function (instance) {

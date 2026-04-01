@@ -162,7 +162,6 @@ describe('ServerLatexPreRenderer', () => {
 
         it('should render pending formulas in mixed table content with pre-rendered spans', async () => {
             const html = `
-<div class="exe-text">
 <table border="1" cellpadding="6" style="margin-left: auto; margin-right: auto;">
 <tbody>
 <tr>
@@ -179,7 +178,7 @@ describe('ServerLatexPreRenderer', () => {
 </tr>
 </tbody>
 </table>
-</div>`;
+`;
 
             const result = await renderer.preRender(html);
 

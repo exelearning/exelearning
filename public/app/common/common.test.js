@@ -393,8 +393,251 @@ describe('common.js $exe helpers', () => {
   });
 
   describe('$exe.setMultimediaGalleries', () => {
+    let prettyPhotoOptions;
+
+    beforeEach(() => {
+      prettyPhotoOptions = null;
+      // The guard in setMultimediaGalleries checks $.prettyPhoto (static), not $.fn.prettyPhoto
+      global.$.prettyPhoto = vi.fn();
+      global.$.fn.prettyPhoto = vi.fn(function (opts) {
+        prettyPhotoOptions = opts;
+        return this;
+      });
+      global.$exe.hasMultimediaGalleries = false;
+    });
+
+    afterEach(() => {
+      delete global.$.prettyPhoto;
+      delete global.$.fn.prettyPhoto;
+      delete global.eXeLearningAssetResolver;
+    });
+
     it('does not throw when prettyPhoto is not defined', () => {
+      delete global.$.prettyPhoto;
+      delete global.$.fn.prettyPhoto;
       expect(() => global.$exe.setMultimediaGalleries()).not.toThrow();
+    });
+
+    it('calls prettyPhoto when it is defined', () => {
+      document.body.innerHTML = '';
+      global.$exe.setMultimediaGalleries();
+      expect(global.$.fn.prettyPhoto).toHaveBeenCalled();
+    });
+
+    it('replaces blob URL with asset URL (audio) when resolver is available', () => {
+      global.eXeLearning = {};
+      global.eXeLearningAssetResolver = {
+        getAssetUrlFromBlob: vi.fn().mockReturnValue('asset://abc123/audio.mp3'),
+      };
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/test-uuid">Link</a>';
+
+      global.$exe.setMultimediaGalleries();
+
+      expect(global.eXeLearningAssetResolver.getAssetUrlFromBlob).toHaveBeenCalledWith('blob:http://localhost:8080/test-uuid');
+      // Asset URL ends in .mp3 → isAudio true → link href changed to #media-box-0
+      const link = document.querySelector('a[rel="lightbox"]');
+      expect(link.getAttribute('href')).toBe('#media-box-0');
+      expect(document.querySelector('.exe-media-audio-box')).not.toBeNull();
+    });
+
+    it('replaces blob URL with asset URL (video mp4) when resolver is available', () => {
+      global.eXeLearning = {};
+      global.eXeLearningAssetResolver = {
+        getAssetUrlFromBlob: vi.fn().mockReturnValue('asset://abc123/video.mp4'),
+      };
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/test-uuid">Link</a>';
+
+      global.$exe.setMultimediaGalleries();
+
+      const link = document.querySelector('a[rel="lightbox"]');
+      expect(link.getAttribute('href')).toBe('#media-box-0');
+      expect(document.querySelector('.exe-media-video-box')).not.toBeNull();
+    });
+
+    it('does not replace blob URL when resolver returns null', () => {
+      global.eXeLearning = {};
+      global.eXeLearningAssetResolver = {
+        getAssetUrlFromBlob: vi.fn().mockReturnValue(null),
+      };
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/test-uuid">Link</a>';
+
+      global.$exe.setMultimediaGalleries();
+
+      const link = document.querySelector('a[rel="lightbox"]');
+      // blob URL has no audio/video extension → href is unchanged
+      expect(link.getAttribute('href')).toBe('blob:http://localhost:8080/test-uuid');
+      expect(document.querySelector('.exe-media-audio-box')).toBeNull();
+      expect(document.querySelector('.exe-media-video-box')).toBeNull();
+    });
+
+    it('does not call resolver when eXeLearning is not defined', () => {
+      delete global.eXeLearning;
+      global.eXeLearningAssetResolver = {
+        getAssetUrlFromBlob: vi.fn().mockReturnValue('asset://abc/audio.mp3'),
+      };
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/uuid">Link</a>';
+
+      global.$exe.setMultimediaGalleries();
+
+      expect(global.eXeLearningAssetResolver.getAssetUrlFromBlob).not.toHaveBeenCalled();
+    });
+
+    it('does not call resolver when eXeLearningAssetResolver is not defined', () => {
+      global.eXeLearning = {};
+      delete global.eXeLearningAssetResolver;
+      document.body.innerHTML = '<a rel="lightbox" href="blob:http://localhost:8080/uuid">Link</a>';
+
+      expect(() => global.$exe.setMultimediaGalleries()).not.toThrow();
+    });
+
+    it('creates audio player for mp3 link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+      global.$exe.setMultimediaGalleries();
+
+      expect(document.querySelector('.exe-media-audio-box audio')).not.toBeNull();
+      expect(global.$exe.hasMultimediaGalleries).toBe(true);
+    });
+
+    it('creates video player for mp4 link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="video/test.mp4">Link</a>';
+      global.$exe.setMultimediaGalleries();
+
+      expect(document.querySelector('.exe-media-video-box video')).not.toBeNull();
+      expect(global.$exe.hasMultimediaGalleries).toBe(true);
+    });
+
+    it('creates video player for flv link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="video/test.flv">Link</a>';
+      global.$exe.setMultimediaGalleries();
+      expect(document.querySelector('.exe-media-video-box')).not.toBeNull();
+    });
+
+    it('creates video player for ogg link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="video/test.ogg">Link</a>';
+      global.$exe.setMultimediaGalleries();
+      expect(document.querySelector('.exe-media-video-box')).not.toBeNull();
+    });
+
+    it('creates video player for ogv link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="video/test.ogv">Link</a>';
+      global.$exe.setMultimediaGalleries();
+      expect(document.querySelector('.exe-media-video-box')).not.toBeNull();
+    });
+
+    it('does not create player for non-audio/video link', () => {
+      document.body.innerHTML = '<a rel="lightbox" href="image/photo.jpg">Link</a>';
+      global.$exe.setMultimediaGalleries();
+      expect(document.querySelector('.exe-media-audio-box')).toBeNull();
+      expect(document.querySelector('.exe-media-video-box')).toBeNull();
+      expect(global.$exe.hasMultimediaGalleries).toBe(false);
+    });
+
+    describe('changepicturecallback', () => {
+      function setupPrettyPhotoDOM(srcValue, extraClass) {
+        const cls = 'exe-media-box-element' + (extraClass ? ' ' + extraClass : '');
+        document.body.innerHTML = `
+          <div id="pp_full_res">
+            <audio class="${cls}" src="${srcValue}"></audio>
+          </div>
+          <div class="pp_content_container">
+            <div class="pp_details"><div class="pp_description"></div></div>
+          </div>
+        `;
+      }
+
+      it('adds download link with extension from src filename', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        setupPrettyPhotoDOM('audio/test.mp3');
+        prettyPhotoOptions.changepicturecallback();
+
+        const downloadLink = document.querySelector('.exe-media-download a');
+        expect(downloadLink).not.toBeNull();
+        expect(downloadLink.textContent).toBe('mp3');
+      });
+
+      it('falls back to i18n.download when ext is undefined (blob URL without extension)', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        // src with no dot → split(".")[1] is undefined
+        setupPrettyPhotoDOM('blob:http://localhost:8080/some-uuid');
+        prettyPhotoOptions.changepicturecallback();
+
+        const downloadLink = document.querySelector('.exe-media-download a');
+        expect(downloadLink).not.toBeNull();
+        expect(downloadLink.textContent).toBe('Download');
+      });
+
+      it('adds with-audio class to container for audio elements', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        setupPrettyPhotoDOM('audio/test.mp3', 'exe-media-box-audio');
+        prettyPhotoOptions.changepicturecallback();
+
+        const cont = document.querySelector('.pp_content_container');
+        expect(cont.className).toContain('with-audio');
+      });
+
+      it('hides description for inline (non-media) content', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="image/photo.jpg">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        document.body.innerHTML = `
+          <div id="pp_full_res">
+            <div class="pp_inline"><p>Inline content</p></div>
+          </div>
+          <div class="pp_content_container">
+            <div class="pp_details"><div class="pp_description" style="">Desc</div></div>
+          </div>
+        `;
+        prettyPhotoOptions.changepicturecallback();
+
+        // pp_description should be hidden (jQuery .hide() sets display:none)
+        const desc = document.querySelector('.pp_description');
+        expect(desc.style.display).toBe('none');
+      });
+
+      it('calls mediaelementplayer when loadMediaPlayer is ready', () => {
+        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
+        global.$exe.setMultimediaGalleries();
+
+        const mockMep = vi.fn();
+        global.$.fn.mediaelementplayer = mockMep;
+        global.$exe.loadMediaPlayer.isReady = true;
+        global.$exe.loadMediaPlayer.isCalledInBox = false;
+
+        setupPrettyPhotoDOM('audio/test.mp3');
+        prettyPhotoOptions.changepicturecallback();
+
+        expect(mockMep).toHaveBeenCalled();
+        expect(global.$exe.loadMediaPlayer.isCalledInBox).toBe(true);
+
+        delete global.$.fn.mediaelementplayer;
+        global.$exe.loadMediaPlayer.isReady = false;
+        global.$exe.loadMediaPlayer.isCalledInBox = false;
+      });
+    });
+
+    it('applies GalleryIdevice fallback when no lightbox links but gallery exists', () => {
+      delete global.exe_editor_mode;
+      document.body.innerHTML = `
+        <div class="GalleryIdevice">
+          <div class="exeImageGallery">
+            <ul id="gallery-1">
+              <li><a href="http://example.com/img.jpg" title="Photo">img</a></li>
+            </ul>
+          </div>
+        </div>
+      `;
+      global.$exe.setMultimediaGalleries();
+
+      const link = document.querySelector('.exeImageGallery a');
+      // element.href property returns absolute URL in happy-dom; use getAttribute for raw value
+      expect(link.getAttribute('href')).toBe('#');
+      expect(link.title).toContain('Photo');
     });
   });
 

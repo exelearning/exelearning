@@ -867,6 +867,68 @@ describe('AssetUrlResolver', () => {
       document.body.removeChild(anchor);
     });
 
+    it('sets download attribute for non-image file anchors (e.g. .docx)', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/doc-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456789/report.docx');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // getAttribute('href') returns asset:// for persistence (intercepted by asset_url_resolver)
+      // Verify resolution happened by checking data-asset-loading was removed
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
+      expect(anchor.getAttribute('download')).toBe('report.docx');
+
+      document.body.removeChild(anchor);
+    });
+
+    it('does NOT set download attribute for image file anchors', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/img-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456780/photo.jpg');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
+      expect(anchor.hasAttribute('download')).toBe(false);
+
+      document.body.removeChild(anchor);
+    });
+
+    it('does NOT set download when URL has no filename path', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/no-path-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456781');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
+      expect(anchor.hasAttribute('download')).toBe(false);
+
+      document.body.removeChild(anchor);
+    });
+
+    it('sets download attribute for PDF file anchors', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/pdf-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456782/document.pdf');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
+      expect(anchor.getAttribute('download')).toBe('document.pdf');
+
+      document.body.removeChild(anchor);
+    });
+
 	    it('MutationObserver processes nested elements', async () => {
 	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/nested');
 
@@ -2141,6 +2203,55 @@ describe('AssetUrlResolver', () => {
       document.body.removeChild(link);
     });
 
+    it('adds download attribute on blob: URL click for non-image assets', () => {
+      const blobUrl = 'blob:http://localhost:8080/71cf3174-a4ae-4c3b-9f2b-0972b94b8f03';
+      const assetId = 'abc12345-def6-7890-abcd-ef1234567890';
+
+      // Set up assetManager with reverseBlobCache and getAssetMetadata
+      const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+      assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+      assetManager.getAssetMetadata = vi.fn(() => ({
+        filename: 'report.docx',
+        mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }));
+
+      const link = document.createElement('a');
+      link.setAttribute('href', blobUrl);
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('download')).toBe('report.docx');
+      expect(link.getAttribute('target')).toBe('_blank');
+
+      document.body.removeChild(link);
+    });
+
+    it('does NOT add download attribute on blob: URL click for image assets', () => {
+      const blobUrl = 'blob:http://localhost:8080/99cf3174-a4ae-4c3b-9f2b-0972b94b8f03';
+      const assetId = 'img12345-def6-7890-abcd-ef1234567890';
+
+      const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+      assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+      assetManager.getAssetMetadata = vi.fn(() => ({
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+      }));
+
+      const link = document.createElement('a');
+      link.setAttribute('href', blobUrl);
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+
+      expect(link.hasAttribute('download')).toBe(false);
+      expect(link.getAttribute('target')).toBe('_blank');
+
+      document.body.removeChild(link);
+    });
+
     it('skips links inside TinyMCE editors', () => {
       const tinymceContainer = document.createElement('div');
       tinymceContainer.classList.add('tox-tinymce');
@@ -2389,6 +2500,109 @@ describe('AssetUrlResolver', () => {
       expect(window.eXeLearningAssetResolver).toBeDefined();
 
       addEventListenerSpy.mockRestore();
+    });
+  });
+
+  describe('API: extractFilenameFromAssetUrl', () => {
+    it('is exposed on eXeLearningAssetResolver', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      await import('./asset_url_resolver.js');
+      expect(typeof window.eXeLearningAssetResolver.extractFilenameFromAssetUrl).toBe('function');
+      delete window.jQuery;
+    });
+
+    it('extracts filename from asset://uuid/filename.ext URL', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      await import('./asset_url_resolver.js');
+      const fn = window.eXeLearningAssetResolver.extractFilenameFromAssetUrl;
+      expect(fn('asset://2d982eb3-2352-462c-ebcc-0fa4f50306e3/report.docx')).toBe('report.docx');
+      expect(fn('asset://2d982eb3-2352-462c-ebcc-0fa4f50306e3.png')).toBeNull();
+      expect(fn(null)).toBeNull();
+      delete window.jQuery;
+    });
+  });
+
+  describe('API: extractFilenameFromBlob', () => {
+    it('returns filename from blob URL via AssetManager reverseBlobCache', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      const blobUrl = 'blob:http://localhost:8080/2f2738f5-90c8-4dc9-8076-8c06fa6c39c1';
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn(),
+          reverseBlobCache: new Map([[blobUrl, 'abc123']]),
+          getAssetMetadata: vi.fn().mockReturnValue({ filename: 'report.docx' }),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      const fn = window.eXeLearningAssetResolver.extractFilenameFromBlob;
+      expect(fn(blobUrl)).toBe('report.docx');
+      expect(fn('blob:http://localhost:8080/unknown')).toBeNull();
+      expect(fn('not-a-blob')).toBeNull();
+      delete window.jQuery;
+    });
+  });
+
+  describe('API: getAssetUrlFromBlob', () => {
+    it('returns asset URL from blobToAssetCache after resolve', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      const blobUrl = 'blob:http://localhost:8080/test-uuid';
+      const assetUrl = 'asset://abc123/video.mp4';
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn().mockResolvedValue(blobUrl),
+          reverseBlobCache: new Map(),
+          getAssetMetadata: vi.fn(),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      const resolver = window.eXeLearningAssetResolver;
+      // Populate blobToAssetCache by resolving
+      await resolver.resolve(assetUrl);
+      expect(resolver.getAssetUrlFromBlob(blobUrl)).toBe(assetUrl);
+      delete window.jQuery;
+    });
+
+    it('falls back to AssetManager reverseBlobCache when not in blobToAssetCache', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      const blobUrl = 'blob:http://localhost:8080/fallback-uuid';
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn(),
+          reverseBlobCache: new Map([[blobUrl, 'def456']]),
+          getAssetMetadata: vi.fn().mockReturnValue({ filename: 'audio.mp3' }),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      const result = window.eXeLearningAssetResolver.getAssetUrlFromBlob(blobUrl);
+      expect(result).toBe('asset://def456/audio.mp3');
+      delete window.jQuery;
+    });
+
+    it('returns null for non-blob URLs', async () => {
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+      window.jQuery = Object.assign(vi.fn(() => ({ each: vi.fn(() => window.jQuery()), length: 0 })), { fn: { attr: vi.fn(), prop: vi.fn() } });
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: {
+          resolveAssetURL: vi.fn(),
+          reverseBlobCache: new Map(),
+          getAssetMetadata: vi.fn(),
+        }, assetWebSocketHandler: { requestAsset: vi.fn().mockResolvedValue(false) } } } },
+      };
+      await import('./asset_url_resolver.js');
+      expect(window.eXeLearningAssetResolver.getAssetUrlFromBlob('asset://abc')).toBeNull();
+      expect(window.eXeLearningAssetResolver.getAssetUrlFromBlob(null)).toBeNull();
+      delete window.jQuery;
     });
   });
 });

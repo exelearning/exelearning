@@ -49,3 +49,6 @@
 .exe-download-package-instructions a.cc-by-nc-nd span {
 	background-position: 0 -100px;
 }
+.exe-download-package-instructions a.cc-0 span {
+	background-position: 0 -120px;
+}

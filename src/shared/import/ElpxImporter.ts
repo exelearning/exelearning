@@ -45,6 +45,7 @@ import {
     LEGACY_TYPE_ALIASES,
     defaultLogger,
 } from './interfaces';
+import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 
 import { LegacyXmlParser } from './LegacyXmlParser';
 import type { LegacyParseResult, LegacyPage, LegacyBlock, LegacyIdevice, LegacyMetadata } from './LegacyXmlParser';
@@ -410,6 +411,9 @@ export class ElpxImporter {
             idRemap.size,
         );
 
+        // Remap exe-node: internal links to new page IDs
+        this.remapInternalPageLinks(pageStructures, idRemap);
+
         // Phase 3: Importing structure (50-80%)
         this.reportProgress('structure', 50, 'Importing structure...');
 
@@ -630,6 +634,9 @@ export class ElpxImporter {
             pageStructures.push(pageData);
         }
 
+        // Remap exe-node: internal links to new page IDs
+        this.remapInternalPageLinks(pageStructures, pageIdRemap);
+
         return pageStructures;
     }
 
@@ -667,6 +674,7 @@ export class ElpxImporter {
 
         // Build HTML view with feedback if present
         let htmlView = legacyIdevice.htmlView || '';
+        htmlView = this.normalizeTextIdeviceHtml(legacyIdevice.type, htmlView);
 
         // If there's feedback content, append feedback button and content
         // BUT only if the HTML doesn't already have feedback embedded (prevents duplication)
@@ -1041,6 +1049,7 @@ export class ElpxImporter {
         const htmlViewNode = this.getElement(compNode, 'htmlView');
         if (htmlViewNode) {
             let htmlContent = this.decodeHtmlContent(htmlViewNode.textContent || '') || '';
+            htmlContent = this.normalizeTextIdeviceHtml(ideviceType, htmlContent);
 
             // Convert {{context_path}} to asset:// URLs
             if (this.assetHandler && this.assetMap.size > 0 && htmlContent) {
@@ -1059,15 +1068,32 @@ export class ElpxImporter {
         const jsonPropsNode = this.getElement(compNode, 'jsonProperties');
         if (jsonPropsNode) {
             try {
-                const jsonStr = this.decodeHtmlContent(jsonPropsNode.textContent || '{}') || '{}';
+                const rawJsonStr = jsonPropsNode.textContent || '{}';
                 let props: Record<string, unknown> = {};
 
-                try {
-                    props = JSON.parse(jsonStr);
-                } catch (parseErr) {
+                const parseCandidates = [
+                    rawJsonStr,
+                    this.decodeHtmlContentForJson(rawJsonStr),
+                    this.decodeHtmlContent(rawJsonStr),
+                ];
+
+                let parsed = false;
+                for (const candidate of parseCandidates) {
+                    try {
+                        props = JSON.parse(candidate);
+                        parsed = true;
+                        break;
+                    } catch {
+                        // Try next candidate.
+                    }
+                }
+
+                if (!parsed) {
                     this.logger.warn(`[ElpxImporter] Invalid JSON for ${componentId}, using empty object`);
                     props = {};
                 }
+
+                props = this.decodeHtmlEntitiesInObject(props) as Record<string, unknown>;
 
                 // Convert {{context_path}} in parsed JSON values
                 if (this.assetHandler && this.assetMap.size > 0 && props && typeof props === 'object') {
@@ -1076,6 +1102,14 @@ export class ElpxImporter {
                     } catch (convErr) {
                         this.logger.warn(`[ElpxImporter] Error converting paths in JSON for ${componentId}:`, convErr);
                     }
+                }
+
+                if (typeof props.textTextarea === 'string') {
+                    props.textTextarea = stripLegacyExeTextWrapper(props.textTextarea);
+                }
+
+                if (typeof props.htmlView === 'string') {
+                    props.htmlView = stripLegacyExeTextWrapper(props.htmlView);
                 }
 
                 compData.properties = props;
@@ -1116,6 +1150,48 @@ export class ElpxImporter {
         compData.structureProps = structureProps;
 
         return compData;
+    }
+
+    private decodeHtmlContentForJson(text: string): string {
+        if (!text) return '';
+
+        // Keep &quot; intact here to avoid breaking JSON strings that embed HTML attributes.
+        return text
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&#39;/g, "'")
+            .replace(/&apos;/g, "'")
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+    }
+
+    private decodeHtmlEntitiesInObject(obj: unknown): unknown {
+        if (typeof obj === 'string') {
+            return this.decodeHtmlContent(obj);
+        }
+
+        if (Array.isArray(obj)) {
+            return obj.map(item => this.decodeHtmlEntitiesInObject(item));
+        }
+
+        if (!obj || typeof obj !== 'object') {
+            return obj;
+        }
+
+        const result: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+            result[key] = this.decodeHtmlEntitiesInObject(value);
+        }
+        return result;
+    }
+
+    private normalizeTextIdeviceHtml(ideviceType: string, html: string): string {
+        if (!html) return html;
+        const normalizedType = (ideviceType || '').toLowerCase();
+        const shouldNormalize = normalizedType === 'text' || normalizedType.includes('jsidevice');
+        if (!shouldNormalize) return html;
+        return stripLegacyExeTextWrapper(html);
     }
 
     /**
@@ -1283,6 +1359,72 @@ export class ElpxImporter {
 
         this.logger.warn('[ElpxImporter] No odeNavStructure elements found');
         return [];
+    }
+
+    /**
+     * Remap exe-node: internal links in all component htmlView fields after page IDs have been reassigned.
+     *
+     * When importing an ELP/ELPX, every page receives a new unique ID. Any existing
+     * href="exe-node:oldPageId[#anchor]" links inside iDevice HTML content still reference
+     * the old IDs, so they must be updated using the idRemap built during import.
+     *
+     * @param pageStructures - Flat list of imported pages (with new IDs already set)
+     * @param idRemap - Map of originalPageId → newPageId
+     */
+    private remapInternalPageLinks(pageStructures: PageData[], idRemap: Map<string, string>): void {
+        if (idRemap.size === 0) return;
+
+        // Build regex that matches any of the old page IDs
+        const escapedIds = Array.from(idRemap.keys()).map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(`(exe-node:)(${escapedIds.join('|')})(#[^"'\\s]*)?`, 'g');
+
+        const replacer = (_m: string, prefix: string, oldId: string, fragment: string | undefined) => {
+            const newId = idRemap.get(oldId) ?? oldId;
+            return `${prefix}${newId}${fragment ?? ''}`;
+        };
+
+        for (const page of pageStructures) {
+            for (const block of page.blocks) {
+                for (const comp of block.components) {
+                    if (comp.htmlView?.includes('exe-node:')) {
+                        comp.htmlView = comp.htmlView.replace(pattern, replacer);
+                    }
+                    // Also remap links in properties (e.g., textTextarea for text idevices).
+                    // The workarea renders text idevice content from jsonProperties.textTextarea,
+                    // not from htmlView, so these must also be remapped.
+                    if (comp.properties) {
+                        this.remapLinksInObject(comp.properties as Record<string, unknown>, pattern, replacer);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Recursively remap exe-node: links in all string values of an object.
+     * Mirrors LegacyXmlParser.convertLinksInObject() but for ID remapping.
+     */
+    private remapLinksInObject(
+        obj: Record<string, unknown>,
+        pattern: RegExp,
+        replacer: (m: string, prefix: string, oldId: string, fragment: string | undefined) => string,
+    ): void {
+        for (const key of Object.keys(obj)) {
+            const val = obj[key];
+            if (typeof val === 'string' && val.includes('exe-node:')) {
+                obj[key] = val.replace(pattern, replacer);
+            } else if (Array.isArray(val)) {
+                for (let i = 0; i < val.length; i++) {
+                    if (typeof val[i] === 'string' && val[i].includes('exe-node:')) {
+                        val[i] = val[i].replace(pattern, replacer);
+                    } else if (val[i] && typeof val[i] === 'object') {
+                        this.remapLinksInObject(val[i] as Record<string, unknown>, pattern, replacer);
+                    }
+                }
+            } else if (val && typeof val === 'object') {
+                this.remapLinksInObject(val as Record<string, unknown>, pattern, replacer);
+            }
+        }
     }
 
     /**

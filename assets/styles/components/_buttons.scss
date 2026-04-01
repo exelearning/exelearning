@@ -6,6 +6,13 @@
     padding: 0;
 }
 
+// Ensure translated text spans inside buttons inherit the button's own color
+// (e.g., white for .btn-primary, white for .btn-danger) instead of var(--text).
+// Static mode wraps {{ 'Text' | trans }} in <span data-i18n="Text"> for runtime translation.
+.btn [data-i18n] {
+    color: inherit;
+}
+
 /* Hyerarchy: Display > Primary > Secondary > Tertiary */
 
 .button-display {
@@ -83,6 +90,9 @@
         background-color: var(--gray-200) !important;
         color: var(--text);
         border: 1px solid var(--gray-200) !important;
+    }
+    &:focus {
+        color: var(--text);
     }
     &:active {
         border-color: var(--white) !important;

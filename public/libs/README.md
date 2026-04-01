@@ -77,9 +77,6 @@
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
-*   Package: concurrently
-    *   Copyright: Kimmo Brunfeldt
-    *   License: MIT
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT
@@ -321,6 +318,9 @@
 *   Files: /public/style/workarea/fonts/\Catamaran*
     *   Copyright: The Catamaran Authors. Designed by Pria Ravichandran
     *   License: SIL Open Font License version 1.1
+*   Files: /public/style/workarea/images/icons/exe-teacher-only.svg
+    *   Copyright: Lucide Icons and Contributors
+    *   License: ISC
 *   Files: /public/style/workarea/images/icons/[Several icons].svg
     *   Copyright: Cole Bemis, [Feather Icons](https://github.com/feathericons/feather)
     *   License: MIT

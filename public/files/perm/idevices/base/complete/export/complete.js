@@ -838,12 +838,12 @@ var $eXeCompleta = {
     },
 
     checkWordLimit: function (word, answord) {
-        let sWord = $.trim(word)
+        let sWord = $eXeCompleta.normalizeWordForCheck(word)
                 .replace(/\s+/g, ' ')
                 .replace(/\.$/, '')
                 .replace(/,$/, '')
                 .replace(/;$/, ''),
-            sAnsWord = $.trim(answord)
+            sAnsWord = $eXeCompleta.normalizeWordForCheck(answord)
                 .replace(/\s+/g, ' ')
                 .replace(/\.$/, '')
                 .replace(/,$/, '')
@@ -869,12 +869,12 @@ var $eXeCompleta = {
         const mOptions = $eXeCompleta.options[instance],
             proba = 1 - mOptions.percentajeError / 100;
 
-        let sWord = $.trim(word)
+        let sWord = $eXeCompleta.normalizeWordForCheck(word)
                 .replace(/\s+/g, ' ')
                 .replace(/\.$/, '')
                 .replace(/,$/, '')
                 .replace(/;$/, ''),
-            sAnsWord = $.trim(answord)
+            sAnsWord = $eXeCompleta.normalizeWordForCheck(answord)
                 .replace(/\s+/g, ' ')
                 .replace(/\.$/, '')
                 .replace(/,$/, '')
@@ -1048,12 +1048,14 @@ var $eXeCompleta = {
 
         const unique = (value, index, self) => self.indexOf(value) === index;
         wl = wl.filter(unique);
-        wl.sort();
+        wl = $exeDevices.iDevice.gamification.helpers.shuffleAds(wl);
 
         let s = `<select data-number="${num}" class="CMPT-Select">`;
         s += '<option val="0"></option>';
         for (let j = 0; j < wl.length; j++) {
-            s += `<option val="${j + 1}">${wl[j]}</option>`;
+            s += `<option val="${j + 1}">${$eXeCompleta.escapeOptionText(
+                wl[j]
+            )}</option>`;
         }
         s += '</select>';
 
@@ -1067,8 +1069,11 @@ var $eXeCompleta = {
             wp = [];
 
         for (let i = 0; i < mOptions.words.length; i++) {
-            const wd = mOptions.words[i].split('|')[0].trim();
-            wp.push(wd);
+            const alternatives = mOptions.words[i]
+                .split('|')
+                .map((w) => $eXeCompleta.normalizeWordForCheck(w).trim())
+                .filter((w) => w.length > 0);
+            wp = wp.concat(alternatives);
         }
 
         if (words.length > 0) {
@@ -1077,7 +1082,10 @@ var $eXeCompleta = {
                 const p = words[i]
                     .trim()
                     .split('|')
-                    .map((w) => w.trim());
+                    .map((w) =>
+                        $eXeCompleta.normalizeWordForCheck(w).trim()
+                    )
+                    .filter((w) => w.length > 0);
                 we = we.concat(p);
             }
             words = we.concat(wp);
@@ -1087,12 +1095,14 @@ var $eXeCompleta = {
 
         const unique = (value, index, self) => self.indexOf(value) === index;
         words = words.filter(unique);
-        words.sort();
+        words = $exeDevices.iDevice.gamification.helpers.shuffleAds(words);
 
         let s = `<select data-number="${num}" class="CMPT-Select">`;
         s += '<option val="0"></option>';
         for (let j = 0; j < words.length; j++) {
-            s += `<option val="${j + 1}">${words[j]}</option>`;
+            s += `<option val="${j + 1}">${$eXeCompleta.escapeOptionText(
+                words[j]
+            )}</option>`;
         }
         s += '</select>';
 
@@ -1110,6 +1120,25 @@ var $eXeCompleta = {
         $(`#cmptPErrors-${instance}`).text(mOptions.errors);
         $(`#cmptPNumber-${instance}`).text(mOptions.number);
         $(`#cmptPScore-${instance}`).text(sscore);
+    },
+
+    normalizeWordForCheck: function (value) {
+        const raw = $.trim(String(value || ''));
+        if (raw.indexOf('&') === -1) {
+            return raw;
+        }
+        const decoded = $('<textarea/>').html(raw).text();
+        return $.trim(decoded || raw);
+    },
+
+    escapeOptionText: function (value) {
+        const normalized = $eXeCompleta.normalizeWordForCheck(value);
+        return String(normalized)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     },
 
     getWordArrayJson: function (instance) {
@@ -1138,7 +1167,7 @@ var $eXeCompleta = {
             wordsCorrect = wordsCorrect.concat(wordsErrors);
         }
         mOptions.oWords = {};
-        wordsCorrect.sort();
+        wordsCorrect = $exeDevices.iDevice.gamification.helpers.shuffleAds(wordsCorrect);
         wordsa = [...wordsCorrect];
         if (!mOptions.caseSensitive) {
             wordsa = wordsa.map((name) => name.toLowerCase());

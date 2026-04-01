@@ -22,6 +22,9 @@ import {
     type IdeviceConfig,
     type ApiParameters,
 } from './build-static-bundle';
+import { buildConfigParams } from '../src/routes/config-params';
+import fs from 'fs';
+import path from 'path';
 
 // =============================================================================
 // appendVersionToUrls tests
@@ -455,6 +458,30 @@ describe('processNjkTemplateContent', () => {
         expect(result).toBe('<p>Click <span data-i18n="here">here</span> to continue</p>');
     });
 
+    it('should not place data-i18n on closing tags (icon + trans in button)', () => {
+        const content = `<button><span class="exe-icon">delete</span> {{ 'Delete' | trans }}</button>`;
+        const result = processNjkTemplateContent(content, 'v1.0.0');
+        // Pattern 2a skips closing tag >, falls through to pattern 2b which wraps in <span>
+        expect(result).toBe(
+            '<button><span class="exe-icon">delete</span> <span data-i18n="Delete">Delete</span></button>',
+        );
+    });
+
+    it('should not place data-i18n on void elements like input', () => {
+        const content = `<label><input type="checkbox" class="check"> {{ 'Show references' | trans }}</label>`;
+        const result = processNjkTemplateContent(content, 'v1.0.0');
+        // input is void — pattern 2a skips it, pattern 2b wraps in <span>
+        expect(result).toBe(
+            '<label><input type="checkbox" class="check"> <span data-i18n="Show references">Show references</span></label>',
+        );
+    });
+
+    it('should add data-i18n to opening tag when trans is sole content', () => {
+        const content = `<option value="x">{{ 'Name A-Z' | trans }}</option>`;
+        const result = processNjkTemplateContent(content, 'v1.0.0');
+        expect(result).toBe('<option value="x" data-i18n="Name A-Z">Name A-Z</option>');
+    });
+
     it('should replace basePath with relative path', () => {
         const content = `<link href="{{ basePath }}/style/main.css">`;
         const result = processNjkTemplateContent(content, 'v1.0.0');
@@ -798,5 +825,108 @@ describe('Configuration exports', () => {
             );
             expect(hasLegacy).toBe(false);
         });
+    });
+});
+
+// =============================================================================
+// Static HTML i18n coverage tests
+// =============================================================================
+
+describe('Static HTML i18n coverage', () => {
+    let html: string;
+
+    beforeAll(() => {
+        const templatePath = path.join(import.meta.dir, 'static-bundle/static-index.html');
+        html = fs.readFileSync(templatePath, 'utf-8');
+    });
+
+    it('should have data-i18n on styles title', () => {
+        expect(html).toContain('data-i18n="Styles"');
+    });
+
+    it('should have data-i18n on System tab button', () => {
+        expect(html).toContain('data-i18n="System"');
+    });
+
+    it('should have data-i18n on Imported tab button', () => {
+        expect(html).toContain('data-i18n="Imported"');
+    });
+
+    it('should have data-i18n on "No recent projects..." items', () => {
+        expect(html).toContain('data-i18n="No recent projects..."');
+    });
+
+    it('should use _() for delete project confirmation', () => {
+        expect(html).toContain("_('Delete this project?')");
+        expect(html).toContain("_('This action cannot be undone.')");
+    });
+});
+
+// =============================================================================
+// Translation key existence tests
+// =============================================================================
+
+describe('Translation key existence in XLF catalog', () => {
+    let xlfContent: string;
+
+    beforeAll(() => {
+        const xlfPath = path.join(import.meta.dir, '../translations/messages.es.xlf');
+        xlfContent = fs.readFileSync(xlfPath, 'utf-8');
+    });
+
+    const requiredKeys: Array<[string, string]> = [
+        ['Styles', 'Estilos'],
+        ['System', 'Sistema'],
+        ['Imported', 'Importado'],
+        ['No recent projects...', 'No hay proyectos recientes...'],
+        ['Delete this project?', '¿Eliminar este proyecto?'],
+        ['This action cannot be undone.', 'Esta acción no se puede deshacer.'],
+    ];
+
+    for (const [source, target] of requiredKeys) {
+        it(`should contain translation key "${source}" → "${target}"`, () => {
+            const translations = parseXlfContent(xlfContent);
+            expect(translations[source]).toBe(target);
+        });
+    }
+});
+
+// =============================================================================
+// Config parameter parity tests
+// =============================================================================
+
+describe('Config parameter parity between static and server', () => {
+    it('should return the same config keys from buildApiParameters and buildConfigParams', () => {
+        const staticParams = buildApiParameters();
+
+        const serverConfig = buildConfigParams({
+            TRANS_PREFIX: '',
+            LICENSES,
+            PACKAGE_LOCALES,
+            LOCALES: LOCALE_NAMES,
+        });
+
+        // Verify that all config keys from the shared buildConfigParams are used in static buildApiParameters
+        expect(Object.keys(staticParams.userPreferencesConfig).sort()).toEqual(
+            Object.keys(serverConfig.USER_PREFERENCES_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.ideviceInfoFieldsConfig).sort()).toEqual(
+            Object.keys(serverConfig.IDEVICE_INFO_FIELDS_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.themeInfoFieldsConfig).sort()).toEqual(
+            Object.keys(serverConfig.THEME_INFO_FIELDS_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.odeProjectSyncPropertiesConfig).sort()).toEqual(
+            Object.keys(serverConfig.ODE_PROJECT_SYNC_PROPERTIES_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.odeComponentsSyncPropertiesConfig).sort()).toEqual(
+            Object.keys(serverConfig.ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.odeNavStructureSyncPropertiesConfig).sort()).toEqual(
+            Object.keys(serverConfig.ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.odePagStructureSyncPropertiesConfig).sort()).toEqual(
+            Object.keys(serverConfig.ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG).sort()
+        );
     });
 });

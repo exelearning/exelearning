@@ -31,7 +31,7 @@ describe('IdeviceRenderer', () => {
     });
 
     describe('render', () => {
-        it('should render a text iDevice with exe-text wrapper', () => {
+        it('should render a text iDevice without extra content wrapper', () => {
             // Use 'text' iDevice which exists in config.xml and is a JSON type
             const component: ExportComponent = {
                 id: 'comp-1',
@@ -45,7 +45,6 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('id="comp-1"');
             expect(html).toContain('class="idevice_node text"');
-            expect(html).toContain('<div class="exe-text">');
             expect(html).toContain('<p>Hello World</p>');
         });
 

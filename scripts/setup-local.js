@@ -43,15 +43,45 @@ function killPort(port) {
   }
 }
 
+/**
+ * Remove a file with retry logic for Windows file locking.
+ * On Windows, file handles may take a moment to release after a process is killed.
+ * This provides a small safety net (not the primary fix — killing the server first is).
+ */
+function removeWithRetry(filePath, label, maxRetries = 5, delayMs = 500) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      fs.removeSync(filePath);
+      return;
+    } catch (err) {
+      const isLocked = err.code === 'EBUSY' || err.code === 'EPERM' || err.code === 'EACCES';
+      if (isLocked && attempt < maxRetries) {
+        console.log(`  ${label} is locked, retrying (${attempt}/${maxRetries})...`);
+        execSync(`${process.platform === 'win32' ? 'ping -n' : 'sleep'} ${Math.ceil(delayMs / 1000)}`, { stdio: 'ignore' });
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
 // Clean mode: delete database and data files for fresh start
 if (isCleanMode) {
   const dbPath = path.join(dataDir, 'exelearning.db');
+  const dbWalPath = dbPath + '-wal';
+  const dbShmPath = dbPath + '-shm';
   const dirsToClean = ['assets', 'tmp', 'dist', 'chunks'];
 
-  // Delete database
-  if (fs.existsSync(dbPath)) {
-    console.log('Deleting database: data/exelearning.db');
-    fs.removeSync(dbPath);
+  // Kill the dev server FIRST so it releases the SQLite file handle
+  killPort(8080);
+
+  // Delete database and its WAL/SHM companion files
+  for (const file of [dbPath, dbWalPath, dbShmPath]) {
+    if (fs.existsSync(file)) {
+      const label = path.basename(file);
+      console.log(`Deleting database file: data/${label}`);
+      removeWithRetry(file, label);
+    }
   }
 
   // Delete data subdirectories
@@ -62,9 +92,6 @@ if (isCleanMode) {
       fs.removeSync(dirPath);
     }
   }
-
-  // Kill any process on port 8080
-  killPort(8080);
 
   console.log('Local environment cleaned. Run "make up-local" for fresh start.');
   process.exit(0);
