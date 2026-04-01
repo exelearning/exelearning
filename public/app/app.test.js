@@ -1019,6 +1019,55 @@ describe('App utility methods', () => {
       expect(openFileFromPathSpy).toHaveBeenCalledWith('/path/to/file.elpx');
       delete window.electronAPI;
     });
+
+    it('registers onGetCloseCopy handler when available', () => {
+      const onOpenFileSpy = vi.fn();
+      const onGetCloseCopySpy = vi.fn();
+      window.electronAPI = {
+        onOpenFile: onOpenFileSpy,
+        onGetCloseCopy: onGetCloseCopySpy,
+        sendCloseCopy: vi.fn(),
+      };
+
+      appInstance.bindElectronFileOpenHandler();
+
+      expect(onGetCloseCopySpy).toHaveBeenCalledTimes(1);
+      delete window.electronAPI;
+    });
+
+    it('does not register onGetCloseCopy handler when not available', () => {
+      const onOpenFileSpy = vi.fn();
+      window.electronAPI = {
+        onOpenFile: onOpenFileSpy,
+      };
+
+      expect(() => appInstance.bindElectronFileOpenHandler()).not.toThrow();
+      delete window.electronAPI;
+    });
+
+    it('calls sendCloseCopy with translated strings when close handler is triggered', () => {
+      const sendCloseCopySpy = vi.fn();
+      let closeHandler;
+      window.electronAPI = {
+        onOpenFile: vi.fn(),
+        onGetCloseCopy: (cb) => { closeHandler = cb; },
+        sendCloseCopy: sendCloseCopySpy,
+      };
+
+      appInstance.bindElectronFileOpenHandler();
+      expect(closeHandler).toBeDefined();
+
+      closeHandler();
+
+      expect(sendCloseCopySpy).toHaveBeenCalledTimes(1);
+      const args = sendCloseCopySpy.mock.calls[0][0];
+      expect(args).toHaveProperty('title');
+      expect(args).toHaveProperty('message');
+      expect(args).toHaveProperty('detail');
+      expect(args).toHaveProperty('stayButtonLabel');
+      expect(args).toHaveProperty('discardButtonLabel');
+      delete window.electronAPI;
+    });
   });
 
   describe('openFileFromPath', () => {
