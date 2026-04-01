@@ -38,8 +38,13 @@
 }
 
 .exe-scorm .page header .package-title,
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     width: 100%;
+}
+
+.exe-content .package-title {
+    margin-bottom: .4em;
+    line-height: 1.2em;
 }
 
 .package-header:has(.package-subtitle) .package-title,
@@ -105,7 +110,7 @@ main header:not(#head) {
 
 .page > header .package-title,
 .siteNav-off .page > header .package-title,
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     padding-left: 80px;
     width: calc(100% - 470px);
     white-space: nowrap;
@@ -114,7 +119,7 @@ main header:not(#head) {
     color: #fff;
     margin: 0;
 }
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     padding-left: 30px;
 }
 
@@ -281,7 +286,7 @@ body#tinymce {
 }
 
 .exe-content .package-title,
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     font-size: 1.5rem;
     text-align: left;
     font-weight: 700;
@@ -379,6 +384,9 @@ body.exe-export.exe-epub .exe-content {
 }
 
 /* siteNav */
+#skipNav:focus {
+    top: 15px;
+}
 #siteNav {
     float: left;
     width: 300px;
@@ -1168,7 +1176,7 @@ body.siteNav-off button#searchBarTogger {
     }
     .page > header .package-title,
     .siteNav-off .page > header .package-title,
-    .exe-single-page .package-header h1 {
+    .exe-single-page .package-header .package-title {
         padding-left: 32px;
     }
 }
@@ -1233,7 +1241,7 @@ body.siteNav-off button#searchBarTogger {
         width: 32px;
         height: 32px;
     }
-    .exe-single-page .package-header h1 {
+    .exe-single-page .package-header .package-title {
         padding-left: 32px;
         overflow: hidden;
         text-overflow: ellipsis;

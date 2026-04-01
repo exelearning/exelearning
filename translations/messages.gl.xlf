@@ -12233,6 +12233,18 @@
         <source>Finish</source>
         <target>Finalizar</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>Cambios sen gardar</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se pechas agora, perderanse os teus cambios máis recentes. Podes quedarte para gardar o proxecto antes de saír.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Permanecer</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>Contido eXeLearning (.elpx)</target>
@@ -12261,7 +12273,7 @@
         <source>Status</source>
         <target>Estado</target>
       </trans-unit>
-            <trans-unit id="ieeaupo" resname="Default AI Assistant">
+      <trans-unit id="ieeaupo" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Asistente de IA predeterminado</target>
       </trans-unit>
@@ -12535,7 +12547,7 @@
       </trans-unit>
       <trans-unit id="kao0ia0" resname="Do you want to optimize the selected images?">
         <source>Do you want to optimize the selected images?</source>
-        <target>~¿Queres optimizar as imaxes seleccionadas?</target>
+        <target>~Queres optimizar as imaxes seleccionadas?</target>
       </trans-unit>
       <trans-unit id="26jbyii" resname="Optimizing...">
         <source>Optimizing...</source>
@@ -12607,23 +12619,23 @@
       </trans-unit>
       <trans-unit id="ezaipg9" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nome de cartafol non válido. Evita caracteres especiais como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nome de cartafol non válido. Evita caracteres especiais como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="i031vms" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
-        <target>~¿Seguro que queres eliminar o cartafol "%1" e todos os %2 ficheiros que contén?</target>
+        <target>~Seguro que queres eliminar o cartafol "%1" e todos os %2 ficheiros que contén?</target>
       </trans-unit>
       <trans-unit id="1wgjjd6" resname="Are you sure you want to delete the empty folder &quot;%1&quot;?">
         <source>Are you sure you want to delete the empty folder "%1"?</source>
-        <target>~¿Seguro que queres eliminar o cartafol baleiro "%1"?</target>
+        <target>~Seguro que queres eliminar o cartafol baleiro "%1"?</target>
       </trans-unit>
       <trans-unit id="ts331fl" resname="Delete &quot;%1&quot;?">
         <source>Delete "%1"?</source>
-        <target>~¿Eliminar "%1"?</target>
+        <target>~Eliminar "%1"?</target>
       </trans-unit>
       <trans-unit id="xa5n0eo" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Nome de ficheiro non válido. Evita caracteres especiais como / \\ : * ? " < > |</target>
+        <target><![CDATA[~Nome de ficheiro non válido. Evita caracteres especiais como / \\ : * ? " < > |]]></target>
       </trans-unit>
       <trans-unit id="b71dv5i" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -12855,7 +12867,7 @@
       </trans-unit>
       <trans-unit id="xrx3ij4" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target>~¿Eliminar %1 ficheiros seleccionados?</target>
+        <target>~Eliminar %1 ficheiros seleccionados?</target>
       </trans-unit>
       <trans-unit id="nlcmalg" resname="Failed to delete file">
         <source>Failed to delete file</source>
@@ -13083,7 +13095,7 @@
       </trans-unit>
       <trans-unit id="hg4vwji" resname="Delete this project?">
         <source>Delete this project?</source>
-        <target>~¿Eliminar este proxecto?</target>
+        <target>~Eliminar este proxecto?</target>
       </trans-unit>
       <trans-unit id="b9ri339" resname="Deleting...">
         <source>Deleting...</source>
@@ -13099,11 +13111,11 @@
       </trans-unit>
       <trans-unit id="m66d719" resname="Are you sure you want to delete this project?">
         <source>Are you sure you want to delete this project?</source>
-        <target>~¿Seguro que queres eliminar este proxecto?</target>
+        <target>~Seguro que queres eliminar este proxecto?</target>
       </trans-unit>
       <trans-unit id="xiv3xf7" resname="Are you sure you want to delete %s projects?">
         <source>Are you sure you want to delete %s projects?</source>
-        <target>~¿Estás seguro de que quieres eliminar %s proxectos?</target>
+        <target>~Estás seguro de que quieres eliminar %s proxectos?</target>
       </trans-unit>
       <trans-unit id="rhec4f2" resname="Delete projects">
         <source>Delete projects</source>
@@ -13225,17 +13237,13 @@
         <source>This user is already a collaborator</source>
         <target>~Este usuario xa é colaborador</target>
       </trans-unit>
-      <trans-unit id="y6gjry9" resname="User not found">
-        <source>User not found</source>
-        <target>~Usuario non atopado</target>
-      </trans-unit>
       <trans-unit id="xikh0bl" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target>~Error ao invitar ao usuario</target>
       </trans-unit>
       <trans-unit id="udpq0vv" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target>~¿Eliminar a autorización de acceso a {email}?</target>
+        <target>~Eliminar a autorización de acceso a {email}?</target>
       </trans-unit>
       <trans-unit id="tk5amge" resname="Removed {email}">
         <source>Removed {email}</source>
@@ -13247,7 +13255,7 @@
       </trans-unit>
       <trans-unit id="4n6ht1f" resname="Transfer ownership to {email}? You will become an editor.">
         <source>Transfer ownership to {email}? You will become an editor.</source>
-        <target>~¿Transferir a propiedade a {email}? Pasarás a ser editor.</target>
+        <target>~Transferir a propiedade a {email}? Pasarás a ser editor.</target>
       </trans-unit>
       <trans-unit id="q3lpmbv" resname="Ownership transferred to {email}">
         <source>Ownership transferred to {email}</source>
@@ -13695,7 +13703,7 @@
       </trans-unit>
       <trans-unit id="b5b5svu" resname="Reload game?">
         <source>Reload game?</source>
-        <target>~¿Reiniciar o xogo?</target>
+        <target>~Reiniciar o xogo?</target>
       </trans-unit>
       <trans-unit id="bh18gws" resname="Click Play to start">
         <source>Click Play to start</source>
@@ -13759,11 +13767,11 @@
       </trans-unit>
       <trans-unit id="o90nim5" resname="Close without saving?">
         <source>Close without saving?</source>
-        <target>~¿Pechar sen gardar?</target>
+        <target>~Pechar sen gardar?</target>
       </trans-unit>
       <trans-unit id="r7zt13f" resname="This set has unsaved changes. Close anyway?">
         <source>This set has unsaved changes. Close anyway?</source>
-        <target>~Este conxunto ten cambios sen gardar. ¿Pechar de todos xeitos?</target>
+        <target>~Este conxunto ten cambios sen gardar. Pechar de todos xeitos?</target>
       </trans-unit>
       <trans-unit id="2uzraub" resname="Rename set">
         <source>Rename set</source>
@@ -13819,7 +13827,7 @@
       </trans-unit>
       <trans-unit id="xgoek4v" resname="Need help? Visit %s">
         <source>Need help? Visit %s</source>
-        <target>~¿Necesitas axuda? Visita %s</target>
+        <target>~Necesitas axuda? Visita %s</target>
       </trans-unit>
       <trans-unit id="1jguzkj" resname="Mermaid diagram">
         <source>Mermaid diagram</source>
@@ -14116,6 +14124,42 @@
       <trans-unit id="4uef0iv" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>~creative commons: cc0 1.0</target>
+      </trans-unit>
+      <trans-unit id="fx3ksox" resname="Skip to content">
+        <source>Skip to content</source>
+        <target>~Ir ao contido</target>
+      </trans-unit>
+      <trans-unit id="c85s0kd" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target>~Usuario non atopado. É posible que esta persoa non accedese aínda a eXeLearning e non estea rexistrada no sistema. Pídelle que inicie sesión antes de compartir.</target>
+      </trans-unit>
+      <trans-unit id="b4kyyv3" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target>~Ficheiros temporais detectados</target>
+      </trans-unit>
+      <trans-unit id="kwxfj6r" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target>~Algúns ficheiros deste contido usan ligazóns blob: que só funcionan nesta páxina. Se pegas este contido noutro lugar, é posible que falten imaxes ou ficheiros. Para reutilizar contido con ficheiros, engádeos desde o Xestor de ficheiros ou clona o iDevice.</target>
+      </trans-unit>
+      <trans-unit id="ecp9ibz" resname="Caption Text">
+        <source>Caption Text</source>
+        <target>~Texto do pé de foto</target>
+      </trans-unit>
+      <trans-unit id="29nre23" resname="Caption Link">
+        <source>Caption Link</source>
+        <target>~Ligazón do pé de foto</target>
+      </trans-unit>
+      <trans-unit id="nvihfej" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target>~Clases predefinidas</target>
+      </trans-unit>
+      <trans-unit id="indkaji" resname="Current style classes">
+        <source>Current style classes</source>
+        <target>~Clases do estilo actual</target>
+      </trans-unit>
+      <trans-unit id="ln6aboy" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Pechar sen gardar</target>
       </trans-unit>
     </body>
   </file>

@@ -398,6 +398,35 @@ describe('IdeviceNode', () => {
             expect(indicator).toBeNull();
         });
 
+        it('shows teacher-only indicator when teacherOnly is true in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.teacherOnly = { value: 'true' };
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.teacher-only-indicator');
+            expect(indicator).not.toBeNull();
+            expect(indicator.querySelector('.exe-teacher-only-icon')).not.toBeNull();
+            expect(indicator.querySelector('.visually-hidden').textContent).toBeTruthy();
+        });
+
+        it('does not show teacher-only indicator when teacherOnly is false in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.teacherOnly = { value: 'false' };
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.teacher-only-indicator');
+            expect(indicator).toBeNull();
+        });
+
+        it('shows both indicators when visibility is false and teacherOnly is true', () => {
+            idevice.mode = 'edition';
+            idevice.properties.visibility.value = 'false';
+            idevice.properties.teacherOnly = { value: 'true' };
+            const node = idevice.makeIdeviceContentNode(true);
+            expect(node.querySelector('.visibility-off-indicator')).not.toBeNull();
+            const teacherIndicator = node.querySelector('.teacher-only-indicator');
+            expect(teacherIndicator).not.toBeNull();
+            expect(teacherIndicator.style.left).toBe('41px');
+        });
+
         it('reuses existing element when newNode is false', () => {
             idevice.ideviceContent = document.createElement('div');
             idevice.ideviceContent.classList.add('old-class');

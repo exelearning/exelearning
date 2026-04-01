@@ -432,8 +432,8 @@ export class Scorm2004Exporter extends Html5Exporter {
             // Export options - SCORM specific overrides
             // SCORM/IMS exports don't use client-side search - LMS handles navigation
             addSearchBox: false,
-            // Force page counter for SCORM
-            addPagination: true,
+            addExeLink: meta.addExeLink ?? true,
+            addPagination: meta.addPagination ?? false,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
             // SCORM 2004-specific options

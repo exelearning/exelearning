@@ -138,6 +138,32 @@ class MockAssetProvider implements AssetProvider {
     }
 }
 
+// Mock asset provider with forEachAsset support (for memory-efficient export tests)
+class MockAssetProviderWithForEach extends MockAssetProvider {
+    async forEachAsset(
+        callback: (asset: {
+            id: string;
+            filename: string;
+            originalPath: string;
+            folderPath?: string;
+            mime: string;
+            data: Uint8Array | Blob;
+        }) => void | Promise<void>,
+    ): Promise<void> {
+        const assets = await this.getAllAssets();
+        for (const asset of assets) {
+            await callback({
+                id: asset.id,
+                filename: asset.filename,
+                originalPath: asset.path,
+                folderPath: asset.folderPath,
+                mime: asset.mime,
+                data: asset.data,
+            });
+        }
+    }
+}
+
 // Mock zip provider
 class MockZipProvider implements ZipProvider {
     files = new Map<string, string | Buffer>();
@@ -893,6 +919,130 @@ describe('BaseExporter', () => {
 
                 expect(result).toBe('<a href="{{context_path}}/content/resources/readme.txt">Read</a>');
             });
+        });
+    });
+
+    describe('addAssetsToZipWithResourcePath', () => {
+        it('should use forEachAsset when available for memory-efficient export', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-a', 'img.png', 'image/png', Buffer.from('png-data'));
+            forEachAssets.addAsset('uuid-b', 'doc.pdf', 'application/pdf', Buffer.from('pdf-data'));
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            const count = await forEachExporter.addAssetsToZipWithResourcePath();
+
+            expect(count).toBe(2);
+            expect(forEachZip.files.has('content/resources/img.png')).toBe(true);
+            expect(forEachZip.files.has('content/resources/doc.pdf')).toBe(true);
+        });
+
+        it('should fall back to getAllAssets when forEachAsset is not available', async () => {
+            assets.addAsset('uuid-c', 'style.css', 'text/css', Buffer.from('css'));
+
+            const count = await exporter.addAssetsToZipWithResourcePath();
+
+            expect(count).toBe(1);
+            expect(zip.files.has('content/resources/style.css')).toBe(true);
+        });
+
+        it('should populate tracking list when provided', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('uuid-d', 'track.txt', 'text/plain', Buffer.from('txt'));
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            const trackingList: string[] = [];
+            const count = await forEachExporter.addAssetsToZipWithResourcePath(trackingList);
+
+            expect(count).toBe(1);
+            expect(trackingList).toContain('content/resources/track.txt');
+        });
+
+        it('should warn and skip assets with no export path in forEachAsset path', async () => {
+            // Create a forEachAsset provider with an asset that won't have an export path
+            const customForEachAssets = new MockAssetProviderWithForEach();
+            customForEachAssets.addAsset('uuid-known', 'known.png', 'image/png', Buffer.from('png'));
+
+            // Override forEachAsset to also yield an unknown asset not in the export path map
+            const origForEach = customForEachAssets.forEachAsset.bind(customForEachAssets);
+            customForEachAssets.forEachAsset = async (callback: (asset: any) => void | Promise<void>) => {
+                await origForEach(callback);
+                // Yield an extra asset that has no metadata (won't be in export path map)
+                await callback({
+                    id: 'uuid-orphan',
+                    filename: 'orphan.txt',
+                    originalPath: 'orphan.txt',
+                    mime: 'text/plain',
+                    data: Buffer.from('orphan'),
+                });
+            };
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(
+                forEachDoc,
+                new MockResourceProvider(),
+                customForEachAssets,
+                forEachZip,
+            );
+
+            const count = await forEachExporter.addAssetsToZipWithResourcePath();
+
+            // Only the known asset should be added (orphan has no export path)
+            expect(count).toBe(1);
+            expect(forEachZip.files.has('content/resources/known.png')).toBe(true);
+        });
+
+        it('should warn and skip assets with no export path in getAllAssets fallback', async () => {
+            // Create a regular asset provider (no forEachAsset)
+            const regularAssets = new MockAssetProvider();
+            regularAssets.addAsset('uuid-ok', 'ok.png', 'image/png', Buffer.from('ok'));
+
+            const regularZip = new MockZipProvider();
+            const regularDoc = new MockDocument({}, []);
+            const regularExporter = new TestExporter(regularDoc, new MockResourceProvider(), regularAssets, regularZip);
+
+            // First call builds the export path map from getAllAssets (which has uuid-ok)
+            // Then override getAllAssets to also return an orphan that isn't in the map
+            await regularExporter.buildAssetExportPathMap(); // Cache the map with only uuid-ok
+            const origGetAll = regularAssets.getAllAssets.bind(regularAssets);
+            regularAssets.getAllAssets = async () => {
+                const result = await origGetAll();
+                result.push({
+                    id: 'uuid-orphan2',
+                    filename: 'orphan2.txt',
+                    path: 'orphan2.txt',
+                    mime: 'text/plain',
+                    data: Buffer.from('orphan2'),
+                });
+                return result;
+            };
+
+            const count = await regularExporter.addAssetsToZipWithResourcePath();
+
+            // Only the known asset should be added (orphan has no export path in cached map)
+            expect(count).toBe(1);
+            expect(regularZip.files.has('content/resources/ok.png')).toBe(true);
+        });
+
+        it('should populate tracking list in getAllAssets fallback path', async () => {
+            const regularAssets = new MockAssetProvider();
+            regularAssets.addAsset('uuid-track', 'track.css', 'text/css', Buffer.from('css'));
+
+            const regularZip = new MockZipProvider();
+            const regularDoc = new MockDocument({}, []);
+            const regularExporter = new TestExporter(regularDoc, new MockResourceProvider(), regularAssets, regularZip);
+
+            const trackingList: string[] = [];
+            const count = await regularExporter.addAssetsToZipWithResourcePath(trackingList);
+
+            expect(count).toBe(1);
+            expect(trackingList).toContain('content/resources/track.css');
         });
     });
 

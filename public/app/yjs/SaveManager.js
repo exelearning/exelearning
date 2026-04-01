@@ -809,7 +809,7 @@ class SaveManager {
           totalBatches: chunks.length,
           batchFiles: chunk.length,
         });
-        let chunkWithBlobs = await assetManager.getPendingAssetsBatch(chunk, { restoreToMemory: false });
+        let chunkWithBlobs = await this.getPendingAssetsBatchCompat(assetManager, chunk);
         const chunkBytes = chunkWithBlobs.reduce((sum, a) => sum + (a.blob?.size || 0), 0);
         await this.sampleSaveMemory('save:session-batch:after-blob-load', {
           batchIndex: chunkIndex + 1,
@@ -1030,7 +1030,7 @@ class SaveManager {
   estimatePendingUploadBytes(assets) {
     if (!Array.isArray(assets) || assets.length === 0) return 0;
     return assets.reduce((sum, asset) => {
-      const size = asset?.blob?.size || asset?.size || 0;
+      const size = asset?.size || asset?.blob?.size || 0;
       return sum + size;
     }, 0);
   }
@@ -1693,7 +1693,7 @@ class SaveManager {
             totalBatches: batches.length,
             batchFiles: batch.length,
           });
-          let batchWithBlobs = await assetManager.getPendingAssetsBatch(batch, { restoreToMemory: false });
+          let batchWithBlobs = await this.getPendingAssetsBatchCompat(assetManager, batch);
           const batchBytes = batchWithBlobs.reduce((sum, a) => sum + (a.blob?.size || a.size || 0), 0);
           await this.sampleSaveMemory('save:small-batch:after-blob-load', {
             batchIndex,
@@ -1775,7 +1775,7 @@ class SaveManager {
         assetId: asset.id,
         batchFiles: 1,
       });
-      const [assetWithBlob] = await assetManager.getPendingAssetsBatch([asset], { restoreToMemory: false });
+      const [assetWithBlob] = await this.getPendingAssetsBatchCompat(assetManager, [asset]);
       const assetBytes = assetWithBlob?.blob?.size || asset.size || 0;
       await this.sampleSaveMemory('save:single-file:after-blob-load', {
         batchIndex,
@@ -2006,10 +2006,17 @@ class SaveManager {
     await this.sampleSaveMemory(`${traceContext.phasePrefix || 'save:asset-batch'}:before-formdata`, traceContext);
     let formData = new FormData();
 
-    // Build metadata array
+    // Build metadata array and load blobs on-demand
     const metadata = [];
 
     for (const asset of assets) {
+      // Load blob on-demand from Cache API, fall back to existing blob
+      const blob = asset.blob || await this.getBlobForUpload(assetManager, asset.id);
+      if (!blob) {
+        console.warn(`[SaveManager] Asset ${asset.id} has no blob, skipping from batch`);
+        continue;
+      }
+
       metadata.push({
         clientId: asset.id,
         filename: asset.filename || `asset-${asset.id}`,
@@ -2018,7 +2025,7 @@ class SaveManager {
       });
 
       // Add file to FormData
-      const file = new File([asset.blob], asset.filename || `asset-${asset.id}`, {
+      const file = new File([blob], asset.filename || `asset-${asset.id}`, {
         type: asset.mime || 'application/octet-stream',
       });
       formData.append('files', file);
@@ -2087,10 +2094,31 @@ class SaveManager {
     }
 
     if (typeof assetManager.getBlob === 'function') {
-      return assetManager.getBlob(assetId, { restoreToMemory: false });
+      return assetManager.getBlob(assetId);
     }
 
     return null;
+  }
+
+  /**
+   * Load blobs for a batch with a compatibility fallback for older asset managers.
+   * @param {AssetManager} assetManager
+   * @param {Array<Object>} batch
+   * @returns {Promise<Array>}
+   */
+  async getPendingAssetsBatchCompat(assetManager, batch) {
+    if (typeof assetManager.getPendingAssetsBatch === 'function') {
+      return assetManager.getPendingAssetsBatch(batch, { restoreToMemory: false });
+    }
+
+    const results = [];
+    for (const asset of batch) {
+      const blob = asset.blob || await this.getBlobForUpload(assetManager, asset.id);
+      if (blob) {
+        results.push({ ...asset, blob });
+      }
+    }
+    return results;
   }
 
   /**

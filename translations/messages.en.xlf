@@ -12229,7 +12229,6 @@
         <source>Adds additional information to the main title.</source>
         <target></target>
       </trans-unit>
-      <!-- Error page translations -->
       <trans-unit id="error.page_not_found" resname="Page not found">
         <source>Page not found</source>
         <target>Page not found</target>
@@ -12278,7 +12277,6 @@
         <source>This application is currently under maintenance. Please try again later.</source>
         <target>This application is currently under maintenance. Please try again later.</target>
       </trans-unit>
-      <!-- Logical exception translations -->
       <trans-unit id="project_props_001" resname="Project Properties">
         <source>Project Properties</source>
         <target>Project Properties</target>
@@ -12315,7 +12313,6 @@
         <source>Status</source>
         <target></target>
       </trans-unit>
-      <!-- Global Search Modal translations -->
       <trans-unit id="gs_001" resname="Search pages and content...">
         <source>Search pages and content...</source>
         <target></target>
@@ -12332,7 +12329,7 @@
         <source>in</source>
         <target></target>
       </trans-unit>
-                <trans-unit id="p0ych21" resname="Default AI Assistant">
+      <trans-unit id="p0ych21" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target></target>
       </trans-unit>
@@ -13232,10 +13229,6 @@
         <source>This user is already a collaborator</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="kam5sbf" resname="User not found">
-        <source>User not found</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="sdbqlpo" resname="Failed to invite user">
         <source>Failed to invite user</source>
         <target></target>
@@ -14119,6 +14112,54 @@
       <trans-unit id="pjwbg0f" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
         <target>creative commons: cc0 1.0</target>
+      </trans-unit>
+      <trans-unit id="e5ohszp" resname="Skip to content">
+        <source>Skip to content</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1r2hz10" resname="User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.">
+        <source>User not found. This may be because this person has not accessed eXeLearning yet and is not registered in the system. Ask them to log in before sharing.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kfisrmz" resname="Temporary files detected">
+        <source>Temporary files detected</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fuzjl2v" resname="Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.">
+        <source>Some files in this content use blob: links, which only work on this page. If you paste this elsewhere, images or files may be missing. To reuse content with files, add them from the File Manager or clone the iDevice.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kl326yu" resname="Caption Text">
+        <source>Caption Text</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ukmxcup" resname="Caption Link">
+        <source>Caption Link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="66wo1wn" resname="Predefined classes">
+        <source>Predefined classes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="90ni9fn" resname="Current style classes">
+        <source>Current style classes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5z9cxvw" resname="Close without saving">
+        <source>Close without saving</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>
