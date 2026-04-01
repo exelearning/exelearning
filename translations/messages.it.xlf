@@ -10929,10 +10929,6 @@
         <source>Title HTML</source>
         <target>HTML del titolo</target>
       </trans-unit>
-      <trans-unit id="HdPgTtl1" resname="Hide page title">
-        <source>Hide page title</source>
-        <target>Nascondi titolo pagina</target>
-      </trans-unit>
       <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
         <source>Advanced (SEO)</source>
         <target>Avanzato (SEO)</target>
@@ -12233,7 +12229,6 @@
         <source>Adds additional information to the main title.</source>
         <target>Aggiunge informazioni aggiuntive al titolo principale.</target>
       </trans-unit>
-      <!-- Error page translations -->
       <trans-unit id="error.page_not_found" resname="Page not found">
         <source>Page not found</source>
         <target>Pagina non trovata</target>
@@ -12274,7 +12269,6 @@
         <source>Server error</source>
         <target>Errore del server</target>
       </trans-unit>
-      <!-- Logical exception translations -->
       <trans-unit id="send_to_platform_001" resname="Send to %s">
         <source>Send to %s</source>
         <target>Invia a %s</target>
@@ -12282,6 +12276,38 @@
       <trans-unit id="finish_001" resname="Finish">
         <source>Finish</source>
         <target>Termina</target>
+      </trans-unit>
+      <trans-unit id="gs_001" resname="Search pages and content...">
+        <source>Search pages and content...</source>
+        <target>Cerca pagine e contenuti...</target>
+      </trans-unit>
+      <trans-unit id="gs_002" resname="Search results">
+        <source>Search results</source>
+        <target>Risultati ricerca</target>
+      </trans-unit>
+      <trans-unit id="gs_003" resname="No results found">
+        <source>No results found</source>
+        <target>Nessun risultato trovato</target>
+      </trans-unit>
+      <trans-unit id="gs_006" resname="in">
+        <source>in</source>
+        <target>in</target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Modifiche non salvate</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se chiudi ora, le ultime modifiche andranno perse. Rimani per salvare il progetto prima di uscire.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Rimani</target>
+      </trans-unit>
+      <trans-unit id="HdPgTtl1" resname="Hide page title">
+        <source>Hide page title</source>
+        <target>Nascondi titolo pagina</target>
       </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
@@ -12311,24 +12337,7 @@
         <source>Status</source>
         <target>Stato</target>
       </trans-unit>
-      <!-- Global Search Modal translations -->
-      <trans-unit id="gs_001" resname="Search pages and content...">
-        <source>Search pages and content...</source>
-        <target>Cerca pagine e contenuti...</target>
-      </trans-unit>
-      <trans-unit id="gs_002" resname="Search results">
-        <source>Search results</source>
-        <target>Risultati ricerca</target>
-      </trans-unit>
-      <trans-unit id="gs_003" resname="No results found">
-        <source>No results found</source>
-        <target>Nessun risultato trovato</target>
-      </trans-unit>
-      <trans-unit id="gs_006" resname="in">
-        <source>in</source>
-        <target>in</target>
-      </trans-unit>
-            <trans-unit id="r91m8y3" resname="Default AI Assistant">
+      <trans-unit id="r91m8y3" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Default AI Assistant</target>
       </trans-unit>
@@ -14147,18 +14156,6 @@
       <trans-unit id="8nxavnz" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Classi dello stile corrente</target>
-      </trans-unit>
-      <trans-unit id="h72md8e" resname="Unsaved changes">
-        <source>Unsaved changes</source>
-        <target>~Modifiche non salvate</target>
-      </trans-unit>
-      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
-        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
-        <target>~Se chiudi ora, le ultime modifiche andranno perse. Rimani per salvare il progetto prima di uscire.</target>
-      </trans-unit>
-      <trans-unit id="u7vmbw9" resname="Stay">
-        <source>Stay</source>
-        <target>~Rimani</target>
       </trans-unit>
       <trans-unit id="tiqt49t" resname="Close without saving">
         <source>Close without saving</source>

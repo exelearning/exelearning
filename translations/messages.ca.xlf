@@ -11077,26 +11077,6 @@
         <source>Toggle content</source>
         <target>Commuta el contingut</target>
       </trans-unit>
-      <trans-unit id="_9u.dBq" resname="Page not found">
-        <source>Page not found</source>
-        <target>Pàgina no trobada</target>
-      </trans-unit>
-      <trans-unit id="2heQoGd" resname="Sorry, but the page cannot be displayed.">
-        <source>Sorry, but the page cannot be displayed.</source>
-        <target>Ho sentim, però la pàgina no es pot mostrar.</target>
-      </trans-unit>
-      <trans-unit id="11nL.4x" resname="The server encountered an error and could not complete your request. Please try again later.">
-        <source>The server encountered an error and could not complete your request. Please try again later.</source>
-        <target>El servidor ha trobat un error i no ha pogut completar la teva sol·licitud. Si us plau, intenta-ho de nou més tard.</target>
-      </trans-unit>
-      <trans-unit id="uV6B6g_" resname="Return to work area">
-        <source>Return to work area</source>
-        <target>Torna a l'àrea de treball</target>
-      </trans-unit>
-      <trans-unit id="aYZKGkc" resname="Return to login">
-        <source>Return to login</source>
-        <target>Torna a l'inici de sessió</target>
-      </trans-unit>
       <trans-unit id="btdi.Hi" resname="Version:">
         <source>Version:</source>
         <target>Versió:</target>
@@ -12252,6 +12232,38 @@
       <trans-unit id="finish_001" resname="Finish">
         <source>Finish</source>
         <target>Finalitza</target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Canvis sense desar</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Si tanques ara, es perdran els darrers canvis. Queda't per desar el projecte primer.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Queda't</target>
+      </trans-unit>
+      <trans-unit id="_9u.dBq" resname="Page not found">
+        <source>Page not found</source>
+        <target>Pàgina no trobada</target>
+      </trans-unit>
+      <trans-unit id="2heQoGd" resname="Sorry, but the page cannot be displayed.">
+        <source>Sorry, but the page cannot be displayed.</source>
+        <target>Ho sentim, però la pàgina no es pot mostrar.</target>
+      </trans-unit>
+      <trans-unit id="11nL.4x" resname="The server encountered an error and could not complete your request. Please try again later.">
+        <source>The server encountered an error and could not complete your request. Please try again later.</source>
+        <target>El servidor ha trobat un error i no ha pogut completar la teva sol·licitud. Si us plau, intenta-ho de nou més tard.</target>
+      </trans-unit>
+      <trans-unit id="uV6B6g_" resname="Return to work area">
+        <source>Return to work area</source>
+        <target>Torna a l'àrea de treball</target>
+      </trans-unit>
+      <trans-unit id="aYZKGkc" resname="Return to login">
+        <source>Return to login</source>
+        <target>Torna a l'inici de sessió</target>
       </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
@@ -14144,18 +14156,6 @@
       <trans-unit id="5i7k6dq" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Classes de l’estil actual</target>
-      </trans-unit>
-      <trans-unit id="h72md8e" resname="Unsaved changes">
-        <source>Unsaved changes</source>
-        <target>~Canvis sense desar</target>
-      </trans-unit>
-      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
-        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
-        <target>~Si tanques ara, es perdran els darrers canvis. Queda't per desar el projecte primer.</target>
-      </trans-unit>
-      <trans-unit id="u7vmbw9" resname="Stay">
-        <source>Stay</source>
-        <target>~Queda't</target>
       </trans-unit>
       <trans-unit id="wqrwca1" resname="Close without saving">
         <source>Close without saving</source>

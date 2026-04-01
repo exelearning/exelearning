@@ -12233,6 +12233,18 @@
         <source>Finish</source>
         <target>Finalitza</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Canvis sense guardar</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Si tanques ara, se perdran els últims canvis. Queda't per a guardar el projecte primer.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Quedar-se</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>Contingut eXeLearning (.elpx)</target>
@@ -12261,7 +12273,7 @@
         <source>Status</source>
         <target>Estat</target>
       </trans-unit>
-            <trans-unit id="czx0psq" resname="Default AI Assistant">
+      <trans-unit id="czx0psq" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Asistente de IA predeterminado</target>
       </trans-unit>
@@ -14144,18 +14156,6 @@
       <trans-unit id="y6ss27s" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Classes de l'estil actual</target>
-      </trans-unit>
-      <trans-unit id="h72md8e" resname="Unsaved changes">
-        <source>Unsaved changes</source>
-        <target>~Canvis sense guardar</target>
-      </trans-unit>
-      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
-        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
-        <target>~Si tanques ara, se perdran els últims canvis. Queda't per a guardar el projecte primer.</target>
-      </trans-unit>
-      <trans-unit id="u7vmbw9" resname="Stay">
-        <source>Stay</source>
-        <target>~Quedar-se</target>
       </trans-unit>
       <trans-unit id="3nta8f7" resname="Close without saving">
         <source>Close without saving</source>

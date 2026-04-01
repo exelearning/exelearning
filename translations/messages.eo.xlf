@@ -12233,6 +12233,18 @@
         <source>Finish</source>
         <target>~Fini</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Nesavitaĵoj</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se vi fermos nun, viaj lastaj ŝanĝoj perdiĝos. Restu por unue savi la projekton.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Resti</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>~eXeLearning enhavo (.elpx)</target>
@@ -12261,7 +12273,7 @@
         <source>Status</source>
         <target>~Stato</target>
       </trans-unit>
-            <trans-unit id="pp7bz6p" resname="Default AI Assistant">
+      <trans-unit id="pp7bz6p" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Predetermina AI-asistanto</target>
       </trans-unit>
@@ -14144,18 +14156,6 @@
       <trans-unit id="25bysk8" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Klasoj de la aktuala stilo</target>
-      </trans-unit>
-      <trans-unit id="h72md8e" resname="Unsaved changes">
-        <source>Unsaved changes</source>
-        <target>~Nesavitaĵoj</target>
-      </trans-unit>
-      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
-        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
-        <target>~Se vi fermos nun, viaj lastaj ŝanĝoj perdiĝos. Restu por unue savi la projekton.</target>
-      </trans-unit>
-      <trans-unit id="u7vmbw9" resname="Stay">
-        <source>Stay</source>
-        <target>~Resti</target>
       </trans-unit>
       <trans-unit id="nvcevbg" resname="Close without saving">
         <source>Close without saving</source>

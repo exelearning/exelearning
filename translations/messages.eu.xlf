@@ -12233,6 +12233,18 @@
         <source>Finish</source>
         <target>~Amaitu</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Gorde gabeko aldaketak</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Orain ixten baduzu, azken aldaketak galduko dira. Geratu proiektua lehenago gordetzeko.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Geratu</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>~eXeLearning edukia (.elpx)</target>
@@ -12261,7 +12273,7 @@
         <source>Status</source>
         <target>~Egoera</target>
       </trans-unit>
-            <trans-unit id="alsjwy8" resname="Default AI Assistant">
+      <trans-unit id="alsjwy8" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Asistente de IA predeterminado</target>
       </trans-unit>
@@ -14144,18 +14156,6 @@
       <trans-unit id="r0i72e1" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Uneko estiloaren klaseak</target>
-      </trans-unit>
-      <trans-unit id="h72md8e" resname="Unsaved changes">
-        <source>Unsaved changes</source>
-        <target>~Gorde gabeko aldaketak</target>
-      </trans-unit>
-      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
-        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
-        <target>~Orain ixten baduzu, azken aldaketak galduko dira. Geratu proiektua lehenago gordetzeko.</target>
-      </trans-unit>
-      <trans-unit id="u7vmbw9" resname="Stay">
-        <source>Stay</source>
-        <target>~Geratu</target>
       </trans-unit>
       <trans-unit id="atbpe78" resname="Close without saving">
         <source>Close without saving</source>
