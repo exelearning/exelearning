@@ -21,6 +21,7 @@
 - Legacy .elp internal links now work correctly in the workarea editor
 - Platform name string was incorrectly displayed in the online version
 - Improved "User not found" error message with more helpful context
+- "Made with eXeLearning" link and page counter preferences were not respected in exports
 - Further reduced peak memory usage during save, preview, and export for large projects
 
 ### Upgraded

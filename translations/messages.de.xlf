@@ -399,7 +399,7 @@
       </trans-unit>
       <trans-unit id="z9OKodR" resname="Save">
         <source>Save</source>
-        <target>~Sie können seine Fragen im txt-Format exportieren, um sie in andere kompatible Aktivitäten zu integrieren.</target>
+        <target>Speichern</target>
       </trans-unit>
       <trans-unit id="xcITuSl" resname="Copy">
         <source>Copy</source>
