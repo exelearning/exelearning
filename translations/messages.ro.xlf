@@ -12261,7 +12261,7 @@
         <source>Status</source>
         <target>~Stare</target>
       </trans-unit>
-            <trans-unit id="r54j2rq" resname="Default AI Assistant">
+      <trans-unit id="r54j2rq" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Asistent AI implicit</target>
       </trans-unit>

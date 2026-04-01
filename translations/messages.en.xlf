@@ -12229,7 +12229,6 @@
         <source>Adds additional information to the main title.</source>
         <target></target>
       </trans-unit>
-      <!-- Error page translations -->
       <trans-unit id="error.page_not_found" resname="Page not found">
         <source>Page not found</source>
         <target>Page not found</target>
@@ -12278,7 +12277,6 @@
         <source>This application is currently under maintenance. Please try again later.</source>
         <target>This application is currently under maintenance. Please try again later.</target>
       </trans-unit>
-      <!-- Logical exception translations -->
       <trans-unit id="project_props_001" resname="Project Properties">
         <source>Project Properties</source>
         <target>Project Properties</target>
@@ -12315,7 +12313,6 @@
         <source>Status</source>
         <target></target>
       </trans-unit>
-      <!-- Global Search Modal translations -->
       <trans-unit id="gs_001" resname="Search pages and content...">
         <source>Search pages and content...</source>
         <target></target>
@@ -12332,7 +12329,7 @@
         <source>in</source>
         <target></target>
       </trans-unit>
-                <trans-unit id="p0ych21" resname="Default AI Assistant">
+      <trans-unit id="p0ych21" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target></target>
       </trans-unit>

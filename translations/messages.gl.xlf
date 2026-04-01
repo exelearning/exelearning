@@ -12261,7 +12261,7 @@
         <source>Status</source>
         <target>Estado</target>
       </trans-unit>
-            <trans-unit id="ieeaupo" resname="Default AI Assistant">
+      <trans-unit id="ieeaupo" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Asistente de IA predeterminado</target>
       </trans-unit>
