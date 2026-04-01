@@ -627,7 +627,7 @@ var $exeTinyMCE = {
 
                 // Intercept image dialog so users see asset:// URLs instead of blob://.
                 // Must run after init when windowManager is available.
-                $exeTinyMCE._patchImageDialog(ed);
+                $exeTinyMCE._patchAssetDialogs(ed);
 
                 // Hook for Yjs collaborative editing - bind editor if Yjs is enabled
                 if (typeof $exeTinyMCE.onEditorInit === 'function') {
@@ -677,49 +677,62 @@ var $exeTinyMCE = {
      * instead of ephemeral blob:// URLs. On submit, waits for dialog close then
      * re-resolves asset:// → blob:// via resolveAssetUrlsInEditor.
      */
-    _patchImageDialog: function (ed) {
+    _patchAssetDialogs: function (ed) {
         if (!ed.windowManager || ed.windowManager._assetPatched) return;
         ed.windowManager._assetPatched = true;
         var origOpen = ed.windowManager.open;
         ed.windowManager.open = function (spec) {
-            var src = spec.initialData?.src;
-            if (!src || typeof src.value !== 'string' || !src.value.startsWith('blob:')) {
-                return origOpen.apply(this, arguments);
-            }
-
             var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
             if (!assetManager) return origOpen.apply(this, arguments);
 
-            var blobUrl = src.value;
-            var assetId = assetManager.reverseBlobCache.get(blobUrl);
-            if (!assetId) return origOpen.apply(this, arguments);
+            var needsResolveAfterClose = false;
 
-            var metadata = assetManager.getAssetMetadata?.(assetId);
-            var filename = metadata?.filename || metadata?.name;
-            src.value = assetManager.getAssetUrl?.(assetId, filename) || ('asset://' + assetId);
-
-            // On submit TinyMCE sets img.src = asset:// (non-renderable).
-            // After dialogs close (including a11y confirm), re-resolve to blob://.
-            var origSubmit = spec.onSubmit;
-            spec.onSubmit = function (api) {
-                var node = ed.selection.getNode();
-                if (node?.tagName === 'IMG') {
-                    node.removeAttribute('data-asset-src');
+            // --- Image dialog: spec.initialData.src ---
+            var src = spec.initialData?.src;
+            if (src && typeof src.value === 'string' && src.value.startsWith('blob:')) {
+                var assetId = assetManager.reverseBlobCache.get(src.value);
+                if (assetId) {
+                    var metadata = assetManager.getAssetMetadata?.(assetId);
+                    var filename = metadata?.filename || metadata?.name;
+                    src.value = assetManager.getAssetUrl?.(assetId, filename) || ('asset://' + assetId);
+                    needsResolveAfterClose = true;
                 }
-                if (origSubmit) origSubmit.call(this, api);
-                var handler = function () {
-                    ed.off('CloseWindow', handler);
-                    setTimeout(function () {
-                        var body = ed.getBody();
-                        if (!body) return;
-                        body.querySelectorAll(ASSET_URL_MEDIA_SELECTOR).forEach(function (el) {
-                            el.removeAttribute('data-asset-src');
-                        });
-                        $exeTinyMCE.resolveAssetUrlsInEditor(ed);
-                    }, 50);
+            }
+
+            // --- Media dialog (exemedia): spec.initialData.source ---
+            var source = spec.initialData?.source;
+            if (source && typeof source.value === 'string' && source.value.startsWith('blob:')) {
+                var assetId = assetManager.reverseBlobCache.get(source.value);
+                if (assetId) {
+                    var metadata = assetManager.getAssetMetadata?.(assetId);
+                    var filename = metadata?.filename || metadata?.name;
+                    source.value = assetManager.getAssetUrl?.(assetId, filename) || ('asset://' + assetId);
+                    needsResolveAfterClose = true;
+                }
+            }
+
+            if (needsResolveAfterClose) {
+                var origSubmit = spec.onSubmit;
+                spec.onSubmit = function (api) {
+                    var node = ed.selection.getNode();
+                    if (node?.tagName === 'IMG') {
+                        node.removeAttribute('data-asset-src');
+                    }
+                    if (origSubmit) origSubmit.call(this, api);
+                    var handler = function () {
+                        ed.off('CloseWindow', handler);
+                        setTimeout(function () {
+                            var body = ed.getBody();
+                            if (!body) return;
+                            body.querySelectorAll(ASSET_URL_MEDIA_SELECTOR).forEach(function (el) {
+                                el.removeAttribute('data-asset-src');
+                            });
+                            $exeTinyMCE.resolveAssetUrlsInEditor(ed);
+                        }, 50);
+                    };
+                    ed.on('CloseWindow', handler);
                 };
-                ed.on('CloseWindow', handler);
-            };
+            }
 
             return origOpen.apply(this, arguments);
         };

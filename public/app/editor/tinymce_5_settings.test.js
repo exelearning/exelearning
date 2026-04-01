@@ -941,7 +941,7 @@ describe('TinyMCE 5 Settings', () => {
         expect(audio.getAttribute('src')).toBe('blob:already-resolved');
       });
 
-      it('_patchImageDialog replaces blob with asset in dialog and re-resolves after dialog close', async () => {
+      it('_patchAssetDialogs replaces blob with asset in dialog and re-resolves after dialog close', async () => {
         const reverseBlobCache = new Map([['blob:http://localhost/img1', 'asset-uuid-1']]);
         window.eXeLearning.app.project = {
           _yjsBridge: {
@@ -969,7 +969,7 @@ describe('TinyMCE 5 Settings', () => {
           },
         };
 
-        globalThis.$exeTinyMCE._patchImageDialog(mockEditor);
+        globalThis.$exeTinyMCE._patchAssetDialogs(mockEditor);
 
         // Call the patched open with a blob src dialog
         const spec = {
@@ -1000,7 +1000,7 @@ describe('TinyMCE 5 Settings', () => {
         // and called resolveAssetUrlsInEditor (via $exeTinyMCE)
       });
 
-      it('_patchImageDialog passes through non-blob dialogs unchanged', () => {
+      it('_patchAssetDialogs passes through non-blob dialogs unchanged', () => {
         window.eXeLearning.app.project = {
           _yjsBridge: {
             assetManager: { reverseBlobCache: new Map() },
@@ -1017,7 +1017,7 @@ describe('TinyMCE 5 Settings', () => {
           },
         };
 
-        globalThis.$exeTinyMCE._patchImageDialog(mockEditor);
+        globalThis.$exeTinyMCE._patchAssetDialogs(mockEditor);
 
         // Call with a non-blob src (plain URL)
         const spec = {
@@ -1030,7 +1030,7 @@ describe('TinyMCE 5 Settings', () => {
         expect(result).toEqual(origOpenResult);
       });
 
-      it('_patchImageDialog unconditional pass clears stale data-asset-src after image replacement', async () => {
+      it('_patchAssetDialogs unconditional pass clears stale data-asset-src after image replacement', async () => {
         const reverseBlobCache = new Map([['blob:http://localhost/img1', 'asset-uuid-1']]);
         const resolveAssetURL = vi.fn().mockResolvedValue('blob:http://localhost/new-blob');
         window.eXeLearning.app.project = {
@@ -1059,7 +1059,7 @@ describe('TinyMCE 5 Settings', () => {
           windowManager: { open: vi.fn(() => ({ fake: true })) },
         };
 
-        globalThis.$exeTinyMCE._patchImageDialog(mockEditor);
+        globalThis.$exeTinyMCE._patchAssetDialogs(mockEditor);
 
         const spec = {
           initialData: { src: { value: 'blob:http://localhost/img1' } },
@@ -1075,6 +1075,158 @@ describe('TinyMCE 5 Settings', () => {
         // resolveAssetUrlsInEditor then re-sets data-asset-src as part of normal flow,
         // but the key is that resolveAssetURL was called to fetch the fresh blob.
         expect(resolveAssetURL).toHaveBeenCalledWith('asset://asset-uuid-1/image.png');
+      });
+
+      it('_patchAssetDialogs converts media dialog blob source to asset URL', () => {
+        const reverseBlobCache = new Map([['blob:http://localhost/audio1', 'audio-uuid-1']]);
+        window.eXeLearning.app.project = {
+          _yjsBridge: {
+            assetManager: {
+              reverseBlobCache,
+              getAssetMetadata: vi.fn().mockReturnValue({ filename: 'audio.mp3' }),
+              getAssetUrl: vi.fn().mockReturnValue('asset://audio-uuid-1/audio.mp3'),
+            },
+          },
+        };
+
+        const origOpenResult = { fake: true };
+        const mockEditor = {
+          on: vi.fn(),
+          off: vi.fn(),
+          getBody: () => document.createElement('div'),
+          selection: { getNode: () => document.createElement('div') },
+          windowManager: {
+            open: vi.fn(() => origOpenResult),
+          },
+        };
+
+        globalThis.$exeTinyMCE._patchAssetDialogs(mockEditor);
+
+        const spec = {
+          initialData: { source: { value: 'blob:http://localhost/audio1' } },
+          onSubmit: vi.fn(),
+        };
+        const result = mockEditor.windowManager.open(spec);
+
+        expect(spec.initialData.source.value).toBe('asset://audio-uuid-1/audio.mp3');
+        expect(result).toEqual(origOpenResult);
+      });
+
+      it('_patchAssetDialogs media dialog triggers re-resolve after submit', async () => {
+        const reverseBlobCache = new Map([['blob:http://localhost/audio1', 'audio-uuid-1']]);
+        const resolveAssetURL = vi.fn().mockResolvedValue('blob:http://localhost/new-audio-blob');
+        window.eXeLearning.app.project = {
+          _yjsBridge: {
+            assetManager: {
+              reverseBlobCache,
+              getAssetMetadata: vi.fn().mockReturnValue({ filename: 'audio.mp3' }),
+              getAssetUrl: vi.fn().mockReturnValue('asset://audio-uuid-1/audio.mp3'),
+              resolveAssetURL,
+            },
+          },
+        };
+
+        const body = document.createElement('div');
+        const audio = document.createElement('audio');
+        audio.setAttribute('src', 'asset://audio-uuid-1/audio.mp3');
+        audio.setAttribute('data-asset-src', 'asset://audio-uuid-1/audio.mp3');
+        body.appendChild(audio);
+
+        const eventHandlers = {};
+        const mockEditor = {
+          on: vi.fn((evt, fn) => { eventHandlers[evt] = fn; }),
+          off: vi.fn(),
+          getBody: () => body,
+          selection: { getNode: () => document.createElement('div') },
+          windowManager: { open: vi.fn(() => ({ fake: true })) },
+        };
+
+        globalThis.$exeTinyMCE._patchAssetDialogs(mockEditor);
+
+        const spec = {
+          initialData: { source: { value: 'blob:http://localhost/audio1' } },
+          onSubmit: vi.fn(),
+        };
+        mockEditor.windowManager.open(spec);
+        spec.onSubmit({ close: vi.fn() });
+        eventHandlers['CloseWindow']();
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // data-asset-src should be cleared and re-resolution triggered
+        expect(resolveAssetURL).toHaveBeenCalledWith('asset://audio-uuid-1/audio.mp3');
+      });
+
+      it('_patchAssetDialogs passes through non-blob media source unchanged', () => {
+        window.eXeLearning.app.project = {
+          _yjsBridge: {
+            assetManager: { reverseBlobCache: new Map() },
+          },
+        };
+
+        const origOpenResult = { fake: true };
+        const mockEditor = {
+          on: vi.fn(),
+          off: vi.fn(),
+          getBody: () => document.createElement('div'),
+          windowManager: {
+            open: vi.fn(() => origOpenResult),
+          },
+        };
+
+        globalThis.$exeTinyMCE._patchAssetDialogs(mockEditor);
+
+        const spec = {
+          initialData: { source: { value: 'https://example.com/audio.mp3' } },
+        };
+        const result = mockEditor.windowManager.open(spec);
+
+        expect(spec.initialData.source.value).toBe('https://example.com/audio.mp3');
+        expect(result).toEqual(origOpenResult);
+      });
+
+      it('_patchAssetDialogs handles both image and media dialogs independently', () => {
+        const reverseBlobCache = new Map([
+          ['blob:http://localhost/img1', 'img-uuid'],
+          ['blob:http://localhost/audio1', 'audio-uuid'],
+        ]);
+        window.eXeLearning.app.project = {
+          _yjsBridge: {
+            assetManager: {
+              reverseBlobCache,
+              getAssetMetadata: vi.fn((id) =>
+                id === 'img-uuid' ? { filename: 'photo.png' } : { filename: 'song.mp3' }
+              ),
+              getAssetUrl: vi.fn((id, name) => 'asset://' + id + '/' + name),
+            },
+          },
+        };
+
+        const mockEditor = {
+          on: vi.fn(),
+          off: vi.fn(),
+          getBody: () => document.createElement('div'),
+          selection: { getNode: () => document.createElement('img') },
+          windowManager: { open: vi.fn(() => ({ fake: true })) },
+        };
+
+        globalThis.$exeTinyMCE._patchAssetDialogs(mockEditor);
+
+        // Image dialog
+        const imgSpec = {
+          initialData: { src: { value: 'blob:http://localhost/img1' } },
+          onSubmit: vi.fn(),
+        };
+        mockEditor.windowManager.open(imgSpec);
+        expect(imgSpec.initialData.src.value).toBe('asset://img-uuid/photo.png');
+
+        // Media dialog (separate call)
+        const mediaSpec = {
+          initialData: { source: { value: 'blob:http://localhost/audio1' } },
+          onSubmit: vi.fn(),
+        };
+        mockEditor.windowManager.open(mediaSpec);
+        expect(mediaSpec.initialData.source.value).toBe('asset://audio-uuid/song.mp3');
       });
 
       it('resolveAssetUrlsInEditor uses undoManager.ignore for src mutations', async () => {
