@@ -240,6 +240,7 @@ export class PageExporter extends Html5Exporter {
             version: meta.exelearningVersion,
             detectedLibraries,
             addMathJax,
+            addExeLink: meta.addExeLink ?? true,
         });
     }
 

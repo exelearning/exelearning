@@ -248,6 +248,43 @@ describe('ImsExporter', () => {
         });
     });
 
+    describe('eXeLearning Logo', () => {
+        it('should include exe_powered_logo.png when logo is available', async () => {
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            await exporter.export();
+
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should NOT include exe_powered_logo.png when addExeLink is false', async () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            exporter = new ImsExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should handle logo fetch failure gracefully', async () => {
+            resources.fetchExeLogo = async () => {
+                throw new Error('Logo not found');
+            };
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should include exe_powered_logo.png in imsmanifest.xml resources', async () => {
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).toContain('content/img/exe_powered_logo.png');
+        });
+    });
+
     describe('IMS Manifest', () => {
         it('should generate valid imsmanifest.xml', async () => {
             await exporter.export();
@@ -321,6 +358,36 @@ describe('ImsExporter', () => {
             const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('Test IMS Project');
+        });
+
+        it('should NOT include page-counter when addPagination is false', () => {
+            document = new MockDocument({ addPagination: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).not.toContain('page-counter');
+        });
+
+        it('should include page-counter when addPagination is true', () => {
+            document = new MockDocument({ addPagination: true }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('page-counter');
+        });
+
+        it('should NOT include made-with-eXe link when addExeLink is false', () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).not.toContain('made-with-eXe');
+        });
+
+        it('should include made-with-eXe link by default', () => {
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('made-with-eXe');
         });
     });
 

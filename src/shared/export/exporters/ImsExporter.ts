@@ -192,6 +192,19 @@ export class ImsExporter extends Html5Exporter {
             addFile('content/css/base.css', baseCss);
             commonFiles.push('content/css/base.css');
 
+            // 2b. Add eXeLearning logo for "Made with eXeLearning" footer
+            if (meta.addExeLink !== false) {
+                try {
+                    const logoData = await this.resources.fetchExeLogo();
+                    if (logoData) {
+                        addFile('content/img/exe_powered_logo.png', logoData);
+                        commonFiles.push('content/img/exe_powered_logo.png');
+                    }
+                } catch {
+                    // Logo not available - footer will still render but without background image
+                }
+            }
+
             // 3. Add theme files (already pre-fetched in step 0)
             if (themeFilesMap) {
                 for (const [filePath, content] of themeFilesMap) {
@@ -394,8 +407,8 @@ export class ImsExporter extends Html5Exporter {
             // Export options - IMS specific overrides
             // IMS exports don't use client-side search - LMS handles navigation
             addSearchBox: false,
-            // Force page counter for IMS
-            addPagination: true,
+            addExeLink: meta.addExeLink ?? true,
+            addPagination: meta.addPagination ?? false,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
             bodyClass: bodyClass,
