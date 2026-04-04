@@ -11,6 +11,7 @@
 - Support for `?url=` query parameter to open remote files in the static editor
 - Updated Spanish (ES) translation
 - Added automated placeholder translations for incomplete translations
+- Completed full automated placeholder translations review
 
 ### Fixed
 
