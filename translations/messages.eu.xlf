@@ -12283,7 +12283,7 @@
       </trans-unit>
       <trans-unit id="ym3r8bv" resname="Hide page title">
         <source>Hide page title</source>
-        <target>~Ocultar título de la página</target>
+        <target>~Ezkutatu orriaren izenburua</target>
       </trans-unit>
       <trans-unit id="jpr5hr4" resname="Include MathJax (advanced features)">
         <source>Include MathJax (advanced features)</source>
@@ -12299,7 +12299,7 @@
       </trans-unit>
       <trans-unit id="kqlausw" resname="Apply a global font to all content. Useful for accessibility and early literacy.">
         <source>Apply a global font to all content. Useful for accessibility and early literacy.</source>
-        <target>~Las fórmulas se representan aunque esta opción esté desactivada. Activa esta opción para incluir la biblioteca completa de MathJax en las exportaciones (unos 8 MB) para funciones avanzadas como herramientas de accesibilidad y menús contextuales.</target>
+        <target>~Aplikatu letra-tipo global bat eduki guztiari. Lagungarria irisgarritasunerako eta hasierako idazketa-irakurketarako.</target>
       </trans-unit>
       <trans-unit id="oabo7em" resname="Style default">
         <source>Style default</source>
@@ -12755,7 +12755,7 @@
       </trans-unit>
       <trans-unit id="01qqljd" resname="Do you want to delete this box?">
         <source>Do you want to delete this box?</source>
-        <target>~¿Want to delete this box?</target>
+        <target>~Koadroa ezabatu nahi al duzu?</target>
       </trans-unit>
       <trans-unit id="4s6pap3" resname="Move box to page">
         <source>Move box to page</source>
@@ -13243,11 +13243,11 @@
       </trans-unit>
       <trans-unit id="f25nsbi" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target>~¿Eliminar la autorización de acceso a {email}?</target>
+        <target>~{email} erabiltzailearen sarbidea proiektu honetatik kendu?</target>
       </trans-unit>
       <trans-unit id="gvoiuwr" resname="Removed {email}">
         <source>Removed {email}</source>
-        <target>~Se eliminó el acceso a {email}</target>
+        <target>~{email} erabiltzailearen sarbidea kendu da</target>
       </trans-unit>
       <trans-unit id="jrzmzv1" resname="Failed to remove collaborator">
         <source>Failed to remove collaborator</source>
@@ -13255,7 +13255,7 @@
       </trans-unit>
       <trans-unit id="6ldd14w" resname="Transfer ownership to {email}? You will become an editor.">
         <source>Transfer ownership to {email}? You will become an editor.</source>
-        <target>~¿Transferir la propiedad a {email}? Pasarás a ser editor.</target>
+        <target>~{email} erabiltzaileari jabetza transferitu? Editore bihurtuko zara.</target>
       </trans-unit>
       <trans-unit id="bikwwm9" resname="Ownership transferred to {email}">
         <source>Ownership transferred to {email}</source>
@@ -13263,11 +13263,11 @@
       </trans-unit>
       <trans-unit id="gv0gp7c" resname="Failed to transfer ownership">
         <source>Failed to transfer ownership</source>
-        <target>~Error al transferir la propiedad</target>
+        <target>~Errorea jabetza transferitzean</target>
       </trans-unit>
       <trans-unit id="ndado78" resname="Project data not loaded. Please try again.">
         <source>Project data not loaded. Please try again.</source>
-        <target>~Datos del proyecto no cargados. Por favor, inténtalo de nuevo.</target>
+        <target>~Proiektuaren datuak ez dira kargatu. Saiatu berriro.</target>
       </trans-unit>
       <trans-unit id="8xww4x9" resname="Project is now public">
         <source>Project is now public</source>
@@ -13511,7 +13511,7 @@
       </trans-unit>
       <trans-unit id="wque1se" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
         <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>~Es necesario recargar la página para aplicar los cambios. Descarga tu proyecto primero para no perder trabajo. Luego recarga la página.</target>
+        <target>~Aldaketak aplikatzeko orria berkargarritu behar da. Deskargatu zure proiektua lehenik lana ez galtzeko, eta gero kargatu berriro orria.</target>
       </trans-unit>
       <trans-unit id="ntl25n3" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -13519,7 +13519,7 @@
       </trans-unit>
       <trans-unit id="963g6wz" resname="Project not ready for collaboration">
         <source>Project not ready for collaboration</source>
-        <target>~Tienes cambios sin guardar. ¿Seguro que quieres salir?</target>
+        <target>~Proiektua ez dago prest lankidetzarako</target>
       </trans-unit>
       <trans-unit id="ldzeqsu" resname="Generating ELPX file...">
         <source>Generating ELPX file...</source>
@@ -13527,7 +13527,7 @@
       </trans-unit>
       <trans-unit id="qs4w93b" resname="File generated and downloaded.">
         <source>File generated and downloaded.</source>
-        <target>~El proyecto no está preparado para la edición colaborativa</target>
+        <target>~Fitxategia sortu eta deskargatu da.</target>
       </trans-unit>
       <trans-unit id="gh4sot4" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
@@ -13535,7 +13535,7 @@
       </trans-unit>
       <trans-unit id="ggqvzq3" resname="Saving document...">
         <source>Saving document...</source>
-        <target>~Generando archivo ELPX...</target>
+        <target>~Dokumentua gordetzen...</target>
       </trans-unit>
       <trans-unit id="gmnbytq" resname="Saving...">
         <source>Saving...</source>
@@ -13543,7 +13543,7 @@
       </trans-unit>
       <trans-unit id="so6owpb" resname="Offline Mode">
         <source>Offline Mode</source>
-        <target>~Archivo generado y descargado.</target>
+        <target>~Lineaz kanpoko modua</target>
       </trans-unit>
       <trans-unit id="xf9v7gy" resname="Your project is automatically saved in your browser. Use File &gt; Export to download a copy.">
         <source>Your project is automatically saved in your browser. Use File &gt; Export to download a copy.</source>

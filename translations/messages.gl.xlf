@@ -12395,7 +12395,7 @@
       </trans-unit>
       <trans-unit id="o9l73gv" resname="files">
         <source>files</source>
-        <target>~ficheros</target>
+        <target>~ficheiros</target>
       </trans-unit>
       <trans-unit id="5cm3hir" resname="Go to root">
         <source>Go to root</source>
@@ -12543,7 +12543,7 @@
       </trans-unit>
       <trans-unit id="9mtw0fo" resname="Optimizing images may reduce quality. This action cannot be undone.">
         <source>Optimizing images may reduce quality. This action cannot be undone.</source>
-        <target>~A optimización de imaxes pode reducir a calidade. Esta acción non se pode deshacer.</target>
+        <target>~A optimización de imaxes pode reducir a calidade. Esta acción non se pode desfacer.</target>
       </trans-unit>
       <trans-unit id="kao0ia0" resname="Do you want to optimize the selected images?">
         <source>Do you want to optimize the selected images?</source>
@@ -13123,7 +13123,7 @@
       </trans-unit>
       <trans-unit id="6jjb9p2" resname="This action cannot be undone.">
         <source>This action cannot be undone.</source>
-        <target>~Esta acción non se pode deshacer.</target>
+        <target>~Esta acción non se pode desfacer.</target>
       </trans-unit>
       <trans-unit id="374ra5g" resname="An error occurred while importing the component.">
         <source>An error occurred while importing the component.</source>
