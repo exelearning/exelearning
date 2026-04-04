@@ -12575,7 +12575,7 @@
       </trans-unit>
       <trans-unit id="g08sxds" resname="Third party libraries">
         <source>Third party libraries</source>
-        <target></target>
+        <target>~Librerie di terze parti</target>
       </trans-unit>
       <trans-unit id="p4ov7ph" resname="Opens in new window">
         <source>Opens in new window</source>

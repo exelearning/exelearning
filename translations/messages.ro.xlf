@@ -14151,11 +14151,11 @@
       </trans-unit>
       <trans-unit id="qfj2u4j" resname="Predefined classes">
         <source>Predefined classes</source>
-        <target></target>
+        <target>~Clase predefinite</target>
       </trans-unit>
       <trans-unit id="50n1sqk" resname="Current style classes">
         <source>Current style classes</source>
-        <target></target>
+        <target>~Clase de stil curente</target>
       </trans-unit>
       <trans-unit id="4hmrfbd" resname="Close without saving">
         <source>Close without saving</source>
