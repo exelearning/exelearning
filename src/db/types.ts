@@ -21,6 +21,7 @@ export interface Database {
     themes: ThemesTable;
     templates: TemplatesTable;
     impersonation_audit_logs: ImpersonationAuditLogsTable;
+    activity_log: ActivityLogTable;
     // Kysely internal migration tables
     kysely_migration: KyselyMigrationTable;
     kysely_migration_lock: KyselyMigrationLockTable;
@@ -189,6 +190,13 @@ interface ImpersonationAuditLogsTable {
     ended_user_agent: string | null;
 }
 
+interface ActivityLogTable {
+    id: Generated<number>;
+    event_type: string;
+    user_id: number | null;
+    created_at: number; // Unix timestamp in milliseconds
+}
+
 // Kysely internal migration tables
 interface KyselyMigrationTable {
     name: string;
@@ -255,6 +263,10 @@ export type TemplateUpdate = Updateable<TemplatesTable>;
 export type ImpersonationAuditLog = Selectable<ImpersonationAuditLogsTable>;
 export type NewImpersonationAuditLog = Insertable<ImpersonationAuditLogsTable>;
 export type ImpersonationAuditLogUpdate = Updateable<ImpersonationAuditLogsTable>;
+
+// Audit events
+export type ActivityEvent = Selectable<ActivityLogTable>;
+export type NewActivityEvent = Insertable<ActivityLogTable>;
 
 // ============================================================================
 // HELPER TYPES
