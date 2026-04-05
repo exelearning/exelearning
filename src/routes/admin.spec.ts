@@ -125,16 +125,30 @@ const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries 
     hardDeleteProject: async () => undefined,
     findProjectsByOwnerId: async () => [],
     createImpersonationAuditSession: async () => undefined,
+    getActiveUserMetrics: async () => ({ dau: 5, wau: 20, mau: 50 }),
+    getActivityTimeSeries: async () => ({
+        labels: ['2024-01-01', '2024-01-02'],
+        logins: [3, 5],
+        projectsCreated: [1, 2],
+    }),
+    getPeakUsage: async () => ({
+        peakHour: 14,
+        peakDay: 'Monday',
+        peakHourCount: 10,
+        peakDayCount: 30,
+    }),
     ...overrides,
 });
 
 const createMockDeps = (
     queryOverrides: Partial<AdminQueries> = {},
     fileHelperOverrides: Partial<FileHelper> = {},
+    getConnectedClientsDetailOverride?: () => Array<{ userId: number; projectUuid: string; connectedAt: number }>,
 ): AdminDependencies => ({
     db: {} as Kysely<Database>,
     queries: createMockQueries(queryOverrides),
     fileHelper: createMockFileHelper(fileHelperOverrides),
+    getConnectedClientsDetail: getConnectedClientsDetailOverride,
 });
 
 // Helper to generate admin JWT token
@@ -2440,6 +2454,226 @@ describe('Admin Routes', () => {
                 const body = await response.json();
                 expect(body.success).toBe(true);
             });
+        });
+    });
+
+    // ============================================================================
+    // ANALYTICS ROUTES
+    // ============================================================================
+
+    describe('GET /api/admin/analytics/activity', () => {
+        it('should return activity time series with default 30 days', async () => {
+            let capturedDays: number | undefined;
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        getActivityTimeSeries: async (_db, days) => {
+                            capturedDays = days;
+                            return {
+                                labels: ['2024-01-01', '2024-01-02'],
+                                logins: [3, 5],
+                                projectsCreated: [1, 2],
+                            };
+                        },
+                    }),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/analytics/activity', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(capturedDays).toBe(30);
+            const body = await response.json();
+            expect(Array.isArray(body.labels)).toBe(true);
+            expect(body.datasets).toBeDefined();
+            expect(Array.isArray(body.datasets.logins)).toBe(true);
+            expect(Array.isArray(body.datasets.projectsCreated)).toBe(true);
+        });
+
+        it('should clamp days parameter between 1 and 365', async () => {
+            const capturedDaysArr: number[] = [];
+            const mockFn = async (_db: any, days: number) => {
+                capturedDaysArr.push(days);
+                return { labels: [], logins: [], projectsCreated: [] };
+            };
+
+            const app = new Elysia().use(createAdminRoutes(createMockDeps({ getActivityTimeSeries: mockFn })));
+            const adminToken = await generateAdminToken();
+
+            // days=1 is the minimum allowed
+            await app.handle(
+                new Request('http://localhost/api/admin/analytics/activity?days=1', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+            // days=999 should clamp to 365
+            await app.handle(
+                new Request('http://localhost/api/admin/analytics/activity?days=999', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(capturedDaysArr[0]).toBe(1);
+            expect(capturedDaysArr[1]).toBe(365);
+        });
+
+        it('should use custom days parameter', async () => {
+            let capturedDays: number | undefined;
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        getActivityTimeSeries: async (_db, days) => {
+                            capturedDays = days;
+                            return { labels: [], logins: [], projectsCreated: [] };
+                        },
+                    }),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            await app.handle(
+                new Request('http://localhost/api/admin/analytics/activity?days=7', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(capturedDays).toBe(7);
+        });
+    });
+
+    describe('GET /api/admin/analytics/users', () => {
+        it('should return user metrics', async () => {
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        getActiveUserMetrics: async () => ({ dau: 5, wau: 20, mau: 50 }),
+                        getPeakUsage: async () => ({
+                            peakHour: 14,
+                            peakDay: 'Monday',
+                            peakHourCount: 10,
+                            peakDayCount: 30,
+                        }),
+                    }),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/analytics/users', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.dau).toBe(5);
+            expect(body.wau).toBe(20);
+            expect(body.mau).toBe(50);
+            expect(body.peakHour).toBe(14);
+            expect(body.peakDay).toBe('Monday');
+            expect(body.peakHourCount).toBe(10);
+            expect(body.peakDayCount).toBe(30);
+        });
+    });
+
+    // ============================================================================
+    // ONLINE USERS ROUTE
+    // ============================================================================
+
+    describe('GET /api/admin/online-users', () => {
+        it('should return connected users with email resolution', async () => {
+            const now = Date.now();
+            const mockClients = [
+                { userId: 1, projectUuid: 'proj-uuid-1', connectedAt: now },
+                { userId: 2, projectUuid: 'proj-uuid-2', connectedAt: now },
+            ];
+
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps(
+                        {
+                            findUsersByIds: async () => [
+                                mockUser({ id: 1, email: 'user1@example.com' }),
+                                mockUser({ id: 2, email: 'user2@example.com' }),
+                            ],
+                        },
+                        {},
+                        () => mockClients,
+                    ),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/online-users', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.count).toBe(2);
+            expect(Array.isArray(body.users)).toBe(true);
+            expect(body.users[0].userId).toBe(1);
+            expect(body.users[0].email).toBe('user1@example.com');
+            expect(body.users[0].projectUuid).toBe('proj-uuid-1');
+            expect(body.users[0].connectedSince).toBe(now);
+            expect(body.users[1].userId).toBe(2);
+            expect(body.users[1].email).toBe('user2@example.com');
+        });
+
+        it('should handle empty client list', async () => {
+            const app = new Elysia().use(
+                createAdminRoutes(createMockDeps({ findUsersByIds: async () => [] }, {}, () => [])),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/online-users', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.count).toBe(0);
+            expect(body.users).toEqual([]);
+        });
+
+        it('should set email to null when user not found', async () => {
+            const now = Date.now();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({ findUsersByIds: async () => [] }, {}, () => [
+                        { userId: 99, projectUuid: 'proj-uuid', connectedAt: now },
+                    ]),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/online-users', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.count).toBe(1);
+            expect(body.users[0].email).toBeNull();
         });
     });
 });

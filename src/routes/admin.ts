@@ -15,6 +15,7 @@ import { parseRoles } from '../db/types';
 import type { JwtPayload } from './auth';
 import {
     findUserById as findUserByIdDefault,
+    findUsersByIds as findUsersByIdsDefault,
     findUserByEmail as findUserByEmailDefault,
     updateUserRoles as updateUserRolesDefault,
     deleteUser as deleteUserDefault,
@@ -41,7 +42,14 @@ import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
 import { trans } from '../services/translation';
 import { getBasePath } from '../utils/basepath.util';
+import { logActivity } from '../services/activity-logger';
 import { getSystemInfo } from '../services/system-info';
+import {
+    getActiveUserMetrics as getActiveUserMetricsDefault,
+    getActivityTimeSeries as getActivityTimeSeriesDefault,
+    getPeakUsage as getPeakUsageDefault,
+} from '../db/queries/admin-analytics';
+import { getConnectedClientsDetail } from '../websocket/yjs-websocket';
 import { createFileHelper, type FileHelper } from '../services/file-helper';
 import * as pathModule from 'path';
 import {
@@ -75,6 +83,7 @@ type AppSettingsDb = Kysely<Database & { app_settings: AppSettingsTable }>;
  */
 export interface AdminQueries {
     findUserById: typeof findUserByIdDefault;
+    findUsersByIds: typeof findUsersByIdsDefault;
     findUserByEmail: typeof findUserByEmailDefault;
     findUsersPaginated: typeof findUsersPaginatedDefault;
     countAdmins: typeof countAdminsDefault;
@@ -93,6 +102,9 @@ export interface AdminQueries {
     hardDeleteProject: typeof hardDeleteProjectDefault;
     findProjectsByOwnerId: typeof findProjectsByOwnerIdDefault;
     createImpersonationAuditSession: typeof createImpersonationAuditSessionDefault;
+    getActiveUserMetrics: typeof getActiveUserMetricsDefault;
+    getActivityTimeSeries: typeof getActivityTimeSeriesDefault;
+    getPeakUsage: typeof getPeakUsageDefault;
 }
 
 /**
@@ -102,6 +114,7 @@ export interface AdminDependencies {
     db: Kysely<Database>;
     queries: AdminQueries;
     fileHelper?: FileHelper;
+    getConnectedClientsDetail?: typeof getConnectedClientsDetail;
 }
 
 // ============================================================================
@@ -112,6 +125,7 @@ const defaultDependencies: AdminDependencies = {
     db: defaultDb,
     queries: {
         findUserById: findUserByIdDefault,
+        findUsersByIds: findUsersByIdsDefault,
         findUserByEmail: findUserByEmailDefault,
         findUsersPaginated: findUsersPaginatedDefault,
         countAdmins: countAdminsDefault,
@@ -130,8 +144,12 @@ const defaultDependencies: AdminDependencies = {
         hardDeleteProject: hardDeleteProjectDefault,
         findProjectsByOwnerId: findProjectsByOwnerIdDefault,
         createImpersonationAuditSession: createImpersonationAuditSessionDefault,
+        getActiveUserMetrics: getActiveUserMetricsDefault,
+        getActivityTimeSeries: getActivityTimeSeriesDefault,
+        getPeakUsage: getPeakUsageDefault,
     },
     fileHelper: createFileHelper(),
+    getConnectedClientsDetail: getConnectedClientsDetail,
 };
 
 // Get JWT secret (same as auth.ts)
@@ -206,6 +224,38 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         active_users: trans('Active Users', {}, locale),
         total_projects: trans('Total Projects', {}, locale),
         active_projects: trans('Active Projects', {}, locale),
+        // Dashboard — KPI help text
+        total_users_help: trans('Total number of registered accounts in the platform.', {}, locale),
+        active_projects_help: trans('Projects that have been opened or edited recently.', {}, locale),
+        logins_today: trans('Logins Today', {}, locale),
+        logins_today_help: trans('Number of unique users who logged in during the last 24 hours.', {}, locale),
+        online_now: trans('Online Now', {}, locale),
+        online_now_help: trans(
+            'Number of users currently connected and editing in real time. Refreshes every 30 seconds.',
+            {},
+            locale,
+        ),
+        peak_hour: trans('Peak Hour', {}, locale),
+        peak_hour_help: trans(
+            'The hour of the day with the highest number of logins over the last 30 days.',
+            {},
+            locale,
+        ),
+        // Dashboard — activity chart
+        activity_last_30_days: trans('Activity (Last 30 Days)', {}, locale),
+        activity_chart_help: trans(
+            'Shows the number of logins and projects created each day over the last 30 days.',
+            {},
+            locale,
+        ),
+        no_activity_data: trans(
+            'No activity data yet. The chart will populate as users log in and create projects.',
+            {},
+            locale,
+        ),
+        // Dashboard — chart labels
+        logins: trans('Logins', {}, locale),
+        projects_created: trans('Projects Created', {}, locale),
         // Sections
         users: trans('Users', {}, locale),
         projects: trans('Projects', {}, locale),
@@ -600,6 +650,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
  */
 export function createAdminRoutes(deps: AdminDependencies = defaultDependencies) {
     const { db, queries, fileHelper = createFileHelper() } = deps;
+    const connectedClientsDetail = deps.getConnectedClientsDetail ?? getConnectedClientsDetail;
 
     return (
         new Elysia({ name: 'admin-routes' })
@@ -664,6 +715,55 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // GET /api/admin/system-info - Get system information (runtime, db, memory, etc.)
             .get('/api/admin/system-info', async () => {
                 return await getSystemInfo();
+            })
+
+            // GET /api/admin/analytics/activity?days=30
+            .get('/api/admin/analytics/activity', async ({ query }) => {
+                const days = Math.min(Math.max(Number(query.days) || 30, 1), 365);
+                const series = await queries.getActivityTimeSeries(db, days);
+                return {
+                    labels: series.labels,
+                    datasets: {
+                        logins: series.logins,
+                        projectsCreated: series.projectsCreated,
+                    },
+                };
+            })
+
+            // GET /api/admin/analytics/users
+            .get('/api/admin/analytics/users', async () => {
+                const [metrics, peak] = await Promise.all([queries.getActiveUserMetrics(db), queries.getPeakUsage(db)]);
+                return {
+                    dau: metrics.dau,
+                    wau: metrics.wau,
+                    mau: metrics.mau,
+                    peakHour: peak.peakHour,
+                    peakDay: peak.peakDay,
+                    peakHourCount: peak.peakHourCount,
+                    peakDayCount: peak.peakDayCount,
+                };
+            })
+
+            // GET /api/admin/online-users
+            .get('/api/admin/online-users', async () => {
+                const clients = connectedClientsDetail();
+
+                // Batch-resolve emails from users table using the userId list
+                const uniqueUserIds = [...new Set(clients.map(c => c.userId))];
+                const userRows = await queries.findUsersByIds(db, uniqueUserIds);
+                const emailMap = new Map<number, string>();
+                for (const user of userRows) {
+                    emailMap.set(user.id, user.email);
+                }
+
+                const users = clients.map(c => ({
+                    userId: c.userId,
+                    email: emailMap.get(c.userId) ?? null,
+                    projectUuid: c.projectUuid,
+                    connectedSince: c.connectedAt,
+                }));
+
+                return { count: users.length, users };
             })
 
             // =====================================================
@@ -818,6 +918,11 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         impersonatedUserId: targetUserId,
                         startedByIp: clientIp,
                         startedUserAgent: userAgent,
+                    });
+
+                    logActivity(db, {
+                        eventType: 'admin.impersonation_start',
+                        userId: adminUserId,
                     });
 
                     const impersonatedPayload: Omit<JwtPayload, 'iat' | 'exp'> = {

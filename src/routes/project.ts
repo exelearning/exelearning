@@ -48,6 +48,7 @@ import {
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
 } from '../websocket/access-notifier';
 import { createBlankYjsDocument } from '../services/yjs-initializer';
+import { logActivity } from '../services/activity-logger';
 import type { Kysely } from 'kysely';
 import type { Database, Project, User } from '../db/types';
 import type {
@@ -581,6 +582,11 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 } catch {
                     // Silently ignore if tables don't exist yet - defaults to 'base' theme on frontend
                 }
+
+                logActivity(db, {
+                    eventType: 'project.create',
+                    userId: currentUser.id,
+                });
 
                 return {
                     success: true,
