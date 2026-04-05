@@ -8,29 +8,34 @@
 - Improved accessibility in exported content, including proper heading structure and a skip navigation link
 - New `make translations-sort` command to reorder `<trans-unit>` elements in XLF files to match the order in `messages.en.xlf`
 - Updated development documentation for the Translation System
-- Support for `?url=` query parameter to open remote files in the static editor
+- Support for the `?url=` query parameter to open remote files in the static editor
+- Prevent exposure of `blob:` URLs to users; `asset://` is now the only user-visible and persisted asset reference
 - Updated Spanish (ES) translation
 - Added automated placeholder translations for incomplete translations
-- Completed full automated placeholder translations review
+- Full review of automated placeholder translations
 
 ### Fixed
 
 - TinyMCE: usability and accessibility improvements across the editor
 - TinyMCE media plugin: YouTube Live and Shorts URLs are now correctly recognized
 - TinyMCE: toolbar visibility is now preserved between editing sessions in the desktop app
-- TinyMCE: missing CSS style classes in the "Insert/Edit Attributes" selector
-- Warn the user when pasting content containing temporary `blob:` file references that will not work in other contexts
+- TinyMCE: missing CSS classes in the "Insert/Edit Attributes" selector
+- Added warning when pasting content containing temporary `blob:` file references that will not work in other contexts
+- Link validator now returns a clear error message instead of a generic `NetworkError`
 - Checklist and Progress Report iDevices: fixed double save dialog and improved PDF/PNG output quality
 - Definition lists inside animation effects now render correctly in the desktop version
 - Legacy `.elp` internal links now work correctly in the workarea editor
 - Platform name string incorrectly displayed in the online version
-- Unsaved changes warning is now displayed in the application's language
+- Unsaved changes warning is now displayed in the application language
 - Improved "User not found" error message with more helpful context
 - "Made with eXeLearning" link and page counter preferences were not respected in exports
 - Further reduction of peak memory usage during save, preview, and export for large projects
+- Minor presentation issues
 
 ### Upgraded
 
+- codecov/codecov-action: 5 → 6
+- mozilla/pdf.js: 5.5.207 → 5.6.205
 - typescript: 5.9.3 → 6.0.2
 
 ### Removed
