@@ -70,6 +70,9 @@ function createCollection(elements) {
       });
       return api;
     }),
+    has: vi.fn((selector) =>
+      createCollection(elements.filter((el) => el.querySelector && el.querySelector(selector) !== null)),
+    ),
   };
 
   return api;
@@ -470,6 +473,182 @@ describe('exe_export.js', () => {
       expect(consoleSpy).toHaveBeenCalledWith('Error: Failed to trigger print dialog');
       consoleSpy.mockRestore();
       vi.useRealTimers();
+    });
+  });
+
+  describe('addBoxToggleEvent', () => {
+    let originalJQuery;
+    // Handlers are captured in order: [0]=toggle click, [1]=box-head click
+    let clickHandlers;
+    let sharedTriggerSpy;
+
+    function makeBoxJQuery() {
+      clickHandlers = [];
+      sharedTriggerSpy = vi.fn().mockReturnThis();
+
+      function createBoxCol(elements) {
+        const api = {
+          elements,
+          on: vi.fn((event, handler) => {
+            if (event === 'click') clickHandlers.push(handler);
+            return api;
+          }),
+          css: vi.fn().mockReturnThis(),
+          has: vi.fn((selector) =>
+            createBoxCol(elements.filter((el) => el.querySelector && el.querySelector(selector) !== null)),
+          ),
+          attr: vi.fn((name, value) => {
+            if (value !== undefined) elements.forEach((el) => el.setAttribute(name, value));
+            return api;
+          }),
+          each: vi.fn((cb) => {
+            elements.forEach((el, i) => cb.call(el, i, el));
+            return api;
+          }),
+          text: vi.fn((value) => {
+            if (value !== undefined) elements.forEach((el) => { el.textContent = value; });
+            return api;
+          }),
+          hasClass: vi.fn((cls) => elements[0]?.classList?.contains(cls) ?? false),
+          addClass: vi.fn((cls) => {
+            elements.forEach((el) => el.classList?.add(cls));
+            return api;
+          }),
+          removeClass: vi.fn((cls) => {
+            elements.forEach((el) => el.classList?.remove(cls));
+            return api;
+          }),
+          parents: vi.fn((selector) => {
+            const ancestors = [];
+            elements.forEach((el) => {
+              let node = el.parentElement;
+              while (node) {
+                if (node.matches && node.matches(selector)) ancestors.push(node);
+                node = node.parentElement;
+              }
+            });
+            return createBoxCol(ancestors);
+          }),
+          slideDown: vi.fn((cb) => { if (cb) cb(); return api; }),
+          slideUp: vi.fn((cb) => { if (cb) cb(); return api; }),
+          trigger: sharedTriggerSpy,
+        };
+        return api;
+      }
+
+      return vi.fn((arg) => {
+        if (typeof arg === 'string') {
+          return createBoxCol(Array.from(document.querySelectorAll(arg)));
+        }
+        if (arg instanceof HTMLElement) {
+          return createBoxCol([arg]);
+        }
+        return createBoxCol([]);
+      });
+    }
+
+    beforeEach(() => {
+      document.body.innerHTML = '';
+      originalJQuery = window.$;
+      window.$ = makeBoxJQuery();
+    });
+
+    afterEach(() => {
+      window.$ = originalJQuery;
+    });
+
+    function buildBoxDOM({ withToggle = true, minimized = false } = {}) {
+      const article = document.createElement('article');
+      article.className = minimized ? 'box minimized' : 'box';
+      const head = document.createElement('div');
+      head.className = 'box-head';
+      const content = document.createElement('div');
+      content.className = 'box-content';
+      if (withToggle) {
+        const toggle = document.createElement('button');
+        toggle.className = 'box-toggle';
+        const span = document.createElement('span');
+        toggle.appendChild(span);
+        head.appendChild(toggle);
+      }
+      article.appendChild(head);
+      article.appendChild(content);
+      document.body.appendChild(article);
+      return { article, head, content, toggle: head.querySelector('.box-toggle') };
+    }
+
+    it('applies i18n title from $exe_i18n.toggleContent to toggle buttons', () => {
+      const { toggle } = buildBoxDOM();
+      window.$exe_i18n.toggleContent = 'Mostrar/Ocultar';
+
+      window.$exeExport.addBoxToggleEvent();
+
+      expect(toggle.getAttribute('title')).toBe('Mostrar/Ocultar');
+      expect(toggle.querySelector('span').textContent).toBe('Mostrar/Ocultar');
+    });
+
+    it('uses fallback title when $exe_i18n.toggleContent is not defined', () => {
+      const { toggle } = buildBoxDOM();
+      delete window.$exe_i18n.toggleContent;
+
+      window.$exeExport.addBoxToggleEvent();
+
+      expect(toggle.getAttribute('title')).toBe('Toggle content');
+    });
+
+    it('collapses an expanded box when the toggle is clicked', () => {
+      const { article, toggle } = buildBoxDOM();
+      window.$exeExport.addBoxToggleEvent();
+
+      // clickHandlers[0] is bound to '.box-toggle' (expand/collapse)
+      window.$exeExport.isTogglingBox = false;
+      clickHandlers[0].call(toggle);
+
+      expect(article.classList.contains('minimized')).toBe(true);
+      expect(window.$exeExport.isTogglingBox).toBe(false);
+    });
+
+    it('expands a minimized box when the toggle is clicked', () => {
+      const { article, toggle } = buildBoxDOM({ minimized: true });
+      window.$exeExport.addBoxToggleEvent();
+
+      window.$exeExport.isTogglingBox = false;
+      clickHandlers[0].call(toggle);
+
+      expect(article.classList.contains('minimized')).toBe(false);
+    });
+
+    it('does nothing when isTogglingBox is true', () => {
+      const { article, toggle } = buildBoxDOM();
+      window.$exeExport.addBoxToggleEvent();
+
+      window.$exeExport.isTogglingBox = true;
+      clickHandlers[0].call(toggle);
+
+      expect(article.classList.contains('minimized')).toBe(false);
+    });
+
+    it('box-head click delegates to the toggle when target is not the toggle', () => {
+      const { head } = buildBoxDOM();
+      window.$exeExport.addBoxToggleEvent();
+
+      // clickHandlers[1] is bound to '.box-head' (delegates to toggle)
+      const mockEvent = { target: head }; // head does not have 'box-toggle' class
+      clickHandlers[1].call(head, mockEvent);
+
+      // The handler calls $('.box-toggle', this).trigger('click')
+      // sharedTriggerSpy is shared across all collections created by makeBoxJQuery
+      expect(sharedTriggerSpy).toHaveBeenCalledWith('click');
+    });
+
+    it('box-head click returns false when the target is the toggle itself', () => {
+      const { toggle } = buildBoxDOM();
+      window.$exeExport.addBoxToggleEvent();
+
+      const mockEvent = { target: toggle }; // toggle has 'box-toggle' class
+      const result = clickHandlers[1].call(toggle.parentElement, mockEvent);
+
+      expect(result).toBe(false);
     });
   });
 
