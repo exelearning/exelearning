@@ -31,8 +31,8 @@
 - Unsaved changes warning is now displayed in the application language
 - Improved "User not found" error message with more helpful context
 - "Made with eXeLearning" link and page counter preferences are now respected in exports
-- Further reduction of peak memory usage during save, preview, and export for large projects
-- Universal style: updated information and removed unused font files
+- Further reduction of peak memory usage during save, preview and export for large projects
+- Universal style: updated information, removed unused font files and restored the "Made with eXeLearning" logo
 - Admin panel presentation issues
 - Minor presentation issues in the workarea
 

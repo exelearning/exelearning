@@ -116,8 +116,6 @@ var eXeUniversalStyle = {
         this.dropdownMenus();
         // Search form
         this.searchForm();
-        // Made with eXeLearning + EducaMadrid
-        this.madeWith();
     },
     isLocalStorageAvailable : function(){
         var x = '';
@@ -168,13 +166,6 @@ var eXeUniversalStyle = {
     },
     searchForm: function () {
         $('#exe-client-search-text').attr('class', 'form-control');
-    },
-    madeWith : function () {
-        // Made with eXeLearning + EducaMadrid
-        var lnk = $("#made-with-eXe a");
-        var htm = lnk.html();
-            htm = htm.replace(" eXeLearning", " eXeLearning + EducaMadrid");
-        lnk.html(htm);
     },
     isLowRes: function () {
         return $(window).width() <= 576;
