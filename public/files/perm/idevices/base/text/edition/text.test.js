@@ -245,8 +245,17 @@ describe('text iDevice', () => {
       const textarea = mockElement.querySelector('#textTextarea');
       expect(textarea.value).toBe('<p>Activity content</p>');
     });
-  });
 
+    it('does not parse non-wrapper asset html when stripping legacy wrapper', () => {
+      const createElementSpy = vi.spyOn(document, 'createElement');
+      const html = '<p><img src="asset://ffee9e6d-1bbb-d42c-645e-75445b1a962a.png"></p>';
+
+      const result = $exeDevice.stripLegacyExeTextWrapper(html);
+
+      expect(result).toBe(html);
+      expect(createElementSpy).not.toHaveBeenCalled();
+    });
+  });
   describe('checkFormValues', () => {
     it('returns false and shows alert when text is empty string', () => {
       $exeDevice.init(mockElement, {});
