@@ -293,16 +293,11 @@ var $exeDevice = {
 
         this.jsonToTable(data, 'edition');
 
-        // Load instructions and text-after into the editors defined in createForm()
         if (data.instructions) {
-            var instrEd = tinyMCE.get('eXeGameInstructions');
-            if (instrEd) instrEd.setContent(data.instructions);
-            else $('#eXeGameInstructions').val(data.instructions);
+            $('#eXeGameInstructions').val(data.instructions);
         }
         if (data.textAfter) {
-            var afterEd = tinyMCE.get('eXeIdeviceTextAfter');
-            if (afterEd) afterEd.setContent(data.textAfter);
-            else $('#eXeIdeviceTextAfter').val(data.textAfter);
+            $('#eXeIdeviceTextAfter').val(data.textAfter);
         }
 
         this.originalData = data;
