@@ -32,6 +32,7 @@
 - Improved "User not found" error message with more helpful context
 - "Made with eXeLearning" link and page counter preferences are now respected in exports
 - Further reduction of peak memory usage during save, preview, and export for large projects
+- Universal style: updated information and removed unused font files
 - Admin panel presentation issues
 - Minor presentation issues in the workarea
 
