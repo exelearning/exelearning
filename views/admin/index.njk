@@ -1119,6 +1119,134 @@
             background-color: var(--admin-primary-light);
             color: var(--bs-accordion-btn-color);
         }
+
+        /* Dashboard analytics styles */
+        .dashboard-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--admin-card-bg);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius);
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--admin-shadow);
+            transition: all 0.2s ease;
+        }
+        .kpi-card:hover {
+            box-shadow: var(--admin-shadow-lg);
+            transform: translateY(-2px);
+        }
+        .kpi-help {
+            font-size: 16px;
+            color: var(--admin-text-muted);
+            cursor: help;
+            vertical-align: middle;
+            margin-left: 4px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .kpi-help:hover {
+            opacity: 1;
+            color: var(--admin-primary);
+        }
+        .kpi-label {
+            font-size: 11px;
+            color: var(--admin-text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--admin-text);
+        }
+        .dashboard-main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 900px) {
+            .dashboard-main-grid { grid-template-columns: 1fr; }
+        }
+        .dashboard-panel {
+            background: var(--admin-card-bg);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius);
+            padding: 20px;
+            box-shadow: var(--admin-shadow);
+        }
+        .dashboard-panel h3 {
+            margin: 0 0 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--admin-text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dashboard-chart-container {
+            position: relative;
+            height: 280px;
+        }
+        .dash-online-count {
+            font-size: 13px;
+            color: var(--admin-text-muted);
+            margin-bottom: 12px;
+        }
+        .dash-online-count strong {
+            font-size: 22px;
+            font-weight: 700;
+            color: #059669;
+        }
+        .dash-audit-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--admin-text-muted);
+        }
+        .dash-audit-stats strong {
+            color: var(--admin-text);
+        }
+        .dash-sysinfo-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            font-size: 13px;
+            border-bottom: 1px solid var(--admin-border);
+        }
+        .dash-sysinfo-row:last-of-type { border-bottom: none; }
+        .dash-sysinfo-label { color: var(--admin-text-muted); font-weight: 500; }
+        .dash-sysinfo-value { color: var(--admin-text); font-weight: 600; }
+        .dash-sysinfo-progress-label {
+            font-size: 11px;
+            color: var(--admin-text-muted);
+            margin-top: 8px;
+            margin-bottom: 3px;
+        }
+        .dash-sysinfo-bar {
+            height: 6px;
+            background: var(--admin-border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+        .dash-sysinfo-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+        .dash-sysinfo-bar-fill.ok { background: #059669; }
+        .dash-sysinfo-bar-fill.warning { background: #d97706; }
+        .dash-sysinfo-bar-fill.danger { background: #dc2626; }
     </style>
 </head>
 <body>
@@ -1207,45 +1335,62 @@
             {% endif %}
             <!-- Dashboard Section -->
             <section id="dashboard" class="admin-section active">
-                <div class="stats-grid">
-                    <div class="stats-card">
-                        <div class="stats-icon primary">
-                            <span class="mi">group</span>
+                <!-- KPI Cards -->
+                <div class="dashboard-kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.total_users or 'Total Users' }}
+                            <span class="kpi-help mi" title="{{ t.total_users_help or 'Total number of registered accounts in the platform.' }}">help_outline</span>
                         </div>
-                        <div class="stats-content">
-                            <div class="stats-value" id="stat-totalUsers">-</div>
-                            <div class="stats-label">{{ t.total_users or 'Total Users' }}</div>
-                        </div>
+                        <div class="kpi-value" id="dash-kpi-total-users">—</div>
                     </div>
-                    <div class="stats-card">
-                        <div class="stats-icon success">
-                            <span class="mi">person_check</span>
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.active_projects or 'Active Projects' }}
+                            <span class="kpi-help mi" title="{{ t.active_projects_help or 'Projects that have been opened or edited recently.' }}">help_outline</span>
                         </div>
-                        <div class="stats-content">
-                            <div class="stats-value" id="stat-activeUsers">-</div>
-                            <div class="stats-label">{{ t.active_users or 'Active Users' }}</div>
-                        </div>
+                        <div class="kpi-value" id="dash-kpi-active-projects">—</div>
                     </div>
-                    <div class="stats-card">
-                        <div class="stats-icon info">
-                            <span class="mi">folder</span>
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.logins_today or 'Logins Today' }}
+                            <span class="kpi-help mi" title="{{ t.logins_today_help or 'Number of unique users who logged in during the last 24 hours.' }}">help_outline</span>
                         </div>
-                        <div class="stats-content">
-                            <div class="stats-value" id="stat-totalProjects">-</div>
-                            <div class="stats-label">{{ t.total_projects or 'Total Projects' }}</div>
-                        </div>
+                        <div class="kpi-value" id="dash-kpi-logins-today">—</div>
                     </div>
-                    <div class="stats-card">
-                        <div class="stats-icon warning">
-                            <span class="mi">edit_note</span>
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.online_now or 'Online Now' }}
+                            <span class="kpi-help mi" title="{{ t.online_now_help or 'Number of users currently connected and editing in real time. Refreshes every 30 seconds.' }}">help_outline</span>
                         </div>
-                        <div class="stats-content">
-                            <div class="stats-value" id="stat-activeProjects">-</div>
-                            <div class="stats-label">{{ t.active_projects or 'Active Projects' }}</div>
+                        <div class="kpi-value" id="dash-online-count">0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">
+                            {{ t.peak_hour or 'Peak Hour' }}
+                            <span class="kpi-help mi" title="{{ t.peak_hour_help or 'The hour of the day with the highest number of logins over the last 30 days.' }}">help_outline</span>
+                        </div>
+                        <div class="kpi-value" id="dash-kpi-peak-hour">—</div>
+                    </div>
+                </div>
+
+                <!-- Activity Chart -->
+                <div class="dashboard-panel" style="margin-bottom: 24px;">
+                    <h3>
+                        <span class="mi mi-sm">show_chart</span>
+                        {{ t.activity_last_30_days or 'Activity (Last 30 Days)' }}
+                        <span class="kpi-help mi" title="{{ t.activity_chart_help or 'Shows the number of logins and projects created each day over the last 30 days.' }}">help_outline</span>
+                    </h3>
+                    <div class="dashboard-chart-container">
+                        <canvas id="dash-activity-chart"></canvas>
+                        <div id="dash-chart-empty" style="display:none;align-items:center;justify-content:center;height:200px;color:var(--admin-text-muted,#9ca3af);flex-direction:column;gap:8px;">
+                            <span class="mi" style="font-size:48px;opacity:0.3;">show_chart</span>
+                            <span>{{ t.no_activity_data or 'No activity data yet. The chart will populate as users log in and create projects.' }}</span>
                         </div>
                     </div>
                 </div>
 
+                <!-- System Info card (existing) -->
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h5>
@@ -2058,6 +2203,7 @@ window.$eXeLearningCustom = {
         </div>
     </div>
 
+    <script src="{{ basePath }}/libs/chartjs/chart.umd.min.js"></script>
     <script src="{{ basePath }}/libs/bootstrap/bootstrap.bundle.min.js"></script>
     <script>
         // Configuration
@@ -2094,7 +2240,9 @@ window.$eXeLearningCustom = {
             confirm_impersonate: '{{ t.confirm_impersonate or "Start impersonation as {email}?" }}',
             impersonation_failed: '{{ t.impersonation_failed or "Failed to start impersonation" }}',
             presentation: '{{ t.customization or "Customization" }}',
-            maintenance: '{{ t.maintenance or "Maintenance" }}'
+            maintenance: '{{ t.maintenance or "Maintenance" }}',
+            logins: '{{ t.logins or "Logins" }}',
+            projects_created: '{{ t.projects_created or "Projects Created" }}'
         };
 
         // State
@@ -2144,7 +2292,7 @@ window.$eXeLearningCustom = {
             document.getElementById('sectionTitle').textContent = titles[section] || section;
 
             // Load section data
-            if (section === 'dashboard') { loadStats(); loadSystemInfo(); }
+            if (section === 'dashboard') { loadSystemInfo(); }
             if (section === 'users') loadUsers();
             if (section === 'projects') loadProjects();
 
@@ -2577,21 +2725,7 @@ window.$eXeLearningCustom = {
             quotaInput.value = defaultQuotaSetting.value ?? '';
         }
 
-        // Load stats
-        async function loadStats() {
-            try {
-                const res = await fetch(`${API_BASE}/stats`, { credentials: 'include' });
-                if (!res.ok) throw new Error('Failed to load stats');
-                const data = await res.json();
-
-                document.getElementById('stat-totalUsers').textContent = data.totalUsers ?? '-';
-                document.getElementById('stat-activeUsers').textContent = data.activeUsers ?? '-';
-                document.getElementById('stat-totalProjects').textContent = data.totalProjects ?? '-';
-                document.getElementById('stat-activeProjects').textContent = data.activeProjects ?? '-';
-            } catch (err) {
-                console.error('Failed to load stats:', err);
-            }
-        }
+        // Stats are loaded by dashboard.js (loadKPICards)
 
         // Load system info
         async function loadSystemInfo() {
@@ -3978,8 +4112,8 @@ window.$eXeLearningCustom = {
         });
 
         // Initial load
-        loadStats();
         loadSystemInfo();
     </script>
+    <script type="module" src="{{ basePath }}/app/admin/dashboard.js"></script>
 </body>
 </html>

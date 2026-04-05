@@ -8,6 +8,7 @@ import type { Kysely } from 'kysely';
 import type { Database } from '../types';
 import {
     findUserById,
+    findUsersByIds,
     findUserByEmail,
     findUserByExternalId,
     findUserByApiToken,
@@ -59,6 +60,44 @@ describe('User Queries', () => {
         it('should return undefined for non-existent ID', async () => {
             const found = await findUserById(db, 99999);
             expect(found).toBeUndefined();
+        });
+    });
+
+    describe('findUsersByIds', () => {
+        it('should return empty array when given empty ids array', async () => {
+            const users = await findUsersByIds(db, []);
+            expect(users).toEqual([]);
+        });
+
+        it('should return matching users for given ids', async () => {
+            const u1 = await createUser(db, { email: 'ids1@test.com', user_id: 'ids1', password: 'h' });
+            const u2 = await createUser(db, { email: 'ids2@test.com', user_id: 'ids2', password: 'h' });
+            await createUser(db, { email: 'ids3@test.com', user_id: 'ids3', password: 'h' });
+
+            const found = await findUsersByIds(db, [u1.id, u2.id]);
+
+            expect(found.length).toBe(2);
+            expect(found.map(u => u.email).sort()).toEqual(['ids1@test.com', 'ids2@test.com']);
+        });
+
+        it('should not return users whose ids are not in the list', async () => {
+            const u1 = await createUser(db, { email: 'only1@test.com', user_id: 'only1', password: 'h' });
+            await createUser(db, { email: 'only2@test.com', user_id: 'only2', password: 'h' });
+
+            const found = await findUsersByIds(db, [u1.id]);
+
+            expect(found.length).toBe(1);
+            expect(found[0].email).toBe('only1@test.com');
+        });
+
+        it('should work with a single id', async () => {
+            const u1 = await createUser(db, { email: 'single@test.com', user_id: 'single', password: 'h' });
+
+            const found = await findUsersByIds(db, [u1.id]);
+
+            expect(found.length).toBe(1);
+            expect(found[0].id).toBe(u1.id);
+            expect(found[0].email).toBe('single@test.com');
         });
     });
 

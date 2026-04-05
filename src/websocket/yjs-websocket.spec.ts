@@ -24,6 +24,7 @@ import {
     getActiveRooms,
     broadcastToRoom,
     getDetailedStats,
+    getConnectedClientsDetail,
     generateClientId,
     checkWebSocketProjectAccess,
     handleWebSocketOpen,
@@ -413,6 +414,58 @@ describe('Yjs WebSocket Service', () => {
 
             expect(stats.rooms.totalRooms).toBe(0);
             expect(stats.rooms.totalConnections).toBe(0);
+        });
+    });
+
+    describe('getConnectedClientsDetail', () => {
+        it('should return an array', () => {
+            const clients = getConnectedClientsDetail();
+            expect(Array.isArray(clients)).toBe(true);
+        });
+
+        it('should return client details after a successful connection', async () => {
+            const projectUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            const mockWs = createMockWebSocket();
+            const docName = `project-${projectUuid}`;
+
+            mockProjects.set(projectUuid, {
+                id: 10,
+                uuid: projectUuid,
+                owner_id: 1,
+                visibility: 'private',
+            });
+
+            const countBefore = getConnectedClientsDetail().length;
+            await handleWebSocketOpen(mockWs as any, docName, 'valid-token-user-1');
+
+            const clients = getConnectedClientsDetail();
+            expect(clients.length).toBe(countBefore + 1);
+            const added = clients.find(c => c.projectUuid === projectUuid);
+            expect(added).toBeDefined();
+            expect(added!.userId).toBe(1);
+            expect(typeof added!.connectedAt).toBe('number');
+        });
+
+        it('should remove client details after disconnection', async () => {
+            const projectUuid = 'b2c3d4e5-f6a7-8901-bcde-ef1234567891';
+            const mockWs = createMockWebSocket();
+            const docName = `project-${projectUuid}`;
+
+            mockProjects.set(projectUuid, {
+                id: 11,
+                uuid: projectUuid,
+                owner_id: 1,
+                visibility: 'private',
+            });
+
+            const countBefore = getConnectedClientsDetail().length;
+            await handleWebSocketOpen(mockWs as any, docName, 'valid-token-user-1');
+            expect(getConnectedClientsDetail().length).toBe(countBefore + 1);
+
+            handleWebSocketClose(mockWs as any, mockWs.data as any);
+            const remaining = getConnectedClientsDetail();
+            expect(remaining.length).toBe(countBefore);
+            expect(remaining.some(c => c.projectUuid === projectUuid)).toBe(false);
         });
     });
 
