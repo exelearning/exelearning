@@ -545,6 +545,26 @@ export function broadcastToRoom(docName: string, message: Buffer | string): void
 }
 
 /**
+ * Get details of all connected WebSocket clients.
+ * Used by admin dashboard to show online users.
+ */
+export function getConnectedClientsDetail(): Array<{
+    userId: number;
+    projectUuid: string;
+    connectedAt: number;
+}> {
+    const clients: Array<{ userId: number; projectUuid: string; connectedAt: number }> = [];
+    for (const meta of clientMetaMap.values()) {
+        clients.push({
+            userId: meta.userId,
+            projectUuid: meta.projectUuid,
+            connectedAt: meta.connectedAt instanceof Date ? meta.connectedAt.getTime() : Number(meta.connectedAt),
+        });
+    }
+    return clients;
+}
+
+/**
  * Get detailed stats for monitoring
  */
 export function getDetailedStats(): {
