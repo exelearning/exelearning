@@ -328,7 +328,7 @@ describe('YjsTinyMCEBinding', () => {
       delete window.eXeLearning;
     });
 
-    it('preserves blob URL when not found in reverseBlobCache (warns but keeps content)', () => {
+    it('clears blob URL when not found in reverseBlobCache (warns and prevents persistence)', () => {
       // Setup mock AssetManager with empty cache
       const mockAssetManager = {
         reverseBlobCache: new Map(), // Empty - no mapping
@@ -349,9 +349,35 @@ describe('YjsTinyMCEBinding', () => {
       binding.syncFromEditor();
 
       const yTextContent = mockYText.toString();
-      // Should preserve unknown blob URL (and warn)
-      expect(yTextContent).toContain('blob:http://localhost:8081/unknown');
+      expect(yTextContent).not.toContain('blob:http://localhost:8081/unknown');
+      expect(yTextContent).toContain('src=""');
       expect(console.warn).toHaveBeenCalled();
+
+      delete window.eXeLearning;
+    });
+
+    it('uses AssetManager.prepareHtmlForSync when available', () => {
+      const mockPrepareHtmlForSync = vi.fn().mockReturnValue('<p>Hello</p><img src="asset://prepared-asset.png">');
+      const mockAssetManager = {
+        prepareHtmlForSync: mockPrepareHtmlForSync,
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      binding = new YjsTinyMCEBinding(mockEditor, mockYText);
+      mockEditor._content = '<p>Hello</p><img src="blob:http://localhost:8081/from-editor">';
+
+      binding.syncFromEditor();
+
+      expect(mockPrepareHtmlForSync).toHaveBeenCalledWith('<p>Hello</p><img src="blob:http://localhost:8081/from-editor">');
+      expect(mockYText.toString()).toContain('asset://prepared-asset.png');
 
       delete window.eXeLearning;
     });
@@ -945,7 +971,7 @@ describe('YjsTinyMCEBinding', () => {
       delete window.eXeLearning;
     });
 
-    it('keeps unknown blob URLs unchanged and warns', () => {
+    it('clears unknown blob URLs and warns', () => {
       const mockAssetManager = {
         reverseBlobCache: new Map(), // Empty cache
       };
@@ -956,7 +982,7 @@ describe('YjsTinyMCEBinding', () => {
       const html = '<img src="blob:http://localhost:8081/unknown">';
       const result = binding.convertBlobUrlsToAssetUrls(html);
 
-      expect(result).toBe(html); // Unchanged
+      expect(result).toBe('<img src="">');
       expect(console.warn).toHaveBeenCalled();
 
       delete window.eXeLearning;
