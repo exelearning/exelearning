@@ -2406,7 +2406,7 @@ class AssetManager {
     const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.[a-z0-9]+)?(?:\/[^"'&]+)?)\2([^>]*>)/gi;
 
     resolvedHTML = resolvedHTML.replace(imgAssetRegex, (fullMatch, beforeSrc, quote, assetUrl, assetId, afterSrc) => {
-      const blobURL = this.blobURLCache.get(assetId);
+      const blobURL = this.getBlobURLSynced(assetId);
 
       if (blobURL) {
         // Asset available - just replace URL
@@ -2543,6 +2543,23 @@ class AssetManager {
 
     let convertedHTML = html;
     let conversions = 0;
+    const logWarn = typeof Logger?.warn === 'function' ? Logger.warn.bind(Logger) : console.warn.bind(console);
+    const getCanonicalAssetUrl = (rawAssetId) => {
+      if (!rawAssetId) return '';
+
+      let assetId = rawAssetId;
+      if (assetId.startsWith('asset://')) {
+        assetId = this.extractAssetId(assetId);
+      }
+      if (!assetId) return '';
+
+      const metadata = this.getAssetMetadata?.(assetId);
+      const filename = metadata?.filename || metadata?.name;
+      if (typeof this.getAssetUrl === 'function') {
+        return this.getAssetUrl(assetId, filename);
+      }
+      return `asset://${assetId}`;
+    };
 
     // Strategy 1: Find img/video/audio tags with blob: src and data-asset-id attribute
     // This is the RELIABLE way - data-asset-id is set when inserting from MediaLibrary
@@ -2556,24 +2573,27 @@ class AssetManager {
       const assetIdMatch = fullAttrs.match(/data-asset-id=(["'])([^"']+)\1/i);
 
       if (assetIdMatch) {
-        const assetId = assetIdMatch[2];
-        // Use 'file' as default filename - the actual filename will be resolved on load
+        const assetUrl = getCanonicalAssetUrl(assetIdMatch[2]);
+        if (!assetUrl) {
+          logWarn(`[AssetManager] Cannot recover blob URL from invalid data-asset-id, clearing: ${blobUrl.substring(0, 50)}...`);
+          return match.replace(blobUrl, '');
+        }
         conversions++;
-        Logger.log(`[AssetManager] Converted blob→asset via data-asset-id: ${assetId.substring(0, 8)}...`);
-        return `<${tagName}${before} src=${quote}asset://${assetId}${quote}${after}>`;
+        Logger.log(`[AssetManager] Converted blob→asset via data-asset-id: ${assetUrl.substring(8, 16)}...`);
+        return `<${tagName}${before} src=${quote}${assetUrl}${quote}${after}>`;
       }
 
       // Strategy 2: Fall back to reverseBlobCache lookup
-      const assetId = this.reverseBlobCache.get(blobUrl);
-      if (assetId) {
+      const assetUrl = getCanonicalAssetUrl(this.reverseBlobCache.get(blobUrl));
+      if (assetUrl) {
         conversions++;
-        Logger.log(`[AssetManager] Converted blob→asset via cache: ${assetId.substring(0, 8)}...`);
-        return match.replace(blobUrl, `asset://${assetId}`);
+        Logger.log(`[AssetManager] Converted blob→asset via cache: ${assetUrl.substring(8, 16)}...`);
+        return match.replace(blobUrl, assetUrl);
       }
 
-      // Could not convert - log warning
-      console.warn(`[AssetManager] FAILED to convert blob URL (no data-asset-id, not in cache): ${blobUrl.substring(0, 50)}...`);
-      return match;
+      // Could not convert - clear the invalid blob URL so it is not persisted
+      logWarn(`[AssetManager] Cannot recover blob URL, clearing: ${blobUrl.substring(0, 50)}...`);
+      return match.replace(blobUrl, '');
     };
 
     convertedHTML = convertedHTML.replace(tagRegex, replaceCallback);
@@ -2583,10 +2603,18 @@ class AssetManager {
     for (const [blobURL, assetId] of this.reverseBlobCache.entries()) {
       if (convertedHTML.includes(blobURL)) {
         const escapedBlobURL = blobURL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        convertedHTML = convertedHTML.replace(new RegExp(escapedBlobURL, 'g'), `asset://${assetId}`);
-        conversions++;
+        const assetUrl = getCanonicalAssetUrl(assetId);
+        if (assetUrl) {
+          convertedHTML = convertedHTML.replace(new RegExp(escapedBlobURL, 'g'), assetUrl);
+          conversions++;
+        }
       }
     }
+
+    convertedHTML = convertedHTML.replace(/blob:https?:\/\/[^"'\s)]+/g, (blobUrl) => {
+      logWarn(`[AssetManager] Cannot recover blob URL, clearing: ${blobUrl.substring(0, 50)}...`);
+      return '';
+    });
 
     if (conversions > 0) {
       Logger.log(`[AssetManager] convertBlobURLsToAssetRefs: ${conversions} conversion(s) made`);
@@ -2611,10 +2639,18 @@ class AssetManager {
     // Handles img, video, audio, a tags
     const regex = /(<(?:img|video|audio|source)[^>]*?)(?:src|href)=(["'])([^"']*)\2([^>]*?)data-asset-url=(["'])([^"']+)\5([^>]*>)/gi;
 
-    return html.replace(regex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
+    let result = html.replace(regex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
       // Replace src with asset URL and remove data-asset-url attribute
       return `${beforeSrc}src=${quote1}${assetUrl}${quote1}${middle}${afterAttr}`;
     });
+
+    const assetSrcRegex = /(<(?:audio|video|iframe)[^>]*?)src=(["'])([^"']*)\2([^>]*?)data-asset-src=(["'])([^"']+)\5([^>]*>)/gi;
+
+    result = result.replace(assetSrcRegex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
+      return `${beforeSrc}src=${quote1}${assetUrl}${quote1}${middle}${afterAttr}`;
+    });
+
+    return result;
   }
 
   /**
@@ -2631,6 +2667,10 @@ class AssetManager {
 
     // Step 2: Convert any remaining blob:// URLs to asset:// refs
     prepared = this.convertBlobURLsToAssetRefs(prepared);
+
+    // Strip data-asset-src from img elements — runtime tracking attr set by
+    // resolveAssetUrlsInEditor; if persisted, it blocks resolution on next edit.
+    prepared = prepared.replace(/(<img\b[^>]*)\s+data-asset-src=(["'])[^"']*\2/gi, '$1');
 
     return prepared;
   }

@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: env.CODECOV_TOKEN != ''
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: ./coverage/bun/lcov.info,./coverage/vitest/lcov.info
           token: ${{ env.CODECOV_TOKEN }}
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: ./coverage/bun/junit.xml,./coverage/vitest/junit.xml
           token: ${{ env.CODECOV_TOKEN }}

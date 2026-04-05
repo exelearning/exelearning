@@ -301,6 +301,7 @@ var $eXeOrdena = {
 
         let $cards = $ordenaMultimedia.find('.ODNP-NewCard');
         $cards.css('cursor', 'default');
+        $cards.removeClass('ODNP-HeaderCard');
         let $activeCard = $cards;
 
         if (mOptions.orderedColumns) {
@@ -318,7 +319,7 @@ var $eXeOrdena = {
                     parseInt(child.data('order'), 10) < mOptions.gameColumns
                 );
             });
-            $header.css({ border: '2px solid #555555' });
+            $header.addClass('ODNP-HeaderCard');
         }
         $activeCard.css('cursor', 'pointer');
         if (num > 0) {
@@ -445,17 +446,121 @@ var $eXeOrdena = {
         }
     },
 
+    normalizeMediaValue: function (value) {
+        return typeof value === 'string' ? value.trim() : '';
+    },
+
+    sanitizeComparableValue: function (value) {
+        const normalized = $eXeOrdena.normalizeMediaValue(value);
+        if (normalized === '') {
+            return '';
+        }
+
+        // Clean HTML in a detached wrapper to compare stable plain-text content.
+        return $('<div></div>').html(normalized).text().trim();
+    },
+
+    getCardContentSignature: function (url, text, audio) {
+        return JSON.stringify([
+            $eXeOrdena.sanitizeComparableValue(url),
+            $eXeOrdena.sanitizeComparableValue(text),
+            $eXeOrdena.sanitizeComparableValue(audio),
+        ]);
+    },
+
+    isCardContentSignatureEmpty: function (signature) {
+        if (typeof signature !== 'string' || signature.length === 0) {
+            return true;
+        }
+
+        try {
+            const parts = JSON.parse(signature);
+            return (
+                !Array.isArray(parts) ||
+                parts.length !== 3 ||
+                parts.every(function (part) {
+                    return $eXeOrdena.normalizeMediaValue(part) === '';
+                })
+            );
+        } catch (_error) {
+            // Backward compatibility if a legacy signature format appears.
+            return $eXeOrdena.normalizeMediaValue(signature) === '';
+        }
+    },
+
+    getCardContentByOrder: function (phrase, order) {
+        if (!phrase || !Array.isArray(phrase.cards)) {
+            return '';
+        }
+
+        const expectedCard = phrase.cards.find(function (card) {
+            return parseInt(card.order, 10) === order;
+        });
+
+        return $eXeOrdena.getCardContentSignature(
+            expectedCard?.url,
+            expectedCard?.eText,
+            expectedCard?.audio
+        );
+    },
+
+    getCardContentByDraw: function ($cardDraw, phrase) {
+        const currentOrder = parseInt($cardDraw.data('order'), 10);
+        if (isNaN(currentOrder)) {
+            return '';
+        }
+
+        return $eXeOrdena.getCardContentByOrder(phrase, currentOrder);
+    },
+
+    cardMatchesImagePosition: function ($cardDraw, phrase, validOrders) {
+        const currentCardContent = $eXeOrdena.getCardContentByDraw(
+            $cardDraw,
+            phrase
+        );
+
+        if ($eXeOrdena.isCardContentSignatureEmpty(currentCardContent)) {
+            return false;
+        }
+
+        if (Array.isArray(validOrders)) {
+            return validOrders.some(function (order) {
+                return (
+                    currentCardContent ===
+                    $eXeOrdena.getCardContentByOrder(phrase, order)
+                );
+            });
+        }
+
+        return (
+            currentCardContent ===
+            $eXeOrdena.getCardContentByOrder(phrase, validOrders)
+        );
+    },
+
     checkPhrase: function (instance) {
+        const mOptions = $eXeOrdena.options[instance],
+            useContentValidation = mOptions?.type === 1;
+
         let correct = true,
             valids = [];
         $('#ordenaMultimedia-' + instance)
             .find('.ODNP-CardDraw')
             .each(function (i) {
-                const order = parseInt($(this).data('order'));
-                if (i !== order) {
+                const $cardDraw = $(this),
+                    order = parseInt($cardDraw.data('order'), 10),
+                    isValid = useContentValidation
+                        ? $eXeOrdena.cardMatchesImagePosition(
+                              $cardDraw,
+                              mOptions.phrase,
+                              i
+                          )
+                        : i === order;
+
+                if (!isValid) {
                     correct = false;
                 } else {
-                    valids.push(i);
+                    valids.push(order);
                 }
             });
         return {
@@ -470,17 +575,55 @@ var $eXeOrdena = {
             validsPos = $eXeOrdena.getPostionsColumns(
                 mOptions.gameColumns,
                 mOptions.phrase.cards.length
-            );
+            ),
+            useContentValidation = mOptions?.type === 1;
+
+        const expectedByColumn = useContentValidation
+            ? validsPos.map(function (orders) {
+                  const counter = new Map();
+                  orders.forEach(function (order) {
+                      const signature = $eXeOrdena.getCardContentByOrder(
+                          mOptions.phrase,
+                          order
+                      );
+                      counter.set(signature, (counter.get(signature) || 0) + 1);
+                  });
+                  return counter;
+              })
+            : [];
 
         let correct = true;
         $('#ordenaMultimedia-' + instance)
             .find('.ODNP-CardDraw')
             .each(function (i) {
                 if (i >= mOptions.gameColumns) {
-                    const order = parseInt($(this).data('order')),
+                    const $cardDraw = $(this),
+                        order = parseInt($cardDraw.data('order'), 10),
                         number = i,
                         col = number % mOptions.gameColumns;
-                    if (!validsPos[col].includes(order)) {
+
+                    let isValid = false;
+
+                    if (useContentValidation) {
+                        const signature = $eXeOrdena.getCardContentByDraw(
+                                $cardDraw,
+                                mOptions.phrase
+                            ),
+                            remaining =
+                                expectedByColumn[col].get(signature) || 0;
+
+                        if (
+                            !$eXeOrdena.isCardContentSignatureEmpty(signature) &&
+                            remaining > 0
+                        ) {
+                            expectedByColumn[col].set(signature, remaining - 1);
+                            isValid = true;
+                        }
+                    } else {
+                        isValid = validsPos[col].includes(order);
+                    }
+
+                    if (!isValid) {
                         correct = false;
                     } else {
                         valids.push(order);
@@ -1017,7 +1160,7 @@ var $eXeOrdena = {
                 response = $eXeOrdena.checkPhraseText(instance);
             } else {
                 response =
-                    mOptions.columns > 1 && mOptions.orderedColumns
+                    mOptions.gameColumns > 1 && mOptions.orderedColumns
                         ? $eXeOrdena.checkPhraseColumns(instance)
                         : $eXeOrdena.checkPhrase(instance);
             }

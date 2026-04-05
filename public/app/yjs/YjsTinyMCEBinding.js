@@ -253,14 +253,19 @@ class YjsTinyMCEBinding {
    */
   syncFromEditor() {
     let content = this.editor.getContent();
+    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
 
-    // Step 1: Convert data-asset-url attributes to proper src values
-    // This handles images inserted via file picker which use data: URLs with data-asset-url attr
-    content = this.convertDataAssetUrlToSrc(content);
+    if (assetManager?.prepareHtmlForSync) {
+      content = assetManager.prepareHtmlForSync(content);
+    } else {
+      // Step 1: Convert data-asset-url attributes to proper src values
+      // This handles images inserted via file picker which use data: URLs with data-asset-url attr
+      content = this.convertDataAssetUrlToSrc(content);
 
-    // Step 2: Convert blob: URLs to asset:// URLs before saving to Yjs
-    // This handles images from drag & drop which use blob: URLs
-    content = this.convertBlobUrlsToAssetUrls(content);
+      // Step 2: Convert blob: URLs to asset:// URLs before saving to Yjs
+      // This handles images from drag & drop which use blob: URLs
+      content = this.convertBlobUrlsToAssetUrls(content);
+    }
 
     const currentYText = this.yText.toString();
 
@@ -355,9 +360,9 @@ class YjsTinyMCEBinding {
         // Use simplified URL format: asset://uuid.ext
         return assetManager.getAssetUrl(assetId, filename);
       }
-      // If not found in cache, keep original (may be external blob)
-      console.warn('[YjsTinyMCEBinding] Blob URL not found in AssetManager cache:', blobUrl);
-      return blobUrl;
+      // If not found in cache, clear it so the broken temporary URL is not persisted
+      console.warn('[YjsTinyMCEBinding] Blob URL not found in AssetManager cache, clearing:', blobUrl);
+      return '';
     });
   }
 
