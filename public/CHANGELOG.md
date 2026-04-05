@@ -33,6 +33,7 @@
 - "Made with eXeLearning" link and page counter preferences are now respected in exports
 - Further reduction of peak memory usage during save, preview and export for large projects
 - Universal style: updated information, removed unused font files and restored the "Made with eXeLearning" logo
+- Incorrect cursor when "Allows to minimize/display content" option is disabled in box properties
 - Admin panel presentation issues
 - Minor presentation issues in the workarea
 
