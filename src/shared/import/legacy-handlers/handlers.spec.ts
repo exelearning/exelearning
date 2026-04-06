@@ -472,7 +472,7 @@ describe('FreeTextHandler', () => {
                     <instance class="TextAreaField">
                         <dictionary>
                             <string role="key" value="content"/>
-                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                            <unicode value="${contentWithFeedback.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}"/>
                         </dictionary>
                     </instance>
                     <string role="key" value="answerTextArea"/>
@@ -507,7 +507,7 @@ describe('FreeTextHandler', () => {
                     <instance class="TextAreaField">
                         <dictionary>
                             <string role="key" value="content"/>
-                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                            <unicode value="${contentWithFeedback.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}"/>
                         </dictionary>
                     </instance>
                     <string role="key" value="answerTextArea"/>
@@ -536,7 +536,7 @@ describe('FreeTextHandler', () => {
                     <instance class="TextAreaField">
                         <dictionary>
                             <string role="key" value="content"/>
-                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                            <unicode value="${contentWithFeedback.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}"/>
                         </dictionary>
                     </instance>
                 </dictionary>
@@ -639,7 +639,7 @@ describe('FreeTextHandler', () => {
                     <instance class="TextAreaField">
                         <dictionary>
                             <string role="key" value="content"/>
-                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                            <unicode value="${contentWithFeedback.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}"/>
                         </dictionary>
                     </instance>
                     <string role="key" value="answerTextArea"/>
@@ -695,7 +695,7 @@ describe('FreeTextHandler', () => {
                     <instance class="TextAreaField">
                         <dictionary>
                             <string role="key" value="content"/>
-                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                            <unicode value="${contentWithFeedback.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}"/>
                         </dictionary>
                     </instance>
                     <string role="key" value="answerTextArea"/>

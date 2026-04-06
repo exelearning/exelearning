@@ -12233,6 +12233,18 @@
         <source>Finish</source>
         <target>Terminare</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Modificări nesalvate</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Dacă închizi acum, ultimele modificări vor fi pierdute. Rămâi pentru a salva proiectul mai întâi.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Rămâi</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>~Conținut eXeLearning (.elpx)</target>
@@ -12261,7 +12273,7 @@
         <source>Status</source>
         <target>~Stare</target>
       </trans-unit>
-            <trans-unit id="r54j2rq" resname="Default AI Assistant">
+      <trans-unit id="r54j2rq" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Asistent AI implicit</target>
       </trans-unit>
@@ -12607,7 +12619,7 @@
       </trans-unit>
       <trans-unit id="iot2q4p" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Numele folderului nu este valid. Evită caractere speciale precum / \\ : * ? " < > |</target>
+        <target>~Numele folderului nu este valid. Evită caractere speciale precum / \\ : * ? " &lt; &gt; |</target>
       </trans-unit>
       <trans-unit id="0xzyfnk" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
@@ -12623,7 +12635,7 @@
       </trans-unit>
       <trans-unit id="pitu10s" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target>~Numele fișierului nu este valid. Evită caracterele speciale precum / \ : * ? " < > |</target>
+        <target>~Numele fișierului nu este valid. Evită caracterele speciale precum / \\ : * ? " &lt; &gt; |</target>
       </trans-unit>
       <trans-unit id="4zpbjjn" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
@@ -13671,15 +13683,15 @@
       </trans-unit>
       <trans-unit id="39qi9he" resname="The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.">
         <source>The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.</source>
-        <target>~El selector de carpetas no respondió. Esto puede ocurrir al abrir archivos exportados directamente desde tu equipo (protocolo file://). Intenta abrir el archivo a través de un servidor.</target>
+        <target>~Selectorul de foldere nu a răspuns. Acest lucru se poate întâmpla la deschiderea fișierelor exportate direct din sistemul de fișiere (protocolul file://). Încearcă să deschizi fișierul printr-un server web local.</target>
       </trans-unit>
       <trans-unit id="ff207mn" resname="No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.">
         <source>No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.</source>
-        <target>~El selector de carpetas no encontró archivos. Esta es una limitación conocida al abrir archivos exportados con el protocolo file:// en algunos navegadores. Intenta usar otro navegador o abre el archivo a través de un servidor web.</target>
+        <target>~Selectorul de foldere nu a returnat fișiere. Aceasta este o limitare cunoscută la deschiderea fișierelor exportate cu protocolul file:// în unele browsere. Încearcă să folosești un browser diferit sau să deschizi fișierul printr-un server web local.</target>
       </trans-unit>
       <trans-unit id="luqpe88" resname="Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.">
         <source>Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.</source>
-        <target>~Modo local: debido a la política de seguridad del navegador, tendrás que seleccionar la carpeta desde la que abriste este archivo. En un servidor web esto no será necesario.</target>
+        <target>~Mod local: din cauza politicii de securitate a browserului, va trebui să selectezi folderul din care ai deschis acest fișier. Pe un server web, acest lucru nu va fi necesar.</target>
       </trans-unit>
       <trans-unit id="jdac5lm" resname="Hangman game">
         <source>Hangman game</source>
@@ -14139,11 +14151,19 @@
       </trans-unit>
       <trans-unit id="qfj2u4j" resname="Predefined classes">
         <source>Predefined classes</source>
-        <target></target>
+        <target>~Clase predefinite</target>
       </trans-unit>
       <trans-unit id="50n1sqk" resname="Current style classes">
         <source>Current style classes</source>
-        <target></target>
+        <target>~Clase de stil curente</target>
+      </trans-unit>
+      <trans-unit id="4hmrfbd" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Închideți fără a salva</target>
+      </trans-unit>
+      <trans-unit id="yt9h5lj" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>~Nu a putut fi verificat: conținutul HTTP este blocat pe paginile HTTPS.</target>
       </trans-unit>
     </body>
   </file>

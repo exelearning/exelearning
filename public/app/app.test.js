@@ -1019,6 +1019,55 @@ describe('App utility methods', () => {
       expect(openFileFromPathSpy).toHaveBeenCalledWith('/path/to/file.elpx');
       delete window.electronAPI;
     });
+
+    it('registers onGetCloseCopy handler when available', () => {
+      const onOpenFileSpy = vi.fn();
+      const onGetCloseCopySpy = vi.fn();
+      window.electronAPI = {
+        onOpenFile: onOpenFileSpy,
+        onGetCloseCopy: onGetCloseCopySpy,
+        sendCloseCopy: vi.fn(),
+      };
+
+      appInstance.bindElectronFileOpenHandler();
+
+      expect(onGetCloseCopySpy).toHaveBeenCalledTimes(1);
+      delete window.electronAPI;
+    });
+
+    it('does not register onGetCloseCopy handler when not available', () => {
+      const onOpenFileSpy = vi.fn();
+      window.electronAPI = {
+        onOpenFile: onOpenFileSpy,
+      };
+
+      expect(() => appInstance.bindElectronFileOpenHandler()).not.toThrow();
+      delete window.electronAPI;
+    });
+
+    it('calls sendCloseCopy with translated strings when close handler is triggered', () => {
+      const sendCloseCopySpy = vi.fn();
+      let closeHandler;
+      window.electronAPI = {
+        onOpenFile: vi.fn(),
+        onGetCloseCopy: (cb) => { closeHandler = cb; },
+        sendCloseCopy: sendCloseCopySpy,
+      };
+
+      appInstance.bindElectronFileOpenHandler();
+      expect(closeHandler).toBeDefined();
+
+      closeHandler();
+
+      expect(sendCloseCopySpy).toHaveBeenCalledTimes(1);
+      const args = sendCloseCopySpy.mock.calls[0][0];
+      expect(args).toHaveProperty('title');
+      expect(args).toHaveProperty('message');
+      expect(args).toHaveProperty('detail');
+      expect(args).toHaveProperty('stayButtonLabel');
+      expect(args).toHaveProperty('discardButtonLabel');
+      delete window.electronAPI;
+    });
   });
 
   describe('openFileFromPath', () => {
@@ -1193,6 +1242,40 @@ describe('App utility methods', () => {
       await appInstance.openStaticFile(mockFile);
 
       expect(largeFilesUploadSpy).toHaveBeenCalledWith(mockFile);
+    });
+  });
+
+  describe('deferred URL error from static mode', () => {
+    it('shows alert when __exeStaticUrlError is set during init', async () => {
+      window.__exeStaticUrlError = 'Could not download file: HTTP 404 Not Found';
+      const alertShowSpy = vi.fn();
+
+      appInstance.initializedToasts = vi.fn();
+      appInstance.initializedModals = vi.fn();
+      appInstance.loadApiParameters = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadLocale = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadIdevicesInstalled = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadThemesInstalled = vi.fn().mockResolvedValue(undefined);
+      appInstance.loadUser = vi.fn().mockResolvedValue(undefined);
+      appInstance.showModalLopd = vi.fn().mockResolvedValue(undefined);
+      appInstance.showProvisionalDemoWarning = vi.fn().mockResolvedValue(undefined);
+      appInstance.tmpStringList = vi.fn().mockResolvedValue(undefined);
+      appInstance.addNoTranslateForGoogle = vi.fn().mockResolvedValue(undefined);
+      appInstance.runCustomJavaScriptCode = vi.fn().mockResolvedValue(undefined);
+      appInstance.initializedShortcuts = vi.fn().mockResolvedValue(undefined);
+      appInstance.bindElectronDownloadToasts = vi.fn();
+      appInstance.bindElectronFileOpenHandler = vi.fn();
+      appInstance.initExePackageProtocolHandler = vi.fn();
+      appInstance.modals = { alert: { show: alertShowSpy } };
+
+      await appInstance.init();
+
+      expect(alertShowSpy).toHaveBeenCalledWith({
+        title: 'Import Error',
+        body: 'Could not download file: HTTP 404 Not Found',
+        contentId: 'error',
+      });
+      expect(window.__exeStaticUrlError).toBeNull();
     });
   });
 
