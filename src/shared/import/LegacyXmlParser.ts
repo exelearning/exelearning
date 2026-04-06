@@ -579,7 +579,7 @@ export class LegacyXmlParser {
      */
     private extractMetadata(): LegacyMetadata {
         const meta: LegacyMetadata = {
-            title: 'Legacy Project',
+            title: _('Untitled document'),
             author: '',
             description: '',
             language: '',
