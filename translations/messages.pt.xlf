@@ -12867,11 +12867,11 @@
       </trans-unit>
       <trans-unit id="rul0uo8" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target>~¿Eliminar %1 archivos seleccionados?</target>
+        <target>~Eliminar %1 ficheiros selecionados?</target>
       </trans-unit>
       <trans-unit id="5y5mfh6" resname="Failed to delete file">
         <source>Failed to delete file</source>
-        <target>~Error al eliminar el archivo</target>
+        <target>~Erro ao eliminar o ficheiro</target>
       </trans-unit>
       <trans-unit id="jyx65gs" resname="Rename folder">
         <source>Rename folder</source>

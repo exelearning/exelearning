@@ -14155,7 +14155,7 @@
       </trans-unit>
       <trans-unit id="qjlml9s" resname="Current style classes">
         <source>Current style classes</source>
-        <target></target>
+        <target>~Aktuelle Stilklassen</target>
       </trans-unit>
       <trans-unit id="sdlsd9u" resname="Close without saving">
         <source>Close without saving</source>

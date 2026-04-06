@@ -12423,7 +12423,7 @@
       </trans-unit>
       <trans-unit id="rgdgyij" resname="files">
         <source>files</source>
-        <target>~archivos</target>
+        <target>~file</target>
       </trans-unit>
       <trans-unit id="d1s1jmm" resname="Go to root">
         <source>Go to root</source>
@@ -12435,11 +12435,11 @@
       </trans-unit>
       <trans-unit id="naed7bx" resname="No media files yet">
         <source>No media files yet</source>
-        <target>~Aún no hay archivos multimedia</target>
+        <target>~Non ci sono ancora file multimediali</target>
       </trans-unit>
       <trans-unit id="qsl1tmm" resname="Click &quot;Add files&quot; or drop files here to upload">
         <source>Click "Add files" or drop files here to upload</source>
-        <target>~Haz clic en "Añadir archivos" o arrastra archivos aquí para subir</target>
+        <target>~Fai clic su "Aggiungi file" o trascina i file qui per caricarli</target>
       </trans-unit>
       <trans-unit id="t3bt804" resname="Loading assets...">
         <source>Loading assets...</source>
@@ -12535,7 +12535,7 @@
       </trans-unit>
       <trans-unit id="g12bpm5" resname="Filename">
         <source>Filename</source>
-        <target>~Nombre de archivo</target>
+        <target>~Nome file</target>
       </trans-unit>
       <trans-unit id="iegj7m6" resname="Original">
         <source>Original</source>
@@ -12555,7 +12555,7 @@
       </trans-unit>
       <trans-unit id="nxh5xin" resname="Warning:">
         <source>Warning:</source>
-        <target>~La optimización de imágenes puede reducir la calidad. Esta acción no se puede deshacer.</target>
+        <target>~Avvertenza:</target>
       </trans-unit>
       <trans-unit id="01ya2j3" resname="Optimizing images may reduce quality. This action cannot be undone.">
         <source>Optimizing images may reduce quality. This action cannot be undone.</source>
@@ -12575,7 +12575,7 @@
       </trans-unit>
       <trans-unit id="g08sxds" resname="Third party libraries">
         <source>Third party libraries</source>
-        <target></target>
+        <target>~Librerie di terze parti</target>
       </trans-unit>
       <trans-unit id="p4ov7ph" resname="Opens in new window">
         <source>Opens in new window</source>
@@ -12631,11 +12631,11 @@
       </trans-unit>
       <trans-unit id="cheqecf" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
-        <target>~¿Seguro que quieres eliminar la carpeta "%1" y todos los %2 archivos que contiene?</target>
+        <target>~Sei sicuro di voler eliminare la cartella "%1" e tutti i %2 file al suo interno?</target>
       </trans-unit>
       <trans-unit id="mu1x0i3" resname="Are you sure you want to delete the empty folder &quot;%1&quot;?">
         <source>Are you sure you want to delete the empty folder "%1"?</source>
-        <target>~¿Seguro que quieres eliminar la carpeta vacía "%1"?</target>
+        <target>~Sei sicuro di voler eliminare la cartella vuota "%1"?</target>
       </trans-unit>
       <trans-unit id="pm5x39z" resname="Delete &quot;%1&quot;?">
         <source>Delete "%1"?</source>
@@ -12791,7 +12791,7 @@
       </trans-unit>
       <trans-unit id="8gpj4ol" resname="An error occurred while renaming the page">
         <source>An error occurred while renaming the page</source>
-        <target>~Error al renombrar la página</target>
+        <target>~Errore durante la rinomina della pagina</target>
       </trans-unit>
       <trans-unit id="z3sovqs" resname="An error occurred while removing the page">
         <source>An error occurred while removing the page</source>
@@ -12835,11 +12835,11 @@
       </trans-unit>
       <trans-unit id="7z0ylih" resname="Enter folder name:">
         <source>Enter folder name:</source>
-        <target>~Introduce el nombre de la carpeta:</target>
+        <target>~Inserisci il nome della cartella:</target>
       </trans-unit>
       <trans-unit id="odb6tv3" resname="A folder with this name already exists.">
         <source>A folder with this name already exists.</source>
-        <target>~Ya existe una carpeta con ese nombre.</target>
+        <target>~Esiste già una cartella con questo nome.</target>
       </trans-unit>
       <trans-unit id="v2mlehd" resname="items">
         <source>items</source>
@@ -12859,15 +12859,15 @@
       </trans-unit>
       <trans-unit id="ezzn9mo" resname="%1 files selected">
         <source>%1 files selected</source>
-        <target>~%1 archivos seleccionados</target>
+        <target>~%1 file selezionati</target>
       </trans-unit>
       <trans-unit id="6bwcqla" resname="Multiple files">
         <source>Multiple files</source>
-        <target>~Archivos múltiples</target>
+        <target>~File multipli</target>
       </trans-unit>
       <trans-unit id="frxt4n7" resname="Failed to delete folder">
         <source>Failed to delete folder</source>
-        <target>~Error al eliminar la carpeta</target>
+        <target>~Errore nell'eliminazione della cartella</target>
       </trans-unit>
       <trans-unit id="2vo7h9e" resname="This asset is referenced in %1 iDevices.">
         <source>This asset is referenced in %1 iDevices.</source>
@@ -12875,35 +12875,35 @@
       </trans-unit>
       <trans-unit id="hjniyng" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target>~¿Eliminar %1 archivos seleccionados?</target>
+        <target>~Eliminare %1 file selezionati?</target>
       </trans-unit>
       <trans-unit id="lca7565" resname="Failed to delete file">
         <source>Failed to delete file</source>
-        <target>~Error al eliminar el archivo</target>
+        <target>~Errore nell'eliminazione del file</target>
       </trans-unit>
       <trans-unit id="vqdqkws" resname="Rename folder">
         <source>Rename folder</source>
-        <target>~Renombrar carpeta</target>
+        <target>~Rinomina cartella</target>
       </trans-unit>
       <trans-unit id="s1qkrsy" resname="Enter new folder name:">
         <source>Enter new folder name:</source>
-        <target>~Introduce el nuevo nombre de la carpeta:</target>
+        <target>~Inserisci il nuovo nome della cartella:</target>
       </trans-unit>
       <trans-unit id="qywwb1e" resname="Failed to rename folder">
         <source>Failed to rename folder</source>
-        <target>~Error al renombrar la carpeta</target>
+        <target>~Errore durante la rinomina della cartella</target>
       </trans-unit>
       <trans-unit id="f5pnjw4" resname="Rename file">
         <source>Rename file</source>
-        <target>~Renombrar archivo</target>
+        <target>~Rinomina file</target>
       </trans-unit>
       <trans-unit id="84n6ryg" resname="Enter new filename:">
         <source>Enter new filename:</source>
-        <target>~Introduce el nuevo nombre de archivo:</target>
+        <target>~Inserisci il nuovo nome del file:</target>
       </trans-unit>
       <trans-unit id="mjnasl7" resname="Failed to rename file">
         <source>Failed to rename file</source>
-        <target>~Error al renombrar el archivo</target>
+        <target>~Errore durante la rinomina del file</target>
       </trans-unit>
       <trans-unit id="l85vbmf" resname="copy">
         <source>copy</source>
@@ -12911,11 +12911,11 @@
       </trans-unit>
       <trans-unit id="131pse8" resname="Could not read file">
         <source>Could not read file</source>
-        <target>~No se pudo leer el archivo</target>
+        <target>~Impossibile leggere il file</target>
       </trans-unit>
       <trans-unit id="tdqcjl5" resname="Duplicate file">
         <source>Duplicate file</source>
-        <target>~Duplicar archivo</target>
+        <target>~Duplica file</target>
       </trans-unit>
       <trans-unit id="cn32zbc" resname="Enter name for the duplicate:">
         <source>Enter name for the duplicate:</source>
@@ -12923,15 +12923,15 @@
       </trans-unit>
       <trans-unit id="e79pecu" resname="Please enter a valid filename">
         <source>Please enter a valid filename</source>
-        <target>~Introduce un nombre de archivo válido</target>
+        <target>~Inserisci un nome file valido</target>
       </trans-unit>
       <trans-unit id="il07xbx" resname="A file with this name already exists in this folder">
         <source>A file with this name already exists in this folder</source>
-        <target>~La carpeta ya tiene un archivo con ese nombre</target>
+        <target>~Esiste già un file con questo nome in questa cartella</target>
       </trans-unit>
       <trans-unit id="sibbykg" resname="Failed to duplicate file">
         <source>Failed to duplicate file</source>
-        <target>~Error al duplicar el archivo</target>
+        <target>~Errore durante la duplicazione del file</target>
       </trans-unit>
       <trans-unit id="6o8n7w0" resname="current">
         <source>current</source>
@@ -12939,31 +12939,31 @@
       </trans-unit>
       <trans-unit id="72lo02f" resname="Please select a destination folder">
         <source>Please select a destination folder</source>
-        <target>~Selecciona una carpeta de destino  </target>
+        <target>~Seleziona una cartella di destinazione</target>
       </trans-unit>
       <trans-unit id="8mlzn8z" resname="Folder is already in this location">
         <source>Folder is already in this location</source>
-        <target>~La carpeta ya está en esa ubicación  </target>
+        <target>~La cartella si trova già in questa posizione</target>
       </trans-unit>
       <trans-unit id="btn78a9" resname="A folder with this name already exists in the destination.">
         <source>A folder with this name already exists in the destination.</source>
-        <target>~Ya existe una carpeta con este nombre en el destino.  </target>
+        <target>~Esiste già una cartella con questo nome nella destinazione.</target>
       </trans-unit>
       <trans-unit id="6kteop7" resname="Failed to move folder">
         <source>Failed to move folder</source>
-        <target>~Error al mover la carpeta  </target>
+        <target>~Errore durante lo spostamento della cartella</target>
       </trans-unit>
       <trans-unit id="3a9wx0w" resname="Selected files are already in this folder">
         <source>Selected files are already in this folder</source>
-        <target>~Los archivos seleccionados ya están en esta carpeta  </target>
+        <target>~I file selezionati sono già in questa cartella</target>
       </trans-unit>
       <trans-unit id="d6wo2fq" resname="File is already in this folder">
         <source>File is already in this folder</source>
-        <target>~El archivo ya está en esta carpeta  </target>
+        <target>~Il file si trova già in questa cartella</target>
       </trans-unit>
       <trans-unit id="v1s12ra" resname="Failed to move file">
         <source>Failed to move file</source>
-        <target>~Error al mover el archivo  </target>
+        <target>~Errore durante lo spostamento del file</target>
       </trans-unit>
       <trans-unit id="1uyoazw" resname="Asset URL copied to clipboard">
         <source>Asset URL copied to clipboard</source>
@@ -12971,7 +12971,7 @@
       </trans-unit>
       <trans-unit id="7g6np1g" resname="Extract to folder (the internal folder structure of the ZIP will be preserved):">
         <source>Extract to folder (the internal folder structure of the ZIP will be preserved):</source>
-        <target>~Extraer a carpeta (se conservará la estructura interna del ZIP):  </target>
+        <target>~Estrai nella cartella (verrà preservata la struttura interna dello ZIP):</target>
       </trans-unit>
       <trans-unit id="s5caj3q" resname="Extract">
         <source>Extract</source>
@@ -12979,7 +12979,7 @@
       </trans-unit>
       <trans-unit id="8fb25nn" resname="Could not read ZIP file">
         <source>Could not read ZIP file</source>
-        <target>~No se pudo leer el archivo ZIP</target>
+        <target>~Impossibile leggere il file ZIP</target>
       </trans-unit>
       <trans-unit id="y2kvj5p" resname="ZIP extraction is not available">
         <source>ZIP extraction is not available</source>
@@ -12991,15 +12991,15 @@
       </trans-unit>
       <trans-unit id="sob90bm" resname="Extracted %1 files. %2 files were skipped.">
         <source>Extracted %1 files. %2 files were skipped.</source>
-        <target>~Se extrajeron %1 archivos. Se omitieron %2 archivos.</target>
+        <target>~Estratti %1 file. %2 file ignorati.</target>
       </trans-unit>
       <trans-unit id="enzwcyy" resname="Extracted %1 files successfully.">
         <source>Extracted %1 files successfully.</source>
-        <target>~Se extrajeron %1 archivos correctamente.</target>
+        <target>~%1 file estratti con successo.</target>
       </trans-unit>
       <trans-unit id="cqudwg5" resname="No files were extracted from the ZIP.">
         <source>No files were extracted from the ZIP.</source>
-        <target>~No se extrajeron archivos del ZIP.</target>
+        <target>~Nessun file estratto dallo ZIP.</target>
       </trans-unit>
       <trans-unit id="vcwfof6" resname="Failed to extract ZIP file">
         <source>Failed to extract ZIP file</source>
@@ -13007,7 +13007,7 @@
       </trans-unit>
       <trans-unit id="j55o78p" resname="Drop files here to upload">
         <source>Drop files here to upload</source>
-        <target>~Arrastra archivos aquí para subirlos</target>
+        <target>~Trascina i file qui per caricarli</target>
       </trans-unit>
       <trans-unit id="1iuwngt" resname="Validating">
         <source>Validating</source>
@@ -13071,7 +13071,7 @@
       </trans-unit>
       <trans-unit id="az158oh" resname="File too large">
         <source>File too large</source>
-        <target>~El archivo es demasiado grande</target>
+        <target>~File troppo grande</target>
       </trans-unit>
       <trans-unit id="3ot013j" resname="My Projects">
         <source>My Projects</source>
@@ -13111,7 +13111,7 @@
       </trans-unit>
       <trans-unit id="ul7dmky" resname="An error occurred while opening the file.">
         <source>An error occurred while opening the file.</source>
-        <target>~Error al abrir el archivo.</target>
+        <target>~Errore durante l'apertura del file.</target>
       </trans-unit>
       <trans-unit id="bhqsvwb" resname="Are you sure you want to delete this project?">
         <source>Are you sure you want to delete this project?</source>
@@ -13127,7 +13127,7 @@
       </trans-unit>
       <trans-unit id="9rq68u1" resname="This action cannot be undone.">
         <source>This action cannot be undone.</source>
-        <target>~Esta acción no se puede deshacer.</target>
+        <target>~Questa azione non può essere annullata.</target>
       </trans-unit>
       <trans-unit id="etc1cra" resname="An error occurred while importing the component.">
         <source>An error occurred while importing the component.</source>
@@ -13139,7 +13139,7 @@
       </trans-unit>
       <trans-unit id="0s32sau" resname="An error occurred while importing the file.">
         <source>An error occurred while importing the file.</source>
-        <target>~Error al importar el archivo.</target>
+        <target>~Errore durante l'importazione del file.</target>
       </trans-unit>
       <trans-unit id="m5adoct" resname="The default style will be used instead.">
         <source>The default style will be used instead.</source>
@@ -13167,7 +13167,7 @@
       </trans-unit>
       <trans-unit id="mog7cy9" resname="Uploading images and files to server...">
         <source>Uploading images and files to server...</source>
-        <target>~Subiendo imágenes y archivos al servidor...</target>
+        <target>~Caricamento di immagini e file sul server...</target>
       </trans-unit>
       <trans-unit id="avhiwj4" resname="Save complete!">
         <source>Save complete!</source>
@@ -13379,7 +13379,7 @@
       </trans-unit>
       <trans-unit id="e94guqe" resname="Error generating ELPX file:">
         <source>Error generating ELPX file:</source>
-        <target>~Error al generar el archivo ELPX:</target>
+        <target>~Errore durante la generazione del file ELPX:</target>
       </trans-unit>
       <trans-unit id="37wv0sz" resname="Print preview is not available.">
         <source>Print preview is not available.</source>
@@ -13395,15 +13395,15 @@
       </trans-unit>
       <trans-unit id="ouxi627" resname="Generating file from collaborative document...">
         <source>Generating file from collaborative document...</source>
-        <target>~Generando archivo desde el documento colaborativo...</target>
+        <target>~Generazione file dal documento collaborativo...</target>
       </trans-unit>
       <trans-unit id="pctmmo2" resname="File saved.">
         <source>File saved.</source>
-        <target>~Archivo guardado.</target>
+        <target>~File salvato.</target>
       </trans-unit>
       <trans-unit id="dusdpvv" resname="An error occurred while saving the file.">
         <source>An error occurred while saving the file.</source>
-        <target>~Error al guardar el archivo.</target>
+        <target>~Errore durante il salvataggio del file.</target>
       </trans-unit>
       <trans-unit id="3dq0pbu" resname="Preview is not available. Please reload the page.">
         <source>Preview is not available. Please reload the page.</source>
@@ -13435,7 +13435,7 @@
       </trans-unit>
       <trans-unit id="6629bl2" resname="Style files not found">
         <source>Style files not found</source>
-        <target>~Archivos de estilo no encontrados</target>
+        <target>~File di stile non trovati</target>
       </trans-unit>
       <trans-unit id="mje9m4q" resname="Add page">
         <source>Add page</source>
@@ -13487,7 +13487,7 @@
       </trans-unit>
       <trans-unit id="5gan4sg" resname="You can undo this action.">
         <source>You can undo this action.</source>
-        <target>~Puedes deshacer esta acción.</target>
+        <target>~Puoi annullare questa azione.</target>
       </trans-unit>
       <trans-unit id="h5so2g3" resname="and all its children">
         <source>and all its children</source>
@@ -13523,15 +13523,15 @@
       </trans-unit>
       <trans-unit id="mztcur7" resname="Generating ELPX file...">
         <source>Generating ELPX file...</source>
-        <target>~Generando archivo ELPX...</target>
+        <target>~Generazione del file ELPX...</target>
       </trans-unit>
       <trans-unit id="2l4e0zg" resname="File generated and downloaded.">
         <source>File generated and downloaded.</source>
-        <target>~Archivo generado y descargado.</target>
+        <target>~File generato e scaricato.</target>
       </trans-unit>
       <trans-unit id="hcr4a4d" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
-        <target>~Error al generar el archivo ELPX.</target>
+        <target>~Errore durante la generazione del file ELPX.</target>
       </trans-unit>
       <trans-unit id="wbvid60" resname="Saving document...">
         <source>Saving document...</source>
@@ -13547,7 +13547,7 @@
       </trans-unit>
       <trans-unit id="cd4lbyb" resname="Your project is automatically saved in your browser. Use File &gt; Export to download a copy.">
         <source>Your project is automatically saved in your browser. Use File &gt; Export to download a copy.</source>
-        <target>~Tu proyecto se guarda automáticamente en tu navegador. Usa Archivo - Exportar para descargar una copia.</target>
+        <target>~Il tuo progetto viene salvato automaticamente nel browser. Usa File &gt; Esporta per scaricare una copia.</target>
       </trans-unit>
       <trans-unit id="p3lumwy" resname="Cannot save project to server because your storage quota has been exceeded. You can download the project locally.">
         <source>Cannot save project to server because your storage quota has been exceeded. You can download the project locally.</source>
@@ -13611,7 +13611,7 @@
       </trans-unit>
       <trans-unit id="3mpuwf6" resname="File name">
         <source>File name</source>
-        <target>~Nombre de archivo</target>
+        <target>~Nome file</target>
       </trans-unit>
       <trans-unit id="ayvsoef" resname="Recording time">
         <source>Recording time</source>
@@ -13683,15 +13683,15 @@
       </trans-unit>
       <trans-unit id="237xqxv" resname="The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.">
         <source>The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.</source>
-        <target>~El selector de carpetas no respondió. Esto puede ocurrir al abrir archivos exportados directamente desde tu equipo (protocolo file://). Intenta abrir el archivo a través de un servidor.</target>
+        <target>~Il selettore di cartelle non ha risposto. Questo può accadere quando si aprono file esportati direttamente dal file system (protocollo file://). Prova ad aprire il file tramite un server web locale.</target>
       </trans-unit>
       <trans-unit id="iht4jt7" resname="No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.">
         <source>No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.</source>
-        <target>~El selector de carpetas no encontró archivos. Esta es una limitación conocida al abrir archivos exportados con el protocolo file:// en algunos navegadores. Intenta usar otro navegador o abre el archivo a través de un servidor web.</target>
+        <target>~Il selettore di cartelle non ha restituito file. Questa è una limitazione nota quando si aprono file esportati con il protocollo file:// in alcuni browser. Prova a usare un browser diverso o ad aprire il file tramite un server web locale.</target>
       </trans-unit>
       <trans-unit id="h6bir0n" resname="Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.">
         <source>Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.</source>
-        <target>~Modo local: debido a la política de seguridad del navegador, tendrás que seleccionar la carpeta desde la que abriste este archivo. En un servidor web esto no será necesario.</target>
+        <target>~Modalità locale: a causa della policy di sicurezza del browser, dovrai selezionare la cartella da cui hai aperto questo file. Su un server web non sarà necessario.</target>
       </trans-unit>
       <trans-unit id="fkwnjpf" resname="Hangman game">
         <source>Hangman game</source>
@@ -13755,7 +13755,7 @@
       </trans-unit>
       <trans-unit id="g4cj2gk" resname="Create a new set without loading external files.">
         <source>Create a new set without loading external files.</source>
-        <target>~Crea un nuevo conjunto sin cargar archivos externos.</target>
+        <target>~Crea un nuovo set senza caricare file esterni.</target>
       </trans-unit>
       <trans-unit id="0j16m7z" resname="Your set is empty. Use the &quot;+ Add Category&quot; button above to create the first category.">
         <source>Your set is empty. Use the "+ Add Category" button above to create the first category.</source>
@@ -13763,7 +13763,7 @@
       </trans-unit>
       <trans-unit id="dkdx2ko" resname="Double-click to rename">
         <source>Double-click to rename</source>
-        <target>~Doble clic para renombrar</target>
+        <target>~Doppio clic per rinominare</target>
       </trans-unit>
       <trans-unit id="4yw386h" resname="Close without saving?">
         <source>Close without saving?</source>
@@ -13775,7 +13775,7 @@
       </trans-unit>
       <trans-unit id="aj48c8e" resname="Rename set">
         <source>Rename set</source>
-        <target>~Renombrar conjunto</target>
+        <target>~Rinomina set</target>
       </trans-unit>
       <trans-unit id="5f1ra9f" resname="Set name">
         <source>Set name</source>
@@ -13855,7 +13855,7 @@
       </trans-unit>
       <trans-unit id="uzg1gj8" resname="Invalid file content">
         <source>Invalid file content</source>
-        <target>~Contenido de archivo no válido  </target>
+        <target>~Contenuto del file non valido</target>
       </trans-unit>
       <trans-unit id="x75ld2l" resname="Answer type: Single">
         <source>Answer type: Single</source>
@@ -13907,7 +13907,7 @@
       </trans-unit>
       <trans-unit id="o87l2ez" resname="Framework data could not be loaded. Please verify the data file is available.">
         <source>Framework data could not be loaded. Please verify the data file is available.</source>
-        <target>~No se pudieron cargar los datos del marco. Verifica que el archivo de datos esté disponible.</target>
+        <target>~Impossibile caricare i dati del framework. Verifica che il file di dati sia disponibile.</target>
       </trans-unit>
       <trans-unit id="6in1pw3" resname="Framework data is still loading. Please wait.">
         <source>Framework data is still loading. Please wait.</source>

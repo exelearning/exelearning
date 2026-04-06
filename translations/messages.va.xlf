@@ -11599,7 +11599,7 @@
       </trans-unit>
       <trans-unit id="fdwIkjV" resname="Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)">
         <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)</source>
-        <target>~Selecciona un archivo de texto (.txt), un archivo JSON (.json) o un archivo XML de Moodle (.xml)</target>
+        <target>~Selecciona un fitxer de text (.txt), un fitxer JSON (.json) o un fitxer XML de Moodle (.xml)</target>
       </trans-unit>
       <trans-unit id="L41w01C" resname="The question text and the formula should have the same variables">
         <source>The question text and the formula should have the same variables</source>
@@ -11679,7 +11679,7 @@
       </trans-unit>
       <trans-unit id="cjVsZ.0" resname="You can only import data from text or XML files for “connect with arrows” matching games.">
         <source>You can only import data from text or XML files for “connect with arrows” matching games.</source>
-        <target>~Sólo puedes importar datos de archivos de texto o XML para los juegos de asociación "conectar con flechas"</target>
+        <target>~Només pots importar dades de fitxers de text o XML per als jocs d'associació «connectar amb fletxes».</target>
       </trans-unit>
       <trans-unit id="xnR2kT7" resname="Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.">
         <source>Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.</source>
@@ -11731,11 +11731,11 @@
       </trans-unit>
       <trans-unit id="cZ0oVQz" resname="Choose a file or paste a link (URL)">
         <source>Choose a file or paste a link (URL)</source>
-        <target>~Selecciona un archivo o pega un enlace (URL)</target>
+        <target>~Selecciona un fitxer o enganxa un enllaç (URL)</target>
       </trans-unit>
       <trans-unit id="poYLy27" resname="Choose a file">
         <source>Choose a file</source>
-        <target>~Selecciona un archivo</target>
+        <target>~Selecciona un fitxer</target>
       </trans-unit>
       <trans-unit id="igvddsQ" resname="Please check the &quot;License&quot; field">
         <source>Please check the "License" field</source>
@@ -12343,7 +12343,7 @@
       </trans-unit>
       <trans-unit id="rvcsuyt" resname="Search files...">
         <source>Search files...</source>
-        <target>~Buscar archivos...</target>
+        <target>~Buscar fitxers...</target>
       </trans-unit>
       <trans-unit id="3uceajg" resname="New folder">
         <source>New folder</source>
@@ -12395,7 +12395,7 @@
       </trans-unit>
       <trans-unit id="64afcsh" resname="files">
         <source>files</source>
-        <target>~archivos</target>
+        <target>~fitxers</target>
       </trans-unit>
       <trans-unit id="h3ddgc1" resname="Go to root">
         <source>Go to root</source>
@@ -12407,11 +12407,11 @@
       </trans-unit>
       <trans-unit id="9y7ja4g" resname="No media files yet">
         <source>No media files yet</source>
-        <target>~Aún no hay archivos multimedia</target>
+        <target>~Encara no hi ha fitxers multimèdia</target>
       </trans-unit>
       <trans-unit id="q5w5xaj" resname="Click &quot;Add files&quot; or drop files here to upload">
         <source>Click "Add files" or drop files here to upload</source>
-        <target>~Haz clic en "Añadir archivos" o arrastra archivos aquí para subir</target>
+        <target>~Fes clic en "Afegir fitxers" o arrossega fitxers ací per a pujar</target>
       </trans-unit>
       <trans-unit id="tnhxxbr" resname="Loading assets...">
         <source>Loading assets...</source>
@@ -12519,7 +12519,7 @@
       </trans-unit>
       <trans-unit id="ryfrpfs" resname="Filename">
         <source>Filename</source>
-        <target>~Nombre de archivo</target>
+        <target>~Nom de fitxer</target>
       </trans-unit>
       <trans-unit id="t089x78" resname="Original">
         <source>Original</source>
@@ -12543,7 +12543,7 @@
       </trans-unit>
       <trans-unit id="pi8dah6" resname="Optimizing images may reduce quality. This action cannot be undone.">
         <source>Optimizing images may reduce quality. This action cannot be undone.</source>
-        <target>~La optimización de imágenes puede reducir la calidad. Esta acción no se puede deshacer.</target>
+        <target>~L'optimització d'imatges pot reduir la qualitat. Esta acció no es pot desfer.</target>
       </trans-unit>
       <trans-unit id="yqfcrfl" resname="Do you want to optimize the selected images?">
         <source>Do you want to optimize the selected images?</source>
@@ -12623,7 +12623,7 @@
       </trans-unit>
       <trans-unit id="yxxeui1" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
-        <target>~¿Seguro que quieres eliminar la carpeta "%1" y todos los %2 archivos que contiene?</target>
+        <target>~Segur que vols eliminar la carpeta "%1" i tots els %2 fitxers que conté?</target>
       </trans-unit>
       <trans-unit id="widxqli" resname="Are you sure you want to delete the empty folder &quot;%1&quot;?">
         <source>Are you sure you want to delete the empty folder "%1"?</source>
@@ -12783,7 +12783,7 @@
       </trans-unit>
       <trans-unit id="qfom67o" resname="An error occurred while renaming the page">
         <source>An error occurred while renaming the page</source>
-        <target>~Error al renombrar la página</target>
+        <target>~Error en reanomenar la pàgina</target>
       </trans-unit>
       <trans-unit id="zknkrfg" resname="An error occurred while removing the page">
         <source>An error occurred while removing the page</source>
@@ -12875,7 +12875,7 @@
       </trans-unit>
       <trans-unit id="qhuu9t7" resname="Rename folder">
         <source>Rename folder</source>
-        <target>~Renombrar carpeta</target>
+        <target>~Reanomenar carpeta</target>
       </trans-unit>
       <trans-unit id="4ns2mht" resname="Enter new folder name:">
         <source>Enter new folder name:</source>
@@ -12883,19 +12883,19 @@
       </trans-unit>
       <trans-unit id="68pvgqd" resname="Failed to rename folder">
         <source>Failed to rename folder</source>
-        <target>~Error al renombrar la carpeta</target>
+        <target>~Error en reanomenar la carpeta</target>
       </trans-unit>
       <trans-unit id="6yoxhvo" resname="Rename file">
         <source>Rename file</source>
-        <target>~Renombrar archivo</target>
+        <target>~Reanomenar fitxer</target>
       </trans-unit>
       <trans-unit id="yt4r3qu" resname="Enter new filename:">
         <source>Enter new filename:</source>
-        <target>~Introduce el nuevo nombre de archivo:</target>
+        <target>~Introduïx el nou nom del fitxer:</target>
       </trans-unit>
       <trans-unit id="h2vaqp0" resname="Failed to rename file">
         <source>Failed to rename file</source>
-        <target>~Error al renombrar el archivo</target>
+        <target>~Error en reanomenar el fitxer</target>
       </trans-unit>
       <trans-unit id="r0w8b2a" resname="copy">
         <source>copy</source>
@@ -12903,11 +12903,11 @@
       </trans-unit>
       <trans-unit id="xlygq7t" resname="Could not read file">
         <source>Could not read file</source>
-        <target>~No se pudo leer el archivo</target>
+        <target>~No s'ha pogut llegir el fitxer</target>
       </trans-unit>
       <trans-unit id="6jkz8tm" resname="Duplicate file">
         <source>Duplicate file</source>
-        <target>~Duplicar archivo</target>
+        <target>~Duplicar fitxer</target>
       </trans-unit>
       <trans-unit id="qxf5qe5" resname="Enter name for the duplicate:">
         <source>Enter name for the duplicate:</source>
@@ -13107,7 +13107,7 @@
       </trans-unit>
       <trans-unit id="fjgqaq5" resname="An error occurred while opening the file.">
         <source>An error occurred while opening the file.</source>
-        <target>~Error al abrir el archivo.</target>
+        <target>~Error en obrir el fitxer.</target>
       </trans-unit>
       <trans-unit id="3nasths" resname="Are you sure you want to delete this project?">
         <source>Are you sure you want to delete this project?</source>
@@ -13435,7 +13435,7 @@
       </trans-unit>
       <trans-unit id="c8t4nhy" resname="Style files not found">
         <source>Style files not found</source>
-        <target>~Archivos de estilo no encontrados</target>
+        <target>~Fitxers d'estil no trobats</target>
       </trans-unit>
       <trans-unit id="9tdqlei" resname="Add page">
         <source>Add page</source>
@@ -13487,7 +13487,7 @@
       </trans-unit>
       <trans-unit id="tqu9zi1" resname="You can undo this action.">
         <source>You can undo this action.</source>
-        <target>~Puedes deshacer esta acción.</target>
+        <target>~Pots desfer esta acció.</target>
       </trans-unit>
       <trans-unit id="8sktzud" resname="and all its children">
         <source>and all its children</source>
@@ -13535,19 +13535,19 @@
       </trans-unit>
       <trans-unit id="h24yuzm" resname="Saving document...">
         <source>Saving document...</source>
-        <target>~Generando archivo ELPX...</target>
+        <target>~Guardant el document...</target>
       </trans-unit>
       <trans-unit id="n3t58u0" resname="Saving...">
         <source>Saving...</source>
-        <target>~Generando archivo ELPX...</target>
+        <target>~Guardant...</target>
       </trans-unit>
       <trans-unit id="vqfqjdb" resname="Offline Mode">
         <source>Offline Mode</source>
-        <target>~Archivo generado y descargado.</target>
+        <target>~Mode sense connexió</target>
       </trans-unit>
       <trans-unit id="g1l6o52" resname="Your project is automatically saved in your browser. Use File &gt; Export to download a copy.">
         <source>Your project is automatically saved in your browser. Use File &gt; Export to download a copy.</source>
-        <target>~Archivo generado y descargado.</target>
+        <target>~El teu projecte es guarda automàticament en el navegador. Usa Fitxer &gt; Exportar per a descarregar una còpia.</target>
       </trans-unit>
       <trans-unit id="njspmuf" resname="Cannot save project to server because your storage quota has been exceeded. You can download the project locally.">
         <source>Cannot save project to server because your storage quota has been exceeded. You can download the project locally.</source>
@@ -13755,7 +13755,7 @@
       </trans-unit>
       <trans-unit id="5046j3d" resname="Create a new set without loading external files.">
         <source>Create a new set without loading external files.</source>
-        <target>~Crea un nuevo conjunto sin cargar archivos externos.</target>
+        <target>~Crea un nou conjunt sense carregar fitxers externs.</target>
       </trans-unit>
       <trans-unit id="z14mh4q" resname="Your set is empty. Use the &quot;+ Add Category&quot; button above to create the first category.">
         <source>Your set is empty. Use the "+ Add Category" button above to create the first category.</source>
@@ -13907,7 +13907,7 @@
       </trans-unit>
       <trans-unit id="u6qls77" resname="Framework data could not be loaded. Please verify the data file is available.">
         <source>Framework data could not be loaded. Please verify the data file is available.</source>
-        <target>~No se pudieron cargar los datos del marco. Verifica que el archivo de datos esté disponible.</target>
+        <target>~No s'han pogut carregar les dades del marc. Verifica que el fitxer de dades estiga disponible.</target>
       </trans-unit>
       <trans-unit id="wv3qjs2" resname="Framework data is still loading. Please wait.">
         <source>Framework data is still loading. Please wait.</source>

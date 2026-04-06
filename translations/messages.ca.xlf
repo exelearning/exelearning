@@ -12535,7 +12535,7 @@
       </trans-unit>
       <trans-unit id="u31y8is" resname="Estimated">
         <source>Estimated</source>
-        <target>~Benvolgut</target>
+        <target>~Estimat</target>
       </trans-unit>
       <trans-unit id="dhqyhbg" resname="Savings">
         <source>Savings</source>
@@ -12855,11 +12855,11 @@
       </trans-unit>
       <trans-unit id="p1031vm" resname="Multiple files">
         <source>Multiple files</source>
-        <target>~Multiple archivos</target>
+        <target>~Múltiples arxius</target>
       </trans-unit>
       <trans-unit id="9x47sd8" resname="Failed to delete folder">
         <source>Failed to delete folder</source>
-        <target>~Error al eliminar la carpeta</target>
+        <target>~Error en eliminar la carpeta</target>
       </trans-unit>
       <trans-unit id="uimxcqe" resname="This asset is referenced in %1 iDevices.">
         <source>This asset is referenced in %1 iDevices.</source>
@@ -12867,15 +12867,15 @@
       </trans-unit>
       <trans-unit id="gf0y1ta" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target>~¿Eliminar %1 archivos seleccionados?</target>
+        <target>~Eliminar %1 arxius seleccionats?</target>
       </trans-unit>
       <trans-unit id="fyz46j5" resname="Failed to delete file">
         <source>Failed to delete file</source>
-        <target>~Error al eliminar el archivo</target>
+        <target>~Error en eliminar l'arxiu</target>
       </trans-unit>
       <trans-unit id="bmheezs" resname="Rename folder">
         <source>Rename folder</source>
-        <target>~Renombrar carpeta</target>
+        <target>~Reanomenar carpeta</target>
       </trans-unit>
       <trans-unit id="hq814qk" resname="Enter new folder name:">
         <source>Enter new folder name:</source>
@@ -12883,11 +12883,11 @@
       </trans-unit>
       <trans-unit id="m66tsdk" resname="Failed to rename folder">
         <source>Failed to rename folder</source>
-        <target>~Error al renombrar la carpeta</target>
+        <target>~Error en reanomenar la carpeta</target>
       </trans-unit>
       <trans-unit id="946qn4w" resname="Rename file">
         <source>Rename file</source>
-        <target>~Renombrar archivo</target>
+        <target>~Reanomenar arxiu</target>
       </trans-unit>
       <trans-unit id="v4cy5wu" resname="Enter new filename:">
         <source>Enter new filename:</source>
@@ -12895,7 +12895,7 @@
       </trans-unit>
       <trans-unit id="18dih40" resname="Failed to rename file">
         <source>Failed to rename file</source>
-        <target>~Error al renombrar el archivo</target>
+        <target>~Error en reanomenar l'arxiu</target>
       </trans-unit>
       <trans-unit id="nphqrsh" resname="copy">
         <source>copy</source>
@@ -12923,7 +12923,7 @@
       </trans-unit>
       <trans-unit id="otm8l6d" resname="Failed to duplicate file">
         <source>Failed to duplicate file</source>
-        <target>~Error al duplicar l'arxiu</target>
+        <target>~Error en duplicar l'arxiu</target>
       </trans-unit>
       <trans-unit id="j8hkhex" resname="current">
         <source>current</source>
@@ -13095,7 +13095,7 @@
       </trans-unit>
       <trans-unit id="up5xa9y" resname="Delete this project?">
         <source>Delete this project?</source>
-        <target>~¿Eliminar aquest projecte?</target>
+        <target>~Eliminar aquest projecte?</target>
       </trans-unit>
       <trans-unit id="q6x5v0p" resname="Deleting...">
         <source>Deleting...</source>
@@ -13135,7 +13135,7 @@
       </trans-unit>
       <trans-unit id="8xne3sx" resname="An error occurred while importing the file.">
         <source>An error occurred while importing the file.</source>
-        <target>~Error al importar l'arxiu.</target>
+        <target>~Error en importar l'arxiu.</target>
       </trans-unit>
       <trans-unit id="ct0jllc" resname="The default style will be used instead.">
         <source>The default style will be used instead.</source>
@@ -13243,7 +13243,7 @@
       </trans-unit>
       <trans-unit id="nenz6fk" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target>~¿Eliminar l'autorització d'accés a {email}?</target>
+        <target>~Eliminar l'autorització d'accés a {email}?</target>
       </trans-unit>
       <trans-unit id="738xde3" resname="Removed {email}">
         <source>Removed {email}</source>
@@ -13251,7 +13251,7 @@
       </trans-unit>
       <trans-unit id="imja55p" resname="Failed to remove collaborator">
         <source>Failed to remove collaborator</source>
-        <target>~Error al eliminar al col·laborador</target>
+        <target>~Error en eliminar el col·laborador</target>
       </trans-unit>
       <trans-unit id="z5bblto" resname="Transfer ownership to {email}? You will become an editor.">
         <source>Transfer ownership to {email}? You will become an editor.</source>
@@ -13531,7 +13531,7 @@
       </trans-unit>
       <trans-unit id="tfk1ey9" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
-        <target>~Error al generar el archivo ELPX.</target>
+        <target>~Error en generar l'arxiu ELPX.</target>
       </trans-unit>
       <trans-unit id="gdyxh36" resname="Saving document...">
         <source>Saving document...</source>
@@ -13571,7 +13571,7 @@
       </trans-unit>
       <trans-unit id="iufxbv9" resname="Failed to import style">
         <source>Failed to import style</source>
-        <target>~Error al importar l'estil</target>
+        <target>~Error en importar l'estil</target>
       </trans-unit>
       <trans-unit id="ak7m5ia" resname="Legacy license, please review">
         <source>Legacy license, please review</source>
@@ -13763,7 +13763,7 @@
       </trans-unit>
       <trans-unit id="h4zekw2" resname="Double-click to rename">
         <source>Double-click to rename</source>
-        <target>~Doble clic per renombrar</target>
+        <target>~Doble clic per reanomenar</target>
       </trans-unit>
       <trans-unit id="rw208qw" resname="Close without saving?">
         <source>Close without saving?</source>

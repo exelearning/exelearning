@@ -1,5 +1,5 @@
 /*!
- * eXeLearning v3.0.1 Example Style File (Soft AA Palette)
+ * eXeLearning v4.0.0 Universal Style File (Soft AA Palette)
  * ----------------------
  * Author: Ignacio Gros
  * Project: eXeLearning.net
@@ -381,11 +381,6 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 }
 #packageLicense.cc-0 {
     background-position: 0 -600px;
-}
-/* Made with eXeLearning */
-.js #made-with-eXe a {
-    background: #fff url(img/educamadrid.png) no-repeat 2px 50%;
-    background-size: auto 22px;
 }
 /* Website */
 .exe-web-site .exe-content {
