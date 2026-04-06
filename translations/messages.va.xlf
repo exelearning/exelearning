@@ -14161,6 +14161,10 @@
         <source>Close without saving</source>
         <target>~Tancar sense guardar</target>
       </trans-unit>
+      <trans-unit id="asxkzqw" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>~No s’ha pogut comprovar: el contingut HTTP està bloquejat en pàgines HTTPS.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

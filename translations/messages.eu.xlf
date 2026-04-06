@@ -14161,6 +14161,10 @@
         <source>Close without saving</source>
         <target>~Itxi gabe utzi nahi duzu</target>
       </trans-unit>
+      <trans-unit id="u313fkb" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>~Ezin izan da egiaztatu: HTTP edukia blokeatuta dago HTTPS orrialdeetan.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

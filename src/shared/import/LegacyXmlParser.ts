@@ -383,8 +383,13 @@ export class LegacyXmlParser {
         this.xmlContent = this.preprocessLegacyXml(xmlContent);
 
         // Parse XML using @xmldom/xmldom (works in both Node.js and browser)
+        // @xmldom/xmldom >=0.9 throws ParseError directly for fatal errors (e.g. unclosed tags)
         const parser = new DOMParser();
-        this.xmlDoc = parser.parseFromString(this.xmlContent, 'text/xml') as unknown as Document;
+        try {
+            this.xmlDoc = parser.parseFromString(this.xmlContent, 'text/xml') as unknown as Document;
+        } catch (e) {
+            throw new Error(`XML parsing error: ${(e as Error).message}`);
+        }
 
         const parseError = this.xmlDoc.getElementsByTagName('parsererror')[0];
         if (parseError) {

@@ -24,6 +24,7 @@
 - Legacy `.elp` internal links now work correctly in the workarea editor
 - Platform name string incorrectly displayed in the online version
 - Unsaved changes warning is now displayed in the application's language
+- Link validation detects mixed-content (HTTP on HTTPS) requests and return a clear error message instead of a generic NetworkError
 - Improved "User not found" error message with more helpful context
 - "Made with eXeLearning" link and page counter preferences were not respected in exports
 - Further reduction of peak memory usage during save, preview, and export for large projects
