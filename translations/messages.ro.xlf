@@ -14161,6 +14161,10 @@
         <source>Close without saving</source>
         <target>~Închideți fără a salva</target>
       </trans-unit>
+      <trans-unit id="yt9h5lj" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>~Nu a putut fi verificat: conținutul HTTP este blocat pe paginile HTTPS.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

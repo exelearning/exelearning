@@ -14161,6 +14161,10 @@
         <source>Close without saving</source>
         <target>~Ohne Speichern schließen</target>
       </trans-unit>
+      <trans-unit id="bv4g9ss" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>~Konnte nicht überprüft werden: HTTP-Inhalte werden auf HTTPS-Seiten blockiert.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

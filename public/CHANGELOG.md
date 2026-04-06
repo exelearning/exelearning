@@ -27,8 +27,9 @@
 - Sort iDevice: exercises with identical cards (same image, text or audio) are now correctly validated
 - Definition lists inside animation effects now render correctly in the desktop version
 - Legacy `.elp` internal links now work correctly in the workarea editor
-- Platform name string was incorrectly displayed in the online version
-- Unsaved changes warning is now displayed in the application language
+- Platform name string incorrectly displayed in the online version
+- Unsaved changes warning is now displayed in the application's language
+- Link validation detects mixed-content (HTTP on HTTPS) requests and return a clear error message instead of a generic NetworkError
 - Improved "User not found" error message with more helpful context
 - "Made with eXeLearning" link and page counter preferences are now respected in exports
 - Further reduction of peak memory usage during save, preview and export for large projects
