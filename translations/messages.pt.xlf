@@ -12233,6 +12233,18 @@
         <source>Finish</source>
         <target>~Concluir</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Alterações não guardadas</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Se fechar agora, as suas últimas alterações serão perdidas. Permaneça para guardar o projeto primeiro.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Permanecer</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>~Conteúdo eXeLearning (.elpx)</target>
@@ -12261,7 +12273,7 @@
         <source>Status</source>
         <target>~Estado</target>
       </trans-unit>
-            <trans-unit id="ywu5th0" resname="Default AI Assistant">
+      <trans-unit id="ywu5th0" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>~Assistente de IA padrão</target>
       </trans-unit>
@@ -12855,11 +12867,11 @@
       </trans-unit>
       <trans-unit id="rul0uo8" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target>~¿Eliminar %1 archivos seleccionados?</target>
+        <target>~Eliminar %1 ficheiros selecionados?</target>
       </trans-unit>
       <trans-unit id="5y5mfh6" resname="Failed to delete file">
         <source>Failed to delete file</source>
-        <target>~Error al eliminar el archivo</target>
+        <target>~Erro ao eliminar o ficheiro</target>
       </trans-unit>
       <trans-unit id="jyx65gs" resname="Rename folder">
         <source>Rename folder</source>
@@ -14144,6 +14156,14 @@
       <trans-unit id="gtan01z" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Classes do estilo atual</target>
+      </trans-unit>
+      <trans-unit id="2sfln5z" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Fechar sem salvar</target>
+      </trans-unit>
+      <trans-unit id="xly9qd3" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>~Não foi possível verificar: o conteúdo HTTP está bloqueado em páginas HTTPS.</target>
       </trans-unit>
     </body>
   </file>

@@ -106,6 +106,20 @@ make translations-cleanup LOCALE=es
 bun cli translations --clean-only --remove-obsolete
 ```
 
+### Sort Trans-Unit Order
+
+Reorder `<trans-unit>` elements in all XLF files so they follow the same order as `messages.en.xlf`. Before sorting, the command verifies that `messages.en.xlf` is in sync with the source code and exits with a list of differences if it is not.
+
+```bash
+# Sort all locales
+make translations-sort
+
+# Sort a specific locale
+make translations-sort LOCALE=es
+```
+
+XML comments inside `<body>` (e.g. `<!-- Section name -->`) are discarded during sorting, as they would be out of context after reordering.
+
 ### Other CLI Options
 
 ```bash
@@ -118,6 +132,23 @@ bun cli translations --clean-only
 # Process a specific locale
 bun cli translations --locale=es --extract-only
 ```
+
+### Recommended Command Order
+
+When doing a full translation maintenance cycle, run the commands in this order:
+
+```bash
+# 1. Remove obsolete keys (strings removed from the source code)
+make translations-cleanup
+
+# 2. Extract new keys from source code into all XLF files
+make translations
+
+# 3. Sort all XLF files to match the canonical order of messages.en.xlf
+make translations-sort
+```
+
+All three commands accept an optional `LOCALE=xx` argument to restrict the operation to a single language.
 
 ## Extraction Sources
 
@@ -290,6 +321,7 @@ setLocale(locale);
 - Use natural-language strings as keys (`_('Export page')`) rather than dot-notation keys (`_('menu.export.page')`); this is the established pattern in this codebase.
 - Run `make translations` after adding any new translatable strings.
 - Run `make translations-cleanup` periodically to remove keys that no longer exist in the source.
+- Run `make translations-sort` to keep all XLF files consistently ordered (makes diffs easier to review).
 - Never hardcode UI strings — always wrap them in `_()`, `c_()`, or `trans()`.
 
 ---

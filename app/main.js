@@ -663,12 +663,52 @@ function getUnsavedChangesCloseCopy() {
     };
 }
 
+/**
+ * Ask the renderer for the translated close-dialog copy via IPC.
+ * Falls back to null if the renderer does not respond within 3 seconds,
+ * so the caller can use getUnsavedChangesCloseCopy() as a fallback.
+ *
+ * Requires preload.js to expose:
+ *   onGetCloseCopy: (cb) => ipcRenderer.on('app:get-close-copy', (_e) => cb())
+ *   sendCloseCopy:  (copy) => ipcRenderer.send('app:close-copy-response', copy)
+ *
+ * And app.js to register:
+ *   window.electronAPI.onGetCloseCopy(() => {
+ *       window.electronAPI.sendCloseCopy({ title, message, detail, stayButtonLabel, discardButtonLabel });
+ *   });
+ *
+ * @param {BrowserWindow} win
+ * @returns {Promise<object|null>}
+ */
+async function getCloseCopyFromRenderer(win) {
+    if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) {
+        return null;
+    }
+
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            console.warn('[Electron] Renderer did not respond with close copy in time, using fallback');
+            resolve(null);
+        }, 3000);
+
+        ipcMain.once('app:close-copy-response', (_event, copy) => {
+            clearTimeout(timeout);
+            resolve(copy || null);
+        });
+
+        win.webContents.send('app:get-close-copy');
+    });
+}
+/**
+ * Attaches a close guard to an editor window that intercepts the close event
+ * and prompts the user to confirm if there are unsaved changes.
+ *
+ * @param {Electron.BrowserWindow} win - The window to attach the close guard to.
+ * @returns {void}
+ */
 function attachEditorWindowCloseGuard(win) {
     win.on('close', async (event) => {
-        if (isShuttingDown || windowsClosingByConfirmation.has(win)) {
-            return;
-        }
-
+        if (isShuttingDown || windowsClosingByConfirmation.has(win)) return;
         if (windowsCheckingUnsavedChanges.has(win)) {
             event.preventDefault();
             return;
@@ -686,13 +726,13 @@ function attachEditorWindowCloseGuard(win) {
                 return;
             }
 
-            const shouldProceed = confirmWindowCloseWithUnsavedChanges(
-                win,
-                getUnsavedChangesCloseCopy(),
-            );
+            const copy = (await getCloseCopyFromRenderer(win)) 
+                      || getUnsavedChangesCloseCopy();
+
+            const shouldProceed = confirmWindowCloseWithUnsavedChanges(win, copy);
 
             if (!shouldProceed) {
-                console.log('[Electron] Close cancelled because the project has unsaved changes');
+                console.log('[Electron] Close cancelled: unsaved changes');
                 return;
             }
 

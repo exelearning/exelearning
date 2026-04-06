@@ -1117,13 +1117,11 @@ describe('AssetManager', () => {
       expect(result).toBe(html);
     });
 
-    it('leaves blob URL unchanged when neither data-asset-id nor cache match', () => {
-      // Blob URL not in cache, no data-asset-id
+    it('clears blob URL when neither data-asset-id nor cache match', () => {
       const html = '<img src="blob:http://unknown/xyz">';
       const result = assetManager.convertBlobURLsToAssetRefs(html);
 
-      // Should be unchanged (with warning logged)
-      expect(result).toContain('blob:');
+      expect(result).toBe('<img src="">');
     });
   });
 
@@ -2788,6 +2786,13 @@ describe('convertDataAssetUrlToSrc', () => {
     const html = '<audio src="blob:test" data-asset-url="asset://audio-uuid"></audio>';
     const result = assetManager.convertDataAssetUrlToSrc(html);
     expect(result).toContain('src="asset://audio-uuid"');
+  });
+
+  it('converts media data-asset-src back to src', () => {
+    const html = '<iframe src="blob:test" data-asset-src="asset://iframe-uuid/document.pdf"></iframe>';
+    const result = assetManager.convertDataAssetUrlToSrc(html);
+    expect(result).toContain('src="asset://iframe-uuid/document.pdf"');
+    expect(result).not.toContain('data-asset-src');
   });
 
   it('handles multiple elements', () => {
@@ -11557,8 +11562,8 @@ describe('convertBlobURLsToAssetRefs strategy 2 and 3', () => {
     const blobUrl = 'blob:http://localhost/unknown-blob';
     const html = '<img src="' + blobUrl + '">';
     am.convertBlobURLsToAssetRefs(html);
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('FAILED to convert blob URL')
+    expect(global.Logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Cannot recover blob URL')
     );
   });
 
@@ -12546,6 +12551,13 @@ describe('convertDataAssetUrlToSrc branches', () => {
     expect(result).toContain('src="asset://test-id.png"');
     expect(result).not.toContain('data-asset-url');
   });
+
+  it('converts data-asset-src to src', () => {
+    const html = '<audio src="blob:http://localhost/audio" data-asset-src="asset://audio-id.webm"></audio>';
+    const result = am.convertDataAssetUrlToSrc(html);
+    expect(result).toContain('src="asset://audio-id.webm"');
+    expect(result).not.toContain('data-asset-src');
+  });
 });
 
 describe('prepareHtmlForSync branches', () => {
@@ -12573,6 +12585,15 @@ describe('prepareHtmlForSync branches', () => {
     const result = am.prepareHtmlForSync(html);
     // Should convert blob to asset://
     expect(result).toContain('asset://myasset-id');
+  });
+
+  it('strips data-asset-src from img elements so it is never persisted', () => {
+    const blobUrl = 'blob:http://localhost/img';
+    am.reverseBlobCache.set(blobUrl, 'img-asset-id');
+    const html = '<img src="' + blobUrl + '" data-asset-src="asset://img-asset-id/img.png" data-asset-id="img-asset-id">';
+    const result = am.prepareHtmlForSync(html);
+    expect(result).not.toContain('data-asset-src');
+    expect(result).toContain('asset://img-asset-id');
   });
 });
 
@@ -13735,9 +13756,8 @@ describe('convertBlobURLsToAssetRefs - branch coverage', () => {
     const blobUrl = 'blob:http://localhost/unconvertible';
     const html = `<img src="${blobUrl}" alt="test">`;
     const result = am.convertBlobURLsToAssetRefs(html);
-    // Should log warning and return original match
     expect(console.warn).toHaveBeenCalled();
-    expect(result).toContain(blobUrl);
+    expect(result).toBe('<img src="" alt="test">');
   });
 
   it('converts via data-asset-id attribute', () => {

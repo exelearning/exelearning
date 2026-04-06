@@ -444,14 +444,11 @@ describe('LegacyXmlParser', () => {
         });
 
         it('should handle malformed XML gracefully', () => {
-            // @xmldom/xmldom doesn't throw on parse errors like browser DOMParser
-            // Instead it returns a document with parsererror elements or empty results
+            // @xmldom/xmldom >=0.9 throws ParseError for malformed XML (e.g. unclosed tags)
+            // LegacyXmlParser wraps it in a plain Error with a descriptive message
             const invalidXml = '<invalid><xml>';
 
-            // Should not throw, but may return empty/default results
-            const result = parser.parse(invalidXml);
-            expect(result).toBeDefined();
-            expect(result.meta).toBeDefined();
+            expect(() => parser.parse(invalidXml)).toThrow('XML parsing error');
         });
     });
 
