@@ -14161,6 +14161,10 @@
         <source>Close without saving</source>
         <target>~Ĉu fermi sen konservi</target>
       </trans-unit>
+      <trans-unit id="pmcify3" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>~Ne povis esti kontrolita: HTTP-enhavo estas blokita en HTTPS-paĝoj.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

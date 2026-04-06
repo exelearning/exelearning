@@ -14161,6 +14161,10 @@
         <source>Close without saving</source>
         <target>~Pechar sen gardar</target>
       </trans-unit>
+      <trans-unit id="m2pl7zr" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>~Non puido ser comprobado: o contido HTTP está bloqueado nas páxinas HTTPS.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

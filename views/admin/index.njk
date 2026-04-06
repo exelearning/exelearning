@@ -79,7 +79,7 @@
         }
 
         .admin-sidebar-header {
-            padding: 1.25rem;
+            padding: .9rem 1.25rem;
             background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-primary-dark) 100%);
             color: white;
         }
@@ -157,6 +157,7 @@
         /* Main content */
         .admin-main {
             margin-left: var(--admin-sidebar-width);
+            width: calc(100% - var(--admin-sidebar-width));
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -630,12 +631,7 @@
         .btn-admin-danger {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
             color: white;
-            border: none;
-        }
-
-        .btn-admin-danger:hover {
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-            color: white;
+            border-color: #e33232;
         }
 
         /* Form controls */
@@ -833,6 +829,7 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            color: white;
         }
 
         .modal-header .btn-close {
@@ -899,6 +896,7 @@
 
             .admin-main {
                 margin-left: 0;
+                width: 100%;
             }
 
             .sidebar-overlay {
@@ -1546,7 +1544,7 @@
                                     <th>{{ t.status or 'Status' }}</th>
                                     <th>{{ t.visibility or 'Visibility' }}</th>
                                     <th>{{ t.created or 'Created' }}</th>
-                                    <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
+                                    <th style="width: 180px;">{{ t.actions or 'Actions' }}</th>
                                 </tr>
                             </thead>
                             <tbody id="projectsTableBody">
