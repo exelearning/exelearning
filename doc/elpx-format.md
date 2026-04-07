@@ -21,6 +21,7 @@ This dual nature makes `.elpx` the recommended exchange format: it is human-read
 
 ```
 project.elpx (ZIP)
+├── screenshot.png            # Project thumbnail/preview image
 ├── content.xml               # ODE 2.0 project structure (re-importable)
 ├── content.dtd               # DTD for XML validation
 ├── index.html                # Entry point (first page rendered as HTML)
@@ -50,6 +51,7 @@ project.elpx (ZIP)
 - The first page is always `index.html`; additional pages go in `html/`
 - Page filenames are derived from page titles (slugified, collision-safe)
 - Assets are stored under `content/resources/` in the export; `content.xml` references them via `{{context_path}}`
+- `screenshot.png` is a project 16:9 thumbnail image (1280×720 px recommended at the archive root; external systems can extract it for preview without processing the full package
 
 ---
 
@@ -516,6 +518,30 @@ A minimal `content.xml` with one root page, one block, and one `text` iDevice:
   </odeNavStructures>
 </ode>
 ```
+
+---
+
+## Screenshot / Thumbnail
+
+Since eXeLearning v4.0, `.elpx` files may include an optional `screenshot.png` at the archive root. This file serves as a project thumbnail/preview image that external systems (LMS platforms, file managers, repositories) can extract and display without processing the full package.
+
+**File:** `screenshot.png` (root of ZIP archive)
+**Format:** PNG
+**Max dimensions:** 1280×720 pixels
+**Source:** User-defined via Project Properties → Screenshot tab, or absent if not set
+
+### Behavior
+
+- **Export:** If the project has a screenshot set in its metadata, `ElpxExporter` writes it as `screenshot.png` at the archive root. If no screenshot is set, the file is omitted.
+- **Import:** `ElpxImporter` reads `screenshot.png` from the archive root (if present) and stores it in the Yjs metadata as a base64 data URL under the `screenshot` key.
+- **Backward compatibility:** Old `.elpx` files without `screenshot.png` import correctly — the screenshot metadata key is simply absent.
+- **Collaborative editing:** The screenshot is stored in the Yjs `metadata` Y.Map and is synchronized across collaborators like any other project metadata field.
+
+### Yjs Metadata Key
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `screenshot` | string (base64 data URL) | Project thumbnail PNG as `data:image/png;base64,...` |
 
 ---
 

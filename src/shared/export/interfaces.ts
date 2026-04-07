@@ -72,6 +72,9 @@ export interface ExportMetadata {
     extraHeadContent?: string; // Custom content in <head>
     footer?: string; // Custom footer content
 
+    // Project screenshot/thumbnail (base64 PNG data URL)
+    screenshot?: string;
+
     // SCORM metadata
     scormIdentifier?: string;
     masteryScore?: number;
@@ -446,6 +449,15 @@ export interface ExportOptions {
      * This significantly reduces export size and provides instant diagram rendering.
      */
     preRenderMermaid?: (html: string) => Promise<MermaidPreRenderResult>;
+
+    /**
+     * Optional hook to generate a screenshot from the first page HTML.
+     * Called during ELPX export when no custom screenshot is set in metadata.
+     * Receives the complete HTML of the first page (index.html) and should return
+     * a PNG data URL (data:image/png;base64,...).
+     * Browser-only: renders HTML in a hidden iframe and captures with html2canvas.
+     */
+    generateScreenshot?: (firstPageHtml: string) => Promise<string>;
 }
 
 /**

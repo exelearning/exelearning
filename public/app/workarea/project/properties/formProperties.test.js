@@ -73,6 +73,13 @@ describe('FormProperties', () => {
 
         mockDocumentManager = {
             initialized: true,
+            getMetadata: vi.fn(() => ({
+                get: vi.fn(() => null),
+                set: vi.fn(),
+                delete: vi.fn(),
+                observe: vi.fn(),
+                unobserve: vi.fn(),
+            })),
         };
 
         mockYjsBridge = {
@@ -1446,7 +1453,7 @@ describe('FormProperties', () => {
             formProperties.addRowsWithTabs(properties, table);
 
             const tabs = table.querySelectorAll('.project-properties-tab');
-            expect(tabs.length).toBe(3);
+            expect(tabs.length).toBe(4);
         });
 
         it('should create tab panes for each tab', () => {
@@ -1457,7 +1464,7 @@ describe('FormProperties', () => {
             formProperties.addRowsWithTabs(properties, table);
 
             const panes = table.querySelectorAll('.project-properties-tab-pane');
-            expect(panes.length).toBe(3);
+            expect(panes.length).toBe(4);
         });
 
         it('should set first tab as active by default', () => {
@@ -1530,6 +1537,116 @@ describe('FormProperties', () => {
             const grouped = formProperties.groupPropertiesByGroup(properties);
 
             expect(grouped.get('__no_group__').length).toBe(2);
+        });
+    });
+
+    describe('buildScreenshotPane', () => {
+        let mockMetadata;
+        let mockDm;
+
+        beforeEach(() => {
+            mockMetadata = {
+                get: vi.fn(() => null),
+                set: vi.fn(),
+                delete: vi.fn(),
+                observe: vi.fn(),
+                unobserve: vi.fn(),
+            };
+            mockDm = {
+                getMetadata: vi.fn(() => mockMetadata),
+            };
+            mockYjsBridge.getDocumentManager = vi.fn(() => mockDm);
+        });
+
+        it('should create a container with screenshot-panel class', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            formProperties.buildScreenshotPane(pane);
+
+            const panel = pane.querySelector('.screenshot-panel');
+            expect(panel).not.toBe(null);
+        });
+
+        it('should create upload and remove buttons inside the pane', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            formProperties.buildScreenshotPane(pane);
+
+            const buttons = pane.querySelectorAll('button');
+            expect(buttons.length).toBeGreaterThanOrEqual(2);
+        });
+
+        it('should create an info panel with alert-info class', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            formProperties.buildScreenshotPane(pane);
+
+            const infoAlert = pane.querySelector('#screenshot-help-text');
+            expect(infoAlert).not.toBe(null);
+        });
+
+        it('should unobserve previous observer when pane is rebuilt', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            // Build once to register an observer
+            formProperties.buildScreenshotPane(pane);
+            const firstObserver = formProperties._screenshotObserver;
+            const firstMetadata = formProperties._screenshotMetadata;
+
+            // Build again — should unobserve the first observer
+            formProperties.buildScreenshotPane(pane);
+
+            expect(firstMetadata.unobserve).toHaveBeenCalledWith(firstObserver);
+        });
+
+        it('should observe metadata changes after building the pane', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            formProperties.buildScreenshotPane(pane);
+
+            expect(mockMetadata.observe).toHaveBeenCalled();
+            expect(formProperties._screenshotObserver).toBeTypeOf('function');
+        });
+    });
+
+    describe('setScreenshot', () => {
+        let mockMetadata;
+        let mockDm;
+
+        beforeEach(() => {
+            mockMetadata = {
+                get: vi.fn(() => null),
+                set: vi.fn(),
+                delete: vi.fn(),
+                observe: vi.fn(),
+                unobserve: vi.fn(),
+            };
+            mockDm = {
+                getMetadata: vi.fn(() => mockMetadata),
+            };
+            mockYjsBridge.getDocumentManager = vi.fn(() => mockDm);
+        });
+
+        it('should call metadata.set with screenshot key and dataUrl', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const dataUrl = 'data:image/png;base64,abc123';
+
+            formProperties.setScreenshot(dataUrl);
+
+            expect(mockDm.getMetadata).toHaveBeenCalled();
+            expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', dataUrl);
+        });
+
+        it('should not throw when documentManager is unavailable', () => {
+            mockYjsBridge.getDocumentManager = vi.fn(() => null);
+            const formProperties = new FormProperties(mockProperties);
+
+            expect(() => formProperties.setScreenshot('data:image/png;base64,x')).not.toThrow();
         });
     });
 

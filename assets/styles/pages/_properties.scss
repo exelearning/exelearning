@@ -293,3 +293,18 @@
     color: var(--system-red, #dc3545) !important;
     border-color: var(--system-red, #dc3545) !important;
 }
+
+/* ========================================================================
+   Screenshot Panel (Project Properties modal)
+   ======================================================================== */
+
+.screenshot-panel {
+    .btn .auto-icon {
+        font-size: 1.1em;
+    }
+
+    .btn-primary .auto-icon,
+    .btn-danger .auto-icon {
+        color: #fff;
+    }
+}

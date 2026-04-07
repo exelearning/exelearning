@@ -35,6 +35,46 @@ import { generateOdeXml } from '../generators/OdeXmlGenerator';
 
 export class ElpxExporter extends Html5Exporter {
     /**
+     * Decode screenshot from base64 data URL or raw base64 to Uint8Array.
+     * Returns null if the data is not valid PNG.
+     */
+    private decodeScreenshotToBuffer(screenshot: string): Uint8Array | null {
+        try {
+            let base64Data = screenshot;
+            // Handle data URL format (data:image/png;base64,...)
+            if (base64Data.startsWith('data:')) {
+                const commaIndex = base64Data.indexOf(',');
+                if (commaIndex === -1) return null;
+                base64Data = base64Data.substring(commaIndex + 1);
+            }
+            // Decode base64 to binary
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            // Validate PNG signature (first 8 bytes)
+            if (
+                bytes.length >= 8 &&
+                bytes[0] === 0x89 &&
+                bytes[1] === 0x50 &&
+                bytes[2] === 0x4e &&
+                bytes[3] === 0x47 &&
+                bytes[4] === 0x0d &&
+                bytes[5] === 0x0a &&
+                bytes[6] === 0x1a &&
+                bytes[7] === 0x0a
+            ) {
+                return bytes;
+            }
+            console.warn('[ElpxExporter] Screenshot data is not a valid PNG');
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
      * Get file extension for ELPX format
      */
     getFileExtension(): string {
@@ -321,6 +361,30 @@ export class ElpxExporter extends Html5Exporter {
 
             // 2.2 Add DTD file
             this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+
+            // 2.3 Add project screenshot/thumbnail
+            let screenshotBuffer: Uint8Array | null = null;
+            // Priority 1: custom screenshot from project metadata
+            if (meta.screenshot) {
+                screenshotBuffer = this.decodeScreenshotToBuffer(meta.screenshot);
+            }
+            // Priority 2: auto-generate from first page HTML via browser hook
+            if (!screenshotBuffer && options?.generateScreenshot) {
+                try {
+                    const firstPageHtml = pageHtmlMap.get('index.html');
+                    if (firstPageHtml) {
+                        const dataUrl = await options.generateScreenshot(firstPageHtml);
+                        if (dataUrl) {
+                            screenshotBuffer = this.decodeScreenshotToBuffer(dataUrl);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[ElpxExporter] Screenshot auto-generation failed:', error);
+                }
+            }
+            if (screenshotBuffer) {
+                this.zip.addFile('screenshot.png', screenshotBuffer);
+            }
 
             // =========================================================================
             // SECTION 3: Generate final ZIP
