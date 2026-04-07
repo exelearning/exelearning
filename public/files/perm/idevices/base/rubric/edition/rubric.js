@@ -1705,7 +1705,7 @@ var $exeDevice = {
                     _('Edit') +
                     '" aria-label="' +
                     _('Edit') +
-                    '"><span class="ri_EditTDIcon" aria-hidden="true">&#9998;</span><span class="sr-av">' +
+                    '"><span class="sr-av">' +
                     _('Edit') +
                     '</span></a>';
             }
@@ -1718,18 +1718,24 @@ var $exeDevice = {
             '<span class="ri_Actions ri_RowActions">\
         <a href="#" class="ri_MoveTRUp" title="' +
             _('Up') +
-            '"><span class="sr-av">&#8593;</span></a> \
+            '"><span class="sr-av">' +
+            _('Up') +
+            '</span></a> \
         <a href="#" class="ri_MoveTRDown" title="' +
             _('Down') +
-            '"><span class="sr-av">&#8595;</span></a> \
+            '"><span class="sr-av">' +
+            _('Down') +
+            '</span></a> \
         <a href="#" class="ri_EditTR" title="' +
             _('Edit') +
-            '"><span aria-hidden="true">&#9998;</span><span class="sr-av">' +
+            '"><span class="sr-av">' +
             _('Edit') +
             '</span></a> \
         <a href="#" class="ri_DeleteTR" title="' +
             _('Delete') +
-            '"><span class="sr-av">&#120;</span></a> \
+            '"><span class="sr-av">' +
+            _('Delete') +
+            '</span></a> \
       </span>';
         $('tbody tr', this.editor).each(function () {
             $(this.firstChild).append(trActions);
@@ -1773,18 +1779,24 @@ var $exeDevice = {
             '<span class="ri_Actions ri_ColActions">\
         <a href="#" class="ri_MoveTRToTheLeft" title="' +
             _('Left') +
-            '"><span class="sr-av">&#8592;</span></a> \
+            '"><span class="sr-av">' +
+            _('Left') +
+            '</span></a> \
         <a href="#" class="ri_MoveTRToTheRight" title="' +
             _('Right') +
-            '"><span class="sr-av">&#8594;</span></a> \
+            '"><span class="sr-av">' +
+            _('Right') +
+            '</span></a> \
         <a href="#" class="ri_EditColumn d-none" title="' +
             _('Edit') +
-            '"><span aria-hidden="true">&#9998;</span><span class="sr-av">' +
+            '"><span class="sr-av">' +
             _('Edit') +
             '</span></a> \
         <a href="#" class="ri_DeleteColumn" title="' +
             _('Delete') +
-            '"><span class="sr-av">&#120;</span></a> \
+            '"><span class="sr-av">' +
+            _('Delete') +
+            '</span></a> \
       </span>';
         $('thead th', this.editor).each(function () {
             $(this).prepend(thActions);
