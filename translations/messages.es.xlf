@@ -14155,87 +14155,87 @@
       </trans-unit>
       <trans-unit id="sb4p2ku" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
-        <target>~Solo puedes añadir un iDevice Rúbrica por página.</target>
+        <target>Solo puedes añadir un iDevice Rúbrica por página.</target>
       </trans-unit>
       <trans-unit id="bry8pxu" resname="CSV import/export">
         <source>CSV import/export</source>
-        <target>~Importar/exportar CSV</target>
+        <target>Importar/exportar CSV</target>
       </trans-unit>
       <trans-unit id="mglmc2t" resname="You can import rubric data from CSV files.">
         <source>You can import rubric data from CSV files.</source>
-        <target>~Puedes importar datos de la rúbrica desde archivos CSV.</target>
+        <target>Puedes importar datos de una rúbrica desde un archivo CSV.</target>
       </trans-unit>
       <trans-unit id="y3cd180" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
         <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
-        <target>~Puedes exportar la rúbrica en formato CSV para integrarla en otras actividades compatibles.</target>
+        <target>Puedes exportar la rúbrica en formato CSV para integrarla en otras actividades compatibles.</target>
       </trans-unit>
       <trans-unit id="hirifdz" resname="Export CSV">
         <source>Export CSV</source>
-        <target>~Exportar CSV</target>
+        <target>Exportar CSV</target>
       </trans-unit>
       <trans-unit id="joe4vfl" resname="Only CSV files are allowed.">
         <source>Only CSV files are allowed.</source>
-        <target>~Solo se permiten archivos CSV.</target>
+        <target>Solo se permiten archivos CSV.</target>
       </trans-unit>
       <trans-unit id="3b6ic02" resname="Could not read the selected CSV file.">
         <source>Could not read the selected CSV file.</source>
-        <target>~No se pudo leer el archivo CSV seleccionado.</target>
+        <target>No se pudo leer el archivo CSV seleccionado.</target>
       </trans-unit>
       <trans-unit id="w3cxbhv" resname="Invalid CSV format.">
         <source>Invalid CSV format.</source>
-        <target>~Formato CSV incorrecto.</target>
+        <target>Formato CSV incorrecto.</target>
       </trans-unit>
       <trans-unit id="enfhk5n" resname="CSV imported successfully.">
         <source>CSV imported successfully.</source>
-        <target>~CSV importado correctamente.</target>
+        <target>CSV importado correctamente.</target>
       </trans-unit>
       <trans-unit id="1jf2qfk" resname="There is no rubric to export.">
         <source>There is no rubric to export.</source>
-        <target>~No hay ninguna rúbrica para exportar.</target>
+        <target>No hay ninguna rúbrica disponible para exportar.</target>
       </trans-unit>
       <trans-unit id="mzc84f0" resname="Please provide CSV content.">
         <source>Please provide CSV content.</source>
-        <target>~Proporciona contenido CSV.</target>
+        <target>Proporciona un CSV con contenido.</target>
       </trans-unit>
       <trans-unit id="7l89bch" resname="The CSV must include a header row and at least one data row.">
         <source>The CSV must include a header row and at least one data row.</source>
-        <target>~El CSV debe incluir una fila de encabezado y al menos una fila de datos.</target>
+        <target>El CSV debe incluir una fila de encabezado y al menos una fila de datos.</target>
       </trans-unit>
       <trans-unit id="86fhkw3" resname="The CSV must include at least one score column.">
         <source>The CSV must include at least one score column.</source>
-        <target>~El CSV debe incluir al menos una columna de puntuación.</target>
+        <target>El CSV debe incluir al menos una columna de puntuación.</target>
       </trans-unit>
       <trans-unit id="dyrjjw7" resname="No rubric rows could be imported from the CSV.">
         <source>No rubric rows could be imported from the CSV.</source>
-        <target>~No se pudieron importar filas de rúbrica del CSV.</target>
+        <target>No se pudo importar ninguna rúbrica del CSV.</target>
       </trans-unit>
       <trans-unit id="53coar6" resname="Assessment criteria">
         <source>Assessment criteria</source>
-        <target>~Criterios de evaluación</target>
+        <target>Criterios de evaluación</target>
       </trans-unit>
       <trans-unit id="zzrqiji" resname="Performance level">
         <source>Performance level</source>
-        <target>~Nivel de desempeño</target>
+        <target>Nivel de desempeño</target>
       </trans-unit>
       <trans-unit id="fm66wna" resname="There are unsaved changes in this row. Close and lose them?">
         <source>There are unsaved changes in this row. Close and lose them?</source>
-        <target>~Hay cambios sin guardar en esta fila. ¿Cerrar y perderlos?</target>
+        <target>Hay cambios sin guardar en esta fila. ¿Cerrar y perderlos?</target>
       </trans-unit>
       <trans-unit id="6jqpmwy" resname="First row">
         <source>First row</source>
-        <target>~Primera fila</target>
+        <target>Primera fila</target>
       </trans-unit>
       <trans-unit id="u1ylxri" resname="There are unsaved changes in this column. Close and lose them?">
         <source>There are unsaved changes in this column. Close and lose them?</source>
-        <target>~Hay cambios sin guardar en esta columna. ¿Cerrar y perderlos?</target>
+        <target>Hay cambios sin guardar en esta columna. ¿Cerrar y perderlos?</target>
       </trans-unit>
       <trans-unit id="txdbu14" resname="Complete the following rubric">
         <source>Complete the following rubric</source>
-        <target>~Completa la siguiente rúbrica</target>
+        <target>Completa la siguiente rúbrica</target>
       </trans-unit>
       <trans-unit id="0lnw512" resname="Imported rubric">
         <source>Imported rubric</source>
-        <target>~Rúbrica importada</target>
+        <target>Rúbrica importada</target>
       </trans-unit>
     </body>
   </file>
