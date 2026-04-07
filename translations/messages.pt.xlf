@@ -14155,87 +14155,87 @@
       </trans-unit>
       <trans-unit id="4j27qef" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
-        <target></target>
+        <target>~Só pode adicionar um iDevice Rubrica por página.</target>
       </trans-unit>
       <trans-unit id="ixqh44d" resname="CSV import/export">
         <source>CSV import/export</source>
-        <target></target>
+        <target>~Importar/exportar CSV</target>
       </trans-unit>
       <trans-unit id="fo71dh4" resname="You can import rubric data from CSV files.">
         <source>You can import rubric data from CSV files.</source>
-        <target></target>
+        <target>~Pode importar dados da rubrica a partir de ficheiros CSV.</target>
       </trans-unit>
       <trans-unit id="0x8xvow" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
         <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
-        <target></target>
+        <target>~Pode exportar a rubrica em formato CSV para integrá-la noutras atividades compatíveis.</target>
       </trans-unit>
       <trans-unit id="7rc8llr" resname="Export CSV">
         <source>Export CSV</source>
-        <target></target>
+        <target>~Exportar CSV</target>
       </trans-unit>
       <trans-unit id="a2fvmli" resname="Only CSV files are allowed.">
         <source>Only CSV files are allowed.</source>
-        <target></target>
+        <target>~Só são permitidos ficheiros CSV.</target>
       </trans-unit>
       <trans-unit id="z01j358" resname="Could not read the selected CSV file.">
         <source>Could not read the selected CSV file.</source>
-        <target></target>
+        <target>~Não foi possível ler o ficheiro CSV selecionado.</target>
       </trans-unit>
       <trans-unit id="i3amsze" resname="Invalid CSV format.">
         <source>Invalid CSV format.</source>
-        <target></target>
+        <target>~Formato CSV inválido.</target>
       </trans-unit>
       <trans-unit id="99evwq7" resname="CSV imported successfully.">
         <source>CSV imported successfully.</source>
-        <target></target>
+        <target>~CSV importado com sucesso.</target>
       </trans-unit>
       <trans-unit id="t6f7psc" resname="There is no rubric to export.">
         <source>There is no rubric to export.</source>
-        <target></target>
+        <target>~Não há nenhuma rubrica para exportar.</target>
       </trans-unit>
       <trans-unit id="anxh3tb" resname="Please provide CSV content.">
         <source>Please provide CSV content.</source>
-        <target></target>
+        <target>~Forneça conteúdo CSV.</target>
       </trans-unit>
       <trans-unit id="5wa6p47" resname="The CSV must include a header row and at least one data row.">
         <source>The CSV must include a header row and at least one data row.</source>
-        <target></target>
+        <target>~O CSV deve incluir uma linha de cabeçalho e pelo menos uma linha de dados.</target>
       </trans-unit>
       <trans-unit id="eblx6sd" resname="The CSV must include at least one score column.">
         <source>The CSV must include at least one score column.</source>
-        <target></target>
+        <target>~O CSV deve incluir pelo menos uma coluna de pontuação.</target>
       </trans-unit>
       <trans-unit id="86bmwvu" resname="No rubric rows could be imported from the CSV.">
         <source>No rubric rows could be imported from the CSV.</source>
-        <target></target>
+        <target>~Não foi possível importar linhas de rubrica do CSV.</target>
       </trans-unit>
       <trans-unit id="r40sa59" resname="Assessment criteria">
         <source>Assessment criteria</source>
-        <target></target>
+        <target>~Critérios de avaliação</target>
       </trans-unit>
       <trans-unit id="zotmvkq" resname="Performance level">
         <source>Performance level</source>
-        <target></target>
+        <target>~Nível de desempenho</target>
       </trans-unit>
       <trans-unit id="7ixaeaf" resname="There are unsaved changes in this row. Close and lose them?">
         <source>There are unsaved changes in this row. Close and lose them?</source>
-        <target></target>
+        <target>~Há alterações não guardadas nesta linha. Fechar e perder?</target>
       </trans-unit>
       <trans-unit id="nck5cvw" resname="First row">
         <source>First row</source>
-        <target></target>
+        <target>~Primeira linha</target>
       </trans-unit>
       <trans-unit id="ctch6ln" resname="There are unsaved changes in this column. Close and lose them?">
         <source>There are unsaved changes in this column. Close and lose them?</source>
-        <target></target>
+        <target>~Há alterações não guardadas nesta coluna. Fechar e perder?</target>
       </trans-unit>
       <trans-unit id="9k542se" resname="Complete the following rubric">
         <source>Complete the following rubric</source>
-        <target></target>
+        <target>~Complete a seguinte rubrica</target>
       </trans-unit>
       <trans-unit id="biiuzgj" resname="Imported rubric">
         <source>Imported rubric</source>
-        <target></target>
+        <target>~Rubrica importada</target>
       </trans-unit>
     </body>
   </file>

@@ -14155,87 +14155,87 @@
       </trans-unit>
       <trans-unit id="skab29s" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
-        <target></target>
+        <target>~Només podeu afegir un iDevice Rúbrica per pàgina.</target>
       </trans-unit>
       <trans-unit id="y6fr89y" resname="CSV import/export">
         <source>CSV import/export</source>
-        <target></target>
+        <target>~Importació/exportació CSV</target>
       </trans-unit>
       <trans-unit id="3eboh8n" resname="You can import rubric data from CSV files.">
         <source>You can import rubric data from CSV files.</source>
-        <target></target>
+        <target>~Podeu importar dades de la rúbrica des de fitxers CSV.</target>
       </trans-unit>
       <trans-unit id="gnrtpn5" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
         <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
-        <target></target>
+        <target>~Podeu exportar la rúbrica en format CSV per integrar-la en altres activitats compatibles.</target>
       </trans-unit>
       <trans-unit id="z0ny4li" resname="Export CSV">
         <source>Export CSV</source>
-        <target></target>
+        <target>~Exportar CSV</target>
       </trans-unit>
       <trans-unit id="jdyncbo" resname="Only CSV files are allowed.">
         <source>Only CSV files are allowed.</source>
-        <target></target>
+        <target>~Només es permeten fitxers CSV.</target>
       </trans-unit>
       <trans-unit id="prfbx9b" resname="Could not read the selected CSV file.">
         <source>Could not read the selected CSV file.</source>
-        <target></target>
+        <target>~No s'ha pogut llegir el fitxer CSV seleccionat.</target>
       </trans-unit>
       <trans-unit id="qq6th5m" resname="Invalid CSV format.">
         <source>Invalid CSV format.</source>
-        <target></target>
+        <target>~Format CSV incorrecte.</target>
       </trans-unit>
       <trans-unit id="lx28nlg" resname="CSV imported successfully.">
         <source>CSV imported successfully.</source>
-        <target></target>
+        <target>~CSV importat correctament.</target>
       </trans-unit>
       <trans-unit id="iqiywgy" resname="There is no rubric to export.">
         <source>There is no rubric to export.</source>
-        <target></target>
+        <target>~No hi ha cap rúbrica per exportar.</target>
       </trans-unit>
       <trans-unit id="lnlo5gb" resname="Please provide CSV content.">
         <source>Please provide CSV content.</source>
-        <target></target>
+        <target>~Proporcioneu contingut CSV.</target>
       </trans-unit>
       <trans-unit id="pxmqiso" resname="The CSV must include a header row and at least one data row.">
         <source>The CSV must include a header row and at least one data row.</source>
-        <target></target>
+        <target>~El CSV ha d'incloure una fila de capçalera i almenys una fila de dades.</target>
       </trans-unit>
       <trans-unit id="2mva4um" resname="The CSV must include at least one score column.">
         <source>The CSV must include at least one score column.</source>
-        <target></target>
+        <target>~El CSV ha d'incloure almenys una columna de puntuació.</target>
       </trans-unit>
       <trans-unit id="xyr52ax" resname="No rubric rows could be imported from the CSV.">
         <source>No rubric rows could be imported from the CSV.</source>
-        <target></target>
+        <target>~No s'ha pogut importar cap fila de rúbrica del CSV.</target>
       </trans-unit>
       <trans-unit id="fhzcjdq" resname="Assessment criteria">
         <source>Assessment criteria</source>
-        <target></target>
+        <target>~Criteris d'avaluació</target>
       </trans-unit>
       <trans-unit id="uqxtb3b" resname="Performance level">
         <source>Performance level</source>
-        <target></target>
+        <target>~Nivell de rendiment</target>
       </trans-unit>
       <trans-unit id="vykxebk" resname="There are unsaved changes in this row. Close and lose them?">
         <source>There are unsaved changes in this row. Close and lose them?</source>
-        <target></target>
+        <target>~Hi ha canvis no guardats en aquesta fila. Tancar i perdre'ls?</target>
       </trans-unit>
       <trans-unit id="7jt5wwy" resname="First row">
         <source>First row</source>
-        <target></target>
+        <target>~Primera fila</target>
       </trans-unit>
       <trans-unit id="5jaeovb" resname="There are unsaved changes in this column. Close and lose them?">
         <source>There are unsaved changes in this column. Close and lose them?</source>
-        <target></target>
+        <target>~Hi ha canvis no guardats en aquesta columna. Tancar i perdre'ls?</target>
       </trans-unit>
       <trans-unit id="zc58006" resname="Complete the following rubric">
         <source>Complete the following rubric</source>
-        <target></target>
+        <target>~Completeu la rúbrica següent</target>
       </trans-unit>
       <trans-unit id="qna4zkx" resname="Imported rubric">
         <source>Imported rubric</source>
-        <target></target>
+        <target>~Rúbrica importada</target>
       </trans-unit>
     </body>
   </file>
