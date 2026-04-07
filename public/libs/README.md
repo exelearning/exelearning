@@ -237,6 +237,9 @@
 *   Files: /public/files/perm/fonts/global/playwrite-es/*.woff2
     *   Copyright: TypeTogether, Veronika Burian, José Scaglione
     *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/idevices/\*/export/html2canvas.js
+    *   Copyright: Niklas von Hertzen
+    *   License: MIT
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/fonts/* (Open Sans Font)
     *   Copyright: The Open Sans Project Authors. Designed by Steve Matteson
     *   License: SIL Open Font License version 1.1
