@@ -8841,10 +8841,6 @@
         <source>CEDEC's rubrics</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="4FHSdXr" resname="Rubric use instructions (optional)">
-        <source>Rubric use instructions (optional)</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="WRV28cD" resname="Maximum score:">
         <source>Maximum score:</source>
         <target></target>
@@ -8859,10 +8855,6 @@
       </trans-unit>
       <trans-unit id="EXqwPw9" resname="New row">
         <source>New row</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="GYFdP4l" resname="Rubric information">
-        <source>Rubric information</source>
         <target></target>
       </trans-unit>
       <trans-unit id="vrJHk5H" resname="Show rubric information">
@@ -8931,10 +8923,6 @@
       </trans-unit>
       <trans-unit id="YxuvdUc" resname="Delete the column?">
         <source>Delete the column?</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="1WTTY.L" resname="Please export the content to apply the rubric.">
-        <source>Please export the content to apply the rubric.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="0fyNG8V" resname="Add at least 3 elements.">
