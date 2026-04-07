@@ -84,7 +84,7 @@
   font-size: 1em;
   display: inline-flex;
   align-items: center;
-  text-decoration: underline;
+  text-decoration: none;
   opacity: var(--ri-icon-opacity);
   color: var(--ri-icon-color);
   transform: scale(1);
@@ -96,6 +96,8 @@
   line-height: var(--ri-icon-size);
   text-decoration: none;
   color: inherit;
+  display: inline-block;
+  transform: scaleX(-1);
 }
 #ri_Table td .ri_EditTD:hover,
 #ri_Table td .ri_EditTD:focus {
@@ -298,10 +300,13 @@
   text-align: center;
   color: var(--ri-icon-color);
   opacity: var(--ri-icon-opacity);
+  text-decoration: none;
 }
 #ri_Table .ri_Actions .ri_EditTR span[aria-hidden="true"] {
   font-size: var(--ri-icon-size);
   line-height: 1;
+  display: inline-block;
+  transform: scaleX(-1);
 }
 #ri_Table .ri_Actions .ri_EditTR:hover,
 #ri_Table .ri_Actions .ri_EditTR:focus,
@@ -316,10 +321,13 @@
   text-align: center;
   color: var(--ri-icon-color);
   opacity: var(--ri-icon-opacity);
+  text-decoration: none;
 }
 #ri_Table .ri_Actions .ri_EditColumn span[aria-hidden="true"] {
   font-size: var(--ri-icon-size);
   line-height: 1;
+  display: inline-block;
+  transform: scaleX(-1);
 }
 
 #ri_CellEditModal {
