@@ -31,6 +31,9 @@
     position: absolute;
     top: 6px;
     right: 5px;
+  width: 0.6rem;
+  height: 0.6rem;
+  background-size: 0.6rem;
 }
 
 #ri_CsvTools .exe-block-info {
