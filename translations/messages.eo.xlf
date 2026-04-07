@@ -14153,6 +14153,90 @@
         <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
         <target>~Ne povis esti kontrolita: HTTP-enhavo estas blokita en HTTPS-paĝoj.</target>
       </trans-unit>
+      <trans-unit id="3oxnt5a" resname="You can only add one Rubric iDevice per page.">
+        <source>You can only add one Rubric iDevice per page.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uu8oao2" resname="CSV import/export">
+        <source>CSV import/export</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7slkf9e" resname="You can import rubric data from CSV files.">
+        <source>You can import rubric data from CSV files.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qhhdnvq" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
+        <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="77rxd98" resname="Export CSV">
+        <source>Export CSV</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jxzk5jh" resname="Only CSV files are allowed.">
+        <source>Only CSV files are allowed.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="c68pyc9" resname="Could not read the selected CSV file.">
+        <source>Could not read the selected CSV file.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="18r6ja8" resname="Invalid CSV format.">
+        <source>Invalid CSV format.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="w1juj31" resname="CSV imported successfully.">
+        <source>CSV imported successfully.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kejqcda" resname="There is no rubric to export.">
+        <source>There is no rubric to export.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x55jy7h" resname="Please provide CSV content.">
+        <source>Please provide CSV content.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jazjh2f" resname="The CSV must include a header row and at least one data row.">
+        <source>The CSV must include a header row and at least one data row.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bokwhyl" resname="The CSV must include at least one score column.">
+        <source>The CSV must include at least one score column.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="yhdg0kk" resname="No rubric rows could be imported from the CSV.">
+        <source>No rubric rows could be imported from the CSV.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="99ht02c" resname="Assessment criteria">
+        <source>Assessment criteria</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zrnkveu" resname="Performance level">
+        <source>Performance level</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5qk9w2u" resname="There are unsaved changes in this row. Close and lose them?">
+        <source>There are unsaved changes in this row. Close and lose them?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="i4me8m7" resname="First row">
+        <source>First row</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kvbu6sf" resname="There are unsaved changes in this column. Close and lose them?">
+        <source>There are unsaved changes in this column. Close and lose them?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="htidn0p" resname="Complete the following rubric">
+        <source>Complete the following rubric</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5relnqj" resname="Imported rubric">
+        <source>Imported rubric</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
