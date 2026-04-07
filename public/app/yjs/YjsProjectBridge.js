@@ -3033,6 +3033,11 @@ class YjsProjectBridge {
       const dataUrl = await this._captureHtmlAsScreenshot(htmlString);
       if (dataUrl) {
         metadata.set('screenshot', dataUrl);
+        // Re-mark as clean: screenshot is auto-generated metadata, not a user edit,
+        // so it should not trigger "unsaved changes" guards on navigation
+        if (this.documentManager?.markClean) {
+          this.documentManager.markClean();
+        }
         Logger.log('[YjsProjectBridge] Auto-generated screenshot from first page');
       }
     } catch (error) {
