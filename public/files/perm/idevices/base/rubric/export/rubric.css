@@ -1,12 +1,18 @@
 /* Rubrics iDevice */
 .exe-rubrics-instructions {
-  margin: 1.5em 0 -0.5em 0;
+  margin: 0.5em 0 2em 0;
+}
+.exe-rubrics-content {
+  padding: 0 0.6em;
 }
 .exe-rubrics-authorship {
-  margin-top: -1.5em;
+  margin-top: 0.75em;
   text-align: center;
   font-size: 0.9em;
-  margin-bottom: 2em;
+  margin-bottom: 0;
+}
+.exe-rubrics-text-after {
+  margin-top: 1.5em;
 }
 .exe-rubrics-strings {
   display: none !important;
@@ -29,130 +35,163 @@
   margin-left: 3px;
   font-size: 0.9em;
 }
-/* Print version */
-body.exe-rubrics {
-  background: rgb(204, 204, 204);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 10pt;
-  line-height: 2em;
-}
-body.exe-rubrics .exe-rubrics-print {
-  display: none;
-  background-color: lawngreen;
-}
-body.exe-rubrics .exe-rubrics-wrapper {
-  background: white;
-  display: block;
-  margin: 0 auto;
-  margin-bottom: 0.5cm;
-  box-shadow: 0 0 0.5cm rgba(0, 0, 0, 0.5);
-  min-height: 21cm;
-  width: 29.7cm;
-  text-align: center;
+.rubric td {
   position: relative;
 }
-body.exe-rubrics a {
-  color: #2f6bb0;
-}
-@media print {
-  html.exe-rubrics,
-  body.exe-rubrics,
-  body.exe-rubrics .exe-rubrics-wrapper {
-    margin: 0;
-    padding: 0;
-    box-shadow: none;
-  }
-  body.exe-rubrics #commands {
-    display: none;
-  }
-}
-@page {
-  size: auto;
+.rubric td input[type="checkbox"] {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
   margin: 0;
+  width: 13px;
+  height: 13px;
 }
-
-body.exe-rubrics #exe-rubrics-header p {
-  line-height: 2.5em;
-}
-body.exe-rubrics label {
-  font-weight: bold;
-}
-body.exe-rubrics #exe-rubrics-header label {
-  display: inline-block;
-  width: 10em;
+.rubric .exe-rubrics-calc {
+  margin: 0.5em 0 0.25em;
   text-align: right;
-  padding-right: 0.1cm;
 }
-body.exe-rubrics input[type="text"] {
-  border: none;
-  border-bottom: 1px solid #000;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 10pt;
-}
-body.exe-rubrics #activity,
-body.exe-rubrics #name {
-  width: 12.5cm;
-}
-
-body.exe-rubrics #exe-rubrics-header {
-  margin-top: 0.5cm;
-}
-body.exe-rubrics caption {
+.rubric .exe-rubrics-score-result {
+  margin-left: 0.5em;
   font-weight: bold;
-  font-size: 1.1em;
-  margin-bottom: 0.25cm;
 }
-body.exe-rubrics .exe-rubrics-content {
-  padding: 1cm 1.5cm;
-  text-align: left;
+.rubric .exe-rubrics-actions {
+  margin: 0.5em 0 0.25em;
+  text-align: right;
 }
-body.exe-rubrics table {
+.rubric .exe-rubrics-actions button {
+  margin-left: 0.4em;
+}
+.rubric #exe-rubrics-header {
+  margin-top: 1em;
+  margin-bottom: 0.4em;
+  display: grid;
+  grid-template-columns: minmax(14em, 1fr) minmax(14em, 1fr) auto auto;
+  gap: 0.35em 0.6em;
+  align-items: center;
   width: 100%;
-  margin-top: 1cm;
 }
-body.exe-rubrics table,
-body.exe-rubrics th,
-body.exe-rubrics td {
-  border-collapse: collapse;
-  border: 1px solid #000;
+.rubric #exe-rubrics-header div {
+  line-height: 1.8em;
+  display: flex;
+  gap: 0.35em;
+  align-items: center;
+  min-width: 0;
 }
-body.exe-rubrics th,
-body.exe-rubrics td {
-  padding: 0.1cm 0.25cm;
+.rubric #exe-rubrics-header label {
+  font-weight: bold;
 }
-body.exe-rubrics td span {
-  margin-left: 0.2cm;
-  font-size: 9pt;
-  font-style: italic;
+.rubric #exe-rubrics-header input.form-control {
+  display: inline-block;
+  padding: 0.2rem 0.45rem;
+  margin: 0 !important;
+  min-width: 0;
 }
-body.exe-rubrics td {
-  position: relative;
+.rubric #exe-rubrics-header input[data-rubric-field="name"] {
+  width: auto;
+  flex: 1 1 18em;
 }
-body.exe-rubrics td input {
-  position: absolute;
-  bottom: 0.1cm;
-  right: 0.1cm;
+.rubric #exe-rubrics-header input[data-rubric-field="activity"] {
+  width: auto;
+  flex: 1 1 16em;
+}
+.rubric #exe-rubrics-header input[data-rubric-field="score"] {
+  width: 9.5em;
+  flex: 0 0 9.5em;
+}
+.rubric #exe-rubrics-header input[data-rubric-field="date"] {
+  width: 9.5em;
+  flex: 0 0 9.5em;
+}
+.rubric #exe-rubrics-header div label:last-of-type {
+  margin-left: 0;
 }
 
-body.exe-rubrics #exe-rubrics-footer {
-  margin-top: 1cm;
+@media (max-width: 1024px) {
+  .rubric #exe-rubrics-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em 0.6em;
+  }
+
+  .rubric #exe-rubrics-header div {
+    flex: 1 1 14em;
+  }
+
+  .rubric #exe-rubrics-header input[data-rubric-field="score"],
+  .rubric #exe-rubrics-header input[data-rubric-field="date"] {
+    flex: 1 1 9.5em;
+    max-width: 9.5em;
+  }
 }
-body.exe-rubrics #notes {
-  width: 99%;
-  height: 5cm;
-  border: 1px solid #000;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 10pt;
-  padding: 0.1cm;
-  display: block;
-  margin-top: 0.1cm;
-  max-width: 100%;
+
+@media (max-width: 700px) {
+  .rubric #exe-rubrics-header div {
+    flex: 1 1 100%;
+  }
+
+  .rubric .exe-rubrics-table-slot {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .rubric table {
+    min-width: 34rem;
+    font-size: 0.92rem;
+  }
+
+  .rubric table th,
+  .rubric table td {
+    padding: 0.35rem 0.45rem;
+    vertical-align: top;
+  }
+
+  .rubric caption {
+    font-size: 0.98rem;
+    text-wrap: balance;
+  }
 }
-body.exe-rubrics #commands {
-  position: absolute;
-  top: 0.2cm;
-  left: 0.3cm;
+
+@media (max-width: 520px) {
+  .rubric table {
+    min-width: 30rem;
+    font-size: 0.86rem;
+  }
+
+  .rubric table th,
+  .rubric table td {
+    padding: 0.3rem 0.35rem;
+  }
 }
-body.exe-rubrics #commands input {
-  margin-right: 0.15cm;
+.rubric table {
+  margin-top: 0.2em;
+}
+.rubric .exe-rubrics-table-slot {
+  width: 100%;
+}
+.rubric table tbody tr:hover > * {
+  background-color: #fff1d6 !important;
+}
+.rubric #exe-rubrics-footer {
+  margin-top: 0.9em;
+}
+.rubric textarea[data-rubric-field="notes"] {
+  width: 100%;
+  min-height: 3em;
+  box-sizing: border-box;
+}
+
+.exe-rubrics-capture {
+  background: #fff !important;
+}
+
+.exe-rubrics-capture .exe-rubrics-actions,
+.exe-rubrics-capture .exe-rubrics-print {
+  display: none !important;
+}
+
+.exe-rubrics-capture .btn,
+.exe-rubrics-capture .form-control {
+  background: #fff !important;
+  color: #212529 !important;
+  border-color: #ced4da !important;
 }

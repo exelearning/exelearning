@@ -324,6 +324,147 @@ describe('LegacyXmlParser', () => {
             expect(idevice.icon).toBe('book'); // 'reading' maps to 'book'
         });
 
+        it('should normalize legacy rubric html to canonical serialized format with DataGame', () => {
+            const legacyRubricHtml =
+                '&lt;div class="exe-rubrics-instructions"&gt;&lt;p&gt;Instr&lt;/p&gt;&lt;/div&gt;' +
+                '&lt;div class="rubric"&gt;' +
+                '&lt;table class="exe-table"&gt;' +
+                '&lt;caption&gt;Legacy Rubric&lt;/caption&gt;' +
+                '&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&amp;nbsp;&lt;/th&gt;&lt;th&gt;L1&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;' +
+                '&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;C1&lt;/th&gt;&lt;td&gt;D1 &lt;span&gt;(3)&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;' +
+                '&lt;/table&gt;' +
+                '&lt;ul class="exe-rubric-strings"&gt;&lt;li class="activity"&gt;Activity&lt;/li&gt;&lt;/ul&gt;' +
+                '&lt;/div&gt;' +
+                '&lt;div class="exe-rubrics-text-after"&gt;&lt;p&gt;After&lt;/p&gt;&lt;/div&gt;';
+
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Rubric"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="rubrics"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode>${legacyRubricHtml}</unicode>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            const idevice = result.pages[0].blocks[0].idevices[0];
+            expect(idevice.type).toBe('rubric');
+            expect(idevice.cssClass).toBe('rubric');
+            expect(idevice.htmlView).toContain('exe-rubrics-DataGame');
+            expect(idevice.htmlView).toContain('exe-rubrics-richtext-data');
+            expect(idevice.htmlView).toContain('exe-rubrics-strings');
+            expect(idevice.htmlView).toContain('exe-rubrics-wrapper');
+            expect(idevice.htmlView).toContain('id="exe-rubrics-header"');
+            expect(idevice.htmlView).toContain('data-rubric-field="activity"');
+            expect(idevice.htmlView).toContain('data-rubric-field="name"');
+            expect(idevice.htmlView).toContain('data-rubric-field="score"');
+            expect(idevice.htmlView).toContain('data-rubric-field="date"');
+            expect(idevice.htmlView).toContain('data-rubric-field="notes"');
+            expect(idevice.htmlView).toContain('exe-rubrics-download');
+            expect(idevice.htmlView).toContain('exe-rubrics-reset');
+            expect(idevice.htmlView).toContain('data-rubric-table-type="export"');
+
+            const payloadMatch = idevice.htmlView.match(
+                /<div class="exe-rubrics-DataGame js-hidden">([\s\S]*?)<\/div>/,
+            );
+            expect(payloadMatch).not.toBeNull();
+            const parsedPayload = JSON.parse(unescape(payloadMatch![1]));
+            expect(parsedPayload.title).toBe('Legacy Rubric');
+            expect(parsedPayload.categories).toEqual(['C1']);
+            expect(parsedPayload.scores).toEqual(['L1']);
+            expect(parsedPayload.descriptions[0][0]).toEqual({ text: 'D1', weight: '3' });
+        });
+
+        it('should use Imported rubric as fallback title when legacy table has no caption', () => {
+            const legacyRubricHtml =
+                '&lt;div class="rubric"&gt;' +
+                '&lt;table class="exe-table"&gt;' +
+                '&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&amp;nbsp;&lt;/th&gt;&lt;th&gt;L1&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;' +
+                '&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;C1&lt;/th&gt;&lt;td&gt;D1&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;' +
+                '&lt;/table&gt;' +
+                '&lt;ul class="exe-rubric-strings"&gt;&lt;li class="activity"&gt;Activity&lt;/li&gt;&lt;/ul&gt;' +
+                '&lt;/div&gt;';
+
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Rubric"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="rubrics"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode>${legacyRubricHtml}</unicode>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+            const idevice = result.pages[0].blocks[0].idevices[0];
+            const payloadMatch = idevice.htmlView.match(
+                /<div class="exe-rubrics-DataGame js-hidden">([\s\S]*?)<\/div>/,
+            );
+            expect(payloadMatch).not.toBeNull();
+            const parsedPayload = JSON.parse(unescape(payloadMatch![1]));
+            expect(parsedPayload.title).toBe('Imported rubric');
+        });
+
         it('should remove outer exe-text wrapper in final parsed htmlView', () => {
             const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
 <instance class="exe.engine.package.Package" reference="1">

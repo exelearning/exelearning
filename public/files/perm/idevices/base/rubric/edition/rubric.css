@@ -8,6 +8,54 @@
 }
 #ri_Table {
   margin: 1em auto;
+  width: 100%;
+  min-width: 100px;
+  table-layout: fixed;
+  --ri-icon-size: 16px;
+  --ri-icon-color: #555;
+  --ri-icon-opacity: 0.85;
+}
+#ri_RubricsEditor,
+#ri_TableEditor {
+  width: 100%;
+}
+#ri_TableEditor {
+  overflow-x: hidden;
+}
+
+#ri_CsvTools {
+  margin: 0 auto;
+}
+
+#ri_CsvTools .exe-block-info {
+  margin-bottom: 0.85em;
+}
+
+#ri_CsvFile {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#ri_CsvTools .ri-csv-import {
+  margin-bottom: 0.5em;
+}
+
+#ri_CsvTools .ri-csv-import-actions,
+#ri_CsvTools .ri-csv-export-actions {
+  padding-left: 0.2em;
+}
+
+#ri_CsvText {
+  width: 100%;
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  font-size: 13px;
 }
 #ri_Table input {
   box-sizing: border-box;
@@ -20,17 +68,68 @@
   color: #666;
   margin-left: 3px;
 }
+#ri_Table td {
+  position: relative;
+}
+#ri_Table td .ri_EditTD {
+  position: absolute;
+  right: 3px;
+  bottom: 0.35em;
+  font-size: 1em;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: underline;
+  opacity: var(--ri-icon-opacity);
+  color: var(--ri-icon-color);
+  transform: scale(1);
+  transform-origin: right bottom;
+  transition: opacity 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+#ri_Table td .ri_EditTD .ri_EditTDIcon {
+  font-size: var(--ri-icon-size);
+  line-height: var(--ri-icon-size);
+  text-decoration: none;
+  color: inherit;
+}
+#ri_Table td .ri_EditTD:hover,
+#ri_Table td .ri_EditTD:focus {
+  opacity: 1;
+  color: #333;
+  transform: scale(1.08);
+}
 #ri_Table .ri_Weight {
   color: #666;
   width: auto;
 }
-#ri_Table th input {
+#ri_Table thead th input {
   font-weight: bold;
-  max-width: calc(100% - 48px);
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 0.4em;
+}
+#ri_Table thead th {
+  position: relative;
+  padding-bottom: 1.9em;
+}
+#ri_Table tbody th input {
+  max-width: 100%;
+}
+#ri_Table > thead > tr > th:first-child,
+#ri_Table > tbody > tr > th {
+  width: 22%;
+  min-width: 180px;
+}
+#ri_Table > tbody > tr > th input {
+  width: 100%;
 }
 #ri_Table tr:nth-child(2n-1) td input,
 #ri_Table tbody tr:nth-child(2n-1) th input {
   border-color: #f4f4f4;
+}
+
+#ri_Table tbody th {
+  position: relative;
+  padding-bottom: 1.75em;
 }
 
 #ri_Table > thead > tr > th:first-child .ri_MoveTRToTheLeft,
@@ -40,12 +139,14 @@
 #ri_Table > thead > tr > th:first-child .ri_MoveTRToTheRight,
 #ri_Table > thead > tr > th:nth-child(2) .ri_MoveTRToTheLeft,
 #ri_Table > thead > tr > th:first-child .ri_DeleteColumn,
+#ri_Table > thead > tr > th:first-child .ri_EditColumn,
 #ri_Table > tbody > tr:only-child .ri_DeleteTR {
   display: none;
 }
 
 #ri_Table caption input {
-  width: 400px;
+  width: min(400px, 100%);
+  max-width: 100%;
   text-align: center;
   font-style: italic;
   font-size: 1.1em;
@@ -88,58 +189,89 @@
 #ri_TableEditor table + p {
   margin-bottom: 2em;
 }
-#ri_AppendRow,
-#ri_AppendCol,
-#ri_Reset {
-  float: right;
-  margin-left: 1em;
+#ri_TableControls {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+  margin: 0.75em 0 1.25em;
 }
-
+#ri_TableControls .ri-table-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+#ri_TableControls .ri-table-controls-right {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.4em;
+  margin-left: auto;
+}
 #ri_RubricInformation p {
   margin-top: 1.5em;
 }
 #ri_RubricInformation p:first-child {
   margin-top: 1em;
 }
+#ri_RubricInformation .toggle-item {
+  margin-top: 1em;
+}
+#ri_RubricInformation .ri-toggle-item {
+  cursor: pointer;
+}
 #ri_RubricInformation input[type="text"] {
   margin-right: 1em;
 }
 
-#activeIdevice #ri_RubricIntro {
-  margin-bottom: 1em;
-}
-#activeIdevice #ri_RubricIntro p {
-  margin-top: 0.7em;
-}
-#activeIdevice #ri_RubricIntro label {
-  font-weight: normal;
-}
 #ri_RubricInformation label{
   display: inline-block;
   min-width: 200px;
   text-align: right;
 }
-#ri_RubricInstructions {
-  width: 90%;
-}
 
 #ri_Table .ri_Actions {
-  float: right;
   height: 27px;
   display: flex;
   align-items: center;
 }
+#ri_Table .ri_ColActions {
+  position: absolute;
+  right: 0.1em;
+  bottom: 0.1em;
+  float: none;
+  justify-content: flex-end;
+  gap: 0.2em;
+}
+#ri_Table .ri_RowActions {
+  position: absolute;
+  left: 50%;
+  bottom: 0.35em;
+  transform: translateX(-50%);
+  height: 16px;
+  gap: 0.2em;
+  
+}
+#ri_Table .ri_RowActions a {
+  transform: scale(1);
+  transform-origin: center;
+}
 #ri_Table .ri_Actions a {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: var(--ri-icon-size);
+  height: var(--ri-icon-size);
   background: url(exe-rubrics-actions.gif) no-repeat 0 0;
-  opacity: 0.3;
+  opacity: var(--ri-icon-opacity);
   font-size: 0;
+  color: var(--ri-icon-color);
+  transition: opacity 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 #ri_Table .ri_Actions a:hover,
 #ri_Table .ri_Actions a:focus {
   opacity: 1;
+  transform: scale(1.08);
 }
 #ri_Table .ri_Actions .ri_MoveTRUp {
   background-position: 0 -20px;
@@ -152,6 +284,145 @@
 }
 #ri_Table .ri_Actions .ri_MoveTRToTheLeft {
   background-position: 0 -60px;
+}
+#ri_Table .ri_Actions .ri_EditTR {
+  background: none;
+  font-size: var(--ri-icon-size);
+  line-height: var(--ri-icon-size);
+  text-align: center;
+  color: var(--ri-icon-color);
+  opacity: var(--ri-icon-opacity);
+}
+#ri_Table .ri_Actions .ri_EditTR span[aria-hidden="true"] {
+  font-size: var(--ri-icon-size);
+  line-height: 1;
+}
+#ri_Table .ri_Actions .ri_EditTR:hover,
+#ri_Table .ri_Actions .ri_EditTR:focus,
+#ri_Table .ri_Actions .ri_EditColumn:hover,
+#ri_Table .ri_Actions .ri_EditColumn:focus {
+  color: #333;
+}
+#ri_Table .ri_Actions .ri_EditColumn {
+  background: none;
+  font-size: var(--ri-icon-size);
+  line-height: var(--ri-icon-size);
+  text-align: center;
+  color: var(--ri-icon-color);
+  opacity: var(--ri-icon-opacity);
+}
+#ri_Table .ri_Actions .ri_EditColumn span[aria-hidden="true"] {
+  font-size: var(--ri-icon-size);
+  line-height: 1;
+}
+
+#ri_CellEditModal {
+  z-index: 1060;
+}
+#ri_CellEditModal .modal-dialog {
+  width: 90%;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+#ri_CellEditModal .modal-content {
+  width: 100%;
+}
+
+#ri_RowEditModal {
+  z-index: 1060;
+}
+#ri_RowEditModal .modal-dialog {
+  width: 90%;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+#ri_RowEditModal .modal-content {
+  width: 100%;
+}
+#ri_RowEditModal .ri-row-edit-nav {
+  display: none;
+}
+#ri_RowEditModal .ri-row-edit-position {
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+#ri_RowEditModal .ri-row-edit-layout {
+  display: block;
+}
+#ri_RowEditModal .ri-row-edit-fields {
+  min-width: 0;
+}
+#ri_RowEditModal .ri-row-edit-topbar {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.5rem;
+}
+#ri_RowEditModal .ri-row-edit-position-wrap {
+  text-align: center;
+  margin: 0;
+}
+#ri_RowEditModal .ri-row-nav-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#ri_RowEditModal .ri-row-nav-btn span[aria-hidden="true"] {
+  font-size: 18px;
+}
+
+#ri_ColumnEditModal {
+  z-index: 1060;
+}
+#ri_ColumnEditModal .modal-dialog {
+  width: 90%;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+#ri_ColumnEditModal .modal-content {
+  width: 100%;
+}
+#ri_ColumnEditModal .ri-column-edit-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+#ri_ColumnEditModal .ri-column-edit-position {
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+#ri_ColumnEditModal .ri-column-edit-layout {
+  display: grid;
+  grid-template-columns: 1fr 42px;
+  gap: 0.75rem;
+  align-items: center;
+}
+#ri_ColumnEditModal .ri-column-edit-fields {
+  min-width: 0;
+}
+#ri_ColumnEditModal .ri-column-edit-position-wrap {
+  text-align: center;
+  margin: 0 0 0.5rem;
+}
+#ri_ColumnEditModal .ri-column-nav-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#ri_ColumnEditModal .ri-column-nav-btn span[aria-hidden="true"] {
+  font-size: 18px;
 }
 
 #ri_TableEditor #ri_Table input.exe-rubrics-required {

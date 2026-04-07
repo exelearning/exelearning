@@ -1,12 +1,13 @@
 # CHANGELOG
 
-## v4.0.0-beta4 – 2026-04-07
+## v4.0.0-rc1 – 2026-04-07
 
 ### Added
 
 - Teacher-only content indicator now uses an icon instead of a border for clearer visual distinction
 - Improved accessibility in exported content, including proper heading structure and a skip navigation link
 - Prevent exposure of `blob:` URLs to users; `asset://` is now the only user-visible and persisted asset reference
+- Updated Rubric iDevice with improved interface and PDF download support
 - Support for the `?url=` query parameter to open remote files in the static editor
 - New admin dashboard with activity metrics and online users
 - New `make translations-sort` command to reorder `<trans-unit>` elements in XLF files to match the order in `messages.en.xlf`
