@@ -1612,6 +1612,159 @@ describe('FormProperties', () => {
             expect(mockMetadata.observe).toHaveBeenCalled();
             expect(formProperties._screenshotObserver).toBeTypeOf('function');
         });
+
+        it('regenerate button calls generateScreenshotFromFirstPage on bridge', async () => {
+            const generateScreenshot = vi.fn().mockResolvedValue(undefined);
+            const mockGetDm = vi.fn(() => ({
+                getMetadata: vi.fn(() => mockMetadata),
+            }));
+            mockYjsBridge.generateScreenshotFromFirstPage = generateScreenshot;
+            mockYjsBridge.getDocumentManager = mockGetDm;
+
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+            formProperties.buildScreenshotPane(pane);
+
+            // Find the regenerate button (second button after upload)
+            const buttons = pane.querySelectorAll('button');
+            const regenerateBtn = Array.from(buttons).find(
+                (b) => b.textContent.includes('Regenerate'),
+            );
+            expect(regenerateBtn).not.toBeNull();
+
+            await regenerateBtn.dispatchEvent(new MouseEvent('click'));
+            // Wait for the async click handler
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(generateScreenshot).toHaveBeenCalled();
+        });
+
+        it('regenerate button disables during generation and re-enables after', async () => {
+            let resolveGenerate;
+            const generateScreenshot = vi.fn(
+                () => new Promise((resolve) => { resolveGenerate = resolve; }),
+            );
+            const mockGetDm = vi.fn(() => ({
+                getMetadata: vi.fn(() => mockMetadata),
+            }));
+            mockYjsBridge.generateScreenshotFromFirstPage = generateScreenshot;
+            mockYjsBridge.getDocumentManager = mockGetDm;
+
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+            formProperties.buildScreenshotPane(pane);
+
+            const buttons = pane.querySelectorAll('button');
+            const regenerateBtn = Array.from(buttons).find(
+                (b) => b.textContent.includes('Regenerate'),
+            );
+
+            // Click to start generation (don't await — handler is async)
+            regenerateBtn.click();
+            // Yield to the event loop so the async handler starts
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(regenerateBtn.disabled).toBe(true);
+
+            // Resolve the pending generation
+            resolveGenerate();
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(regenerateBtn.disabled).toBe(false);
+        });
+
+        it('remove button calls metadata.delete with screenshot key', async () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+            formProperties.buildScreenshotPane(pane);
+
+            const buttons = pane.querySelectorAll('button');
+            const removeBtn = Array.from(buttons).find(
+                (b) => b.textContent.includes('Remove'),
+            );
+            expect(removeBtn).not.toBeNull();
+
+            removeBtn.click();
+
+            expect(mockMetadata.delete).toHaveBeenCalledWith('screenshot');
+        });
+
+        it('shows alert when uploaded file exceeds 2MB', async () => {
+            const mockAlert = vi.fn();
+            global.eXeLearning.app.modals = {
+                alert: { show: mockAlert },
+            };
+
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+            formProperties.buildScreenshotPane(pane);
+
+            // Find the hidden file input
+            const fileInput = pane.querySelector('input[type="file"]');
+            expect(fileInput).not.toBeNull();
+
+            // Create a fake file > 2MB
+            const largeFile = new File([new ArrayBuffer(3 * 1024 * 1024)], 'big.png', { type: 'image/png' });
+            Object.defineProperty(fileInput, 'files', { value: [largeFile], configurable: true });
+
+            fileInput.dispatchEvent(new Event('change'));
+
+            expect(mockAlert).toHaveBeenCalled();
+            expect(mockAlert.mock.calls[0][0].title).toBe('File too large');
+        });
+    });
+
+    describe('resizeAndConvertToPng', () => {
+        it('returns canvas data URL without resizing when image fits within limits', () => {
+            const formProperties = new FormProperties(mockProperties);
+
+            const mockCtx = { drawImage: vi.fn() };
+            const mockCanvas = {
+                width: 0,
+                height: 0,
+                getContext: vi.fn(() => mockCtx),
+                toDataURL: vi.fn(() => 'data:image/png;base64,smallImg'),
+            };
+            const originalCreateElement = document.createElement.bind(document);
+            document.createElement = (tag) => {
+                if (tag === 'canvas') return mockCanvas;
+                return originalCreateElement(tag);
+            };
+
+            const img = { width: 640, height: 360 };
+            const result = formProperties.resizeAndConvertToPng(img);
+
+            expect(mockCanvas.width).toBe(640);
+            expect(mockCanvas.height).toBe(360);
+            expect(result).toBe('data:image/png;base64,smallImg');
+            document.createElement = originalCreateElement;
+        });
+
+        it('downscales an oversized image to fit within 1280x720 keeping aspect ratio', () => {
+            const formProperties = new FormProperties(mockProperties);
+
+            const mockCtx = { drawImage: vi.fn() };
+            const mockCanvas = {
+                width: 0,
+                height: 0,
+                getContext: vi.fn(() => mockCtx),
+                toDataURL: vi.fn(() => 'data:image/png;base64,resized'),
+            };
+            const originalCreateElement = document.createElement.bind(document);
+            document.createElement = (tag) => {
+                if (tag === 'canvas') return mockCanvas;
+                return originalCreateElement(tag);
+            };
+
+            // 2560x1440 image — should be halved to 1280x720
+            const img = { width: 2560, height: 1440 };
+            const result = formProperties.resizeAndConvertToPng(img);
+
+            expect(mockCanvas.width).toBe(1280);
+            expect(mockCanvas.height).toBe(720);
+            expect(result).toBe('data:image/png;base64,resized');
+            document.createElement = originalCreateElement;
+        });
     });
 
     describe('setScreenshot', () => {

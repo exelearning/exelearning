@@ -577,6 +577,19 @@ describe('SaveManager', () => {
       expect(mockBridge.isNewProject).toBe(false);
     });
 
+    it('calls generateScreenshotFromFirstPage on bridge after successful save', async () => {
+      const generateScreenshot = vi.fn().mockResolvedValue(undefined);
+      mockBridge.generateScreenshotFromFirstPage = generateScreenshot;
+
+      const manager = new SaveManager(mockBridge);
+      await manager.save({ showProgress: false });
+
+      // Allow the non-blocking .catch() chain to settle
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(generateScreenshot).toHaveBeenCalled();
+    });
+
     it('uploads pending assets with metadata-only objects (no blob property)', async () => {
       const manager = new SaveManager(mockBridge);
       const pendingMeta = [
