@@ -926,7 +926,7 @@ export default class FormProperties {
         previewCardBody.classList.add('card-body', 'text-center', 'bg-light');
 
         const previewImg = document.createElement('img');
-        previewImg.classList.add('img-fluid', 'rounded', 'border');
+        previewImg.classList.add('img-fluid', 'border');
         previewImg.alt = _('Current project screenshot preview');
         previewImg.style.cssText = 'max-height:300px;object-fit:contain;display:none;';
 
@@ -986,7 +986,7 @@ export default class FormProperties {
         uploadBtn.type = 'button';
         uploadBtn.classList.add('btn', 'btn-primary', 'd-flex', 'align-items-center');
         uploadBtn.setAttribute('aria-describedby', 'screenshot-help-text');
-        uploadBtn.innerHTML = `<span class="auto-icon notranslate me-2" aria-hidden="true">upload</span> ${_('Upload custom image')}`;
+        uploadBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">upload</span> ${_('Upload custom image')}`;
 
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
@@ -1025,7 +1025,7 @@ export default class FormProperties {
         const regenerateBtn = document.createElement('button');
         regenerateBtn.type = 'button';
         regenerateBtn.classList.add('btn', 'btn-outline-secondary', 'd-flex', 'align-items-center');
-        regenerateBtn.innerHTML = `<span class="auto-icon notranslate me-2" aria-hidden="true">refresh</span> ${_('Regenerate from content')}`;
+        regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generate from content')}`;
 
         regenerateBtn.addEventListener('click', async () => {
             const bridge = this.properties.project?._yjsBridge;
@@ -1045,7 +1045,7 @@ export default class FormProperties {
             }
 
             regenerateBtn.disabled = true;
-            regenerateBtn.innerHTML = `<span class="auto-icon notranslate me-2" aria-hidden="true">refresh</span> ${_('Generating...')}`;
+            regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generating...')}`;
 
             try {
                 await bridge.generateScreenshotFromFirstPage();
@@ -1058,15 +1058,15 @@ export default class FormProperties {
                 });
             } finally {
                 regenerateBtn.disabled = false;
-                regenerateBtn.innerHTML = `<span class="auto-icon notranslate me-2" aria-hidden="true">refresh</span> ${_('Regenerate from content')}`;
+                regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generate from content')}`;
             }
         });
 
         // Remove button
         removeBtn = document.createElement('button');
         removeBtn.type = 'button';
-        removeBtn.classList.add('btn', 'btn-danger', 'd-flex', 'align-items-center');
-        removeBtn.innerHTML = `<span class="auto-icon notranslate me-2" aria-hidden="true">delete</span> ${_('Remove screenshot')}`;
+        removeBtn.classList.add('btn', 'btn-outline-secondary', 'd-flex', 'align-items-center');
+        removeBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">delete</span> ${_('Delete')}`;
         if (!previewImg.src || previewImg.style.display === 'none') {
             removeBtn.style.display = 'none';
         }
@@ -1092,20 +1092,17 @@ export default class FormProperties {
         rightCol.classList.add('col-12', 'col-lg-5');
 
         const infoAlert = document.createElement('div');
-        infoAlert.classList.add('alert', 'alert-info', 'd-flex');
+        infoAlert.classList.add('alert', 'alert-light', 'd-flex');
         infoAlert.id = 'screenshot-help-text';
         infoAlert.setAttribute('role', 'note');
         infoAlert.innerHTML = `
             <div>
-                <span class="auto-icon notranslate me-3 fs-4 text-info" aria-hidden="true">info</span>
-            </div>
-            <div>
-                <h5 class="alert-heading h6">${_('Screenshot guidelines')}</h5>
+                <h5 class="alert-heading lead mb-3">${_('Recommendations')}</h5>
                 <p class="mb-2 small">
-                    ${_('Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Keep the focus centered, avoid small text or clutter, and ensure good contrast so it remains readable at smaller sizes.')}
+                    ${_('Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.')}
                 </p>
                 <p class="mb-0 small text-muted">
-                    ${_('The image should be clean, visually engaging, and relevant to the topic, as it will be used as a preview thumbnail across different platforms and screen sizes.')}
+                    ${_('The image will be used as a preview of this educational resource across different platforms.')}
                 </p>
             </div>
         `;
