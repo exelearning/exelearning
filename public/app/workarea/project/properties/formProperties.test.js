@@ -1556,6 +1556,11 @@ describe('FormProperties', () => {
                 getMetadata: vi.fn(() => mockMetadata),
             };
             mockYjsBridge.getDocumentManager = vi.fn(() => mockDm);
+
+            global.eXeLearning.app.modals = {
+                alert: { show: vi.fn() },
+                confirm: { show: vi.fn() },
+            };
         });
 
         it('should create a container with screenshot-panel class', () => {
@@ -1625,10 +1630,10 @@ describe('FormProperties', () => {
             const pane = document.createElement('div');
             formProperties.buildScreenshotPane(pane);
 
-            // Find the regenerate button (second button after upload)
+            // Find the regenerate button (no screenshot set, so no confirm dialog)
             const buttons = pane.querySelectorAll('button');
             const regenerateBtn = Array.from(buttons).find(
-                (b) => b.textContent.includes('Regenerate'),
+                (b) => b.textContent.includes('Generate from content'),
             );
             expect(regenerateBtn).not.toBeNull();
 
@@ -1656,10 +1661,10 @@ describe('FormProperties', () => {
 
             const buttons = pane.querySelectorAll('button');
             const regenerateBtn = Array.from(buttons).find(
-                (b) => b.textContent.includes('Regenerate'),
+                (b) => b.textContent.includes('Generate from content'),
             );
 
-            // Click to start generation (don't await — handler is async)
+            // Click to start generation (no screenshot set, so no confirm dialog)
             regenerateBtn.click();
             // Yield to the event loop so the async handler starts
             await new Promise((r) => setTimeout(r, 0));
@@ -1673,18 +1678,28 @@ describe('FormProperties', () => {
             expect(regenerateBtn.disabled).toBe(false);
         });
 
-        it('remove button calls metadata.delete with screenshot key', async () => {
+        it('remove button calls metadata.delete with screenshot key after confirm', async () => {
+            let capturedConfirmExec;
+            global.eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec }) => {
+                capturedConfirmExec = confirmExec;
+            });
+
             const formProperties = new FormProperties(mockProperties);
             const pane = document.createElement('div');
             formProperties.buildScreenshotPane(pane);
 
             const buttons = pane.querySelectorAll('button');
             const removeBtn = Array.from(buttons).find(
-                (b) => b.textContent.includes('Remove'),
+                (b) => b.textContent.includes('Delete'),
             );
             expect(removeBtn).not.toBeNull();
 
             removeBtn.click();
+
+            expect(global.eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            expect(capturedConfirmExec).toBeTypeOf('function');
+
+            capturedConfirmExec();
 
             expect(mockMetadata.delete).toHaveBeenCalledWith('screenshot');
         });
