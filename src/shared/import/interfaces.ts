@@ -284,4 +284,6 @@ export interface OdeMetadata {
     addMathJax: boolean;
     /** Global font family (default: 'default') */
     globalFont: string;
+    /** Project screenshot/thumbnail as base64 data URL (optional) */
+    screenshot?: string;
 }

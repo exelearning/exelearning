@@ -2908,6 +2908,218 @@ class YjsProjectBridge {
   }
 
   /**
+   * Auto-generate screenshot from the first page HTML and store in Yjs metadata.
+   * Uses SharedExporters to generate a full preview (HTML + CSS + theme),
+   * inlines all CSS into the HTML for self-contained rendering, then captures
+   * with html2canvas in a hidden iframe. Skips if a custom screenshot already exists.
+   * Called before save and export to keep the screenshot up-to-date.
+   */
+  async generateScreenshotFromFirstPage() {
+    if (this._screenshotGenerating) return;
+    this._screenshotGenerating = true;
+    try {
+      if (!this.documentManager) {
+        console.warn('[YjsProjectBridge] Screenshot: no documentManager');
+        return;
+      }
+      const metadata = this.documentManager.getMetadata();
+      // Skip if user has set a custom screenshot
+      if (metadata.get('screenshot')) {
+        Logger.log('[YjsProjectBridge] Screenshot: custom screenshot already set, skipping');
+        return;
+      }
+
+      if (!window.SharedExporters?.generatePreviewForSW) {
+        console.warn('[YjsProjectBridge] Screenshot: SharedExporters.generatePreviewForSW not available');
+        return;
+      }
+
+      Logger.log('[YjsProjectBridge] Screenshot: generating preview files...');
+      // Generate all preview files (HTML + CSS + theme + libs)
+      const result = await window.SharedExporters.generatePreviewForSW(
+        this.documentManager,
+        this.assetCache || null,
+        this.resourceFetcher || null,
+        this.assetManager || null,
+      );
+      if (!result?.success || !result.files) {
+        console.warn('[YjsProjectBridge] Screenshot: preview generation failed', result?.error);
+        return;
+      }
+
+      const indexHtml = result.files['index.html'];
+      if (!indexHtml) {
+        console.warn('[YjsProjectBridge] Screenshot: no index.html in preview files');
+        return;
+      }
+      Logger.log(`[YjsProjectBridge] Screenshot: got ${Object.keys(result.files).length} preview files, rendering...`);
+
+      const decoder = new TextDecoder();
+      let htmlString = decoder.decode(indexHtml);
+
+      // Helper: convert a file path to a data URI using the generated files map
+      const MIME_MAP = {
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
+        woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf',
+        eot: 'application/vnd.ms-fontobject', ico: 'image/x-icon',
+      };
+      const toDataUri = (filePath) => {
+        const buffer = result.files[filePath];
+        if (!buffer) return null;
+        const ext = filePath.split('.').pop().toLowerCase();
+        const mime = MIME_MAP[ext] || 'application/octet-stream';
+        const base64 = this._uint8ArrayToBase64(new Uint8Array(buffer));
+        return `data:${mime};base64,${base64}`;
+      };
+
+      // Helper: resolve url() references inside CSS text relative to the CSS file's directory
+      const resolveCssUrls = (cssText, cssPath) => {
+        const cssDir = cssPath.includes('/') ? cssPath.substring(0, cssPath.lastIndexOf('/') + 1) : '';
+        return cssText.replace(/url\(["']?(?!data:)([^"')]+)["']?\)/gi, (match, urlPath) => {
+          // Resolve relative path from CSS file's directory
+          const resolvedPath = cssDir + urlPath;
+          const dataUri = toDataUri(resolvedPath);
+          return dataUri ? `url("${dataUri}")` : match;
+        });
+      };
+
+      // Inline CSS: replace <link rel="stylesheet"> with <style> tags
+      // This handles both href-before-rel and rel-before-href attribute orders
+      htmlString = htmlString.replace(
+        /<link\s+[^>]*(?:rel=["']stylesheet["'][^>]*href=["']([^"']+)["']|href=["']([^"']+)["'][^>]*rel=["']stylesheet["'])[^>]*\/?>/gi,
+        (match, href1, href2) => {
+          const href = href1 || href2;
+          const cssBuffer = result.files[href];
+          if (cssBuffer) {
+            let cssText = decoder.decode(cssBuffer);
+            cssText = resolveCssUrls(cssText, href);
+            return `<style>/* ${href} */\n${cssText}</style>`;
+          }
+          return match;
+        },
+      );
+
+      // Convert <img src> to data URIs for self-contained rendering
+      htmlString = htmlString.replace(
+        /(<img\s+[^>]*src=["'])([^"']+)(["'][^>]*>)/gi,
+        (match, prefix, src, suffix) => {
+          const dataUri = toDataUri(src);
+          return dataUri ? `${prefix}${dataUri}${suffix}` : match;
+        },
+      );
+
+      // Inject CSS to hide navigation chrome — screenshot should show only content
+      const hideUiCss = `<style id="screenshot-cleanup">
+        #siteNav, .single-page-nav { display: none !important; }
+        .nav-buttons, .nav-button { display: none !important; }
+        #made-with-eXe { display: none !important; }
+        .exe-search-form, #exe-search-form, [id*="search"] form { display: none !important; }
+        #skipNav { display: none !important; }
+        .exe-pagination { display: none !important; }
+        .box-toggle { display: none !important; }
+        .exe-content { margin: 0 !important; padding: 16px !important; }
+        main.page, .exe-web-site main.page { padding-left: 16px !important; padding-right: 16px !important; max-width: 100% !important; }
+        #siteFooter, .exe-web-site #siteFooter { padding-left: 0 !important; display: none !important; }
+        body, .exe-content.exe-export { padding-left: 0 !important; padding-right: 0 !important; }
+      </style>`;
+      htmlString = htmlString.replace('</head>', `${hideUiCss}\n</head>`);
+
+      // Remove all <script> tags — JS is not needed for a static screenshot
+      // and would cause 404 errors since paths are relative to the main page
+      htmlString = htmlString.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+      // Capture screenshot using html2canvas in a hidden iframe
+      const dataUrl = await this._captureHtmlAsScreenshot(htmlString);
+      if (dataUrl) {
+        metadata.set('screenshot', dataUrl);
+        // Re-mark as clean: screenshot is auto-generated metadata, not a user edit,
+        // so it should not trigger "unsaved changes" guards on navigation
+        if (this.documentManager?.markClean) {
+          this.documentManager.markClean();
+        }
+        Logger.log('[YjsProjectBridge] Auto-generated screenshot from first page');
+      }
+    } catch (error) {
+      console.warn('[YjsProjectBridge] Screenshot auto-generation failed:', error);
+    } finally {
+      this._screenshotGenerating = false;
+    }
+  }
+
+  /**
+   * Render HTML string in a hidden iframe and capture as PNG data URL.
+   * @param {string} html - Self-contained HTML with inlined CSS
+   * @returns {Promise<string|null>} PNG data URL or null on failure
+   */
+  async _captureHtmlAsScreenshot(html) {
+    // Load html2canvas if not available
+    if (!window.html2canvas) {
+      try {
+        const script = document.createElement('script');
+        script.src = '/files/perm/idevices/base/rubric/export/html2canvas.js';
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      } catch {
+        return null;
+      }
+    }
+    if (!window.html2canvas) return null;
+
+    // Create hidden iframe for rendering
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1280px;height:900px;border:none;opacity:0;';
+    document.body.appendChild(iframe);
+
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) return null;
+
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+
+      // Wait for content to render
+      await new Promise((resolve) => {
+        if (iframeDoc.readyState === 'complete') {
+          setTimeout(resolve, 500);
+        } else {
+          iframe.onload = () => setTimeout(resolve, 500);
+        }
+      });
+
+      const body = iframeDoc.body;
+      const canvas = await window.html2canvas(body, {
+        backgroundColor: '#ffffff',
+        scale: 1,
+        useCORS: true,
+        width: 1280,
+        height: 720,
+        windowWidth: 1280,
+        logging: false,
+      });
+
+      // Force exact 1280×720 output
+      const resized = document.createElement('canvas');
+      resized.width = 1280;
+      resized.height = 720;
+      const ctx = resized.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 1280, 720);
+        ctx.drawImage(canvas, 0, 0, 1280, 720);
+      }
+
+      return resized.toDataURL('image/png');
+    } finally {
+      document.body.removeChild(iframe);
+    }
+  }
+
+  /**
    * Export project to .elpx file
    * Uses SharedExporters (TypeScript unified pipeline) when available
    * Filename is automatically generated from project title (sanitized: lowercase, no accents, no special chars)
@@ -2943,7 +3155,6 @@ class YjsProjectBridge {
         if (window.MermaidPreRenderer) {
           exportOptions.preRenderMermaid = window.MermaidPreRenderer.preRender.bind(window.MermaidPreRenderer);
         }
-        
         this.logElpxExportPhase('bridge:exporter:run:start', {}, trace);
         const result = await exporter.export(exportOptions);
         this.logElpxExportPhase('bridge:exporter:run:end', {
