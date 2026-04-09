@@ -8,7 +8,7 @@
                 <span class="auto-icon" aria-hidden="true">download</span>
                 <span class="btn-label">{{ t.download or 'Download' }}</span>
             </button>
-            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2" title="{{ t.save or 'Save' }}" data-testid="save-button">
+            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2 {% if config.platformIntegration %}d-none{% endif %}" title="{{ t.save or 'Save' }}" data-testid="save-button">
                 <div class="small-icon save-icon-white"></div>
                 <span>{{ t.save or 'Save' }}</span>
             </button>
@@ -58,7 +58,7 @@
                     <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.file or 'File' }}</small></li>
                     <li class="d-md-none {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-new" href="#">{{ t.new or 'New' }}</a></li>
                     <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-openuserodefiles" href="#">{{ t.open or 'Open' }}</a></li>
-                    <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-save" href="#">{{ t.save or 'Save' }}</a></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-save" href="#">{{ t.save or 'Save' }}</a></li>
                     {# Hidden to reduce Open/Import confusion (issue #1223) #}
                     <li class="d-none"><a class="dropdown-item" id="mobile-navbar-button-import-elp" href="#">{{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>
