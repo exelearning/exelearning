@@ -333,6 +333,10 @@
     button.btn-outline-secondary {
         opacity: .8;
 
+        span {
+            margin-right: .3em;
+        }
+
         &:hover,
         &:focus {
             background-color: var(--brand-primary-50);

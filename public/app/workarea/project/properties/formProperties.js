@@ -1038,27 +1038,42 @@ export default class FormProperties {
                 return;
             }
 
-            // Clear existing screenshot so auto-generation runs
-            const dm = bridge.getDocumentManager();
-            if (dm) {
-                dm.getMetadata().delete('screenshot');
-            }
+            const doRegenerate = async () => {
+                // Clear existing screenshot so auto-generation runs
+                const dm = bridge.getDocumentManager();
+                if (dm) {
+                    dm.getMetadata().delete('screenshot');
+                }
 
-            regenerateBtn.disabled = true;
-            regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generating...')}`;
+                regenerateBtn.disabled = true;
+                regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generating...')}`;
 
-            try {
-                await bridge.generateScreenshotFromFirstPage();
-            } catch (error) {
-                console.error('[FormProperties] Screenshot regeneration failed:', error);
-                eXeLearning.app.modals.alert.show({
-                    title: _('Generation failed'),
-                    body: _('Could not generate screenshot from content. Try uploading an image instead.'),
-                    contentId: 'warning',
+                try {
+                    await bridge.generateScreenshotFromFirstPage();
+                } catch (error) {
+                    console.error('[FormProperties] Screenshot regeneration failed:', error);
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Generation failed'),
+                        body: _('Could not generate screenshot from content. Try uploading an image instead.'),
+                        contentId: 'warning',
+                    });
+                } finally {
+                    regenerateBtn.disabled = false;
+                    regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generate from content')}`;
+                }
+            };
+
+            const hasScreenshot = previewImg.style.display !== 'none' && previewImg.src;
+            if (hasScreenshot) {
+                eXeLearning.app.modals.confirm.show({
+                    title: _('Replace screenshot'),
+                    body: _('This will delete the current image. Do you want to continue?'),
+                    confirmButtonText: _('Continue'),
+                    cancelButtonText: _('Cancel'),
+                    confirmExec: doRegenerate,
                 });
-            } finally {
-                regenerateBtn.disabled = false;
-                regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generate from content')}`;
+            } else {
+                await doRegenerate();
             }
         });
 
@@ -1072,11 +1087,19 @@ export default class FormProperties {
         }
 
         removeBtn.addEventListener('click', () => {
-            updatePreview(null);
-            const dm = this.properties.project?._yjsBridge?.getDocumentManager();
-            if (dm) {
-                dm.getMetadata().delete('screenshot');
-            }
+            eXeLearning.app.modals.confirm.show({
+                title: _('Delete screenshot'),
+                body: _('Delete the current image? This action cannot be undone.'),
+                confirmButtonText: _('Delete'),
+                cancelButtonText: _('Cancel'),
+                confirmExec: () => {
+                    updatePreview(null);
+                    const dm = this.properties.project?._yjsBridge?.getDocumentManager();
+                    if (dm) {
+                        dm.getMetadata().delete('screenshot');
+                    }
+                },
+            });
         });
 
         buttonsRow.append(fileInput);
