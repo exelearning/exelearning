@@ -650,6 +650,25 @@ describe('NavbarFile', () => {
             expect(li.classList.contains('d-none')).toBe(true);
         });
 
+        it('checkAndShowNewFromTemplateButton should keep button hidden and return early when platform integration is enabled', async () => {
+            const li = document.createElement('li');
+            li.classList.add('d-none');
+            li.appendChild(mockButtons.newFromTemplateButton);
+            navbarElement.appendChild(li);
+
+            global.eXeLearning.config.platformIntegration = true;
+            global.fetch = vi.fn();
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            // Should not fetch and stay hidden
+            expect(global.fetch).not.toHaveBeenCalled();
+            expect(li.classList.contains('d-none')).toBe(true);
+            
+            // Clean up config
+            global.eXeLearning.config.platformIntegration = false;
+        });
+
         it('setSaveProjectEvent should add click listener', () => {
             navbarFile.setSaveProjectEvent();
             expect(mockButtons.saveButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
