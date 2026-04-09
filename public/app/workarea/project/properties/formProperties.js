@@ -1012,6 +1012,18 @@ export default class FormProperties {
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
+                    const ratio = img.naturalWidth / img.naturalHeight;
+                    const is16x9 = Math.abs(ratio - 16 / 9) < 0.05;
+                    const hasMinWidth = img.naturalWidth >= 600;
+                    if (!is16x9 || !hasMinWidth) {
+                        eXeLearning.app.modals.alert.show({
+                            title: _('Invalid image'),
+                            body: _('The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.'),
+                            contentId: 'warning',
+                        });
+                        fileInput.value = '';
+                        return;
+                    }
                     const pngDataUrl = this.resizeAndConvertToPng(img);
                     this.setScreenshot(pngDataUrl);
                 };
