@@ -351,6 +351,11 @@ export default class NavbarFile {
         if (capabilities && !capabilities.storage.remote) {
             return;
         }
+        
+        // Hide templates if this is an LMS session
+        if (eXeLearning?.config?.platformIntegration) {
+            return;
+        }
 
         try {
             // Get current locale from eXeLearning config or default to 'en'
