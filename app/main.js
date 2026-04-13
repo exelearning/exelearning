@@ -439,7 +439,14 @@ function determineDevMode() {
  * 1. CLI flag (--no-update-check or --disable-updates)
  * 2. Environment variable (DISABLE_AUTO_UPDATE=1)
  * 3. CI environment (CI=1 or CI=true)
- * 4. Development version (0.0.0, *-alpha, *-beta, *-dev)
+ * 4. Running from source (`make run-app`, not a packaged binary)
+ * 5. Sentinel version from Makefile/CI (0.0.0 / 0.0.0-alpha / 0.0.0-alpha-build<sha>):
+ *    builds that don't correspond to a release tag.
+ *
+ * Official pre-release tags (v4.0.0-beta3, v4.0.0-rc1, ...) are full
+ * releases and MUST receive auto-updates — they are explicitly NOT filtered.
+ * See issue #1662: the previous `version.includes('-beta')` substring check
+ * disabled the updater on every published beta build.
  *
  * @returns {{ disabled: boolean, reason: string }}
  */
@@ -463,11 +470,17 @@ function shouldDisableAutoUpdate() {
         return { disabled: true, reason: 'CI environment detected (CI=1)' };
     }
 
-    // Development version
+    // Running from source (make run-app, electron .) — not a packaged binary
+    if (!app.isPackaged) {
+        return { disabled: true, reason: 'Running from source (app.isPackaged=false)' };
+    }
+
+    // Sentinel version: Makefile/CI use 0.0.0-alpha[-build<sha>] when there
+    // is no release tag. Official tags like v4.0.0-beta3, v4.0.0-rc1, v4.0.0
+    // and v3.0.2 are NOT sentinels and must receive updates.
     const version = app.getVersion();
-    if (version === '0.0.0' || version === '0.0.0-alpha' ||
-        version.includes('-alpha') || version.includes('-beta') || version.includes('-dev')) {
-        return { disabled: true, reason: `Development version detected (${version})` };
+    if (version === '0.0.0' || version.startsWith('0.0.0-alpha')) {
+        return { disabled: true, reason: `Sentinel version (${version})` };
     }
 
     return { disabled: false, reason: '' };
