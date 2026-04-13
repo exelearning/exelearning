@@ -27,6 +27,30 @@ var $exeDevice = {
         print: c_('Print'),
         apply: c_('Apply'),
         newWindow: c_('New Window'),
+        msgEndGameScore: c_(
+            'Please complete the rubric before saving your score.'
+        ),
+        msgScoreScorm: c_(
+            "The score can't be saved because this page is not part of a SCORM package."
+        ),
+        msgOnlySaveScore: c_('You can only save the score once!'),
+        msgYouScore: c_('Your score'),
+        msgOnlySaveAuto: c_(
+            'Your score will be saved after each change. You can only complete once.'
+        ),
+        msgSaveAuto: c_(
+            'Your score will be automatically saved after each change.'
+        ),
+        msgSeveralScore: c_(
+            'You can save the score as many times as you want'
+        ),
+        msgYouLastScore: c_('The last score saved is'),
+        msgActityComply: c_('You have already done this activity.'),
+        msgPlaySeveralTimes: c_(
+            'You can do this activity as many times as you want'
+        ),
+        msgScore: c_('Score'),
+        msgWeight: c_('Weight'),
     },
 
     // Default rubrics (just one for the moment)
@@ -194,11 +218,13 @@ var $exeDevice = {
                         </div>
                     </fieldset>
                 </div>
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         // Dismiss info block
         $('.exe-block-dismissible .exe-block-close').on('click', function () {
@@ -307,6 +333,13 @@ var $exeDevice = {
         if (data.textAfter) {
             $('#eXeIdeviceTextAfter').val(data.textAfter);
         }
+
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+            data.isScorm,
+            data.textButtonScorm,
+            data.repeatActivity,
+            data.weighted
+        );
 
         this.originalData = data;
     },
@@ -1645,6 +1678,12 @@ var $exeDevice = {
         if (license != '') data.license = license;
 
         data.i18n = this.collectRubricStringsFromForm();
+
+        var scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        data.isScorm = scorm.isScorm;
+        data.textButtonScorm = scorm.textButtonScorm;
+        data.repeatActivity = scorm.repeatActivity;
+        data.weighted = scorm.weighted || 100;
 
         var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
         var textAfter = textAfterEditor

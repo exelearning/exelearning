@@ -300,8 +300,9 @@ var $exeDevicesEdition = {
                 },
 
                 getTab: function (hidebutton = false, hiderepeat = false, onlybutton = false) {
-                    const displaybutton = hidebutton ? `style="display:none;"` : '';
-                    const displayrepeat = hiderepeat ? `style="display:none;"` : '';
+                    const buttonClass = hidebutton ? 'd-none' : 'd-flex';
+                    const repeatClass = hiderepeat ? 'd-none' : '';
+                    const buttonLiClass = hidebutton ? 'd-none' : '';
                     const message = onlybutton ? _("Save the score") : _("Automatically save the score");
                     return `
                         <div class="exe-form-tab" title="${_('SCORM')}">
@@ -313,19 +314,19 @@ var $exeDevicesEdition = {
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
                                 <label class="form-check-label" for="eXeGameSCORMAutoSave">${message}</label>
                                 <span id="eXeGameSCORgameAuto" class="ms-3" style="display:none;">
-                                    <div class="form-check form-check-inline" ${displayrepeat}>
+                                    <div class="form-check form-check-inline ${repeatClass}">
                                         <input class="form-check-input" type="checkbox" id="eXeGameSCORMRepeatActivityAuto" checked />
                                         <label class="form-check-label" for="eXeGameSCORMRepeatActivityAuto">${_("Repeat activity")}</label>
                                     </div>
                                 </span>
                             </div>
-                            <div class="d-flex align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMblock" ${displaybutton}>
+                            <div class="${buttonClass} align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMblock">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
                                 <label class="form-check-label" for="eXeGameSCORMButtonSave">${_("Show a button to save the score")}</label>
                                 <span id="eXeGameSCORgame" class="d-inline-flex align-items-center flex-wrap gap-2 ms-3" style="display:none;">
                                     <label for="eXeGameSCORMbuttonText" class="form-label mb-0">${_("Button text")}: </label>
                                     <input type="text" max="100" name="eXeGameSCORMbuttonText" id="eXeGameSCORMbuttonText" value="${_("Save score")}" class="form-control " style="width: auto; min-width: 140px;" />
-                                    <div class="form-check" ${displayrepeat}>
+                                    <div class="form-check ${repeatClass}">
                                         <input class="form-check-input" type="checkbox" id="eXeGameSCORMRepeatActivity" checked />
                                         <label class="form-check-label" for="eXeGameSCORMRepeatActivity">${_("Repeat activity")}</label>
                                     </div>
@@ -334,7 +335,7 @@ var $exeDevicesEdition = {
                             <div id="eXeGameSCORMinstructionsAuto" class="mb-3 ml-2">
                                 <ul class="mb-3">
                                     <li>${_("This will only work when exported as SCORM")}</li>
-                                    <li ${displaybutton}>${_("The score will be automatically saved after answering each question and at the end of the game.")}</li>
+                                    <li class="${buttonLiClass}">${_("The score will be automatically saved after answering each question and at the end of the game.")}</li>
                                 </ul>
                             </div>
                             <div id="eXeGameSCORMinstructionsButton" class="mb-3 ml-2">
@@ -345,7 +346,7 @@ var $exeDevicesEdition = {
                             <div id="eXeGameSCORMPercentaje" class="d-flex align-items-center gap-2" >
                                 <label for="eXeGameSCORMWeight" class="form-label mb-0">${_("Weighted")}: </label>
                                 <input type="number" id="eXeGameSCORMWeight" name="eXeGameSCORMWeight" value="100" min="1" max="100" class="form-control" style="width: 9.5ch !important; max-width:9.5ch  !important;" />
-                                <span>%</span>   
+                                <span>%</span>
                             </div>
                         </div>`;
                 },
