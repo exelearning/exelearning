@@ -225,74 +225,24 @@ let customEnv;
 let env;
 
 // ──────────────  Save/Export helpers  ──────────────
-const DEFAULT_EXTENSION = '.elpx';
-
-/**
- * Extract a file extension from a file path or suggested name.
- * Returns the lowercase extension (including the leading dot) if present, null otherwise.
- * @param {string} filePathOrName - File path or suggested filename
- * @returns {string|null} Extension (e.g., '.elpx', '.csv') or null
- */
-function getExt(filePathOrName) {
-    try {
-        const ext = path.extname(filePathOrName || '') || '';
-        if (!ext) return null;
-        return ext.toLowerCase();
-    } catch (_e) {
-        return null;
-    }
-}
-
-// Ensures the filePath has an extension; if missing, appends one inferred from suggestedName.
-function ensureExt(filePath, suggestedName) {
-    if (!filePath) return filePath;
-    const currentExt = getExt(filePath);
-    if (currentExt) return filePath;
-    const inferred = getExt(suggestedName);
-    return inferred ? filePath + inferred : filePath;
-}
-
-function getDialogFilterForExt(ext) {
-    switch ((ext || '').toLowerCase()) {
-        case '.elpx':
-            return { name: 'eXeLearning project', extensions: ['elpx'] };
-        case '.zip':
-            return { name: 'ZIP archive', extensions: ['zip'] };
-        case '.epub':
-            return { name: 'EPUB', extensions: ['epub'] };
-        case '.xml':
-            return { name: 'XML document', extensions: ['xml'] };
-        case '.csv':
-            return { name: 'CSV file', extensions: ['csv'] };
-        case '.idevice':
-            return { name: 'eXeLearning iDevice', extensions: ['idevice'] };
-        case '.block':
-            return { name: 'eXeLearning block', extensions: ['block'] };
-        default: {
-            if (!ext) return null;
-            const clean = ext.replace(/^\./, '');
-            return { name: `${clean.toUpperCase()} file`, extensions: [clean] };
-        }
-    }
-}
+const {
+    DEFAULT_EXTENSION,
+    getExt,
+    ensureExt,
+    getDialogFilterForExt,
+    proposeSavePath: proposeSavePathPure,
+    resolveEffectiveSaveName,
+} = require('./save-utils');
 
 function proposeSavePath(lastDir, effectiveName = null) {
-    try {
-        const ext = getExt(effectiveName) || DEFAULT_EXTENSION;
-        const dir = lastDir || app.getPath('documents');
-        const base = effectiveName
-            ? path.basename(effectiveName, path.extname(effectiveName))
-            : 'document';
-        return path.join(dir, `${base}${ext}`);
-    } catch (_e) {
-        return effectiveName || `document${DEFAULT_EXTENSION}`;
-    }
+    return proposeSavePathPure(lastDir || app.getPath('documents'), effectiveName);
 }
 
 async function promptSave(owner, suggestedName = null, lastDir = null, storedName = null) {
-    // suggestedName (caller-computed, dynamic) takes priority over storedName (last saved filename).
-    // lastDir is used as the directory regardless, so the remembered folder is preserved.
-    const effectiveName = suggestedName || storedName;
+    // Restores v4.0.0-beta4 behaviour regressed in #1519 / fixes #1666: the
+    // last chosen file name wins when its extension matches the current
+    // export target, so subsequent saves default to the name the user typed.
+    const effectiveName = resolveEffectiveSaveName(suggestedName, storedName);
     const inferredExt = getExt(effectiveName) || DEFAULT_EXTENSION;
     const filter = getDialogFilterForExt(inferredExt);
     const isProject = inferredExt === '.elpx';
