@@ -3850,6 +3850,16 @@ describe('YjsStructureBinding', () => {
       expect(binding.moveBlockRelative('does-not-exist', +1)).toBe(false);
     });
 
+    it('moveBlockRelative rejects delta=0 and non-finite deltas without touching the array', () => {
+      const { blocks } = seedPageWithBlocks(3);
+      expect(binding.moveBlockRelative('b1', 0)).toBe(false);
+      expect(binding.moveBlockRelative('b1', NaN)).toBe(false);
+      expect(binding.moveBlockRelative('b1', Infinity)).toBe(false);
+      expect(binding.moveBlockRelative('b1', -Infinity)).toBe(false);
+      // Array unchanged.
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b1', 'b2']);
+    });
+
     it('findBlockLocation returns the page and the index of an existing block', () => {
       const { blocks } = seedPageWithBlocks(3);
       const loc = binding.findBlockLocation('b1');
