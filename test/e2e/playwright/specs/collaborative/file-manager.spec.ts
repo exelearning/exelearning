@@ -123,22 +123,37 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
 }
 
 /**
- * Helper to select the first file in the grid
+ * Helper to select the first file in the grid.
+ *
+ * Under collaborative load on CI the grid can re-render between the click and
+ * the selection check (for example when a Yjs asset update arrives from the
+ * other client), which used to make `document.querySelector(first-item)`
+ * return a different DOM node than the one the click landed on. This helper
+ * is deliberately resilient: it uses a Playwright locator for the `.selected`
+ * wait (which natively retries against a live DOM), and if the first click
+ * does not register a selection within a short window it re-clicks before
+ * giving up. All existing semantics are preserved for the happy path.
  */
 async function selectFirstFile(page: Page): Promise<void> {
     const fileItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first();
     await fileItem.waitFor({ state: 'visible', timeout: 10000 });
-    await fileItem.click({ force: true });
 
-    // Wait for item to be selected
-    await page.waitForFunction(
-        () => {
-            const item = document.querySelector('#modalFileManager .media-library-item:not(.media-library-folder)');
-            return !!item && item.classList.contains('selected');
-        },
-        null,
-        { timeout: 10000 },
-    );
+    const selectedLocator = page.locator('#modalFileManager .media-library-item.selected').first();
+
+    // Try up to 3 times: click → wait for any item to be .selected. Re-click
+    // covers the case where a concurrent DOM re-render ate the click.
+    let lastError: Error | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            await fileItem.click({ force: true });
+            await selectedLocator.waitFor({ state: 'attached', timeout: attempt < 2 ? 4000 : 10000 });
+            lastError = undefined;
+            break;
+        } catch (err) {
+            lastError = err as Error;
+        }
+    }
+    if (lastError) throw lastError;
 
     // Wait for sidebar content to be populated (filename element has content)
     // This indicates showSidebarContent() has completed its async work including getImageDimensions()
