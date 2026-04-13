@@ -3592,4 +3592,255 @@ describe('YjsStructureBinding', () => {
       expect(window.addMediaTypes).toHaveBeenCalled();
     });
   });
+
+  // ----------------------------------------------------------------
+  // Regression #1665: block reorder via arrow buttons loses order.
+  // updateBlockOrder() must keep the page's blocks Y.Array in a stable,
+  // deterministic order under repeated moves. Each block must appear
+  // exactly once, the array index must equal the `order` field, and the
+  // logical order produced by a sequence of moves must match what a
+  // reference implementation would produce.
+  // ----------------------------------------------------------------
+  describe('updateBlockOrder regression #1665', () => {
+    // Build a page with `count` blocks, ids "b0".."b(count-1)", and push
+    // it into navigation. Returns the {pageId, blocks Y.Array}.
+    function seedPageWithBlocks(count) {
+      const pageMap = createYMap({ id: 'page-1', pageId: 'page-1', pageName: 'P', order: 0 });
+      const blocks = createYArray();
+      for (let i = 0; i < count; i++) {
+        const b = createYMap({ id: `b${i}`, blockId: `b${i}`, order: i });
+        blocks.push([b]);
+      }
+      pageMap.set('blocks', blocks);
+      const navigation = mockDocManager.getNavigation();
+      navigation.push([pageMap]);
+      return { pageMap, blocks };
+    }
+
+    function readBlockIds(blocks) {
+      const ids = [];
+      for (let i = 0; i < blocks.length; i++) ids.push(blocks.get(i).get('id'));
+      return ids;
+    }
+
+    function readBlockOrders(blocks) {
+      const orders = [];
+      for (let i = 0; i < blocks.length; i++) orders.push(blocks.get(i).get('order'));
+      return orders;
+    }
+
+    it('moving a block from index 0 to index 2 produces the expected order', () => {
+      const { blocks } = seedPageWithBlocks(5); // [b0, b1, b2, b3, b4]
+
+      // Mirrors what addBehaviourButtonMoveDownBlock() asks for: place b0
+      // at the position currently occupied by b2 -> [b1, b2, b0, b3, b4].
+      const ok = binding.updateBlockOrder('b0', 2);
+
+      expect(ok).toBe(true);
+      expect(blocks.length).toBe(5);
+      expect(readBlockIds(blocks)).toEqual(['b1', 'b2', 'b0', 'b3', 'b4']);
+    });
+
+    it('moving a block from index 4 to index 1 produces the expected order', () => {
+      const { blocks } = seedPageWithBlocks(5); // [b0, b1, b2, b3, b4]
+
+      const ok = binding.updateBlockOrder('b4', 1);
+
+      expect(ok).toBe(true);
+      expect(blocks.length).toBe(5);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b4', 'b1', 'b2', 'b3']);
+    });
+
+    it('after every reorder, every block id must appear exactly once', () => {
+      const { blocks } = seedPageWithBlocks(6);
+
+      binding.updateBlockOrder('b0', 5);
+      binding.updateBlockOrder('b3', 0);
+      binding.updateBlockOrder('b5', 2);
+
+      const ids = readBlockIds(blocks);
+      expect(blocks.length).toBe(6);
+      expect(new Set(ids).size).toBe(6); // no duplicates
+      expect(ids.sort()).toEqual(['b0', 'b1', 'b2', 'b3', 'b4', 'b5']); // no losses
+    });
+
+    it('after every reorder, the `order` field must equal the array index', () => {
+      const { blocks } = seedPageWithBlocks(5);
+
+      binding.updateBlockOrder('b1', 3);
+      binding.updateBlockOrder('b4', 0);
+      binding.updateBlockOrder('b2', 4);
+
+      const orders = readBlockOrders(blocks);
+      expect(orders).toEqual([0, 1, 2, 3, 4]);
+    });
+
+    it('a long sequence of arrow moves matches a reference array implementation', () => {
+      const N = 6;
+      const { blocks } = seedPageWithBlocks(N); // [b0..b5]
+
+      // Reference: a plain JS array kept in lockstep with the same moves.
+      const reference = Array.from({ length: N }, (_, i) => `b${i}`);
+
+      // Sequence of (blockId, newIndex) moves chosen to exercise both
+      // upward and downward shifts and adjacent swaps.
+      const sequence = [
+        ['b0', 5], // move b0 from front to back
+        ['b3', 0], // pull b3 to the front
+        ['b5', 2], // mid swap
+        ['b1', 4], // forward shift
+        ['b2', 1], // backward shift
+        ['b0', 0], // bring b0 to the front again
+      ];
+
+      for (const [blockId, newOrder] of sequence) {
+        const fromIdx = reference.indexOf(blockId);
+        if (fromIdx === -1) throw new Error(`reference: ${blockId} missing`);
+        reference.splice(fromIdx, 1);
+        const insertAt = Math.min(Math.max(0, newOrder), reference.length);
+        reference.splice(insertAt, 0, blockId);
+
+        const ok = binding.updateBlockOrder(blockId, newOrder);
+        expect(ok).toBe(true);
+      }
+
+      expect(blocks.length).toBe(N);
+      expect(readBlockIds(blocks)).toEqual(reference);
+      // And `order` field is in sync with the array.
+      expect(readBlockOrders(blocks)).toEqual(reference.map((_, i) => i));
+    });
+
+    it('moving down by one (the arrow-down case) places the block right after its neighbour', () => {
+      const { blocks } = seedPageWithBlocks(4); // [b0, b1, b2, b3]
+
+      // Click "move down" on b1: it should swap with b2 -> [b0, b2, b1, b3].
+      // The click handler in blockNode.js computes its `this.order` from
+      // the DOM by reading the next sibling's order (=2) and calls
+      // updateBlockOrder('b1', 2).
+      const ok = binding.updateBlockOrder('b1', 2);
+
+      expect(ok).toBe(true);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b2', 'b1', 'b3']);
+    });
+
+    it('moving up by one (the arrow-up case) places the block right before its neighbour', () => {
+      const { blocks } = seedPageWithBlocks(4); // [b0, b1, b2, b3]
+
+      // Click "move up" on b2: should swap with b1 -> [b0, b2, b1, b3].
+      // The click handler in blockNode.js asks for newOrder = previous
+      // sibling's order = 1.
+      const ok = binding.updateBlockOrder('b2', 1);
+
+      expect(ok).toBe(true);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b2', 'b1', 'b3']);
+    });
+
+    // ----------------------------------------------------------------
+    // The reproduction tests for #1665. The bug is NOT in
+    // updateBlockOrder() in isolation — the unit tests above pass — but in
+    // how the click handler in blockNode.js feeds the `newOrder`. The
+    // handler keeps a per-instance `this.order` field and does
+    // `this.order++` / `this.order--` as the user clicks the arrows. After
+    // a single reorder, the JS instances of the OTHER blocks on the same
+    // page still hold their pre-move `order` values, because nothing
+    // reconciles them with the Y.Doc. The next consecutive arrow click on
+    // any neighbour computes its `newOrder` from a stale local index and
+    // calls updateBlockOrder() with the wrong target. The blocks then
+    // appear to "skip" or "jump" positions, exactly like the bug report.
+    //
+    // These tests reproduce that flow at the API boundary by simulating
+    // the per-instance counters in plain JS.
+    // ----------------------------------------------------------------
+    it('reproduces #1665: consecutive "move down" clicks on different blocks with stale local orders', () => {
+      const { blocks } = seedPageWithBlocks(3); // [b0, b1, b2]
+
+      // Mirror the per-instance `this.order` fields the click handler reads.
+      const local = { b0: 0, b1: 1, b2: 2 };
+
+      // Click "move down" on b0. Handler: this.order++ -> 1.
+      binding.updateBlockOrder('b0', ++local.b0);
+      expect(readBlockIds(blocks)).toEqual(['b1', 'b0', 'b2']);
+
+      // Click "move down" on b1. b1 is now physically at index 0 but its
+      // JS instance was never refreshed; local.b1 is still 1. The handler
+      // computes newOrder = 2 and asks updateBlockOrder to place b1 there.
+      // The user expected b1 to slide ONE slot from index 0 to index 1
+      // (i.e. final order [b0, b1, b2]), but with the stale counter b1
+      // jumps two slots and ends up at the back.
+      binding.updateBlockOrder('b1', ++local.b1);
+
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b1', 'b2']);
+    });
+
+    it('reproduces #1665: consecutive "move up" clicks with stale local orders', () => {
+      const { blocks } = seedPageWithBlocks(3); // [b0, b1, b2]
+
+      const local = { b0: 0, b1: 1, b2: 2 };
+
+      // Click "move up" on b2. Handler: this.order-- -> 1.
+      binding.updateBlockOrder('b2', --local.b2);
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b2', 'b1']);
+
+      // Click "move up" on b1. b1 is now physically at index 2 but its
+      // local counter is still 1. Handler: this.order-- -> 0.
+      // Expected final order: [b0, b1, b2]. With the stale counter, b1
+      // jumps over b0 and ends at the front.
+      binding.updateBlockOrder('b1', --local.b1);
+
+      expect(readBlockIds(blocks)).toEqual(['b0', 'b1', 'b2']);
+    });
+
+    it('reproduces #1665: a few alternating arrow clicks scramble the page order', () => {
+      const N = 5;
+      const { blocks } = seedPageWithBlocks(N); // [b0, b1, b2, b3, b4]
+
+      // Per-instance "this.order" counters as the handler maintains them.
+      const local = Object.fromEntries(
+        Array.from({ length: N }, (_, i) => [`b${i}`, i]),
+      );
+
+      // Reference: a plain JS array advanced by the SAME *intended* moves
+      // (move b0 down, then b2 up, then b3 down, then b1 up, then b4 up).
+      // Each "intended move" is a single-step swap with a neighbour.
+      const reference = Array.from({ length: N }, (_, i) => `b${i}`);
+
+      function refMoveDown(id) {
+        const i = reference.indexOf(id);
+        if (i < 0 || i === reference.length - 1) return;
+        [reference[i], reference[i + 1]] = [reference[i + 1], reference[i]];
+      }
+      function refMoveUp(id) {
+        const i = reference.indexOf(id);
+        if (i <= 0) return;
+        [reference[i], reference[i - 1]] = [reference[i - 1], reference[i]];
+      }
+
+      // Sequence of single-step arrow clicks on different blocks.
+      const clicks = [
+        ['b0', 'down'],
+        ['b2', 'up'],
+        ['b3', 'down'],
+        ['b1', 'up'],
+        ['b4', 'up'],
+      ];
+
+      for (const [id, dir] of clicks) {
+        // Reference: do the intended single-slot swap.
+        if (dir === 'down') refMoveDown(id);
+        else refMoveUp(id);
+
+        // Handler: bump the stale local counter and forward to Yjs.
+        if (dir === 'down') local[id]++;
+        else local[id]--;
+        binding.updateBlockOrder(id, local[id]);
+      }
+
+      // Invariants: no losses, no duplicates, length unchanged.
+      expect(blocks.length).toBe(N);
+      expect(new Set(readBlockIds(blocks)).size).toBe(N);
+
+      // The actual order must match the intended (reference) order.
+      expect(readBlockIds(blocks)).toEqual(reference);
+    });
+  });
 });
