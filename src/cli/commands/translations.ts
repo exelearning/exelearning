@@ -16,7 +16,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Glob } from 'bun';
 
-const TRANSLATIONS_DIR = path.join(process.cwd(), 'translations');
+// Resolved lazily so tests that mock process.cwd() after importing this module
+// (translations.spec.ts, translations-sort.spec.ts) still see the expected path.
+function getTranslationsDir(): string {
+    return path.join(process.cwd(), 'translations');
+}
 
 export interface TranslationsResult {
     success: boolean;
@@ -345,7 +349,7 @@ async function processLocale(
     cleanOnly: boolean,
     removeObsolete: boolean,
 ): Promise<{ extracted: number; cleaned: boolean; removed: number }> {
-    const xlfPath = path.join(TRANSLATIONS_DIR, `messages.${locale}.xlf`);
+    const xlfPath = path.join(getTranslationsDir(), `messages.${locale}.xlf`);
 
     if (!fs.existsSync(xlfPath)) {
         warning(`XLF file not found: ${xlfPath}`);
@@ -412,10 +416,11 @@ export async function execute(
     }
 
     // Check translations directory exists
-    if (!fs.existsSync(TRANSLATIONS_DIR)) {
+    const translationsDir = getTranslationsDir();
+    if (!fs.existsSync(translationsDir)) {
         return {
             success: false,
-            message: `Translations directory not found: ${TRANSLATIONS_DIR}`,
+            message: `Translations directory not found: ${translationsDir}`,
         };
     }
 
