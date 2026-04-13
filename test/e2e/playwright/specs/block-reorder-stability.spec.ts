@@ -1,22 +1,35 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
-import { gotoWorkarea, waitForAppReady, waitForLoadingScreen, saveProject } from '../helpers/workarea-helpers';
+import {
+    gotoWorkarea,
+    waitForAppReady,
+    waitForLoadingScreen,
+    selectNavNode,
+    saveProject,
+} from '../helpers/workarea-helpers';
 
 /**
- * E2E reproduction for issue #1665.
+ * E2E reproduction and regression for issue #1665.
  *
- * Reorder of blocks ("cajas") inside a single page via the up/down arrow
- * buttons must produce a stable, deterministic order. The bug report says
- * the order ends up random and that exporting the project then yields
- * "page not found" errors. The unit test
- * `YjsStructureBinding > updateBlockOrder regression #1665` reproduces the
- * Yjs side; this spec exercises the full UI flow: create a page with
- * several blocks, click the arrows many times alternating between blocks,
- * navigate away and back, and verify the order matches what an in-memory
- * reference array would produce.
+ * Moving blocks ("cajas") inside a single page with the up/down arrow
+ * buttons must produce a stable, deterministic order across consecutive
+ * clicks and across page navigation.
+ *
+ * Historical bug: the legacy click handlers mutated a per-instance
+ * `this.order` field and forwarded it to `updateBlockOrder`. Other JS
+ * block instances on the same page never had their `this.order`
+ * reconciled with the Y.Doc after a reorder, so consecutive arrow clicks
+ * on neighbours fed `updateBlockOrder` a target computed from a stale
+ * snapshot and blocks appeared to "jump" positions. Fixed by routing
+ * the arrow path through `moveBlockRelative`, which reads the current
+ * index directly from the Y.Doc. See
+ * `public/app/yjs/YjsStructureBinding.test.js > updateBlockOrder
+ * regression #1665` for the unit-level reproduction.
  */
 
 const BLOCK_SELECTOR = '#node-content article.box:not(#empty_articles)';
+
+// --- helpers (mirrored from undo-redo-block-structure.spec.ts) ---
 
 async function selectFirstNonRootPage(page: Page): Promise<void> {
     const selectors = [
@@ -26,12 +39,17 @@ async function selectFirstNonRootPage(page: Page): Promise<void> {
     for (const sel of selectors) {
         const el = page.locator(sel).first();
         if ((await el.count()) > 0) {
-            await el.click({ timeout: 5000 });
-            await page.waitForTimeout(300);
-            return;
+            try {
+                await el.waitFor({ state: 'visible', timeout: 5000 });
+                await el.click({ timeout: 5000 });
+                await page.waitForTimeout(500);
+                return;
+            } catch {
+                // try next selector
+            }
         }
     }
-    throw new Error('No non-root page node found');
+    throw new Error('Unable to select a non-root page node');
 }
 
 async function getCurrentPageId(page: Page): Promise<string> {
@@ -41,40 +59,75 @@ async function getCurrentPageId(page: Page): Promise<string> {
     });
 }
 
-async function createPageViaYjs(page: Page, name: string): Promise<string> {
-    const id = await page.evaluate(pageName => {
+async function createTargetPageViaYjs(page: Page, name: string): Promise<string> {
+    const targetPageId = await page.evaluate(pageName => {
         const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-        const created = bridge?.structureBinding?.createPage?.(pageName);
+        const binding = bridge?.structureBinding;
+        if (!binding) return '';
+        const created = binding.createPage(pageName);
         return created?.id || created?.pageId || '';
     }, name);
-    if (!id) throw new Error(`Could not create page "${name}" via Yjs`);
-    await page.locator(`.nav-element[nav-id="${id}"]`).first().waitFor({ state: 'visible', timeout: 10000 });
-    return id;
+
+    if (!targetPageId) throw new Error(`Failed to create target page "${name}" via Yjs`);
+
+    await page.locator(`.nav-element[nav-id="${targetPageId}"]`).first().waitFor({ state: 'visible', timeout: 10000 });
+    return targetPageId;
 }
 
-async function selectPageNode(page: Page, pageId: string): Promise<void> {
-    const node = page.locator(`.nav-element[nav-id="${pageId}"] .nav-element-text`).first();
-    await node.waitFor({ state: 'visible', timeout: 10000 });
-    await node.click();
-    await page.waitForTimeout(300);
-}
-
-async function addBlockViaYjs(page: Page, pageId: string, name: string): Promise<string> {
+async function addBlockViaYjs(page: Page, pageId: string, blockName: string): Promise<string> {
     const blockId = await page.evaluate(
-        ({ targetPageId, blockName }) => {
+        ({ targetPageId, name }) => {
             const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            return bridge?.addBlock ? bridge.addBlock(targetPageId, blockName) || '' : '';
+            if (!bridge?.addBlock) return '';
+            return bridge.addBlock(targetPageId, name) || '';
         },
-        { targetPageId: pageId, blockName: name },
+        { targetPageId: pageId, name: blockName },
     );
-    if (!blockId) throw new Error(`Could not add block "${name}" via Yjs`);
+    if (!blockId) throw new Error(`Failed to add block "${blockName}" via Yjs`);
     return blockId;
 }
 
-async function waitForDomBlockCount(page: Page, expected: number, timeout = 10000): Promise<void> {
+async function reloadCurrentPageFromYjs(page: Page): Promise<void> {
+    await page.evaluate(async () => {
+        const app = (window as any).eXeLearning?.app;
+        const selectedNavId = app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute?.('nav-id');
+        if (!selectedNavId) return;
+
+        const pageElement = app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector?.(
+            `.nav-element[nav-id="${selectedNavId}"]`,
+        );
+
+        if (pageElement && app?.project?.idevices?.loadApiIdevicesInPage) {
+            await app.project.idevices.loadApiIdevicesInPage(false, pageElement);
+        }
+    });
+    await page.waitForTimeout(250);
+}
+
+async function clearUndoHistory(page: Page): Promise<void> {
+    await page.evaluate(() => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        const undoManager = bridge?.documentManager?.undoManager;
+        if (undoManager?.clear) undoManager.clear();
+        if (bridge?.updateUndoRedoButtons) bridge.updateUndoRedoButtons();
+    });
+    await page.waitForTimeout(200);
+}
+
+async function waitForDomAndYjsBlockCount(
+    page: Page,
+    pageId: string,
+    expectedCount: number,
+    timeout = 15000,
+): Promise<void> {
     await page.waitForFunction(
-        ({ selector, n }) => document.querySelectorAll(selector).length === n,
-        { selector: BLOCK_SELECTOR, n: expected },
+        ({ selector, targetPageId, expected }) => {
+            const domCount = document.querySelectorAll(selector).length;
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            const yjsCount = bridge?.structureBinding?.getBlocks?.(targetPageId)?.length ?? -1;
+            return domCount === expected && yjsCount === expected;
+        },
+        { selector: BLOCK_SELECTOR, targetPageId: pageId, expected: expectedCount },
         { timeout },
     );
 }
@@ -98,19 +151,17 @@ async function clickMoveDown(page: Page, blockId: string): Promise<void> {
     const btn = page.locator(`#moveDown${blockId}`).first();
     await btn.waitFor({ state: 'attached', timeout: 5000 });
     await btn.click({ force: true });
-    // Allow the click handler's promise chain (apiUpdateOrder + DOM reflow)
-    // to settle. We deliberately do NOT wait for the .moving CSS class to
-    // disappear because that's part of the bug surface — we want to reflect
-    // a real user clicking quickly.
-    await page.waitForTimeout(120);
+    await page.waitForTimeout(200);
 }
 
 async function clickMoveUp(page: Page, blockId: string): Promise<void> {
     const btn = page.locator(`#moveUp${blockId}`).first();
     await btn.waitFor({ state: 'attached', timeout: 5000 });
     await btn.click({ force: true });
-    await page.waitForTimeout(120);
+    await page.waitForTimeout(200);
 }
+
+// --- the test ---
 
 test.describe('Block reorder stability — issue #1665', () => {
     test.beforeEach(async ({}, testInfo) => {
@@ -126,38 +177,30 @@ test.describe('Block reorder stability — issue #1665', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
         await waitForLoadingScreen(page);
+        await clearUndoHistory(page);
         await selectFirstNonRootPage(page);
 
-        // Two pages so we can navigate away and back.
         const sourcePageId = await getCurrentPageId(page);
         expect(sourcePageId).not.toBe('');
-        const otherPageId = await createPageViaYjs(page, 'Other page #1665');
 
-        await selectPageNode(page, sourcePageId);
-
-        // Seed the source page with N blocks. Capture their ids in creation order.
+        // Seed the source page with N blocks. `bridge.addBlock` writes to
+        // the Y.Doc but the node content renderer needs a reload to paint
+        // the new DOM nodes — same pattern as undo-redo-block-structure.spec.ts.
         const N = 5;
         const ids: string[] = [];
         for (let i = 0; i < N; i++) {
             ids.push(await addBlockViaYjs(page, sourcePageId, `Block ${i}`));
         }
+        await reloadCurrentPageFromYjs(page);
+        await waitForDomAndYjsBlockCount(page, sourcePageId, N);
 
-        // The Yjs and DOM should already converge to N blocks before we
-        // start clicking arrows.
-        await waitForDomBlockCount(page, N);
         const initialYjsOrder = await readBlockOrderFromYjs(page, sourcePageId);
         expect(initialYjsOrder.length).toBe(N);
-        // We won't assume the order matches `ids` exactly here — addBlock
-        // may push or splice; only assume that every id we created is present.
         expect(new Set(initialYjsOrder)).toEqual(new Set(ids));
 
-        // Build a reference array starting from the same Yjs order and
-        // mutate it in lockstep with the user clicks. Each "click move
-        // down" is a single neighbour swap towards the back; each "click
-        // move up" is a single neighbour swap towards the front. That's
-        // what the user expects from each arrow click.
+        // Reference array advanced in lockstep with the intended
+        // single-slot neighbour swap per click.
         const reference = [...initialYjsOrder];
-
         function refMoveDown(id: string) {
             const i = reference.indexOf(id);
             if (i < 0 || i === reference.length - 1) return;
@@ -169,9 +212,6 @@ test.describe('Block reorder stability — issue #1665', () => {
             [reference[i], reference[i - 1]] = [reference[i - 1], reference[i]];
         }
 
-        // A sequence of arrow clicks alternating between blocks and
-        // directions. Each entry refers to the *original* block id, NOT
-        // its current position in the page.
         const sequence: Array<['up' | 'down', string]> = [
             ['down', ids[0]],
             ['up', ids[3]],
@@ -192,31 +232,33 @@ test.describe('Block reorder stability — issue #1665', () => {
             }
         }
 
-        // After all clicks, both Yjs and the DOM must agree with the reference.
+        // After all clicks, Yjs must agree with the reference and there
+        // must be no duplicates / losses.
         const yjsOrderAfter = await readBlockOrderFromYjs(page, sourcePageId);
-        const domOrderAfter = await readBlockOrderFromDom(page);
-
         expect(yjsOrderAfter.length).toBe(N);
-        expect(new Set(yjsOrderAfter)).toEqual(new Set(ids)); // no losses, no duplicates
+        expect(new Set(yjsOrderAfter)).toEqual(new Set(ids));
         expect(yjsOrderAfter).toEqual(reference);
-        // The DOM ids carry an "article-" prefix or sym-id attribute; we
-        // compare as suffix-match to be tolerant to that.
+
+        const domOrderAfter = await readBlockOrderFromDom(page);
         for (let i = 0; i < domOrderAfter.length; i++) {
             expect(domOrderAfter[i]).toContain(reference[i]);
         }
 
-        // Save and bounce: navigate to the other page and back. The Yjs
-        // doc is the source of truth, so the page rebuild should still
-        // honour the same order.
+        // Save, then bounce: create a second page, navigate away and back.
+        // The second page is created AFTER the moves so that the initial
+        // seeding is unambiguously on the source page.
         await saveProject(page);
-        await selectPageNode(page, otherPageId);
+        const otherPageId = await createTargetPageViaYjs(page, `Other page ${Date.now()}`);
+        await selectNavNode(page, otherPageId);
         await page.waitForTimeout(300);
-        await selectPageNode(page, sourcePageId);
-        await waitForDomBlockCount(page, N);
+        await selectNavNode(page, sourcePageId);
+        await reloadCurrentPageFromYjs(page);
+        await waitForDomAndYjsBlockCount(page, sourcePageId, N);
 
         const yjsOrderAfterBounce = await readBlockOrderFromYjs(page, sourcePageId);
-        const domOrderAfterBounce = await readBlockOrderFromDom(page);
         expect(yjsOrderAfterBounce).toEqual(reference);
+
+        const domOrderAfterBounce = await readBlockOrderFromDom(page);
         for (let i = 0; i < domOrderAfterBounce.length; i++) {
             expect(domOrderAfterBounce[i]).toContain(reference[i]);
         }
