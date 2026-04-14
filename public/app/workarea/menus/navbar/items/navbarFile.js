@@ -1646,6 +1646,17 @@ export default class NavbarFile {
                     } catch (_e) {
                         // Intentional: Electron-specific assignment may fail
                     }
+                    // Also persist it to Electron settings so the next Save
+                    // dialog pre-fills with this file's name even after the
+                    // full page reload that follows the import (PR #1670
+                    // review).
+                    try {
+                        if (typeof window.electronAPI?.setSavedPath === 'function') {
+                            await window.electronAPI.setSavedPath(filePath);
+                        }
+                    } catch (_e) {
+                        // Best effort — failing here must not break Open.
+                    }
                     eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                         file
                     );

@@ -1291,6 +1291,18 @@ export default class App {
                 return;
             }
 
+            // Remember the opened file name so the next Save dialog pre-fills
+            // with it, even after the full page reload that follows import
+            // (PR #1670 review — "opening a project should remember the file
+            // name associated with it").
+            try {
+                if (typeof window.electronAPI.setSavedPath === 'function') {
+                    await window.electronAPI.setSavedPath(filePath);
+                }
+            } catch (_e) {
+                // Best effort — failing here must not break the open flow.
+            }
+
             // Convert base64 to File object
             const binStr = atob(res.base64);
             const bytes = new Uint8Array(binStr.length);

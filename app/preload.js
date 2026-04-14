@@ -17,6 +17,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('app:exportToFolder', { downloadUrl, projectKey, suggestedDirName }),
   exportBufferToFolder: (base64Data, suggestedDirName) =>
     ipcRenderer.invoke('app:exportBufferToFolder', { base64Data, suggestedDirName }),
+  // Remember / forget the file currently associated with the window so the
+  // next Save dialog pre-fills with its name (PR #1670 review). Both names
+  // survive the full page reload that follows Open/New because they are
+  // persisted to settings.json by the main process.
+  setSavedPath: (filePath) => ipcRenderer.invoke('app:setSavedPath', { filePath }),
+  clearSavedPath: () => ipcRenderer.invoke('app:clearSavedPath'),
   openElp: () => ipcRenderer.invoke('app:openElp'),
   readFile: (filePath) => ipcRenderer.invoke('app:readFile', { filePath }),
   getMemoryUsage: () => ipcRenderer.invoke('app:getMemoryUsage'),

@@ -86,6 +86,31 @@ function resolveEffectiveSaveName(suggestedName, storedName) {
     return safeSuggested;
 }
 
+/**
+ * Split an absolute file path into { dir, name } so the caller can persist
+ * the name that should pre-fill the next Save dialog.
+ *
+ * Used when the user opens a project from disk: we record the picked file's
+ * directory and basename so the subsequent Save reuses them (fixes #1666
+ * review — "opening a project should remember the file name associated with it").
+ *
+ * Returns null for invalid input. Never throws.
+ */
+function splitSavePath(filePath) {
+    if (!filePath || typeof filePath !== 'string') return null;
+    try {
+        // Handle Windows-style separators even when running on POSIX so the
+        // basename still survives when the renderer hands us a backslash path.
+        const lastSep = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+        const name = lastSep >= 0 ? filePath.slice(lastSep + 1) : filePath;
+        const dir = lastSep >= 0 ? filePath.slice(0, lastSep) : '';
+        if (!name) return null;
+        return { dir, name };
+    } catch (_e) {
+        return null;
+    }
+}
+
 module.exports = {
     DEFAULT_EXTENSION,
     getExt,
@@ -93,4 +118,5 @@ module.exports = {
     getDialogFilterForExt,
     proposeSavePath,
     resolveEffectiveSaveName,
+    splitSavePath,
 };

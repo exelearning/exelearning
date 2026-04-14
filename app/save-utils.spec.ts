@@ -6,6 +6,7 @@ const {
     proposeSavePath,
     getDialogFilterForExt,
     resolveEffectiveSaveName,
+    splitSavePath,
     DEFAULT_EXTENSION,
 } = require('./save-utils');
 
@@ -127,6 +128,67 @@ describe('save-utils', () => {
         it('is case-insensitive when comparing extensions', () => {
             expect(resolveEffectiveSaveName('fresh.ELPX', 'user_chose.elpx')).toBe('user_chose.elpx');
             expect(resolveEffectiveSaveName('fresh.elpx', 'user_chose.ELPX')).toBe('user_chose.ELPX');
+        });
+    });
+
+    describe('splitSavePath — regression PR #1670 review', () => {
+        it('splits a POSIX path into dir and basename', () => {
+            expect(splitSavePath('/home/user/docs/first.elpx')).toEqual({
+                dir: '/home/user/docs',
+                name: 'first.elpx',
+            });
+        });
+
+        it('splits a Windows-style path into dir and basename', () => {
+            const result = splitSavePath('C:\\Users\\me\\Documents\\second.elpx');
+            expect(result).not.toBeNull();
+            expect(result.name).toBe('second.elpx');
+            // path.dirname behaviour on POSIX treats the full string as one segment,
+            // but we still want the basename to survive so the dialog can pre-fill it.
+            expect(typeof result.dir).toBe('string');
+        });
+
+        it('returns null for nullish / invalid input', () => {
+            expect(splitSavePath(null)).toBeNull();
+            expect(splitSavePath(undefined)).toBeNull();
+            expect(splitSavePath('')).toBeNull();
+            expect(splitSavePath(42 as unknown as string)).toBeNull();
+        });
+
+        it('handles a bare file name (no directory component)', () => {
+            const result = splitSavePath('bare.elpx');
+            expect(result).not.toBeNull();
+            expect(result.name).toBe('bare.elpx');
+        });
+    });
+
+    describe('Scenario from PR #1670 review (ignaciogros)', () => {
+        // These scenarios exercise the pure name-resolution layer against the
+        // three user flows called out in the review:
+        //   1. Open a file -> save must pre-fill with that file's name.
+        //   2. New project -> save must pre-fill with the project title, not a stale name.
+        //   3. Save A then open B -> save must pre-fill B's name, never A's.
+
+        it('(1) opening a file seeds the stored name so the next save pre-fills it', () => {
+            const opened = splitSavePath('/docs/my-course.elpx');
+            expect(opened).not.toBeNull();
+            // Caller persists opened.name; promptSave then resolves with it.
+            expect(resolveEffectiveSaveName('Untitled.elpx', opened.name)).toBe('my-course.elpx');
+        });
+
+        it('(2) new project clears the stored name so promptSave uses the project title', () => {
+            // After "new project", caller must clear storedName; promptSave then
+            // falls back to the freshly suggested project-title-based name.
+            expect(resolveEffectiveSaveName('Brand New Project.elpx', null)).toBe('Brand New Project.elpx');
+        });
+
+        it('(3) opening B after saving A does not leak A.elpx into the dialog', () => {
+            // The caller must overwrite the stored name with B's name on open,
+            // so the resolver reports B even when "A.elpx" was the last value it saw.
+            const openedB = splitSavePath('/docs/B.elpx');
+            expect(openedB).not.toBeNull();
+            // storedName after opening B is "B.elpx", not "A.elpx".
+            expect(resolveEffectiveSaveName('Untitled.elpx', openedB.name)).toBe('B.elpx');
         });
     });
 });
