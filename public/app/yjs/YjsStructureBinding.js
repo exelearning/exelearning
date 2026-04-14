@@ -1979,6 +1979,14 @@ class YjsStructureBinding {
             ytext.delete(0, ytext.length);
             ytext.insert(0, safeValue);
           }
+
+          // Once htmlContent/content holds the authoritative value, drop any stale
+          // htmlView plain-string fallback populated by the initial import path
+          // (createComponentMapFromApi / ElpxImporter). Keeping it around causes
+          // stale reference counts in the File Manager after in-place edits (issue #1674).
+          if ((key === 'htmlContent' || key === 'content') && compMap.get('htmlView') !== undefined) {
+            compMap.delete('htmlView');
+          }
         } else if (key === 'properties' && typeof value === 'object') {
           // Handle properties as a Y.Map with checkbox conversion
           let propsMap = compMap.get('properties');

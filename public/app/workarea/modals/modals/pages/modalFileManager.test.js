@@ -3900,6 +3900,64 @@ describe('ModalFilemanager', () => {
       const count = modal.countAssetReferences('null-test');
       expect(count).toBe(0);
     });
+
+    // Regression test for issue #1674: after deleting an image from a Text iDevice
+    // in the desktop (Electron) build, the File Manager still reported 1 reference
+    // because the counter read the stale `htmlView` string (set once during ELP
+    // import) instead of the freshly updated `htmlContent` Y.Text.
+    it('should prefer fresh htmlContent over stale htmlView (issue #1674)', () => {
+      const mockComponent = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') {
+            // Fresh content after the user deleted the image — no asset reference.
+            return { toString: () => '<p>image removed</p>' };
+          }
+          if (key === 'htmlView') {
+            // Stale string from ELP import, still references the deleted asset.
+            return '<p><img src="asset://stale-asset-1674/image.jpg"></p>';
+          }
+          return null;
+        })
+      };
+
+      const mockBlock = {
+        get: vi.fn((key) => {
+          if (key === 'components') {
+            return { length: 1, get: () => mockComponent };
+          }
+          return null;
+        })
+      };
+
+      const mockPage = {
+        get: vi.fn((key) => {
+          if (key === 'blocks') {
+            return { length: 1, get: () => mockBlock };
+          }
+          return null;
+        })
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              documentManager: {
+                ydoc: {
+                  getArray: vi.fn().mockReturnValue({
+                    length: 1,
+                    get: () => mockPage
+                  })
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const count = modal.countAssetReferences('stale-asset-1674');
+      expect(count).toBe(0);
+    });
   });
 
   describe('duplicateSelectedAsset edge cases', () => {
