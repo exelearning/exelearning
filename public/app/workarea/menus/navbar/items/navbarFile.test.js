@@ -1310,6 +1310,25 @@ describe('NavbarFile', () => {
             expect(window.__originalElpPath).toBe('/tmp/test.elpx');
         });
 
+        it('should persist the opened file path via setSavedPath (PR #1670)', async () => {
+            eXeLearning.config.isOfflineInstallation = true;
+            const setSavedPath = vi.fn().mockResolvedValue(true);
+            window.electronAPI = {
+                openElp: vi.fn().mockResolvedValue('/tmp/remembered.elpx'),
+                readFile: vi.fn().mockResolvedValue({
+                    ok: true,
+                    base64: Buffer.from('test').toString('base64'),
+                }),
+                setSavedPath,
+            };
+            global.atob = (value) => Buffer.from(value, 'base64').toString('binary');
+
+            navbarFile.openUserOdeFilesEvent();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(setSavedPath).toHaveBeenCalledWith('/tmp/remembered.elpx');
+        });
+
         it('should show alert when offline file read fails', async () => {
             eXeLearning.config.isOfflineInstallation = true;
             window.electronAPI = {
