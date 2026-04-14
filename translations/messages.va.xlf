@@ -3667,15 +3667,15 @@
       </trans-unit>
       <trans-unit id="Csyf_Vj" resname="New from Template...">
         <source>New from Template...</source>
-        <target>~Nuevo desde plantilla...</target>
+        <target>~Nou des de plantilla...</target>
       </trans-unit>
       <trans-unit id="GbRjAbR" resname="Select a template to create a new project:">
         <source>Select a template to create a new project:</source>
-        <target>~Selecciona una plantilla para crear un nuevo proyecto:</target>
+        <target>~Selecciona una plantilla per crear un nou projecte:</target>
       </trans-unit>
       <trans-unit id="DchL58D" resname="No templates available for your language.">
         <source>No templates available for your language.</source>
-        <target>~No hay plantillas disponibles para tu idioma.</target>
+        <target>~No hi ha plantilles disponibles per al teu idioma.</target>
       </trans-unit>
       <trans-unit id="_SqArFZ" resname="Open">
         <source>Open</source>
@@ -11579,11 +11579,11 @@
       </trans-unit>
       <trans-unit id="t0jmRcI" resname="The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts">
         <source>The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts</source>
-        <target>~El número de intentos debe ser mayor o igual que el número de frases del juego. Usa 0 para un número ilimitado de intentos</target>
+        <target>~El nombre d'intents ha de ser major o igual que el nombre de frases del joc. Utilitza 0 per a un nombre il·limitat d'intents</target></target>
       </trans-unit>
       <trans-unit id="D7clkVP" resname="With fixed headers, the number of cards must be bigger than the number of columns">
         <source>With fixed headers, the number of cards must be bigger than the number of columns</source>
-        <target>~Con cabeceras fijas, el número de tarjetas debe ser mayor que el número de columnas</target>
+        <target>~Amb capçaleres fixes, el nombre de targetes ha de ser major que el nombre de columnes</target>
       </trans-unit>
       <trans-unit id="fdwIkjV" resname="Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)">
         <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)</source>
@@ -11591,51 +11591,51 @@
       </trans-unit>
       <trans-unit id="L41w01C" resname="The question text and the formula should have the same variables">
         <source>The question text and the formula should have the same variables</source>
-        <target>~El texto de la pregunta y la fórmula deben tener las mismas variables</target>
+        <target>~El text de la pregunta i la fórmula han de tenir les mateixes variables</target>
       </trans-unit>
       <trans-unit id="3IL1weY" resname="Select the correct options and click on the 'Reply' button.">
         <source>Select the correct options and click on the 'Reply' button.</source>
-        <target>~Selecciona las opciones correctas y haz clic en el botón "Responder"</target>
+        <target>~Selecciona les opcions correctes i fes clic al botó "Responder"</target>
       </trans-unit>
       <trans-unit id="GySH111" resname="Show when the mouse is over the icon or active area">
         <source>Show when the mouse is over the icon or active area</source>
-        <target>~Mostrar cuando el ratón esté sobre el icono o el área activa</target>
+        <target>~Mostra quan el ratolí estiga sobre la icona o l'àrea activa</target>
       </trans-unit>
       <trans-unit id="n_.r9xf" resname="Editar cuestionario">
         <source>Editar cuestionario</source>
-        <target>~Editar cuestionario</target>
+        <target>~Editar qüestionari</target>
       </trans-unit>
       <trans-unit id="j5mwtQP" resname="The word cannot contain more than fourteen characters or white spaces">
         <source>The word cannot contain more than fourteen characters or white spaces</source>
-        <target>~La palabra no puede contener más de catorce caracteres ni espacios en blanco</target>
+        <target>~La paraula no pot contenir més de catorze caràcters ni espais en blanc</target>
       </trans-unit>
       <trans-unit id="KAgEWOK" resname="You must select at least one type of data to complet">
         <source>You must select at least one type of data to complet</source>
-        <target>~Debes seleccionar al menos un tipo de dato para completar</target>
+        <target>~Has de seleccionar com a mínim un tipus de dada per a completar</target>
       </trans-unit>
       <trans-unit id="aGuMwTn" resname="You must select at least one group of elements">
         <source>You must select at least one group of elements</source>
-        <target>~Debes seleccionar al menos un grupo de elementos</target>
+        <target>~Has de seleccionar com a mínim un grup d'elements</target>
       </trans-unit>
       <trans-unit id="JTuD2Zp" resname="Your changes won\'t be saved until you click on &quot;Save&quot;.">
         <source>Your changes won\'t be saved until you click on "Save".</source>
-        <target>~Los cambios no se guardarán hasta que hagas clic en "Guardar"</target>
+        <target>~Els canvis no es guardaran fins que facis clic a "Guardar"</target>
       </trans-unit>
       <trans-unit id="JsWigaF" resname="Click on &quot;Exit&quot; to finish.">
         <source>Click on "Exit" to finish.</source>
-        <target>~Haz clic en "Salir" para finalizar</target>
+        <target>~Fes clic a "Surt" per a finalitzar</target>
       </trans-unit>
       <trans-unit id="EnsLnax" resname="Please check the &quot;Start&quot; time">
         <source>Please check the "Start" time</source>
-        <target>~Comprueba la hora de inicio</target>
+        <target>~Comprova l'hora d'inici</target>
       </trans-unit>
       <trans-unit id="lo0mftN" resname="Please check the &quot;End&quot; time">
         <source>Please check the "End" time</source>
-        <target>~Comprueba la hora de finalización</target>
+        <target>~Comprova l'hora de finalització</target>
       </trans-unit>
       <trans-unit id="4qf1EYr" resname="Indicate the character, object or solution to discover">
         <source>Indicate the character, object or solution to discover</source>
-        <target>~Indica el personaje, objeto o solución que se debe descubrir</target>
+        <target>~Indica el personatge, objecte o solució que s'ha de descobrir</target>
       </trans-unit>
       <trans-unit id="Ovrtva0" resname="You must indicate the number of points for each item to be assesed">
         <source>You must indicate the number of points for each item to be assesed</source>
@@ -11643,11 +11643,11 @@
       </trans-unit>
       <trans-unit id="Jm0CpVT" resname="Please write the challenge description.">
         <source>Please write the challenge description.</source>
-        <target>~Escribe la descripción del reto</target>
+        <target>~Escriu la descripció del repte</target>
       </trans-unit>
       <trans-unit id="H1p97J6" resname="Please write the title, description and solution of all the trials.">
         <source>Please write the title, description and solution of all the trials.</source>
-        <target>~Escribe el título, la descripción y la solución de todas las pruebas</target>
+        <target>~Escriu el títol, la descripció i la solució de totes les proves</target>
       </trans-unit>
       <trans-unit id="PvsVjQU" resname="You must provide a definition, an image, and/or an audio for the word">
         <source>You must provide a definition, an image, and/or an audio for the word</source>
@@ -11655,7 +11655,7 @@
       </trans-unit>
       <trans-unit id="Pf0uSOu" resname="The score can't be saved because this page is not part of a SCORM package">
         <source>The score can't be saved because this page is not part of a SCORM package</source>
-        <target>~La puntuación no se puede guardar porque esta página no forma parte de un paquete SCORM</target>
+        <target>~La puntuació no es pot desar perquè aquesta pàgina no forma part d'un paquet SCORM</target>
       </trans-unit>
       <trans-unit id="nMiyKXf" resname="You must specify a number of rows and columns between three and five">
         <source>You must specify a number of rows and columns between three and five</source>
@@ -11671,7 +11671,7 @@
       </trans-unit>
       <trans-unit id="xnR2kT7" resname="Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.">
         <source>Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.</source>
-        <target>~¿Seguro que quieres continuar sin incluir una descripción de la imagen? Sin ella, la imagen puede no ser accesible para algunos usuarios.</target>
+        <target>~Estàs segur que vols continuar sense incloure una descripció de la imatge? Sense ella, la imatge pot no ser accessible per a alguns usuaris.</target>
       </trans-unit>
       <trans-unit id="kGuPuRG" resname="You must select an image and text for this card">
         <source>You must select an image and text for this card</source>
@@ -11687,7 +11687,7 @@
       </trans-unit>
       <trans-unit id="UPkE2ow" resname="Type the right URL of a Youtube video">
         <source>Type the right URL of a Youtube video</source>
-        <target>~Escribe una URL de YouTube correcta</target>
+        <target>~Escriu una URL de YouTube correcta</target>
       </trans-unit>
       <trans-unit id="ncD83dy" resname="The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts">
         <source>The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts</source>
@@ -11891,7 +11891,7 @@
       </trans-unit>
       <trans-unit id="88.Te5l" resname="This is the message that the users with no JavaScript will see:">
         <source>This is the message that the users with no JavaScript will see:</source>
-        <target>~Este es el mensaje que verán los usuarios sin JavaScript:</target>
+        <target>~Aquest és el missatge que veuran els usuaris sense JavaScript:</target>
       </trans-unit>
       <trans-unit id="8kQHtBn" resname="You can change it at any time.">
         <source>You can change it at any time.</source>
@@ -11899,27 +11899,27 @@
       </trans-unit>
       <trans-unit id="pg8t9tx" resname="Write the list of letters and/or numbers to choose from.">
         <source>Write the list of letters and/or numbers to choose from.</source>
-        <target>~Escribe la lista de letras y/o números de los que se podrá elegir</target>
+        <target>~Escriu la llista de lletres i/o números dels quals es podrà triar</target>
       </trans-unit>
       <trans-unit id="kYHzMOL" resname="You may include capital letters or they can be automatically included.">
         <source>You may include capital letters or they can be automatically included.</source>
-        <target>~Puedes incluir letras mayúsculas o hacer que se incluyan automáticamente</target>
+        <target>~Pots incloure lletres majúscules o fer que s'incloguen automàticament</target>
       </trans-unit>
       <trans-unit id="80nggiY" resname="Choose if you want the game to be case sensitive.">
         <source>Choose if you want the game to be case sensitive.</source>
-        <target>~Elige si quieres que el juego distinga entre mayúsculas y minúsculas</target>
+        <target>~Tria si vols que el joc distinga entre majúscules i minúscules</target>
       </trans-unit>
       <trans-unit id="w3urI7T" resname="Add at least one word to guess (question or definition + word).">
         <source>Add at least one word to guess (question or definition + word).</source>
-        <target>~Añade al menos una palabra para adivinar (pregunta o definición + palabra)</target>
+        <target>~Afegeix com a mínim una paraula per a endevinar (pregunta o definició + paraula)</target>
       </trans-unit>
       <trans-unit id="BHbGCgY" resname="You may delete the game from the editor itself.">
         <source>You may delete the game from the editor itself.</source>
-        <target>~Puedes eliminar el juego desde el propio editor</target>
+        <target>~Pots eliminar el joc des del mateix editor</target>
       </trans-unit>
       <trans-unit id="s5Q81qh" resname="Don't forget to check the Accessibility tab.">
         <source>Don't forget to check the Accessibility tab.</source>
-        <target>~No olvides revisar la pestaña de Accesibilidad</target>
+        <target>~No oblides revisar la pestanya d'Accessibilitat</target>
       </trans-unit>
       <trans-unit id=".wwVlaA" resname="Automatically include capital letters">
         <source>Automatically include capital letters</source>
