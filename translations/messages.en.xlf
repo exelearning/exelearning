@@ -8841,10 +8841,6 @@
         <source>CEDEC's rubrics</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="4FHSdXr" resname="Rubric use instructions (optional)">
-        <source>Rubric use instructions (optional)</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="WRV28cD" resname="Maximum score:">
         <source>Maximum score:</source>
         <target></target>
@@ -8859,10 +8855,6 @@
       </trans-unit>
       <trans-unit id="EXqwPw9" resname="New row">
         <source>New row</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="GYFdP4l" resname="Rubric information">
-        <source>Rubric information</source>
         <target></target>
       </trans-unit>
       <trans-unit id="vrJHk5H" resname="Show rubric information">
@@ -8931,10 +8923,6 @@
       </trans-unit>
       <trans-unit id="YxuvdUc" resname="Delete the column?">
         <source>Delete the column?</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="1WTTY.L" resname="Please export the content to apply the rubric.">
-        <source>Please export the content to apply the rubric.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="0fyNG8V" resname="Add at least 3 elements.">
@@ -14163,6 +14151,90 @@
       </trans-unit>
       <trans-unit id="i7odfbn" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
         <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mrlo6kg" resname="You can only add one Rubric iDevice per page.">
+        <source>You can only add one Rubric iDevice per page.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gbvo08g" resname="CSV import/export">
+        <source>CSV import/export</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="21a5dku" resname="You can import rubric data from CSV files.">
+        <source>You can import rubric data from CSV files.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="aegh964" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
+        <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ldxaqg7" resname="Export CSV">
+        <source>Export CSV</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r6z239p" resname="Only CSV files are allowed.">
+        <source>Only CSV files are allowed.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ldmyo0z" resname="Could not read the selected CSV file.">
+        <source>Could not read the selected CSV file.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cl1h7u3" resname="Invalid CSV format.">
+        <source>Invalid CSV format.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2wtwbdp" resname="CSV imported successfully.">
+        <source>CSV imported successfully.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="oz0j0cx" resname="There is no rubric to export.">
+        <source>There is no rubric to export.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mpr6ggn" resname="Please provide CSV content.">
+        <source>Please provide CSV content.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="eh5k1ry" resname="The CSV must include a header row and at least one data row.">
+        <source>The CSV must include a header row and at least one data row.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3b6vbco" resname="The CSV must include at least one score column.">
+        <source>The CSV must include at least one score column.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d2g4ezn" resname="No rubric rows could be imported from the CSV.">
+        <source>No rubric rows could be imported from the CSV.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ll6lr9z" resname="Assessment criteria">
+        <source>Assessment criteria</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fprsu7z" resname="Performance level">
+        <source>Performance level</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7wlhct6" resname="There are unsaved changes in this row. Close and lose them?">
+        <source>There are unsaved changes in this row. Close and lose them?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3xqhxgk" resname="First row">
+        <source>First row</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0y29xjx" resname="There are unsaved changes in this column. Close and lose them?">
+        <source>There are unsaved changes in this column. Close and lose them?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5vqy7e6" resname="Complete the following rubric">
+        <source>Complete the following rubric</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ucz1uk3" resname="Imported rubric">
+        <source>Imported rubric</source>
         <target></target>
       </trans-unit>
     </body>

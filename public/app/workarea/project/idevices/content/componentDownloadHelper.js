@@ -2,32 +2,22 @@ const rememberedComponentKeys = new Set();
 const STORAGE_PREFIX = '__exe_component_download:';
 
 /**
- * Convert a Blob to base64 string.
- * Used for Electron downloads where blob: URLs cannot be streamed via Node.js HTTP.
- * @param {Blob} blob - The blob to convert
- * @returns {Promise<string>} Base64 encoded string
- */
-async function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const dataUrl = reader.result;
-            // Extract base64 part after "data:...;base64,"
-            const base64 = dataUrl.split(',')[1];
-            resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-}
-
-/**
  * Check if a URL is a blob: URL that needs special handling in Electron.
  * @param {string} url - The URL to check
  * @returns {boolean} True if it's a blob: URL
  */
 function isBlobUrl(url) {
     return typeof url === 'string' && url.startsWith('blob:');
+}
+
+// The Electron main process (normalizeBinaryPayload in app/main.js) accepts
+// Uint8Array / ArrayBuffer / Array as the first positional arg. When the
+// handler resolves with { saved: false, ... } the helper must treat that as
+// a failure so the browser fallback can fire.
+function isElectronSaveSuccessful(result) {
+    if (result === true) return true;
+    if (result && typeof result === 'object') return result.saved === true;
+    return false;
 }
 
 function isKeyRemembered(storageKey) {
@@ -99,23 +89,25 @@ async function runElectronDownload(
     if (!electronAPI) return false;
 
     try {
-        // Handle blob: URLs specially - they cannot be streamed via Node.js HTTP
-        // Instead, fetch the blob, convert to base64, and use buffer APIs
+        // Handle blob: URLs specially - they cannot be streamed via Node.js HTTP.
+        // Pass a Uint8Array to the buffer APIs; the main process expects binary
+        // (Uint8Array/ArrayBuffer/Array), not a base64 string — see #1659.
         if (isBlobUrl(url)) {
             const bufferMode = mode === 'save' ? 'saveBuffer' : 'saveBufferAs';
             if (typeof electronAPI[bufferMode] !== 'function') return false;
 
-            // Fetch blob from URL and convert to base64
             const response = await fetch(url);
-            const blob = await response.blob();
-            const base64 = await blobToBase64(blob);
+            const arrayBuffer = await response.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
 
-            return await electronAPI[bufferMode](base64, storageKey, fileName);
+            const result = await electronAPI[bufferMode](bytes, storageKey, fileName);
+            return isElectronSaveSuccessful(result);
         }
 
         // Standard URL handling via streaming
         if (typeof electronAPI[mode] !== 'function') return false;
-        return await electronAPI[mode](url, storageKey, fileName);
+        const result = await electronAPI[mode](url, storageKey, fileName);
+        return isElectronSaveSuccessful(result);
     } catch (_e) {
         return false;
     }

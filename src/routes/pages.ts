@@ -655,7 +655,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             const basePath = getBasePath();
                             let redirectUrl = `${basePath}/workarea?project=${newSessionId}`;
                             if (jwtTokenParam) {
-                                redirectUrl += `&jwt_token=${encodeURIComponent(jwtTokenParam)}`;
+                                redirectUrl += `&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`;
                             }
                             return Response.redirect(redirectUrl, 302);
                         } catch (error) {
@@ -765,11 +765,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 // If no project UUID, create a new project and redirect
                 if (!projectUuid) {
                     // Helper function to build redirect URL with preserved jwt_token
+                    // Helper function to build redirect URL with preserved jwt_token
                     const buildRedirectUrl = (sessionId: string): string => {
                         const basePath = getBasePath();
                         let url = `${basePath}/workarea?project=${sessionId}`;
                         if (jwtTokenParam) {
-                            url += `&jwt_token=${encodeURIComponent(jwtTokenParam)}`;
+                            url += `&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`;
                         }
                         return url;
                     };

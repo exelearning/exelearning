@@ -6904,4 +6904,406 @@ describe('YjsProjectBridge', () => {
       expect(result[0].pageId).toBe('p2');
     });
   });
+
+  describe('generateScreenshotFromFirstPage', () => {
+    let mockMetadata;
+
+    beforeEach(() => {
+      mockMetadata = {
+        get: mock(() => undefined),
+        set: mock(() => undefined),
+        observe: mock(() => undefined),
+        unobserve: mock(() => undefined),
+      };
+    });
+
+    it('returns early when documentManager is null', async () => {
+      bridge.documentManager = null;
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      // No error thrown; the method exited early
+      expect(true).toBe(true);
+    });
+
+    it('returns early when custom screenshot already exists in metadata', async () => {
+      const getMetadataMock = mock(() => ({
+        ...mockMetadata,
+        get: mock(() => 'data:image/png;base64,abc'),
+      }));
+      bridge.documentManager = {
+        getMetadata: getMetadataMock,
+      };
+      window.SharedExporters = { generatePreviewForSW: mock(async () => ({ success: true, files: {} })) };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(window.SharedExporters.generatePreviewForSW).not.toHaveBeenCalled();
+    });
+
+    it('returns early when SharedExporters.generatePreviewForSW is not available', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      delete window.SharedExporters;
+
+      // Should not throw
+      await bridge.generateScreenshotFromFirstPage();
+
+      // metadata.set should never be called
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('returns early when window.SharedExporters is undefined', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = undefined;
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('returns early when generatePreviewForSW returns success false', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({ success: false, error: 'preview failed' })),
+      };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('concurrency guard prevents double execution', async () => {
+      const generatePreviewForSW = mock(async () => ({ success: false }));
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = { generatePreviewForSW };
+
+      // Start two concurrent calls; the guard should make the second a no-op
+      const [, second] = await Promise.all([
+        bridge.generateScreenshotFromFirstPage(),
+        bridge.generateScreenshotFromFirstPage(),
+      ]);
+
+      // generatePreviewForSW should have been called at most once
+      expect(generatePreviewForSW).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns early when index.html is missing from preview files', async () => {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'other.html': encoder.encode('<html></html>').buffer },
+        })),
+      };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('does not call metadata.set when _captureHtmlAsScreenshot returns null', async () => {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'index.html': encoder.encode('<html><body></body></html>').buffer },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async () => null);
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('calls metadata.set with data URL when generation succeeds', async () => {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'index.html': encoder.encode('<html><body>content</body></html>').buffer },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async () => 'data:image/png;base64,fakeScreenshot');
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', 'data:image/png;base64,fakeScreenshot');
+    });
+
+    it('inlines CSS link tags as style tags in the HTML passed to capture', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><head><link rel="stylesheet" href="theme/style.css"></head><body></body></html>').buffer,
+            'theme/style.css': encoder.encode('body { color: red; }').buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).toContain('<style>');
+      expect(capturedHtml).not.toContain('<link rel="stylesheet"');
+    });
+
+    it('removes script tags from the HTML passed to capture', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><head></head><body><script>alert(1)<\/script></body></html>').buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).not.toContain('<script');
+    });
+
+    it('injects screenshot-cleanup CSS to hide UI chrome', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><head></head><body></body></html>').buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).toContain('screenshot-cleanup');
+      expect(capturedHtml).toContain('#siteNav');
+    });
+
+    it('converts img src attributes to data URIs', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><body><img src="img/test.png"></body></html>').buffer,
+            'img/test.png': new Uint8Array([137, 80, 78, 71]).buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+      // Override _uint8ArrayToBase64 to return a predictable value
+      bridge._uint8ArrayToBase64 = mock(() => 'AAAA');
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).toContain('data:image/png;base64,');
+      expect(capturedHtml).not.toContain('src="img/test.png"');
+    });
+
+    it('catches and suppresses errors thrown by generatePreviewForSW', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => { throw new Error('boom'); }),
+      };
+
+      // Should not throw
+      await expect(bridge.generateScreenshotFromFirstPage()).resolves.toBeUndefined();
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('resets _screenshotGenerating flag to false after error', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => { throw new Error('failure'); }),
+      };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(bridge._screenshotGenerating).toBe(false);
+    });
+  });
+
+  describe('_captureHtmlAsScreenshot', () => {
+    let mockBody;
+    let originalBody;
+
+    beforeEach(() => {
+      // Ensure html2canvas is not set by default for each test
+      delete window.html2canvas;
+
+      // jsdom may not have document.body; provide a minimal mock
+      mockBody = {
+        appendChild: mock(() => {}),
+        removeChild: mock(() => {}),
+      };
+      originalBody = Object.getOwnPropertyDescriptor(document, 'body');
+      Object.defineProperty(document, 'body', {
+        get: () => mockBody,
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      delete window.html2canvas;
+      if (originalBody) {
+        Object.defineProperty(document, 'body', originalBody);
+      }
+    });
+
+    it('returns null when html2canvas is not available and script loading fails', async () => {
+      // Patch the bridge's internal script-load path: intercept createElement('script')
+      // to immediately invoke onerror, simulating a failed load.
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        if (tag === 'script') {
+          const el = originalCreateElement(tag);
+          // Override appendChild on document.head to fire onerror synchronously
+          const origAppend = document.head ? document.head.appendChild.bind(document.head) : null;
+          if (document.head) {
+            document.head.appendChild = (child) => {
+              if (child === el) {
+                // Restore and fire onerror
+                if (origAppend) document.head.appendChild = origAppend;
+                setTimeout(() => child.onerror && child.onerror(new Error('load failed')), 0);
+                return child;
+              }
+              return origAppend ? origAppend(child) : child;
+            };
+          }
+          return el;
+        }
+        return originalCreateElement(tag);
+      };
+
+      const result = await bridge._captureHtmlAsScreenshot('<html><body>test</body></html>');
+
+      expect(result).toBeNull();
+      document.createElement = originalCreateElement;
+    });
+
+    it('returns null when html2canvas is available but iframe has no contentDocument', async () => {
+      window.html2canvas = mock(async () => ({}));
+
+      // Patch createElement to return an iframe with no contentDocument
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        if (tag === 'iframe') {
+          const iframe = originalCreateElement('iframe');
+          Object.defineProperty(iframe, 'contentDocument', { get: () => null, configurable: true });
+          Object.defineProperty(iframe, 'contentWindow', { get: () => null, configurable: true });
+          return iframe;
+        }
+        return originalCreateElement(tag);
+      };
+
+      const result = await bridge._captureHtmlAsScreenshot('<html><body>test</body></html>');
+
+      expect(result).toBeNull();
+      document.createElement = originalCreateElement;
+    });
+
+    it('calls html2canvas and returns a data URL when html2canvas is available', async () => {
+      const mockCtx = {
+        fillStyle: '',
+        fillRect: mock(() => {}),
+        drawImage: mock(() => {}),
+      };
+      const mockCapture = {
+        width: 800,
+        height: 600,
+        toDataURL: mock(() => 'irrelevant'),
+        getContext: mock(() => mockCtx),
+      };
+      const mockResized = {
+        width: 1280,
+        height: 720,
+        toDataURL: mock(() => 'data:image/png;base64,result'),
+        getContext: mock(() => mockCtx),
+      };
+      window.html2canvas = mock(async () => mockCapture);
+
+      // Patch createElement so canvas returns our mock with getContext
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        if (tag === 'canvas') return mockResized;
+        if (tag === 'iframe') {
+          // Return an iframe whose contentDocument supports open/write/close
+          const mockIframeDoc = {
+            open: mock(() => {}),
+            write: mock(() => {}),
+            close: mock(() => {}),
+            readyState: 'complete',
+            body: { appendChild: mock(() => {}) },
+          };
+          return {
+            style: { cssText: '' },
+            contentDocument: mockIframeDoc,
+            contentWindow: { document: mockIframeDoc },
+          };
+        }
+        return originalCreateElement(tag);
+      };
+
+      const result = await bridge._captureHtmlAsScreenshot('<html><body>test</body></html>');
+
+      expect(window.html2canvas).toHaveBeenCalled();
+      expect(result).toBe('data:image/png;base64,result');
+      document.createElement = originalCreateElement;
+    });
+  });
 });

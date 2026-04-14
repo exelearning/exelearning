@@ -1283,6 +1283,13 @@ class SaveManager {
         this.bridge.isNewProject = false;
       }
 
+      // Auto-generate screenshot from first page after save (non-blocking)
+      if (this.bridge?.generateScreenshotFromFirstPage) {
+        this.bridge.generateScreenshotFromFirstPage().catch((err) => {
+          console.warn('[SaveManager] Post-save screenshot generation failed:', err);
+        });
+      }
+
       return { success: true, message: _('Project saved successfully') };
     } catch (error) {
       console.error('[SaveManager] Save failed:', error);

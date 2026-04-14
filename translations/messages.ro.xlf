@@ -8837,10 +8837,6 @@
         <source>CEDEC's rubrics</source>
         <target>Baremul CEDEC</target>
       </trans-unit>
-      <trans-unit id="4FHSdXr" resname="Rubric use instructions (optional)">
-        <source>Rubric use instructions (optional)</source>
-        <target>Instrucțiuni de utilizare a baremului (opțional)</target>
-      </trans-unit>
       <trans-unit id="WRV28cD" resname="Maximum score:">
         <source>Maximum score:</source>
         <target>Scor maxim:</target>
@@ -8856,10 +8852,6 @@
       <trans-unit id="EXqwPw9" resname="New row">
         <source>New row</source>
         <target>Rând nou</target>
-      </trans-unit>
-      <trans-unit id="GYFdP4l" resname="Rubric information">
-        <source>Rubric information</source>
-        <target>Informații despre barem</target>
       </trans-unit>
       <trans-unit id="vrJHk5H" resname="Show rubric information">
         <source>Show rubric information</source>
@@ -8928,10 +8920,6 @@
       <trans-unit id="YxuvdUc" resname="Delete the column?">
         <source>Delete the column?</source>
         <target>Ștergeți coloana?</target>
-      </trans-unit>
-      <trans-unit id="1WTTY.L" resname="Please export the content to apply the rubric.">
-        <source>Please export the content to apply the rubric.</source>
-        <target>Vă rugăm să exportați conținutul pentru a aplica baremul.</target>
       </trans-unit>
       <trans-unit id="0fyNG8V" resname="Add at least 3 elements.">
         <source>Add at least 3 elements.</source>
@@ -14164,6 +14152,90 @@
       <trans-unit id="yt9h5lj" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
         <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
         <target>~Nu a putut fi verificat: conținutul HTTP este blocat pe paginile HTTPS.</target>
+      </trans-unit>
+      <trans-unit id="906przj" resname="You can only add one Rubric iDevice per page.">
+        <source>You can only add one Rubric iDevice per page.</source>
+        <target>~Puteți adăuga un singur iDevice Rubrică pe pagină.</target>
+      </trans-unit>
+      <trans-unit id="4aak4d7" resname="CSV import/export">
+        <source>CSV import/export</source>
+        <target>~Import/export CSV</target>
+      </trans-unit>
+      <trans-unit id="cwlhkfp" resname="You can import rubric data from CSV files.">
+        <source>You can import rubric data from CSV files.</source>
+        <target>~Puteți importa datele rubricii din fișiere CSV.</target>
+      </trans-unit>
+      <trans-unit id="3kvm5o0" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
+        <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
+        <target>~Puteți exporta rubrica în format CSV pentru a o integra în alte activități compatibile.</target>
+      </trans-unit>
+      <trans-unit id="yvyas25" resname="Export CSV">
+        <source>Export CSV</source>
+        <target>~Export CSV</target>
+      </trans-unit>
+      <trans-unit id="yckt8r9" resname="Only CSV files are allowed.">
+        <source>Only CSV files are allowed.</source>
+        <target>~Sunt permise numai fișiere CSV.</target>
+      </trans-unit>
+      <trans-unit id="beuo2pz" resname="Could not read the selected CSV file.">
+        <source>Could not read the selected CSV file.</source>
+        <target>~Nu s-a putut citi fișierul CSV selectat.</target>
+      </trans-unit>
+      <trans-unit id="utk2y47" resname="Invalid CSV format.">
+        <source>Invalid CSV format.</source>
+        <target>~Format CSV invalid.</target>
+      </trans-unit>
+      <trans-unit id="nbd43an" resname="CSV imported successfully.">
+        <source>CSV imported successfully.</source>
+        <target>~CSV importat cu succes.</target>
+      </trans-unit>
+      <trans-unit id="7sg7w4k" resname="There is no rubric to export.">
+        <source>There is no rubric to export.</source>
+        <target>~Nu există nicio rubrică de exportat.</target>
+      </trans-unit>
+      <trans-unit id="7na9o7v" resname="Please provide CSV content.">
+        <source>Please provide CSV content.</source>
+        <target>~Furnizați conținut CSV.</target>
+      </trans-unit>
+      <trans-unit id="qd240vi" resname="The CSV must include a header row and at least one data row.">
+        <source>The CSV must include a header row and at least one data row.</source>
+        <target>~CSV-ul trebuie să includă un rând de antet și cel puțin un rând de date.</target>
+      </trans-unit>
+      <trans-unit id="5wtymim" resname="The CSV must include at least one score column.">
+        <source>The CSV must include at least one score column.</source>
+        <target>~CSV-ul trebuie să includă cel puțin o coloană de punctaj.</target>
+      </trans-unit>
+      <trans-unit id="pockhki" resname="No rubric rows could be imported from the CSV.">
+        <source>No rubric rows could be imported from the CSV.</source>
+        <target>~Nu s-a putut importa niciun rând de rubrică din CSV.</target>
+      </trans-unit>
+      <trans-unit id="6gfvrum" resname="Assessment criteria">
+        <source>Assessment criteria</source>
+        <target>~Criterii de evaluare</target>
+      </trans-unit>
+      <trans-unit id="r4zyq4b" resname="Performance level">
+        <source>Performance level</source>
+        <target>~Nivel de performanță</target>
+      </trans-unit>
+      <trans-unit id="1c26q6h" resname="There are unsaved changes in this row. Close and lose them?">
+        <source>There are unsaved changes in this row. Close and lose them?</source>
+        <target>~Există modificări nesalvate în acest rând. Închideți și pierdeți-le?</target>
+      </trans-unit>
+      <trans-unit id="47bh6yh" resname="First row">
+        <source>First row</source>
+        <target>~Primul rând</target>
+      </trans-unit>
+      <trans-unit id="fjg780q" resname="There are unsaved changes in this column. Close and lose them?">
+        <source>There are unsaved changes in this column. Close and lose them?</source>
+        <target>~Există modificări nesalvate în această coloană. Închideți și pierdeți-le?</target>
+      </trans-unit>
+      <trans-unit id="ei1rfhr" resname="Complete the following rubric">
+        <source>Complete the following rubric</source>
+        <target>~Completați următoarea rubrică</target>
+      </trans-unit>
+      <trans-unit id="m94phqg" resname="Imported rubric">
+        <source>Imported rubric</source>
+        <target>~Rubrică importată</target>
       </trans-unit>
     </body>
   </file>

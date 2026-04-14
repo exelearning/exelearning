@@ -754,6 +754,75 @@ describe('ProjectManager', () => {
         });
     });
 
+    describe('checkAndImportElp', () => {
+        let originalLocation;
+        
+        beforeEach(() => {
+            global.fetch = vi.fn();
+            projectManager.importFromElpxViaYjs = vi.fn().mockResolvedValue('stats');
+            projectManager._yjsBridge = {
+                documentManager: {
+                    saveToServer: vi.fn().mockResolvedValue()
+                }
+            };
+            mockApp.modals.loader = {
+                show: vi.fn(),
+                hide: vi.fn(),
+            };
+            vi.stubGlobal('history', { replaceState: vi.fn() });
+        });
+        
+        afterEach(() => {
+            vi.unstubAllGlobals();
+        });
+
+        it('does nothing if no fetchPlatformElp param', async () => {
+            vi.stubGlobal('location', { href: 'http://localhost:8080/', search: '' });
+            await projectManager.checkAndImportElp();
+            expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('openPlatformElp'), expect.anything());
+        });
+
+        it('fetches platform ELP when jwt_token and fetchPlatformElp are present', async () => {
+            vi.stubGlobal('location', { 
+                href: 'http://localhost:8080/?jwt_token=12345&fetchPlatformElp=1',
+                search: '?jwt_token=12345&fetchPlatformElp=1' 
+            });
+            global.fetch.mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ responseMessage: 'OK', elpFile: btoa('test data'), elpFileName: 'test.elpx' })
+            });
+
+            await projectManager.checkAndImportElp();
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/api/platform/integration/openPlatformElp'),
+                expect.objectContaining({ method: 'POST' })
+            );
+            expect(projectManager.importFromElpxViaYjs).toHaveBeenCalled();
+            expect(projectManager._yjsBridge.documentManager.saveToServer).toHaveBeenCalled();
+            expect(mockApp.modals.loader.show).toHaveBeenCalled();
+        });
+
+        it('handles fetch platform ELP failure gracefully', async () => {
+            vi.stubGlobal('location', { 
+                href: 'http://localhost:8080/?jwt_token=12345&fetchPlatformElp=1',
+                search: '?jwt_token=12345&fetchPlatformElp=1' 
+            });
+            global.fetch.mockResolvedValue({
+                ok: false,
+                status: 500
+            });
+
+            await projectManager.checkAndImportElp();
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/api/platform/integration/openPlatformElp'),
+                expect.objectContaining({ method: 'POST' })
+            );
+            expect(projectManager.importFromElpxViaYjs).not.toHaveBeenCalled();
+        });
+    });
+
     describe('resetProject', () => {
         it('sets _forceStructureImport flag', () => {
             projectManager.resetProject();
