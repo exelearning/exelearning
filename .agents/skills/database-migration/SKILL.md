@@ -1,6 +1,6 @@
 ---
 name: database-migration
-description: Changing database schema with Kysely migrations across SQLite, PostgreSQL, and MariaDB.
+description: Changing database schema with Kysely migrations across SQLite, PostgreSQL, and MariaDB. Every migration must ship with a colocated `*.spec.ts` exercising `up`/`down` on every supported dialect, keep patch coverage ≥ 90% on changed lines, update affected query tests, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
 ---
 
 # Skill: Database Migration
