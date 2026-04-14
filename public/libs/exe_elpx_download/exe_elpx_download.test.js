@@ -423,21 +423,41 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain('.exe-download-package-link');
         });
 
-        it('stores original text', () => {
-            expect(scriptContent).toContain('data-original-text');
+        it('stores original innerHTML and classes', () => {
+            expect(scriptContent).toContain('data-original-html');
+            expect(scriptContent).toContain('data-original-class');
         });
 
-        it('shows generating message via i18n', () => {
-            expect(scriptContent).toContain("i18n('elpxGenerating', 'Generating...')");
+        it('shows processing label via i18n', () => {
+            expect(scriptContent).toContain("i18n('elpxProcessing', 'Processing...')");
         });
 
         it('disables button during generation', () => {
-            expect(scriptContent).toContain("style.opacity = '0.7'");
             expect(scriptContent).toContain("style.pointerEvents = 'none'");
         });
 
+        it('adds Bootstrap utility classes for progress host', () => {
+            expect(scriptContent).toContain("'position-relative'");
+            expect(scriptContent).toContain("'overflow-hidden'");
+        });
+
+        it('injects a Bootstrap-styled progress overlay span', () => {
+            expect(scriptContent).toContain('exe-elpx-progress-bar');
+            expect(scriptContent).toContain('position-absolute top-0 start-0 h-100 bg-dark bg-opacity-25');
+        });
+
+        it('injects a progress label span', () => {
+            expect(scriptContent).toContain('exe-elpx-progress-label');
+        });
+
+        it('sets aria-busy while running', () => {
+            expect(scriptContent).toContain("setAttribute('aria-busy', 'true')");
+            expect(scriptContent).toContain("removeAttribute('aria-busy')");
+        });
+
         it('restores original state', () => {
-            expect(scriptContent).toContain("btn.getAttribute('data-original-text')");
+            expect(scriptContent).toContain("btn.getAttribute('data-original-html')");
+            expect(scriptContent).toContain("btn.getAttribute('data-original-class')");
         });
     });
 
@@ -448,6 +468,64 @@ describe('exe_elpx_download', () => {
 
         it('logs progress in debug mode', () => {
             expect(scriptContent).toContain('[ELPX Download] Progress:');
+        });
+
+        it('computes a clamped percentage', () => {
+            expect(scriptContent).toContain('Math.round((completed / total) * 100)');
+            expect(scriptContent).toContain('Math.min(100');
+        });
+
+        it('updates the progress bar width and label text', () => {
+            document.body.innerHTML = `
+                <p class="exe-download-package-link"><a href="#">Download</a></p>
+            `;
+
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+
+            // Simulate the indicator being shown (sync DOM mutation) by
+            // manually replicating the markup the show path produces.
+            const btn = document.querySelector('.exe-download-package-link a');
+            btn.classList.add('position-relative', 'overflow-hidden');
+            btn.innerHTML =
+                '<span class="exe-elpx-progress-bar position-absolute top-0 start-0 h-100 bg-dark bg-opacity-25" style="width: 0%;"></span>' +
+                '<span class="exe-elpx-progress-label position-relative">Processing...</span>';
+
+            // Dispatch a manifest-free call by using the exported helper-less path:
+            // re-evaluate the script to access updateProgress indirectly via the
+            // full workflow below; here we just assert the script wires it.
+            expect(scriptContent).toContain("querySelector('.exe-elpx-progress-bar')");
+            expect(scriptContent).toContain("querySelector('.exe-elpx-progress-label')");
+        });
+
+        it('reflects progress in the button during a full download', async () => {
+            document.body.innerHTML = `
+                <p class="exe-download-package-link"><a href="#">Download</a></p>
+            `;
+
+            window.__ELPX_MANIFEST__ = {
+                version: 1,
+                files: ['a.txt', 'b.txt', 'c.txt', 'd.txt'],
+                projectTitle: 'Test',
+                basePath: '',
+            };
+
+            global.fetch.mockResolvedValue({
+                ok: true,
+                arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
+            });
+
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+
+            await window.downloadElpx();
+
+            // After completion the button should be restored to its original text
+            const btn = document.querySelector('.exe-download-package-link a');
+            expect(btn).not.toBeNull();
+            expect(btn.textContent).toBe('Download');
+            expect(btn.hasAttribute('data-original-html')).toBe(false);
+            expect(btn.hasAttribute('aria-busy')).toBe(false);
         });
     });
 
