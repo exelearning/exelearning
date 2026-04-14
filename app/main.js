@@ -233,6 +233,8 @@ const {
     proposeSavePath: proposeSavePathPure,
     resolveEffectiveSaveName,
     splitSavePath,
+    pickStoredSaveInfo,
+    clearSavedNameCache,
 } = require('./save-utils');
 
 function proposeSavePath(lastDir, effectiveName = null) {
@@ -329,16 +331,26 @@ function getCurrentFileSaveInfo() {
 
 function setCurrentFileSaveInfo(dirPath, fileName) {
     const s = readSettings();
+    // Drop any stale per-project name cache before installing the new global
+    // slot — otherwise a leftover `lastSaveName[<uuid>]` from a previous file
+    // would still take priority and the dialog would propose the wrong name
+    // after File → Open (save A → open B → dialog must show B, not A). See
+    // PR #1670 review (ignaciogros) and the regression tests in save-utils.spec.ts.
+    clearSavedNameCache(s);
     s.currentFileSave = { dir: dirPath || null, name: fileName || null };
     writeSettings(s);
 }
 
 function clearCurrentFileSaveInfo() {
     const s = readSettings();
+    // Same rationale as setCurrentFileSaveInfo: "new project" must forget the
+    // name on both slots, otherwise the per-project cache would resurface it
+    // after the full page reload that follows File → New.
+    clearSavedNameCache(s);
     if (s.currentFileSave) {
         delete s.currentFileSave;
-        writeSettings(s);
     }
+    writeSettings(s);
 }
 
 // Map of webContents.id -> next projectKey override for the next download
@@ -1353,18 +1365,20 @@ async function saveUrlWithDialog(e, { downloadUrl, projectKey, suggestedName }) 
         const key = projectKey || 'default';
         const perKey = getLastSaveInfo(key);
         const globalInfo = getCurrentFileSaveInfo();
-        // Per-key info wins when present; otherwise fall back to the global
-        // "current file" slot so the dialog still pre-fills after the full
-        // page reload that follows an Open/New (which changes projectKey).
-        const lastDir = perKey.dir || globalInfo.dir;
-        const storedName = perKey.name || globalInfo.name;
+        // Global slot wins over the per-project cache: it tracks the file
+        // currently associated with the window and is what setSavedPath /
+        // clearSavedPath manipulate. See PR #1670 review regression.
+        const { dir: lastDir, name: storedName } = pickStoredSaveInfo(perKey, globalInfo);
 
         const targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
         if (!targetPath) return false;
         const savedDir = path.dirname(targetPath);
         const savedName = path.basename(targetPath);
-        setLastSaveInfo(key, savedDir, savedName);
+        // Global slot first (it wipes the stale per-key name cache), then
+        // repopulate the per-key slot for the just-saved project so repeated
+        // saves of the same project keep pre-filling the chosen name.
         setCurrentFileSaveInfo(savedDir, savedName);
+        setLastSaveInfo(key, savedDir, savedName);
 
         return await streamToFile(downloadUrl, targetPath, wc);
     } catch (_e) {
@@ -1507,8 +1521,9 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
         const key = projectKey || 'default';
         const perKey = getLastSaveInfo(key);
         const globalInfo = getCurrentFileSaveInfo();
-        const lastDir = perKey.dir || globalInfo.dir;
-        const storedName = perKey.name || globalInfo.name;
+        // Global slot has priority; see the twin handler above and PR #1670
+        // review for the full rationale and regression scenarios.
+        const { dir: lastDir, name: storedName } = pickStoredSaveInfo(perKey, globalInfo);
 
         targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
         afterPromptAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
@@ -1524,8 +1539,12 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
         {
             const savedDir = path.dirname(targetPath);
             const savedName = path.basename(targetPath);
-            setLastSaveInfo(key, savedDir, savedName);
+            // Global slot first: it wipes the stale per-key name cache that
+            // could still shadow the just-saved name. Then repopulate the
+            // per-key slot so repeated saves of the same project keep
+            // pre-filling the chosen name.
             setCurrentFileSaveInfo(savedDir, savedName);
+            setLastSaveInfo(key, savedDir, savedName);
         }
 
         const buffer = normalizeBinaryPayload(bufferData, base64Data);

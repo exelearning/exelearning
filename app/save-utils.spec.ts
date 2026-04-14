@@ -7,6 +7,8 @@ const {
     getDialogFilterForExt,
     resolveEffectiveSaveName,
     splitSavePath,
+    pickStoredSaveInfo,
+    clearSavedNameCache,
     DEFAULT_EXTENSION,
 } = require('./save-utils');
 
@@ -189,6 +191,174 @@ describe('save-utils', () => {
             expect(openedB).not.toBeNull();
             // storedName after opening B is "B.elpx", not "A.elpx".
             expect(resolveEffectiveSaveName('Untitled.elpx', openedB.name)).toBe('B.elpx');
+        });
+    });
+
+    describe('pickStoredSaveInfo — regression PR #1670 (2nd review)', () => {
+        it('global slot wins over the per-project cache when it has a name', () => {
+            // Exact bug reported by @ignaciogros: save A, then open B — the
+            // dialog must propose B, even though perKey still contains A.
+            const perKey = { dir: '/docs', name: 'A.elpx' };
+            const globalInfo = { dir: '/elsewhere', name: 'B.elpx' };
+            expect(pickStoredSaveInfo(perKey, globalInfo)).toEqual({
+                dir: '/elsewhere',
+                name: 'B.elpx',
+            });
+        });
+
+        it('falls back to perKey when the global slot is empty', () => {
+            // Repeated saves of the same project must still prefill the
+            // previously chosen name when nothing else touched the global slot.
+            const perKey = { dir: '/docs', name: 'A.elpx' };
+            const globalInfo = { dir: null, name: null };
+            expect(pickStoredSaveInfo(perKey, globalInfo)).toEqual({
+                dir: '/docs',
+                name: 'A.elpx',
+            });
+        });
+
+        it('returns nulls when both slots are empty', () => {
+            expect(pickStoredSaveInfo({ dir: null, name: null }, { dir: null, name: null })).toEqual({
+                dir: null,
+                name: null,
+            });
+            expect(pickStoredSaveInfo(null, null)).toEqual({ dir: null, name: null });
+            expect(pickStoredSaveInfo(undefined, undefined)).toEqual({ dir: null, name: null });
+        });
+
+        it('mixes dir and name from the two slots when only one side is populated', () => {
+            // setSavedPath only seeds the global slot; the per-project cache
+            // may still hold the directory from a previous save. That's fine
+            // — we prefer the global name (fresh) and keep the per-key dir
+            // only when the global slot has none.
+            expect(pickStoredSaveInfo({ dir: '/docs', name: 'A.elpx' }, { dir: null, name: 'B.elpx' })).toEqual({
+                dir: '/docs',
+                name: 'B.elpx',
+            });
+        });
+    });
+
+    describe('clearSavedNameCache — regression PR #1670 (2nd review)', () => {
+        it('wipes the per-project name map in place', () => {
+            const settings = {
+                lastSaveDir: { 'uuid-a': '/docs', 'uuid-b': '/elsewhere' },
+                lastSaveName: { 'uuid-a': 'A.elpx', 'uuid-b': 'B.elpx' },
+                currentFileSave: { dir: '/docs', name: 'A.elpx' },
+            };
+            const ret = clearSavedNameCache(settings);
+            expect(ret).toBe(settings); // mutates in place
+            expect(settings.lastSaveName).toEqual({});
+            // Must NOT touch the directory cache — we still want to remember
+            // where the user last saved things.
+            expect(settings.lastSaveDir).toEqual({ 'uuid-a': '/docs', 'uuid-b': '/elsewhere' });
+            // Must NOT remove the global slot on its own — that's the
+            // caller's responsibility (clearCurrentFileSaveInfo does both).
+            expect(settings.currentFileSave).toEqual({ dir: '/docs', name: 'A.elpx' });
+        });
+
+        it('is a no-op when there is no per-project name cache to clear', () => {
+            const settings = { lastSaveDir: { a: '/x' } } as Record<string, unknown>;
+            expect(() => clearSavedNameCache(settings)).not.toThrow();
+            expect(settings.lastSaveName).toBeUndefined();
+        });
+
+        it('tolerates nullish input', () => {
+            expect(() => clearSavedNameCache(null)).not.toThrow();
+            expect(() => clearSavedNameCache(undefined)).not.toThrow();
+        });
+    });
+
+    describe('Scenario from PR #1670 (2nd review, ignaciogros)', () => {
+        // These scenarios simulate the real Electron flow against the pure
+        // state helpers, so every assertion maps directly to a click in the
+        // desktop app:
+        //
+        //   save A  →  clicks Save, types A.elpx
+        //   save   =  applySave(settings, key, dir, name)   (main.js:save handler)
+        //   open B  →  File > Open, picks B.elpx
+        //   open   =  applySetCurrentFile(settings, dir, name)  (setSavedPath IPC)
+        //   new    →  File > New
+        //   new    =  applyClear(settings)                   (clearSavedPath IPC)
+
+        const applySave = (settings: Record<string, unknown>, key: string, dir: string, name: string) => {
+            // Mirrors the fixed order in main.js: global slot first (wipes the
+            // stale per-key cache), then repopulate the current project's slot.
+            clearSavedNameCache(settings);
+            (settings as { currentFileSave?: unknown }).currentFileSave = { dir, name };
+            const s = settings as {
+                lastSaveDir?: Record<string, string>;
+                lastSaveName?: Record<string, string>;
+            };
+            s.lastSaveDir = s.lastSaveDir || {};
+            s.lastSaveDir[key] = dir;
+            s.lastSaveName = s.lastSaveName || {};
+            s.lastSaveName[key] = name;
+        };
+
+        const applySetCurrentFile = (settings: Record<string, unknown>, dir: string, name: string) => {
+            clearSavedNameCache(settings);
+            (settings as { currentFileSave?: unknown }).currentFileSave = { dir, name };
+        };
+
+        const applyClear = (settings: Record<string, unknown>) => {
+            clearSavedNameCache(settings);
+            delete (settings as { currentFileSave?: unknown }).currentFileSave;
+        };
+
+        const readStored = (settings: Record<string, unknown>, key: string) => {
+            const s = settings as {
+                lastSaveDir?: Record<string, string>;
+                lastSaveName?: Record<string, string>;
+                currentFileSave?: { dir?: string | null; name?: string | null };
+            };
+            return pickStoredSaveInfo(
+                { dir: s.lastSaveDir?.[key] || null, name: s.lastSaveName?.[key] || null },
+                { dir: s.currentFileSave?.dir || null, name: s.currentFileSave?.name || null },
+            );
+        };
+
+        it('save A → open B → Save dialog pre-fills B.elpx, never A.elpx', () => {
+            // The user's exact complaint: "I save a file and then open another
+            // one, and it remembers the name of the first saved file, making
+            // it easy to overwrite it unintentionally."
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'uuid-a', '/docs', 'A.elpx');
+            applySetCurrentFile(settings, '/elsewhere', 'B.elpx');
+            expect(readStored(settings, 'uuid-a').name).toBe('B.elpx');
+            expect(readStored(settings, 'uuid-a').dir).toBe('/elsewhere');
+        });
+
+        it('save documento-sin-titulo-1.elpx → File > New → Save dialog does NOT pre-fill that name', () => {
+            // Ignacio's latest repro: the fallback key 'default' was leaking
+            // the previous file name across `location.reload()`, because
+            // clearCurrentFileSaveInfo only cleared the global slot and left
+            // `lastSaveName['default']` untouched.
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'default', '/docs', 'documento-sin-titulo-1.elpx');
+            // File > New. transitionToProject clears, then location.reload()
+            // re-enters the app with the same 'default' key (no project id yet).
+            applyClear(settings);
+            expect(readStored(settings, 'default').name).toBeNull();
+        });
+
+        it('save A → File > New → save B → File > New → dialog is empty again (no cross-session leak)', () => {
+            // Belt-and-braces: two back-to-back new projects should never
+            // resurrect a name from the first one.
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'default', '/docs', 'A.elpx');
+            applyClear(settings);
+            applySave(settings, 'default', '/docs', 'B.elpx');
+            applyClear(settings);
+            expect(readStored(settings, 'default').name).toBeNull();
+        });
+
+        it('save A → save A again uses A.elpx (no regression on the happy path)', () => {
+            // The whole point of PR #1670 round 1 was that repeated saves of
+            // the same project prefill the chosen name. Make sure the round-2
+            // fix doesn't undo that.
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'uuid-a', '/docs', 'A.elpx');
+            expect(readStored(settings, 'uuid-a').name).toBe('A.elpx');
         });
     });
 });

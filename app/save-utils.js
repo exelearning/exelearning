@@ -87,6 +87,48 @@ function resolveEffectiveSaveName(suggestedName, storedName) {
 }
 
 /**
+ * Pick the { dir, name } that promptSave should use, given the per-project
+ * cache entry and the global "current file" slot.
+ *
+ * Rule (fixes the second round of review on PR #1670 — ignaciogros):
+ * the global slot always wins when it has a name, because it tracks the file
+ * currently associated with the window (last save / setSavedPath / cleared
+ * on new). Falling back to the per-project cache keeps repeated saves of the
+ * same project working when nothing else wrote to the global slot.
+ *
+ * Without this priority the dialog would still propose the previous file
+ * name after File → Open (save A → open B → dialog pre-filled with A) or
+ * after File → New (save A → new → dialog pre-filled with A).
+ */
+function pickStoredSaveInfo(perKey, globalInfo) {
+    const perDir = perKey && typeof perKey.dir === 'string' ? perKey.dir : null;
+    const perName = perKey && typeof perKey.name === 'string' ? perKey.name : null;
+    const globalDir = globalInfo && typeof globalInfo.dir === 'string' ? globalInfo.dir : null;
+    const globalName = globalInfo && typeof globalInfo.name === 'string' ? globalInfo.name : null;
+    return {
+        dir: globalDir || perDir || null,
+        name: globalName || perName || null,
+    };
+}
+
+/**
+ * Mutate the settings object so no per-project cached file name survives.
+ *
+ * `clearSavedPath` and `setSavedPath` must both call this, otherwise a stale
+ * `lastSaveName[projectKey]` entry would still win over the global slot the
+ * caller is about to set (see `pickStoredSaveInfo` above).
+ *
+ * `lastSaveDir` is kept so the "last used folder" feature still works across
+ * Open/New — the user complained about the remembered *name*, not the path.
+ */
+function clearSavedNameCache(settings) {
+    if (settings && settings.lastSaveName) {
+        settings.lastSaveName = {};
+    }
+    return settings;
+}
+
+/**
  * Split an absolute file path into { dir, name } so the caller can persist
  * the name that should pre-fill the next Save dialog.
  *
@@ -119,4 +161,6 @@ module.exports = {
     proposeSavePath,
     resolveEffectiveSaveName,
     splitSavePath,
+    pickStoredSaveInfo,
+    clearSavedNameCache,
 };
