@@ -1847,6 +1847,58 @@ describe('IdeviceBlockNode', () => {
             const result = block.getContentNextBlock();
             expect(result).toBe(false);
         });
+
+        // Issue #1667: when a page is rendered from an imported .elpx the
+        // node-content container can end up with whitespace text nodes
+        // between the <article.box> siblings. `nextSibling` (the previous
+        // implementation) would return the text node and the down-arrow
+        // click handler would silently exit with nextBlock=false. The fix
+        // uses nextElementSibling, which skips non-element nodes.
+        it('skips whitespace text nodes between blocks (regression #1667)', () => {
+            const nextBlock = document.createElement('article');
+            nextBlock.classList.add('box');
+
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            container.appendChild(document.createTextNode('\n    '));
+            container.appendChild(nextBlock);
+
+            expect(block.blockContent.nextSibling?.nodeType).toBe(Node.TEXT_NODE);
+            expect(block.getContentNextBlock()).toBe(nextBlock);
+        });
+
+        it('skips comment nodes between blocks', () => {
+            const nextBlock = document.createElement('article');
+            nextBlock.classList.add('box');
+
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            container.appendChild(document.createComment(' gap '));
+            container.appendChild(nextBlock);
+
+            expect(block.getContentNextBlock()).toBe(nextBlock);
+        });
+    });
+
+    describe('getContentPrevBlock whitespace handling', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+        });
+
+        // Issue #1667 sibling case: getContentPrevBlock already used
+        // previousElementSibling, keep a regression lock so the two helpers
+        // stay symmetric.
+        it('skips whitespace text nodes before the block', () => {
+            const prevBlock = document.createElement('article');
+            prevBlock.classList.add('box');
+
+            const container = document.createElement('div');
+            container.appendChild(prevBlock);
+            container.appendChild(document.createTextNode('\n    '));
+            container.appendChild(block.blockContent);
+
+            expect(block.getContentPrevBlock()).toBe(prevBlock);
+        });
     });
 
     describe('apiUpdateTitle', () => {

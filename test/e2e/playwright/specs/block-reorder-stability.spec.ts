@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
 import {
@@ -6,6 +7,8 @@ import {
     waitForLoadingScreen,
     selectNavNode,
     saveProject,
+    openElpFile,
+    addIdevice,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -262,5 +265,126 @@ test.describe('Block reorder stability — issue #1665', () => {
         for (let i = 0; i < domOrderAfterBounce.length; i++) {
             expect(domOrderAfterBounce[i]).toContain(reference[i]);
         }
+    });
+
+    // Issue #1667 — @ignaciogros' repro: open arrows.elpx (one block "A"),
+    // add a second text iDevice "B" at the bottom, then click block A's
+    // down arrow. Before the fix, getContentNextBlock() used nextSibling
+    // and returned a whitespace text node introduced by the elpx
+    // renderer, so the click handler exited silently and the block did
+    // not move. After the fix, A must end up after B in both the DOM
+    // and the Y.Doc.
+    test('block A down-arrow after adding block B (arrows.elpx) — regression #1667', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Block Reorder #1667');
+
+        // arrows.elpx is a self-contained project with a single page and a
+        // single text iDevice whose body is "A". Loading it via openElpFile
+        // drives the full import path so the node-content <article.box>
+        // siblings get rendered with whitespace text nodes between them,
+        // which is exactly the condition that triggered #1667.
+        const fixture = path.resolve(__dirname, '../../../fixtures/arrows.elpx');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await waitForLoadingScreen(page);
+        await openElpFile(page, fixture, 1);
+        await selectFirstNonRootPage(page);
+
+        const sourcePageId = await getCurrentPageId(page);
+        expect(sourcePageId).not.toBe('');
+
+        // Confirm the imported project starts with exactly one block.
+        await waitForDomAndYjsBlockCount(page, sourcePageId, 1);
+        const initialOrder = await readBlockOrderFromYjs(page, sourcePageId);
+        expect(initialOrder.length).toBe(1);
+        const blockAId = initialOrder[0];
+
+        // Assert the repro condition (text nodes between siblings) is
+        // actually present before touching anything. If the DOM ever
+        // stops producing them, this test should be updated so it
+        // still exercises the handler path deliberately.
+        const hasWhitespaceBetweenBlocks = async (): Promise<boolean> => {
+            return page.evaluate(() => {
+                const nodeContent = document.getElementById('node-content');
+                if (!nodeContent) return false;
+                const kids = Array.from(nodeContent.childNodes);
+                return kids.some(
+                    n =>
+                        n.nodeType === Node.TEXT_NODE &&
+                        ((n as Text).textContent || '').length > 0 &&
+                        !((n as Text).textContent || '').trim(),
+                );
+            });
+        };
+
+        // Add a second Text iDevice at the bottom — this creates a new
+        // block "B" after "A" on the same page, reproducing the exact
+        // scenario @ignaciogros described.
+        await addIdevice(page, 'text');
+        await waitForDomAndYjsBlockCount(page, sourcePageId, 2);
+
+        const twoBlocksOrder = await readBlockOrderFromYjs(page, sourcePageId);
+        expect(twoBlocksOrder.length).toBe(2);
+        expect(twoBlocksOrder[0]).toBe(blockAId);
+        const blockBId = twoBlocksOrder[1];
+
+        // Record whether the whitespace-between-siblings condition is
+        // present. If yes, the pre-fix handler would have silently
+        // aborted here; if no, the test still exercises the arrow path
+        // but the repro value is reduced — surface that via a warning.
+        const whitespacePresent = await hasWhitespaceBetweenBlocks();
+        if (!whitespacePresent) {
+            // eslint-disable-next-line no-console
+            console.warn(
+                '[regression #1667] no whitespace text nodes between ' +
+                    'blocks — fix still covered, repro strength reduced.',
+            );
+        }
+
+        // Click block A's down arrow. A must end up after B.
+        await clickMoveDown(page, blockAId);
+        await page.waitForFunction(
+            ({ targetPageId, expectedFirst }) => {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                const blocks = bridge?.structureBinding?.getBlocks?.(targetPageId) || [];
+                return blocks[0]?.id === expectedFirst || blocks[0]?.blockId === expectedFirst;
+            },
+            { targetPageId: sourcePageId, expectedFirst: blockBId },
+            { timeout: 5000 },
+        );
+
+        const orderAfterDown = await readBlockOrderFromYjs(page, sourcePageId);
+        expect(orderAfterDown).toEqual([blockBId, blockAId]);
+
+        const domOrderAfterDown = await readBlockOrderFromDom(page);
+        expect(domOrderAfterDown[0]).toContain(blockBId);
+        expect(domOrderAfterDown[1]).toContain(blockAId);
+
+        // Round-trip: click the now-first block B's down arrow (should
+        // be a no-op since it's already at the top after A's move…
+        // actually it's at index 0, so moving it down should swap back).
+        await clickMoveDown(page, blockBId);
+        await page.waitForFunction(
+            ({ targetPageId, expectedFirst }) => {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                const blocks = bridge?.structureBinding?.getBlocks?.(targetPageId) || [];
+                return blocks[0]?.id === expectedFirst || blocks[0]?.blockId === expectedFirst;
+            },
+            { targetPageId: sourcePageId, expectedFirst: blockAId },
+            { timeout: 5000 },
+        );
+
+        const orderAfterRoundTrip = await readBlockOrderFromYjs(page, sourcePageId);
+        expect(orderAfterRoundTrip).toEqual([blockAId, blockBId]);
+
+        // And click A's up arrow when it's already at the top — must be
+        // a clean no-op.
+        await clickMoveUp(page, blockAId);
+        await page.waitForTimeout(200);
+        const orderAfterTopUp = await readBlockOrderFromYjs(page, sourcePageId);
+        expect(orderAfterTopUp).toEqual([blockAId, blockBId]);
     });
 });

@@ -1414,7 +1414,12 @@ export default class IdeviceBlockNode {
      * @returns {Node}
      */
     getContentNextBlock() {
-        let nextBlock = this.blockContent.nextSibling;
+        // Issue #1667: use nextElementSibling (matches getContentPrevBlock)
+        // so whitespace text nodes between <article.box> siblings — left
+        // behind when a page is rendered from an imported .elpx — don't
+        // make the down-arrow handler silently exit. `nextSibling` would
+        // return the text node and the arrow click would do nothing.
+        let nextBlock = this.blockContent.nextElementSibling;
         if (
             nextBlock &&
             nextBlock.classList &&
