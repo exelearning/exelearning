@@ -112,6 +112,9 @@ export class YjsDocumentAdapter implements ExportDocument {
             // Custom content
             extraHeadContent: (meta.get('extraHeadContent') as string) || undefined,
             footer: (meta.get('footer') as string) || undefined,
+
+            // Project screenshot/thumbnail
+            screenshot: (meta.get('screenshot') as string) || undefined,
         };
     }
 

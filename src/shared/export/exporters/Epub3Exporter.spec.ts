@@ -94,6 +94,14 @@ class MockResourceProvider implements ResourceProvider {
     async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Buffer> | null> {
         return null;
     }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider
@@ -538,6 +546,38 @@ describe('Epub3Exporter', () => {
 
             const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
             expect(indexXhtml).toContain('Welcome to the course');
+        });
+
+        it('should include made-with-eXe link by default', async () => {
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('made-with-eXe');
+        });
+
+        it('should NOT include made-with-eXe link when addExeLink is false', async () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).not.toContain('made-with-eXe');
+        });
+
+        it('should include exe_powered_logo.png when addExeLink is true (default)', async () => {
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should NOT include exe_powered_logo.png when addExeLink is false', async () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content/img/exe_powered_logo.png')).toBe(false);
         });
     });
 

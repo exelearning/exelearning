@@ -1,0 +1,92 @@
+name: issue-translator
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+
+jobs:
+  translate:
+    if: github.event.label.name == 'non-english'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Translate and post comment
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- non-english-translation -->';
+
+            // Skip if a translation comment already exists
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            if (comments.some(c => c.body.includes(marker))) {
+              core.info('Translation comment already exists, skipping.');
+              return;
+            }
+
+            // Translate text to English via Google Translate free endpoint.
+            // Splits into ≤ 4500-char chunks to stay within query-string limits.
+            async function translateText(text) {
+              if (!text || !text.trim()) return '';
+              const maxLen = 10000;
+              const truncated = text.length > maxLen;
+              let remaining = text.substring(0, maxLen);
+              const chunks = [];
+              while (remaining.length > 0) {
+                chunks.push(remaining.substring(0, 4500));
+                remaining = remaining.substring(4500);
+              }
+              const translated = [];
+              for (const chunk of chunks) {
+                const url = new URL('https://translate.googleapis.com/translate_a/single');
+                url.searchParams.set('client', 'gtx');
+                url.searchParams.set('sl', 'auto');
+                url.searchParams.set('tl', 'en');
+                url.searchParams.set('dt', 't');
+                url.searchParams.set('q', chunk);
+                const res = await fetch(url.toString());
+                if (!res.ok) throw new Error(`Translation API returned HTTP ${res.status}`);
+                const data = await res.json();
+                translated.push(data[0].map(s => s[0]).join(''));
+              }
+              let result = translated.join('');
+              if (truncated) result += '\n\n*(text was truncated for translation)*';
+              return result;
+            }
+
+            const title = context.payload.issue.title;
+            const body = context.payload.issue.body || '';
+
+            const translatedTitle = await translateText(title);
+            const translatedBody = await translateText(body);
+
+            const comment = [
+              marker,
+              '> **Note:** This project uses English as its primary language for issues and discussions.',
+              '',
+              '### Translated title',
+              '',
+              translatedTitle,
+              '',
+              '### Translated body',
+              '',
+              translatedBody,
+              '',
+              '---',
+              '',
+              '*This is an automated translation and may contain inaccuracies.*',
+              '*If possible, please edit the issue to provide an English version of the text.*',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment,
+            });

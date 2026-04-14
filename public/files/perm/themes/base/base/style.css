@@ -34,6 +34,7 @@ body.exe-web-site {
     min-height: 100vh;
 }
 
+/* iframe */
 .js .in-iframe .exe-content {
     min-height: 0;
 }
@@ -41,6 +42,8 @@ body.exe-web-site {
 .exe-content .package-title {
     font-size: 1.25rem;
     font-weight: 300;
+    margin-bottom: .4em;
+    line-height: 1.2em;
 }
 
 .exe-content .page-title {
@@ -49,7 +52,7 @@ body.exe-web-site {
     text-align: left;
 }
 
-.exe-single-page .package-header h1 {
+.exe-single-page .package-header .package-title {
     color: #333;
     font-size: 1.25rem;
     font-weight: 300;
@@ -83,8 +86,14 @@ body.exe-web-site {
     border-bottom: 0;
 }
 
-#node-content-container.exe-content .box {
-    border: 1px dotted #ddd;
+#node-content-container .box-content {
+    background: #FCFCFC;
+    border: 1px solid #ECECEC;
+    padding: 10px;
+    border-radius: 8px;
+}
+article.box.idevice-element-in-content[mode="export"] .idevice_node {
+    background: none;
 }
 
 #node-content-container.exe-content .box.hidden-idevices {
@@ -131,7 +140,6 @@ body.exe-web-site {
 #siteNav {
     float: left;
     background: #f6f6f6;
-    _border-right: 1px solid #f0f0f0;
     width: 300px;
     padding-top: 66px;
     padding-left: 8px;
@@ -141,6 +149,25 @@ body.exe-web-site {
     box-shadow:
         inset 300px 0 0 0 #f6f6f6,
         inset 301px 0 0 0 #f0f0f0;
+}
+
+/* False left column in iframe */
+html.js .in-iframe.exe-web-site::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 301px; /* fake column width */
+    height: 100%;
+    background:#f6f6f6;
+    /* simulate border-right */
+    box-shadow: inset -1px 0 0 0 #f0f0f0;
+    pointer-events: none;
+    z-index: -1;
+}
+/* No false left column when the menu is hidden */
+body.siteNav-off::after{
+    display: none;
 }
 
 #siteFooter {
@@ -169,7 +196,6 @@ body.siteNav-off .exe-content {
     padding-top: 4.5em;
     padding-left: 320px;
     padding-right: 20px;
-    /* min-height: calc(100vh - 300px); */
 }
 
 .exe-web-site #siteFooter {
@@ -622,6 +648,11 @@ label[for="teacher-mode-toggler"] {
             inset 252px 0 0 0 #f0f0f0;
     }
 
+    /* False left column in iframe */
+    html.js .in-iframe.exe-web-site::after {
+        width: 252px; /* fake column width */
+    }
+
     #siteNav a {
         max-width: 235px;
     }
@@ -649,8 +680,12 @@ label[for="teacher-mode-toggler"] {
         height: auto !important;
     }
 
+    /* No false left column */
     .exe-web-site .exe-content {
         box-shadow: none;
+    }
+    body.exe-web-site::after {
+        display: none;
     }
 
     body.exe-web-site main.page {

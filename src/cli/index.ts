@@ -14,6 +14,7 @@ import * as userRole from './commands/user-role';
 import * as generateJwt from './commands/generate-jwt';
 import * as tmpCleanup from './commands/tmp-cleanup';
 import * as translations from './commands/translations';
+import * as translationsSort from './commands/translations-sort';
 import * as migrate from './commands/migrate';
 import * as elpConvert from './commands/elp-convert';
 import * as elpExport from './commands/elp-export';
@@ -21,6 +22,7 @@ import * as checkQuota from './commands/check-quota';
 import * as projectsPurge from './commands/projects-purge';
 import * as projectsCleanup from './commands/projects-cleanup';
 import * as updateLicenses from './commands/update-licenses';
+import * as maintenance from './commands/maintenance';
 
 // Command registry
 interface CommandModule {
@@ -37,6 +39,7 @@ const COMMANDS: Record<string, CommandModule> = {
     'jwt:generate': generateJwt,
     'tmp:cleanup': tmpCleanup,
     translations: translations,
+    'translations:sort': translationsSort,
     migrate: migrate,
     'elp:convert': elpConvert,
     'elp:export': elpExport,
@@ -44,6 +47,7 @@ const COMMANDS: Record<string, CommandModule> = {
     'projects:purge': projectsPurge,
     'projects:cleanup': projectsCleanup,
     'update-licenses': updateLicenses,
+    maintenance: maintenance,
 };
 
 // Command aliases
@@ -139,6 +143,27 @@ const ALIASES: Record<string, { command: string; transform?: (args: ParsedArgs) 
             flags: { ...parsed.flags, format: 'elpx' },
         }),
     },
+    'maintenance:on': {
+        command: 'maintenance',
+        transform: parsed => ({
+            ...parsed,
+            positional: ['on', ...parsed.positional],
+        }),
+    },
+    'maintenance:off': {
+        command: 'maintenance',
+        transform: parsed => ({
+            ...parsed,
+            positional: ['off', ...parsed.positional],
+        }),
+    },
+    'maintenance:status': {
+        command: 'maintenance',
+        transform: parsed => ({
+            ...parsed,
+            positional: ['status', ...parsed.positional],
+        }),
+    },
 };
 
 function printHelp(): void {
@@ -163,8 +188,10 @@ ${colors.cyan('Database:')}
   migrate [up|down|status]                   Run database migrations
 
 ${colors.cyan('Maintenance:')}
+  maintenance [on|off|status]                Toggle or check maintenance mode
   tmp:cleanup [--max-age=86400]              Clean temporary files
   translations [--locale=en]                  Extract/clean translations
+  translations:sort [--locale=en]             Sort trans-units to match messages.en.xlf
   projects:purge --yes                        Delete all projects and assets
   projects:cleanup [--unsaved-age=24]        Clean unsaved/guest projects
   update-licenses [--dry-run]                Update license info in public/libs/README.md

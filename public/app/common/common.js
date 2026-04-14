@@ -144,8 +144,9 @@ var $exe = {
         $exe.hasTooltips();
         $exe.math.init();
         $exe.mermaid.init();
-        $exe.dl.init();
-        $exe.sfHover();
+        setTimeout(function(){
+            $exe.dl.init(); // #1603
+        }, 0);
         // Add a zoom icon to the images using CSS
         $("a.exe-enlarge").each(function (i) {
             var e = $(this);
@@ -495,6 +496,16 @@ var $exe = {
             var lightboxLinks = $("a[rel^='lightbox']");
             lightboxLinks.each(function (i) {
                 var ref = $(this).attr("href");
+
+                // Within eXe replace the blob URL with the URL of the asset to check if isAudio or isVideo
+                if (typeof ref == 'string' && ref.startsWith('blob:') && typeof eXeLearning !== 'undefined' && typeof eXeLearningAssetResolver !== 'undefined') {
+                    var assetURL = eXeLearningAssetResolver.getAssetUrlFromBlob(ref);
+                    if (assetURL !== null) {
+                        $(this).attr("href", assetURL);
+                        ref = assetURL;
+                    }
+                }
+
                 var _ref = ref.toLowerCase();
                 var isAudio = _ref.indexOf(".mp3") != -1;
                 var isVideo = _ref.indexOf(".mp4") != -1 || _ref.indexOf(".flv") != -1 || _ref.indexOf(".ogg") != -1 || _ref.indexOf(".ogv") != -1;
@@ -507,9 +518,6 @@ var $exe = {
                     $("body").append(hiddenPlayer);
                     $exe.hasMultimediaGalleries = true;
                 }
-                // Inline content title
-                var t = this.title;
-                if (ref.indexOf('#') == 0 && $(ref).length == 1 && t && t != "") $(ref).prepend('<h2 class="pp_title">' + t + '</h2>');
             });
             lightboxLinks.prettyPhoto({
                 social_tools: "",
@@ -533,6 +541,7 @@ var $exe = {
                         var ext = src.split("/");
                         ext = ext[ext.length - 1];
                         ext = ext.split(".")[1];
+                        if (typeof ext == 'undefined' || ext == 'undefined') ext = $exe_i18n.download;
                         $(".pp_details .pp_description").append(' <span class="exe-media-download"><a href="' + src + '" title="' + $exe_i18n.download + '" download>' + ext + '</a></span>');
                     } else {
                         // Hide the title at the bottom (we use h2.pp_title instead)

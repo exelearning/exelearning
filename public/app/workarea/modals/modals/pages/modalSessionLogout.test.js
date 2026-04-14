@@ -15,7 +15,12 @@ describe('ModalSessionLogout', () => {
 
     // Mock translation function
     window._ = vi.fn((key) => key);
-    
+
+    // Mock UnsavedChangesHelper
+    window.UnsavedChangesHelper = {
+      removeBeforeUnloadHandler: vi.fn(),
+    };
+
     // Mock eXeLearning global
     window.eXeLearning = {
       app: {
@@ -23,31 +28,16 @@ describe('ModalSessionLogout', () => {
           odeSession: 'session-id',
           odeVersion: '1.0',
           odeId: 'project-id',
-        },
-        api: {
-          postOdeSave: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
-          postCloseSession: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+          transitionToProject: vi.fn().mockResolvedValue(),
+          _yjsBridge: {
+            saveManager: { save: vi.fn().mockResolvedValue(true) },
+          },
         },
         modals: {
-          openuserodefiles: {
-            openUserOdeFilesWithOpenSession: vi.fn(),
-            openUserLocalOdeFilesWithOpenSession: vi.fn(),
-            largeFilesUpload: vi.fn(),
-          },
           alert: {
             show: vi.fn(),
           },
         },
-        menus: {
-          navbar: {
-            file: {
-              createSession: vi.fn(),
-            },
-          },
-        },
-      },
-      user: {
-        username: 'testuser',
       },
       config: {
         basePath: '/base',
@@ -99,9 +89,6 @@ describe('ModalSessionLogout', () => {
     };
 
     modal = new ModalSessionLogout(mockManager);
-    modal.realTimeEventNotifier = {
-        notify: vi.fn(),
-    };
   });
 
   afterEach(() => {
@@ -120,157 +107,106 @@ describe('ModalSessionLogout', () => {
     });
   });
 
-  describe('saveSession', () => {
-    it('should call api.postOdeSave and createSession on success with newFile (legacy mode)', async () => {
-      // Legacy mode: _yjsEnabled is not set
-      window.eXeLearning.app.project._yjsEnabled = false;
-      const odeParams = { odeSessionId: 's', odeVersion: 'v', odeId: 'i' };
-      await modal.saveSession(odeParams, { newFile: true });
-      expect(window.eXeLearning.app.api.postOdeSave).toHaveBeenCalled();
-      expect(window.eXeLearning.app.menus.navbar.file.createSession).toHaveBeenCalled();
+  describe('save button (Yes) with pendingAction', () => {
+    it('should call transitionToProject with skipSave false', async () => {
+      vi.useFakeTimers();
+      modal.show({ pendingAction: { action: 'open', projectUuid: 'uuid-1' } });
+      vi.advanceTimersByTime(500);
+
+      const yesButton = mockElement.querySelector('.modal-footer .session-logout-save');
+      yesButton.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(window.eXeLearning.app.project.transitionToProject).toHaveBeenCalledWith({
+        action: 'open',
+        projectUuid: 'uuid-1',
+        skipSave: false,
+      });
+      vi.useRealTimers();
     });
 
-    it('should save Yjs project and navigate when openYjsProject is set', async () => {
-      const saveSpy = vi.fn().mockResolvedValue(true);
-      window.eXeLearning.app.project._yjsEnabled = true;
-      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
+    it('should show error alert when transition fails', async () => {
+      vi.useFakeTimers();
+      window.eXeLearning.app.project.transitionToProject = vi.fn().mockRejectedValue(new Error('fail'));
 
-      await modal.saveSession({ odeSessionId: 's' }, { openYjsProject: true, projectUuid: 'uuid-1' });
+      modal.show({ pendingAction: { action: 'new' } });
+      vi.advanceTimersByTime(500);
 
-      expect(saveSpy).toHaveBeenCalled();
-      expect(window.location.href).toBe('/base/workarea?project=uuid-1');
-    });
-
-    it('should save Yjs project and navigate to workarea when newFile is true', async () => {
-      const saveSpy = vi.fn().mockResolvedValue(true);
-      window.eXeLearning.app.project._yjsEnabled = true;
-      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
-
-      await modal.saveSession({ odeSessionId: 's' }, { newFile: true });
-
-      expect(saveSpy).toHaveBeenCalled();
-      expect(window.location.href).toBe('/base/workarea');
-    });
-
-    it('should show alert when Yjs save fails', async () => {
-      const saveSpy = vi.fn().mockRejectedValue(new Error('fail'));
-      window.eXeLearning.app.project._yjsEnabled = true;
-      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
-
-      await modal.saveSession({ odeSessionId: 's' }, { openYjsProject: true, projectUuid: 'uuid-1' });
+      const yesButton = mockElement.querySelector('.modal-footer .session-logout-save');
+      yesButton.click();
+      await vi.advanceTimersByTimeAsync(0);
 
       expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
         title: 'Error saving',
         body: 'An error occurred while saving the project',
         contentId: 'error',
       });
-    });
-
-    it('should save Yjs and open local file when openOdeFile with localOdeFile', async () => {
-      const saveSpy = vi.fn().mockResolvedValue(true);
-      window.eXeLearning.app.project._yjsEnabled = true;
-      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
-
-      await modal.saveSession(
-        { odeSessionId: 's' },
-        { openOdeFile: true, localOdeFile: true, odeFileName: 'test.elp', odeFilePath: '/path/to/test.elp' }
-      );
-
-      expect(saveSpy).toHaveBeenCalled();
-      expect(window.eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession).toHaveBeenCalledWith(
-        'test.elp',
-        '/path/to/test.elp'
-      );
-    });
-
-    it('should save Yjs and use large file upload when isLargeFile', async () => {
-      const saveSpy = vi.fn().mockResolvedValue(true);
-      window.eXeLearning.app.project._yjsEnabled = true;
-      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
-
-      await modal.saveSession(
-        { odeSessionId: 's' },
-        { openOdeFile: true, localOdeFile: true, isLargeFile: true, odeFile: 'large-file-data' }
-      );
-
-      expect(saveSpy).toHaveBeenCalled();
-      expect(window.eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalledWith(
-        'large-file-data',
-        false,
-        false,
-        true,
-        true
-      );
-    });
-
-    it('should save Yjs and open remote ODE file', async () => {
-      const saveSpy = vi.fn().mockResolvedValue(true);
-      window.eXeLearning.app.project._yjsEnabled = true;
-      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
-
-      await modal.saveSession({ odeSessionId: 's' }, { openOdeFile: true, id: 'remote-file-id' });
-
-      expect(saveSpy).toHaveBeenCalled();
-      expect(window.eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession).toHaveBeenCalledWith(
-        'remote-file-id'
-      );
-    });
-
-    it('should save Yjs and close session for default case', async () => {
-      const saveSpy = vi.fn().mockResolvedValue(true);
-      const closeSessionSpy = vi.spyOn(modal, 'closeSession').mockResolvedValue();
-      window.eXeLearning.app.project._yjsEnabled = true;
-      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
-
-      await modal.saveSession({ odeSessionId: 'session-123' }, {});
-
-      expect(saveSpy).toHaveBeenCalled();
-      expect(window.onbeforeunload).toBeNull();
-      expect(closeSessionSpy).toHaveBeenCalledWith('session-123', {});
+      vi.useRealTimers();
     });
   });
 
-  describe('buttons functionality', () => {
-    it('should trigger save on Yes click', () => {
+  describe('no-save button (No) with pendingAction', () => {
+    it('should call transitionToProject with skipSave true', async () => {
       vi.useFakeTimers();
-      const saveSpy = vi.spyOn(modal, 'saveSession');
-      modal.show();
+      modal.show({ pendingAction: { action: 'open', projectUuid: 'uuid-2' } });
       vi.advanceTimersByTime(500);
+
+      const noButton = mockElement.querySelector('.modal-footer .session-logout-without-save');
+      noButton.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(window.eXeLearning.app.project.transitionToProject).toHaveBeenCalledWith({
+        action: 'open',
+        projectUuid: 'uuid-2',
+        skipSave: true,
+      });
+      vi.useRealTimers();
+    });
+  });
+
+  describe('pure logout (no pendingAction)', () => {
+    it('should save and redirect to /logout on Yes click', async () => {
+      vi.useFakeTimers();
+      modal.show({});
+      vi.advanceTimersByTime(500);
+
       const yesButton = mockElement.querySelector('.modal-footer .session-logout-save');
       yesButton.click();
-      expect(saveSpy).toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(window.eXeLearning.app.project._yjsBridge.saveManager.save).toHaveBeenCalled();
+      expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).toHaveBeenCalled();
+      expect(window.location.href).toBe('/base/logout');
       vi.useRealTimers();
     });
 
-    it('should navigate directly for Yjs project without saving', () => {
+    it('should still redirect to /logout when save throws on Yes click', async () => {
       vi.useFakeTimers();
-      const closeSpy = vi.spyOn(modal, 'close');
-      modal.show({ openYjsProject: true, projectUuid: 'uuid-2' });
+      window.eXeLearning.app.project._yjsBridge.saveManager.save = vi.fn().mockRejectedValue(new Error('save error'));
+
+      modal.show({});
+      vi.advanceTimersByTime(500);
+
+      const yesButton = mockElement.querySelector('.modal-footer .session-logout-save');
+      yesButton.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).toHaveBeenCalled();
+      expect(window.location.href).toBe('/base/logout');
+      vi.useRealTimers();
+    });
+
+    it('should redirect to /logout without saving on No click', async () => {
+      vi.useFakeTimers();
+      modal.show({});
       vi.advanceTimersByTime(500);
 
       const noButton = mockElement.querySelector('.modal-footer .session-logout-without-save');
       noButton.click();
+      await vi.advanceTimersByTimeAsync(0);
 
-      expect(window.location.href).toBe('/base/workarea?project=uuid-2');
-      expect(closeSpy).toHaveBeenCalled();
-      vi.useRealTimers();
-    });
-
-    it('should use large file upload when local large file is provided', () => {
-      vi.useFakeTimers();
-      modal.show({ openOdeFile: true, localOdeFile: true, isLargeFile: true, odeFile: 'file' });
-      vi.advanceTimersByTime(500);
-
-      const noButton = mockElement.querySelector('.modal-footer .session-logout-without-save');
-      noButton.click();
-
-      expect(window.eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalledWith(
-        'file',
-        false,
-        false,
-        true,
-        true
-      );
+      expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).toHaveBeenCalled();
+      expect(window.location.href).toBe('/base/logout');
       vi.useRealTimers();
     });
   });
@@ -288,6 +224,7 @@ describe('ModalSessionLogout', () => {
       it('should clear onbeforeunload and close window', () => {
         modal.closeOfflineApp();
 
+        expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).toHaveBeenCalled();
         expect(window.onbeforeunload).toBeNull();
         expect(mockWindowClose).toHaveBeenCalled();
       });
@@ -367,87 +304,6 @@ describe('ModalSessionLogout', () => {
         expect(closeAppSpy).toHaveBeenCalled();
         vi.useRealTimers();
       });
-    });
-  });
-
-  describe('closeSession', () => {
-    it('should create session when newFile is true', async () => {
-      const closeSpy = vi.spyOn(modal, 'close');
-
-      await modal.closeSession('session-id', { newFile: true });
-
-      expect(window.eXeLearning.app.menus.navbar.file.createSession).toHaveBeenCalledWith({
-        odeSessionId: 'session-id',
-      });
-      expect(closeSpy).toHaveBeenCalled();
-    });
-
-    it('should notify and redirect on successful close', async () => {
-      vi.useFakeTimers();
-      modal.offlineInstallation = false;
-
-      await modal.closeSession('session-id', { newFile: false });
-      vi.advanceTimersByTime(500);
-
-      expect(window.eXeLearning.app.api.postCloseSession).toHaveBeenCalledWith({
-        odeSessionId: 'session-id',
-      });
-      expect(modal.realTimeEventNotifier.notify).toHaveBeenCalledWith('session-id', {
-        name: 'user-exiting',
-        payload: 'testuser',
-      });
-      expect(window.location.href).toBe('http://localhost/logout');
-      vi.useRealTimers();
-    });
-  });
-
-  describe('static mode handling', () => {
-    beforeEach(() => {
-      // Set up static mode
-      window.eXeLearning.app.capabilities = { storage: { remote: false } };
-      window.electronAPI = undefined;
-      window.newProject = vi.fn();
-    });
-
-    it('should call newProject in static mode when not saving (notSaveSession)', () => {
-      const closeSpy = vi.spyOn(modal, 'close');
-      const notSaveButton = mockElement.querySelector('.session-logout-without-save');
-
-      modal.notSaveSessionEventListener(notSaveButton, { newFile: true });
-      notSaveButton.click();
-
-      expect(closeSpy).toHaveBeenCalled();
-      expect(window.newProject).toHaveBeenCalled();
-    });
-
-    it('should export and call newProject in static mode when saving', async () => {
-      window.eXeLearning.app.project._yjsEnabled = true;
-      window.eXeLearning.app.project._yjsBridge = {
-        saveManager: { save: vi.fn().mockResolvedValue({}) },
-      };
-      window.eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({});
-
-      const closeSpy = vi.spyOn(modal, 'close');
-
-      await modal.saveSession({}, { newFile: true });
-
-      expect(window.eXeLearning.app.project.exportToElpxViaYjs).toHaveBeenCalledWith({
-        saveAs: false,
-      });
-      expect(closeSpy).toHaveBeenCalled();
-      expect(window.newProject).toHaveBeenCalled();
-    });
-
-    it('should not trigger static mode handling when electronAPI is present', () => {
-      window.electronAPI = { someMethod: vi.fn() };
-      const closeSpy = vi.spyOn(modal, 'close');
-      const notSaveButton = mockElement.querySelector('.session-logout-without-save');
-
-      modal.notSaveSessionEventListener(notSaveButton, { newFile: true });
-      notSaveButton.click();
-
-      // Should NOT call newProject since electronAPI is present
-      expect(window.newProject).not.toHaveBeenCalled();
     });
   });
 });

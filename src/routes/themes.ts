@@ -304,6 +304,17 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
     const js = deps.fs.existsSync(themePath) ? scanThemeFiles(themePath, '.js') : [];
     const icons = deps.fs.existsSync(themePath) ? scanThemeIcons(themePath, themeUrl) : {};
 
+    // Read downloadable flag from config.xml (defaults to '1' if not specified)
+    let downloadable = '1';
+    const configPath = path.join(themePath, 'config.xml');
+    if (deps.fs.existsSync(configPath)) {
+        const xmlContent = deps.fs.readFileSync(configPath, 'utf-8');
+        const match = xmlContent.match(/<downloadable>([\s\S]*?)<\/downloadable>/);
+        if (match) {
+            downloadable = match[1].trim() || '1';
+        }
+    }
+
     return {
         name: siteTheme.dir_name,
         dirName: siteTheme.dir_name,
@@ -318,7 +329,7 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
         license: siteTheme.license || '',
         licenseUrl: '',
         description: siteTheme.description || '',
-        downloadable: '1',
+        downloadable,
         cssFiles,
         js,
         icons,

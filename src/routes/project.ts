@@ -48,6 +48,7 @@ import {
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
 } from '../websocket/access-notifier';
 import { createBlankYjsDocument } from '../services/yjs-initializer';
+import { logActivity } from '../services/activity-logger';
 import type { Kysely } from 'kysely';
 import type { Database, Project, User } from '../db/types';
 import type {
@@ -581,6 +582,11 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 } catch {
                     // Silently ignore if tables don't exist yet - defaults to 'base' theme on frontend
                 }
+
+                logActivity(db, {
+                    eventType: 'project.create',
+                    userId: currentUser.id,
+                });
 
                 return {
                     success: true,
@@ -1431,13 +1437,24 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // DELETE /api/projects/uuid/:uuid - Delete project by UUID
-            .delete('/api/projects/uuid/:uuid', async ({ params, set }) => {
+            .delete('/api/projects/uuid/:uuid', async ({ params, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const uuid = params.uuid;
 
                 const project = await findProjectByUuid(db, uuid);
                 if (!project) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Project not found' };
+                }
+
+                // Only the project owner can delete it
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can delete this project' };
                 }
 
                 // Delete project (cascades to assets, yjs_documents, etc.)
@@ -2080,22 +2097,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     }
                 }
 
-                // If no files found, return empty message
+                // If no files found, return empty array
                 if (allUsedFiles.length === 0) {
-                    return {
-                        responseMessage: 'OK',
-                        usedFiles: [
-                            {
-                                usedFiles: 'No files found',
-                                usedFilesPath: '',
-                                usedFilesSize: '',
-                                pageNamesUsedFiles: '',
-                                blockNamesUsedFiles: '',
-                                typeComponentSyncUsedFiles: '',
-                                orderComponentSyncUsedFiles: '',
-                            },
-                        ],
-                    };
+                    return { responseMessage: 'OK', usedFiles: [] };
                 }
 
                 return {

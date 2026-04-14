@@ -23,7 +23,7 @@ const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/
 
 // Feedback content that matches the structure used in eXeLearning
 const FEEDBACK_CONTENT = `
-<div class="exe-text"><div class="exe-text-template">
+<div class="exe-text-template">
     <div class="textIdeviceContent">
         <div class="exe-text-activity">
             <div><p>Main content text</p>
@@ -34,7 +34,7 @@ const FEEDBACK_CONTENT = `
             <p class="clearfix"></p></div>
         </div>
     </div>
-</div></div>
+</div>
 `;
 
 // Create mock document with feedback content
@@ -88,6 +88,9 @@ const createMockResourceProvider = (): ResourceProvider => ({
     fetchSchemas: async () => new Map(),
     fetchContentCss: async () => new Map(),
     normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
+    fetchGlobalFontFiles: async (_fontName: string) => null,
+    fetchI18nFile: async (_language: string) => '',
+    fetchI18nTranslations: async (_language: string) => new Map<string, string>(),
 });
 
 // Mock asset provider

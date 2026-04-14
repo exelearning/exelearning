@@ -22,6 +22,8 @@ import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { getPublicCallbackUrl, type ServerContext } from '../utils/proxy-url.util';
 import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
 import { getAuthMethods, getSettingString, getSettingNumber } from '../services/app-settings';
+import { getPostLoginTarget } from '../services/maintenance';
+import { logActivity } from '../services/activity-logger';
 
 // Domain for temporary emails (CAS, OIDC, Guest users without real email)
 const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
@@ -188,6 +190,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         path: '/',
                     });
 
+                    logActivity(db, {
+                        eventType: 'auth.login',
+                        userId: user.id,
+                    });
+
                     return {
                         access_token: token,
                         user: sanitizeUser(user),
@@ -201,6 +208,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.remove();
                 cookie.impersonator_auth.remove();
                 cookie.impersonation_session.remove();
+
                 return {
                     message: 'Logged out successfully',
                     wasAuthenticated: auth?.isAuthenticated || false,
@@ -362,9 +370,15 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     path: '/',
                 });
 
-                // Redirect to returnUrl if valid, otherwise to workarea
+                logActivity(db, {
+                    eventType: 'auth.login',
+                    userId: user.id,
+                });
+
+                // Redirect to returnUrl if valid, otherwise to workarea (or /admin during maintenance)
                 const returnUrl = typedBody?.returnUrl;
-                const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
+                const defaultTarget = await getPostLoginTarget(db, parseRoles(user.roles));
+                const targetUrl = getSafeRedirectUrl(returnUrl, defaultTarget);
                 return Response.redirect(targetUrl, 302);
             })
 
@@ -601,6 +615,12 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         path: '/',
                     });
 
+                    // Audit log: CAS login
+                    logActivity(db, {
+                        eventType: 'auth.login',
+                        userId: user.id,
+                    });
+
                     // Get returnUrl from cookie and redirect
                     const returnUrlCookie = request.headers
                         .get('cookie')
@@ -615,7 +635,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         }
                     }
 
-                    const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
+                    const ssoDefaultTarget = await getPostLoginTarget(db, payload.roles);
+                    const targetUrl = getSafeRedirectUrl(returnUrl, ssoDefaultTarget);
 
                     // Clear the sso_return_url cookie and redirect
                     return new Response(null, {
@@ -883,6 +904,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         path: '/',
                     });
 
+                    logActivity(db, {
+                        eventType: 'auth.login',
+                        userId: user.id,
+                    });
+
                     // Get returnUrl from cookie
                     const returnUrlCookie = request.headers
                         .get('cookie')
@@ -897,7 +923,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         }
                     }
 
-                    const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
+                    const oidcDefaultTarget = await getPostLoginTarget(db, payload.roles);
+                    const targetUrl = getSafeRedirectUrl(returnUrl, oidcDefaultTarget);
 
                     // Store id_token for OpenID logout (needed for id_token_hint)
                     // This allows proper session termination at the OpenID provider
@@ -992,6 +1019,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     sameSite: 'lax',
                     maxAge: 24 * 60 * 60,
                     path: '/',
+                });
+
+                logActivity(db, {
+                    eventType: 'auth.login',
+                    userId: user.id,
                 });
 
                 // Redirect to returnUrl if valid, otherwise to workarea

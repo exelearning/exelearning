@@ -222,8 +222,40 @@ describe('text iDevice', () => {
       // Note: infoDurationTextInputValue is 'Duration' (colon is added only in createEditorGroup HTML)
       expect(durationTextInput.value).toBe('Duration');
     });
-  });
 
+    it('removes legacy outer exe-text wrapper from loaded textarea content', () => {
+      const previousData = {
+        textTextarea: '<div class="exe-text"><p>Legacy content</p></div>',
+      };
+
+      $exeDevice.init(mockElement, previousData);
+
+      const textarea = mockElement.querySelector('#textTextarea');
+      expect(textarea.value).toBe('<p>Legacy content</p>');
+      expect(textarea.value).not.toContain('class="exe-text"');
+    });
+
+    it('extracts main content when loaded textarea has exe-text-activity wrapper', () => {
+      const previousData = {
+        textTextarea: '<div class="exe-text-activity"><p>Activity content</p></div>',
+      };
+
+      $exeDevice.init(mockElement, previousData);
+
+      const textarea = mockElement.querySelector('#textTextarea');
+      expect(textarea.value).toBe('<p>Activity content</p>');
+    });
+
+    it('does not parse non-wrapper asset html when stripping legacy wrapper', () => {
+      const createElementSpy = vi.spyOn(document, 'createElement');
+      const html = '<p><img src="asset://ffee9e6d-1bbb-d42c-645e-75445b1a962a.png"></p>';
+
+      const result = $exeDevice.stripLegacyExeTextWrapper(html);
+
+      expect(result).toBe(html);
+      expect(createElementSpy).not.toHaveBeenCalled();
+    });
+  });
   describe('checkFormValues', () => {
     it('returns false and shows alert when text is empty string', () => {
       $exeDevice.init(mockElement, {});
@@ -719,7 +751,7 @@ describe('text iDevice', () => {
       expect(result.textTextarea).toContain('Main content here');
     });
 
-    it('extracts simple feedback without exe-text-activity wrapper', () => {
+    it('extracts simple feedback without exe-text-activity wrapper (modern feedbacktooglebutton)', () => {
       $exeDevice.init(mockElement, {});
 
       // This format comes from legacy FreeTextIdevice with feedback but no task info
@@ -739,6 +771,30 @@ describe('text iDevice', () => {
       expect(result.textTextarea).toContain('Second paragraph content.');
       expect(result.textTextarea).not.toContain('feedback');
       expect(result.textTextarea).not.toContain('iDevice_buttons');
+    });
+
+    it('extracts simple feedback from legacy eXe 2.9 format (feedbackbutton class)', () => {
+      $exeDevice.init(mockElement, {});
+
+      // Legacy eXe 2.9 FreeTextIdevice: uses "feedbackbutton" instead of "feedbacktooglebutton"
+      const html = `<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
+    <ol>
+    <li>Repasar nuestro porfolio.</li>
+    <li>Hacer una reflexión personal.</li>
+    </ol>
+    <div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+    <div class="feedback js-feedback js-hidden">
+    <p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
+    </div>`;
+
+      const result = $exeDevice.extractTaskInfoFromHtml(html);
+
+      expect(result).not.toBeNull();
+      expect(result.textFeedbackInput).toBe('Evaluación');
+      expect(result.textFeedbackTextarea).toContain('Esta tarea se valorará');
+      expect(result.textTextarea).toContain('A lo largo del proyecto');
+      expect(result.textTextarea).not.toContain('iDevice_buttons');
+      expect(result.textTextarea).not.toContain('js-feedback');
     });
   });
 
@@ -889,6 +945,38 @@ describe('text iDevice', () => {
 
       const textarea = mockElement.querySelector('#textTextarea');
       expect(textarea.value).toBe('<p>Regular content without task info</p>');
+    });
+
+    it('extracts feedback from legacy eXe 2.9 format when loading previousData', () => {
+      // Reproduces the bug: eXe 2.9 ELPs use "feedbackbutton" class; previously the
+      // feedback content appeared in the main text box and the feedback field was empty.
+      const legacyHtml = `<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
+    <div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+    <div class="feedback js-feedback js-hidden">
+    <p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
+    </div>`;
+
+      const previousData = { textTextarea: legacyHtml };
+
+      $exeDevice.init(mockElement, previousData);
+
+      // Main textarea must NOT contain the feedback HTML
+      const textarea = mockElement.querySelector('#textTextarea');
+      expect(textarea.value).toContain('A lo largo del proyecto');
+      expect(textarea.value).not.toContain('iDevice_buttons');
+      expect(textarea.value).not.toContain('js-feedback');
+
+      // Feedback button label must be populated
+      const feedbackInput = mockElement.querySelector('#textFeedbackInput');
+      expect(feedbackInput.value).toBe('Evaluación');
+
+      // Feedback textarea must contain the feedback content
+      const feedbackTextarea = mockElement.querySelector('#textFeedbackTextarea');
+      expect(feedbackTextarea.value).toContain('Esta tarea se valorará');
+
+      // Feedback fieldset must be expanded because it has content
+      const feedbackFieldset = mockElement.querySelector('#textFeedback');
+      expect(feedbackFieldset.classList.contains('exe-fieldset-open')).toBe(true);
     });
   });
 });

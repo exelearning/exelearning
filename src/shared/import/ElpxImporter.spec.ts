@@ -452,6 +452,233 @@ describe('ElpxImporter', () => {
 
             ydoc.destroy();
         });
+
+        it('should remap exe-node: internal links in legacy import htmlView', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-1',
+                    title: 'Home',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'text',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'text',
+                                    title: 'Text',
+                                    icon: 'text',
+                                    position: 0,
+                                    htmlView: '<p><a href="exe-node:page-2#section1">Link to page 2</a></p>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-2',
+                    title: 'Second',
+                    parent_id: null,
+                    position: 1,
+                    blocks: [],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+
+            // The new page-2 ID should not be 'page-2'
+            const newPage2Id = pageStructures[1].id;
+            expect(newPage2Id).not.toBe('page-2');
+
+            // The link in page-1's component should reference the new ID
+            const htmlView = pageStructures[0].blocks[0].components[0].htmlView;
+            expect(htmlView).toContain(`exe-node:${newPage2Id}#section1`);
+            expect(htmlView).not.toContain('exe-node:page-2');
+
+            ydoc.destroy();
+        });
+
+        it('should remap exe-node: links without anchor fragment in legacy import', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-10',
+                    title: 'Home',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'text',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'text',
+                                    title: 'Text',
+                                    icon: 'text',
+                                    position: 0,
+                                    htmlView: '<p><a href="exe-node:page-20">Link to page 20</a></p>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-20',
+                    title: 'Target',
+                    parent_id: null,
+                    position: 1,
+                    blocks: [],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+
+            const newPage20Id = pageStructures[1].id;
+            expect(newPage20Id).not.toBe('page-20');
+
+            const htmlView = pageStructures[0].blocks[0].components[0].htmlView;
+            expect(htmlView).toContain(`exe-node:${newPage20Id}`);
+            expect(htmlView).not.toContain('exe-node:page-20');
+
+            ydoc.destroy();
+        });
+
+        it('should remap exe-node: internal links in properties.textTextarea for text idevices', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-7',
+                    title: 'Home',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'text',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'text',
+                                    title: 'Text',
+                                    icon: 'text',
+                                    position: 0,
+                                    htmlView: '<p><a href="exe-node:page-9">Go to page 9</a></p>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-9',
+                    title: 'Target Page',
+                    parent_id: null,
+                    position: 1,
+                    blocks: [],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+
+            const newPage9Id = pageStructures[1].id;
+            expect(newPage9Id).not.toBe('page-9');
+
+            // htmlView should be remapped (already works)
+            const htmlView = pageStructures[0].blocks[0].components[0].htmlView;
+            expect(htmlView).toContain(`exe-node:${newPage9Id}`);
+            expect(htmlView).not.toContain('exe-node:page-9');
+
+            // properties.textTextarea must ALSO be remapped — this is what the workarea renders
+            const props = pageStructures[0].blocks[0].components[0].properties;
+            expect(props.textTextarea).toBeDefined();
+            expect(props.textTextarea).toContain(`exe-node:${newPage9Id}`);
+            expect(props.textTextarea).not.toContain('exe-node:page-9');
+
+            ydoc.destroy();
+        });
+
+        it('should remap exe-node: links in nested properties objects', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-3',
+                    title: 'Source',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'custom',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'custom-idevice',
+                                    title: 'Custom',
+                                    icon: 'custom',
+                                    position: 0,
+                                    htmlView: '',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {
+                                        someField: '<a href="exe-node:page-5#intro">link</a>',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-5',
+                    title: 'Target',
+                    parent_id: null,
+                    position: 1,
+                    blocks: [],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+
+            const newPage5Id = pageStructures[1].id;
+            expect(newPage5Id).not.toBe('page-5');
+
+            const props = pageStructures[0].blocks[0].components[0].properties;
+            expect(props.someField).toContain(`exe-node:${newPage5Id}#intro`);
+            expect(props.someField).not.toContain('exe-node:page-5');
+
+            ydoc.destroy();
+        });
     });
 });
 
@@ -1588,6 +1815,378 @@ describe('FileSystemAssetHandler', () => {
             const result = handler.convertContextPathToAssetRefs(html, new Map());
 
             expect(result).toBe(html);
+        });
+    });
+});
+
+describe('ElpxImporter - exe-node link remapping on import', () => {
+    let testDir: string;
+
+    beforeEach(() => {
+        testDir = path.join('/tmp', `elp-anchor-test-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+        if (!existsSync(testDir)) {
+            mkdirSync(testDir, { recursive: true });
+        }
+    });
+
+    afterEach(() => {
+        if (existsSync(testDir)) {
+            rmSync(testDir, { recursive: true, force: true });
+        }
+    });
+
+    it('should remap exe-node: cross-page anchor links when importing anchors.zip', async () => {
+        const elpPath = path.join(process.cwd(), 'test/fixtures/anchors.zip');
+        const elpBuffer = await fs.readFile(elpPath);
+
+        const ydoc = new Y.Doc();
+        const assetHandler = new FileSystemAssetHandler(testDir);
+        const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+        await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+        const navigation = ydoc.getArray('navigation');
+        expect(navigation.length).toBe(3); // aaa, bbb, ccc
+
+        // Collect new page IDs and the HTML content of components
+        const newPageIds: string[] = [];
+        const allHtmlContent: string[] = [];
+
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            newPageIds.push((page.get('id') as string) || (page.get('pageId') as string));
+
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            for (let j = 0; j < (blocks?.length ?? 0); j++) {
+                const block = blocks.get(j) as Y.Map<unknown>;
+                const components = block.get('components') as Y.Array<unknown>;
+                for (let k = 0; k < (components?.length ?? 0); k++) {
+                    const comp = components.get(k) as Y.Map<unknown>;
+                    const html = comp.get('htmlView') as string;
+                    if (html) allHtmlContent.push(html);
+                }
+            }
+        }
+
+        // The original IDs from anchors.zip should NOT appear in any content
+        const originalIds = [
+            '4576a60f-11d1-4414-88f7-6df2d6aaece0',
+            'page-1771919082417-f0hpww2cx',
+            'page-1771919084984-kxe6oqn9a',
+        ];
+
+        const combinedHtml = allHtmlContent.join('\n');
+
+        for (const origId of originalIds) {
+            expect(combinedHtml).not.toContain(`exe-node:${origId}`);
+        }
+
+        // At least one of the new page IDs should be referenced in the HTML
+        const hasRemappedLink = newPageIds.some(id => combinedHtml.includes(`exe-node:${id}`));
+        expect(hasRemappedLink).toBe(true);
+
+        ydoc.destroy();
+    });
+
+    it('should preserve anchor fragments when remapping exe-node: links', async () => {
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        // Build a minimal ELP with two pages where page 1 links to page 2 with an anchor
+        const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Anchor Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+  <odeProperty><key>pp_theme</key><value>base</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>original-page-aaa</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-aaa-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>comp-aaa-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <odeComponentOrder>0</odeComponentOrder>
+          <htmlView><![CDATA[<p><a href="exe-node:original-page-bbb#my-anchor">Link with anchor</a></p>]]></htmlView>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+<odeNavStructure>
+  <odePageId>original-page-bbb</odePageId>
+  <odeParentPageId>original-page-aaa</odeParentPageId>
+  <pageName>Page B</pageName>
+  <odeNavStructureOrder>1</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zipData = fflate.zipSync({
+            'content.xml': encoder.encode(contentXml),
+        });
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromBuffer(zipData);
+
+        const navigation = ydoc.getArray('navigation');
+        expect(navigation.length).toBe(2);
+
+        const pageB = navigation.get(1) as Y.Map<unknown>;
+        const newPageBId = (pageB.get('id') ?? pageB.get('pageId')) as string;
+        expect(newPageBId).not.toBe('original-page-bbb');
+
+        // Get the component HTML from page A
+        const pageA = navigation.get(0) as Y.Map<unknown>;
+        const blocks = pageA.get('blocks') as Y.Array<unknown>;
+        const block = blocks.get(0) as Y.Map<unknown>;
+        const components = block.get('components') as Y.Array<unknown>;
+        const comp = components.get(0) as Y.Map<unknown>;
+        const html = comp.get('htmlView') as string;
+
+        // Link must use new page ID and preserve the fragment
+        expect(html).toContain(`exe-node:${newPageBId}#my-anchor`);
+        expect(html).not.toContain('exe-node:original-page-bbb');
+
+        ydoc.destroy();
+    });
+
+    it('should remove legacy exe-text wrapper from JsIdevice htmlView and jsonProperties textTextarea', async () => {
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>JsIdevice Wrapper Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+  <odeProperty><key>pp_theme</key><value>base</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-a-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>comp-a-1</odeIdeviceId>
+          <odeIdeviceTypeName>JsIdevice</odeIdeviceTypeName>
+          <odeComponentOrder>0</odeComponentOrder>
+          <htmlView><![CDATA[<div class="exe-text"><p>HTML content</p></div>]]></htmlView>
+          <jsonProperties><![CDATA[{"textTextarea":"&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;JSON content&lt;/p&gt;&lt;/div&gt;","htmlView":"&lt;div class=&quot;exe-text&quot;&gt;&lt;p&gt;JSON htmlView&lt;/p&gt;&lt;/div&gt;"}]]></jsonProperties>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zipData = fflate.zipSync({
+            'content.xml': encoder.encode(contentXml),
+        });
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromBuffer(zipData);
+
+        const navigation = ydoc.getArray('navigation');
+        const page = navigation.get(0) as Y.Map<unknown>;
+        const blocks = page.get('blocks') as Y.Array<unknown>;
+        const block = blocks.get(0) as Y.Map<unknown>;
+        const components = block.get('components') as Y.Array<unknown>;
+        const comp = components.get(0) as Y.Map<unknown>;
+
+        const html = comp.get('htmlView') as string;
+        expect(html).toBe('<p>HTML content</p>');
+        expect(html).not.toContain('class="exe-text"');
+
+        const rawJson = comp.get('jsonProperties') as string;
+        const props = JSON.parse(rawJson) as { textTextarea?: string };
+        expect(props.textTextarea).toBe('<p>JSON content</p>');
+        expect(props.textTextarea).not.toContain('class="exe-text"');
+        expect((props as Record<string, string>).htmlView).toBe('<p>JSON htmlView</p>');
+        expect((props as Record<string, string>).htmlView).not.toContain('class="exe-text"');
+
+        ydoc.destroy();
+    });
+
+    it('should unwrap exe-text and preserve trailing feedback siblings in text htmlView', async () => {
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Text Wrapper Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+  <odeProperty><key>pp_theme</key><value>base</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-a-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>comp-a-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <odeComponentOrder>0</odeComponentOrder>
+          <htmlView><![CDATA[<div class="exe-text"><p>Main</p></div><div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Info" /></div><div class="feedback js-feedback js-hidden">Info content</div>]]></htmlView>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zipData = fflate.zipSync({ 'content.xml': encoder.encode(contentXml) });
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromBuffer(zipData);
+
+        const navigation = ydoc.getArray('navigation');
+        const page = navigation.get(0) as Y.Map<unknown>;
+        const blocks = page.get('blocks') as Y.Array<unknown>;
+        const block = blocks.get(0) as Y.Map<unknown>;
+        const components = block.get('components') as Y.Array<unknown>;
+        const comp = components.get(0) as Y.Map<unknown>;
+
+        const html = comp.get('htmlView') as string;
+        expect(html).toContain('<p>Main</p>');
+        expect(html).toContain('iDevice_buttons feedback-button');
+        expect(html).toContain('Info content');
+        expect(html).not.toContain('<div class="exe-text">');
+
+        ydoc.destroy();
+    });
+
+    // =========================================================================
+    // Screenshot import tests
+    // =========================================================================
+    describe('screenshot import', () => {
+        // Minimal valid 1x1 PNG (binary)
+        const MINIMAL_PNG_BYTES = new Uint8Array([
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00,
+            0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
+            0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xe2,
+            0x21, 0xbc, 0x33, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ]);
+
+        const MINIMAL_CONTENT_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Screenshot Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-1</odePageId>
+  <pageName>Home</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures/>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        it('should import screenshot.png from archive root into metadata', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(MINIMAL_CONTENT_XML),
+                'screenshot.png': MINIMAL_PNG_BYTES,
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const screenshot = metadata.get('screenshot') as string;
+            expect(screenshot).toBeDefined();
+            expect(screenshot).toContain('data:image/png;base64,');
+
+            ydoc.destroy();
+        });
+
+        it('should work without screenshot.png (backward compatibility)', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(MINIMAL_CONTENT_XML),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const screenshot = metadata.get('screenshot');
+            expect(screenshot).toBeUndefined();
+
+            // Other metadata should still be set
+            expect(metadata.get('title')).toBe('Screenshot Test');
+
+            ydoc.destroy();
+        });
+
+        it('should store screenshot as valid base64 data URL that round-trips', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(MINIMAL_CONTENT_XML),
+                'screenshot.png': MINIMAL_PNG_BYTES,
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const screenshot = metadata.get('screenshot') as string;
+
+            // Verify the base64 can be decoded back to original bytes
+            const base64Part = screenshot.split(',')[1];
+            const decoded = atob(base64Part);
+            const roundTripped = new Uint8Array(decoded.length);
+            for (let i = 0; i < decoded.length; i++) {
+                roundTripped[i] = decoded.charCodeAt(i);
+            }
+            // Check PNG signature is preserved
+            expect(roundTripped[0]).toBe(0x89);
+            expect(roundTripped[1]).toBe(0x50);
+            expect(roundTripped[2]).toBe(0x4e);
+            expect(roundTripped[3]).toBe(0x47);
+
+            ydoc.destroy();
         });
     });
 });

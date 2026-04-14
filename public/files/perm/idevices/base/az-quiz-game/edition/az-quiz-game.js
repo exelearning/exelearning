@@ -40,6 +40,9 @@ var $exeDevice = {
         this.setMessagesInfo();
         this.createForm();
         this.addEvents();
+
+        const root = document.getElementById('roscoIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     refreshTranslations: function () {
@@ -927,7 +930,7 @@ var $exeDevice = {
                             </div>
                         </div>
                         <div class="roscoAudioDiv row g-2 align-items-center">
-                            <div class="col-12 roscoAudioInputWrapper">
+                            <div class="col-12 roscoAudioInputWrapper" data-voice-recorder data-voice-input="#roscoEURLAudio${letter}">
                                 <label for="roscoEURLAudio${letter}" class="form-label mb-0">${_('Audio')}:</label>
                                 <input type="text" class="form-control exe-file-picker roscoURLAudioEdition me-0" id="roscoEURLAudio${letter}" placeholder="${_('Indicate a valid URL of an audio or select one from your device')}"/>
                                 <a href="#" class="roscoPlayAudio" title="${_('Play audio')}" id="roscoPlayAudio${letter}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="roscoIconoPlayAudio"/></a>

@@ -1,5 +1,13 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+    selectFirstPage,
+    addIdevice,
+    getPreviewFrame,
+    waitForPreviewContent,
+} from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -10,7 +18,7 @@ import type { Page } from '@playwright/test';
  * - Basic operations (add, create new rubric, edit, save)
  * - Editing rubric content (title, criteria, levels, descriptors, weights)
  * - Persistence after reload
- * - Preview rendering with Apply button
+ * - Preview rendering with Download/Reset buttons
  */
 
 const TEST_DATA = {
@@ -24,52 +32,8 @@ const TEST_DATA = {
  * Helper to add a Rubric iDevice by selecting the page and clicking the iDevice
  */
 async function addRubricIdeviceFromPanel(page: Page): Promise<void> {
-    // First, select a page in the navigation tree
-    const pageNodeSelectors = [
-        '.nav-element-text:has-text("New page")',
-        '.nav-element-text:has-text("Nueva página")',
-        '[data-testid="nav-node-text"]',
-        '.structure-tree li .nav-element-text',
-    ];
-
-    let pageSelected = false;
-    for (const selector of pageNodeSelectors) {
-        const element = page.locator(selector).first();
-        if ((await element.count()) > 0) {
-            try {
-                await element.click({ force: true, timeout: 5000 });
-                pageSelected = true;
-                break;
-            } catch {
-                // Try next selector
-            }
-        }
-    }
-
-    if (!pageSelected) {
-        const treeItem = page.locator('#menu_structure .structure-tree li').first();
-        if ((await treeItem.count()) > 0) {
-            await treeItem.click({ force: true });
-        }
-    }
-
-    // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(500);
-
-    // Wait for node-content to show page content (not project metadata)
-    await page
-        .waitForFunction(
-            () => {
-                const nodeContent = document.querySelector('#node-content');
-                const metadata = document.querySelector('#properties-node-content-form');
-                return nodeContent && (!metadata || !metadata.closest('.show'));
-            },
-            undefined,
-            { timeout: 10000 },
-        )
-        .catch(() => {
-            // Continue anyway
-        });
+    // Select non-root page before adding iDevices.
+    await selectFirstPage(page);
 
     // Expand "Assessment and tracking" category in iDevices panel
     const assessmentCategory = page
@@ -80,30 +44,20 @@ async function addRubricIdeviceFromPanel(page: Page): Promise<void> {
         .first();
 
     if ((await assessmentCategory.count()) > 0) {
-        // Check if category is collapsed (has "off" class)
         const isCollapsed = await assessmentCategory.evaluate(el => el.classList.contains('off'));
         if (isCollapsed) {
-            // Click on the .label to expand
             const label = assessmentCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(500);
+            await page.waitForFunction(
+                element => !!element && !element.classList.contains('off'),
+                await assessmentCategory.elementHandle(),
+                { timeout: 10000 },
+            );
         }
     }
 
-    // Wait for the category content to be visible
-    await page.waitForTimeout(500);
-
-    // Find the Rubric iDevice
-    const rubricIdevice = page.locator('.idevice_item[id="rubric"], [data-testid="idevice-rubric"]').first();
-
-    // Wait for it to be visible and then click
-    await rubricIdevice.waitFor({ state: 'visible', timeout: 10000 });
-    await rubricIdevice.click();
-
-    // Wait for iDevice to appear in content area
-    await page.locator('#node-content article .idevice_node.rubric').first().waitFor({ timeout: 15000 });
+    await addIdevice(page, 'rubric');
 }
-
 /**
  * Helper to create a new rubric by clicking the "New rubric" button
  */
@@ -120,64 +74,109 @@ async function createNewRubric(page: Page): Promise<void> {
 /**
  * Helper to edit rubric content
  *
- * Cell ID mapping for a 4x4 rubric:
- * - #ri_Cell-0 = caption (title)
- * - #ri_Cell-1 = empty thead th (top-left corner)
- * - #ri_Cell-2 to #ri_Cell-5 = level headers (Level 1-4)
- * - #ri_Cell-6 = first criteria TH (row 1)
- * - #ri_Cell-7 to #ri_Cell-10 = first row descriptors (TDs with weights)
- * - #ri_Cell-7-weight = weight for first descriptor
+ * Uses semantic selectors (caption/first descriptor cell) instead of
+ * brittle internal input ids so the test remains stable if id numbering changes.
  */
 async function editRubricContent(page: Page, title: string, descriptor?: string, weight?: string): Promise<void> {
-    // Edit the title (caption) - #ri_Cell-0
-    const titleInput = page.locator('#ri_Cell-0');
+    // Edit title input from caption.
+    const titleInput = page.locator('#ri_Table caption input[type="text"]').first();
     await titleInput.waitFor({ state: 'visible', timeout: 5000 });
     await titleInput.clear();
     await titleInput.fill(title);
 
-    // Optionally edit a descriptor cell (#ri_Cell-7 is first descriptor TD in row 1)
+    // Optionally edit first descriptor cell in row 1/col 1.
     if (descriptor) {
-        const descriptorInput = page.locator('#ri_Cell-7');
+        const descriptorInput = page
+            .locator('#ri_Table tbody tr')
+            .first()
+            .locator('td')
+            .first()
+            .locator('input[type="text"]:not(.ri_Weight)');
         if ((await descriptorInput.count()) > 0) {
             await descriptorInput.clear();
             await descriptorInput.fill(descriptor);
         }
     }
 
-    // Optionally edit a weight value (#ri_Cell-7-weight is weight for first descriptor)
+    // Optionally edit first descriptor weight value.
     if (weight) {
-        const weightInput = page.locator('#ri_Cell-7-weight');
+        const weightInput = page.locator('#ri_Table tbody tr').first().locator('td').first().locator('input.ri_Weight');
         if ((await weightInput.count()) > 0) {
             await weightInput.clear();
             await weightInput.fill(weight);
         }
     }
 }
-
 /**
  * Helper to save the rubric iDevice
  */
 async function saveRubricIdevice(page: Page): Promise<void> {
-    // Find and click the Save button
-    const saveBtn = page
-        .locator('#node-content article .idevice_node.rubric button')
-        .filter({ hasText: /^Save$|^Guardar$/i })
-        .first();
+    const rubricNode = page.locator('#node-content article .idevice_node.rubric').first();
+    await rubricNode.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Save using stable iDevice action button.
+    const saveBtn = rubricNode.locator('.btn-save-idevice').first();
+    await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
     await saveBtn.click();
 
-    // Wait for edition mode to end (table should be normal, not editable)
+    // Wait for edition mode to end.
     await page.waitForFunction(
         () => {
-            // The editable table has input fields; after save, it should be a normal table
-            const editableInputs = document.querySelectorAll('#ri_Table input');
-            const normalTable = document.querySelector('#node-content .rubric .exe-table');
-            return editableInputs.length === 0 && normalTable !== null;
+            const node = document.querySelector('#node-content article .idevice_node.rubric');
+            return !!node && node.getAttribute('mode') !== 'edition';
         },
         undefined,
         { timeout: 15000 },
     );
+
+    // Confirm rendered table is present after save.
+    await expect(page.locator('#node-content .idevice_node.rubric .exe-table').first()).toBeVisible({ timeout: 10000 });
 }
 
+/**
+ * Ensure rubric content is expanded in preview iframe.
+ */
+async function ensureExpandedRubricInPreview(page: Page): Promise<void> {
+    const iframe = getPreviewFrame(page);
+    const rubricArticle = iframe
+        .locator('article.box')
+        .filter({
+            has: iframe.locator('h1.box-title').filter({ hasText: /Rubric|Rúbrica/i }),
+        })
+        .first();
+
+    await rubricArticle.waitFor({ state: 'attached', timeout: 10000 });
+
+    const boxContent = rubricArticle.locator('.box-content').first();
+    const isExpanded = (await boxContent.count()) > 0 && (await boxContent.isVisible().catch(() => false));
+    if (!isExpanded) {
+        const toggleButton = rubricArticle.locator('.box-toggle').first();
+        if ((await toggleButton.count()) > 0) {
+            await toggleButton.click();
+        }
+    }
+
+    await boxContent.waitFor({ state: 'visible', timeout: 15000 });
+}
+
+/**
+ * Resolve the rubric root container inside preview.
+ *
+ * Preferred structure is `.exe-rubrics-wrapper`.
+ * Fallback keeps compatibility with intermediate markup states.
+ */
+async function getRubricRootInPreview(page: Page) {
+    const iframe = getPreviewFrame(page);
+    const wrapper = iframe.locator('.exe-rubrics-wrapper').first();
+    if ((await wrapper.count()) > 0) {
+        await wrapper.waitFor({ state: 'visible', timeout: 10000 });
+        return wrapper;
+    }
+
+    const fallback = iframe.locator('.idevice_node.rubric').first();
+    await fallback.waitFor({ state: 'visible', timeout: 10000 });
+    return fallback;
+}
 test.describe('Rubric iDevice', () => {
     test.describe('Basic Operations', () => {
         test('should add rubric iDevice and create new rubric', async ({ authenticatedPage, createProject }) => {
@@ -232,20 +231,20 @@ test.describe('Rubric iDevice', () => {
             await saveRubricIdevice(page);
 
             // Verify the rubric displays correctly after save
-            const rubricTable = page.locator('#node-content .rubric .exe-table');
+            const rubricTable = page.locator('#node-content .idevice_node.rubric .exe-table');
             await expect(rubricTable).toBeVisible({ timeout: 10000 });
 
             // Verify the title is displayed in the caption
-            const caption = page.locator('#node-content .rubric .exe-table caption');
+            const caption = page.locator('#node-content .idevice_node.rubric .exe-table caption');
             await expect(caption).toContainText(TEST_DATA.rubricTitle, { timeout: 5000 });
 
             // Verify the edited descriptor is visible
-            await expect(page.locator('#node-content .rubric')).toContainText(TEST_DATA.editedDescriptor, {
+            await expect(page.locator('#node-content .idevice_node.rubric')).toContainText(TEST_DATA.editedDescriptor, {
                 timeout: 5000,
             });
 
             // Verify the weight is displayed (format: "text (weight)")
-            await expect(page.locator('#node-content .rubric')).toContainText(`(${TEST_DATA.weight})`, {
+            await expect(page.locator('#node-content .idevice_node.rubric')).toContainText(`(${TEST_DATA.weight})`, {
                 timeout: 5000,
             });
         });
@@ -269,7 +268,6 @@ test.describe('Rubric iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(500);
 
             // Reload the page
             await reloadPage(page);
@@ -277,24 +275,33 @@ test.describe('Rubric iDevice', () => {
             // Navigate to the page
             const pageNode = page
                 .locator('.nav-element-text')
-                .filter({ hasText: /New page|Nueva página/i })
+                .filter({ hasText: /New page|Nueva/i })
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(500);
+                await page.waitForFunction(
+                    () => {
+                        const selected = document.querySelector('.nav-element.selected:not([nav-id="root"])');
+                        return !!selected;
+                    },
+                    undefined,
+                    { timeout: 10000 },
+                );
             }
 
             // Verify rubric content persisted
-            await expect(page.locator('#node-content .rubric')).toContainText(uniqueTitle, { timeout: 15000 });
+            await expect(page.locator('#node-content .idevice_node.rubric')).toContainText(uniqueTitle, {
+                timeout: 15000,
+            });
 
             // Verify the table structure is intact
-            const rubricTable = page.locator('#node-content .rubric .exe-table');
+            const rubricTable = page.locator('#node-content .idevice_node.rubric .exe-table');
             await expect(rubricTable).toBeVisible({ timeout: 10000 });
         });
     });
 
     test.describe('Preview', () => {
-        test('should display rubric table correctly in preview with Apply button', async ({
+        test('should display rubric table correctly in preview with Download button', async ({
             authenticatedPage,
             createProject,
         }) => {
@@ -316,52 +323,38 @@ test.describe('Rubric iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(500);
+            const previewLoaded = await waitForPreviewContent(page, 45000);
+            expect(previewLoaded).toBe(true);
 
-            // Open preview panel
-            await page.click('#head-bottom-preview');
-            const previewPanel = page.locator('#previewsidenav');
-            await expect(previewPanel).toBeVisible({ timeout: 15000 });
-
-            // Access preview iframe
-            const iframe = page.frameLocator('#preview-iframe');
-
-            // Wait for page to load
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            // Expand rubric if needed and wait for visible rubric content.
+            await ensureExpandedRubricInPreview(page);
+            const rubricRoot = await getRubricRootInPreview(page);
+            await expect(rubricRoot).toBeVisible({ timeout: 10000 });
 
             // Verify the rubric table is displayed
-            const rubricTable = iframe.locator('.rubric .exe-table, .idevice_node.rubric .exe-table');
+            const rubricTable = rubricRoot.locator('.exe-table').first();
             await expect(rubricTable).toBeVisible({ timeout: 10000 });
 
             // Verify the title/caption is correct
-            const caption = iframe.locator('.rubric .exe-table caption, .idevice_node.rubric .exe-table caption');
+            const caption = rubricTable.locator('caption').first();
             await expect(caption).toContainText(previewTitle, { timeout: 5000 });
 
-            // Verify the "Apply" button is present
-            const applyButton = iframe.locator('a.exe-rubrics-print');
-            await expect(applyButton).toBeVisible({ timeout: 10000 });
-            await expect(applyButton).toContainText(/Apply|Aplicar/i, { timeout: 5000 });
+            // Verify the "Download" button is present (replaces old "Apply" button)
+            const downloadButton = rubricRoot.locator('button.exe-rubrics-download').first();
+            await expect(downloadButton).toBeVisible({ timeout: 10000 });
+            await expect(downloadButton).toContainText(/Download|Descargar/i, { timeout: 5000 });
+
+            // Verify the "Reset" button is present
+            const resetButton = rubricRoot.locator('button.exe-rubrics-reset').first();
+            await expect(resetButton).toBeVisible({ timeout: 10000 });
 
             // Verify the edited descriptor is visible
-            await expect(iframe.locator('.rubric, .idevice_node.rubric')).toContainText('Preview descriptor', {
+            await expect(rubricRoot).toContainText('Preview descriptor', {
                 timeout: 5000,
             });
 
             // Verify the weight is displayed
-            await expect(iframe.locator('.rubric, .idevice_node.rubric')).toContainText('(3)', { timeout: 5000 });
-
-            // Verify the .exe-rubrics-strings list is present (needed for Apply popup i18n)
-            const rubricStrings = iframe.locator(
-                '.rubric .exe-rubrics-strings, .idevice_node.rubric .exe-rubrics-strings',
-            );
-            await expect(rubricStrings).toBeAttached({ timeout: 5000 });
-
-            // Verify the strings list contains the expected i18n keys
-            await expect(rubricStrings.locator('li.activity')).toBeAttached({ timeout: 2000 });
-            await expect(rubricStrings.locator('li.name')).toBeAttached({ timeout: 2000 });
-            await expect(rubricStrings.locator('li.date')).toBeAttached({ timeout: 2000 });
-            await expect(rubricStrings.locator('li.score')).toBeAttached({ timeout: 2000 });
-            await expect(rubricStrings.locator('li.apply')).toBeAttached({ timeout: 2000 });
+            await expect(rubricRoot).toContainText('(3)', { timeout: 5000 });
         });
     });
 });

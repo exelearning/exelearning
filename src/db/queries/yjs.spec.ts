@@ -409,13 +409,120 @@ describe('Yjs Queries', () => {
                     client_id: null,
                 });
 
-                const count = await deleteUpdatesBefore(db, testProjectId, 200);
+                const count = await deleteUpdatesBefore(db, testProjectId, '200');
 
                 expect(count).toBe(1);
 
                 const remaining = await findUpdatesByProjectId(db, testProjectId);
                 expect(remaining.length).toBe(2);
                 expect(remaining[0].version).toBe('200');
+            });
+
+            it('should use numeric (not lexicographic) comparison for multi-digit versions', async () => {
+                // Insert versions that would fail under string comparison:
+                // Lexicographically: '10' < '2' (wrong), '100' < '2' (wrong)
+                for (const v of ['2', '10', '30', '100', '200']) {
+                    await createUpdate(db, {
+                        project_id: testProjectId,
+                        update_data: new Uint8Array([parseInt(v, 10)]),
+                        version: v,
+                        client_id: null,
+                    });
+                }
+
+                // Delete before '10' — should only delete version '2'
+                // Under string comparison '10' < '2', so '2' would NOT be deleted (bug)
+                const count = await deleteUpdatesBefore(db, testProjectId, '10');
+                expect(count).toBe(1); // only version '2'
+
+                const remaining = await findUpdatesByProjectId(db, testProjectId);
+                expect(remaining.length).toBe(4);
+                expect(remaining.map(u => u.version)).toEqual(['10', '30', '100', '200']);
+            });
+        });
+
+        describe('deleteUpdatesUpToVersion', () => {
+            it('should use numeric comparison for multi-digit versions', async () => {
+                for (const v of ['2', '10', '30', '100', '200']) {
+                    await createUpdate(db, {
+                        project_id: testProjectId,
+                        update_data: new Uint8Array([parseInt(v, 10)]),
+                        version: v,
+                        client_id: null,
+                    });
+                }
+
+                // Delete up to '30' — should delete '2', '10', '30'
+                const count = await deleteUpdatesUpToVersion(db, testProjectId, '30');
+                expect(count).toBe(3);
+
+                const remaining = await findUpdatesByProjectId(db, testProjectId);
+                expect(remaining.length).toBe(2);
+                expect(remaining.map(u => u.version)).toEqual(['100', '200']);
+            });
+        });
+
+        describe('numeric version ordering', () => {
+            it('findUpdatesByProjectId returns updates in numeric order', async () => {
+                // Insert out of order with versions that differ lexicographically vs numerically
+                for (const v of ['200', '2', '30', '10', '100']) {
+                    await createUpdate(db, {
+                        project_id: testProjectId,
+                        update_data: new Uint8Array([parseInt(v, 10)]),
+                        version: v,
+                        client_id: null,
+                    });
+                }
+
+                const updates = await findUpdatesByProjectId(db, testProjectId);
+                expect(updates.map(u => u.version)).toEqual(['2', '10', '30', '100', '200']);
+            });
+
+            it('findUpdatesSince uses numeric comparison', async () => {
+                for (const v of ['2', '10', '30', '100', '200']) {
+                    await createUpdate(db, {
+                        project_id: testProjectId,
+                        update_data: new Uint8Array([parseInt(v, 10)]),
+                        version: v,
+                        client_id: null,
+                    });
+                }
+
+                // Since '10' — should return 30, 100, 200
+                // Under string comparison, '2' > '10' would wrongly include it
+                const updates = await findUpdatesSince(db, testProjectId, '10');
+                expect(updates.map(u => u.version)).toEqual(['30', '100', '200']);
+            });
+
+            it('getLatestVersion returns numerically largest version', async () => {
+                for (const v of ['2', '10', '30', '100', '200']) {
+                    await createUpdate(db, {
+                        project_id: testProjectId,
+                        update_data: new Uint8Array([parseInt(v, 10)]),
+                        version: v,
+                        client_id: null,
+                    });
+                }
+
+                const latest = await getLatestVersion(db, testProjectId);
+                // Under string comparison MAX would return '30' (wrong)
+                expect(latest).toBe('200');
+            });
+
+            it('getUpdateStats returns numerically correct oldest/newest versions', async () => {
+                for (const v of ['2', '10', '30', '100', '200']) {
+                    await createUpdate(db, {
+                        project_id: testProjectId,
+                        update_data: new Uint8Array([parseInt(v, 10)]),
+                        version: v,
+                        client_id: null,
+                    });
+                }
+
+                const stats = await getUpdateStats(db, testProjectId);
+                expect(stats.count).toBe(5);
+                expect(stats.oldestVersion).toBe('2');
+                expect(stats.newestVersion).toBe('200');
             });
         });
 

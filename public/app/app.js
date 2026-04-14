@@ -26,6 +26,11 @@ import EmbeddingBridge from './core/EmbeddingBridge.js';
 import { HIDE_UI_ATTR_MAP, applyHideUI } from './core/ui-visibility.js';
 // DOM translation for static mode
 import DOMTranslator from './locate/domTranslator.js';
+// Unsaved changes helper
+import UnsavedChangesHelper from './utils/unsavedChangesHelper.js';
+window.UnsavedChangesHelper = UnsavedChangesHelper;
+// Blob paste guard
+import BlobPasteGuard from './common/blobPasteGuard.js';
 
 export default class App {
     constructor(eXeLearning) {
@@ -127,6 +132,15 @@ export default class App {
         await this.flushPendingStaticOpenFilesWhenReady();
         // Process any pending Electron file-open events after project init.
         await this.flushPendingElectronOpenFilesWhenReady();
+        // Show deferred URL import error from static mode (set by ?url= handler)
+        if (window.__exeStaticUrlError && this.modals?.alert) {
+            this.modals.alert.show({
+                title: _('Import Error'),
+                body: window.__exeStaticUrlError,
+                contentId: 'error',
+            });
+            window.__exeStaticUrlError = null;
+        }
         // "Not for production use" warning
         await this.showProvisionalDemoWarning();
         // To review (showProvisionalToDoWarning might be useful for future beta releases)
@@ -135,8 +149,6 @@ export default class App {
         await this.tmpStringList();
         // Add the notranslate class to some elements
         await this.addNoTranslateForGoogle();
-        // Execute the custom JavaScript code
-        await this.runCustomJavaScriptCode();
         // Compose and initialize shortcuts
         await this.initializedShortcuts();
 
@@ -164,6 +176,9 @@ export default class App {
             });
             this._readyResolve = null;
         }
+
+        // Execute the custom JavaScript code after the app is fully ready
+        await this.runCustomJavaScriptCode();
     }
 
     /**
@@ -570,7 +585,7 @@ export default class App {
             if (!this.project?._yjsEnabled || !this.project?.exportToElpxViaYjs) {
                 this.modals.alert.show({
                     title: _('Error'),
-                    body: _('Project not loaded or Yjs not enabled'),
+                    body: _('Project not ready for collaboration'),
                     contentId: 'error',
                 });
                 return;
@@ -1007,6 +1022,7 @@ export default class App {
      */
     async initializedToasts() {
         this.toasts.init();
+        new BlobPasteGuard({ toastsManager: this.toasts }).start();
     }
 
     /**
@@ -1230,6 +1246,17 @@ export default class App {
         ) {
             window.electronAPI.notifyRendererReadyForOpenFile();
         }
+        if (window.electronAPI?.onGetCloseCopy) {
+            window.electronAPI.onGetCloseCopy(() => {
+                window.electronAPI.sendCloseCopy({
+                    title:              _('Unsaved changes'),
+                    message:            _('You have unsaved changes. Are you sure you want to leave?'),
+                    detail:             _('If you close now, your latest changes will be lost. Stay to save the project first.'),
+                    stayButtonLabel:    _('Stay'),
+                    discardButtonLabel: _('Close without saving'),
+               });
+           });
+        }
     }
 
     /**
@@ -1278,12 +1305,6 @@ export default class App {
                 type: 'application/octet-stream',
                 lastModified: res.mtimeMs || Date.now(),
             });
-
-            // Store original path for save functionality
-            if (window.electronAPI && window.electronAPI.setSavedPath) {
-                const projectKey = this.project?.odeSession || 'default';
-                await window.electronAPI.setSavedPath(projectKey, filePath);
-            }
 
             // Use existing upload function
             this.modals.openuserodefiles.largeFilesUpload(file);
@@ -1558,25 +1579,10 @@ function __exeInstallBeforeUnloadOnce() {
     if (__exeBeforeUnloadInstalled) return;
     __exeBeforeUnloadInstalled = true;
 
-    window.onbeforeunload = function (event) {
-        if (window.electronAPI) return undefined;
-
-        const docManager = window.eXeLearning?.app?.project?._yjsBridge?.documentManager;
-        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-        const hasUnsavedAssets =
-            assetManager &&
-            typeof assetManager.hasUnsavedAssets === 'function' &&
-            assetManager.hasUnsavedAssets();
-        const isDirty = docManager?.isDirty === true;
-
-        if (isDirty || hasUnsavedAssets) {
-            event.preventDefault();
-            event.returnValue = '';
-            return '';
-        }
-
-        return undefined;
-    };
+    // Delegate to UnsavedChangesHelper (single source of truth for beforeunload)
+    if (window.UnsavedChangesHelper) {
+        window.UnsavedChangesHelper.setupBeforeUnloadHandler();
+    }
 }
 
 // Listen for the first trusted user interaction and install then.

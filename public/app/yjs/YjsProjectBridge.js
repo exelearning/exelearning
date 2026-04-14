@@ -59,6 +59,224 @@ class YjsProjectBridge {
     // Asset metadata observer references (for hash-change invalidation)
     this._assetsMap = null;
     this._onAssetsMapChange = null;
+    this._assetsMapDebugCalls = 0;
+    this._activeElpxExportTrace = null;
+  }
+
+  getElpxExportDebugConfig() {
+    const runtime = globalThis.window || globalThis;
+    const config = runtime.eXeLearning?.config || globalThis.eXeLearning?.config || {};
+    return {
+      enabled: config.debugElpxExport === true,
+      includeCaller: config.debugElpxExportIncludeCaller !== false,
+    };
+  }
+
+  isElpxExportDebugEnabled() {
+    return this.getElpxExportDebugConfig().enabled;
+  }
+
+  getElpxExportDebugNow() {
+    if (globalThis.performance?.now) {
+      return globalThis.performance.now();
+    }
+    return Date.now();
+  }
+
+  createElpxExportTrace() {
+    if (!this.isElpxExportDebugEnabled()) {
+      this._activeElpxExportTrace = null;
+      return null;
+    }
+
+    const runtime = globalThis.window || globalThis;
+    const trace = {
+      startedAt: new Date().toISOString(),
+      startedMs: this.getElpxExportDebugNow(),
+      entries: [],
+    };
+    this._assetsMapDebugCalls = 0;
+    runtime.__currentElpxExportTrace = trace;
+    this._activeElpxExportTrace = trace;
+    return trace;
+  }
+
+  getElpxExportCallerFrame() {
+    if (!this.getElpxExportDebugConfig().includeCaller) {
+      return null;
+    }
+
+    try {
+      const stack = new Error().stack?.split('\n') || [];
+      const caller = stack.find(line =>
+        line &&
+        !line.includes('getElpxExportCallerFrame') &&
+        !line.includes('logElpxExportPhase') &&
+        !line.includes('getAssetsMap')
+      );
+      return caller ? caller.trim() : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  logElpxExportPhase(phase, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._activeElpxExportTrace;
+    if (!trace) {
+      return;
+    }
+
+    const entry = {
+      phase,
+      ts: new Date().toISOString(),
+      elapsedMs: Math.round(this.getElpxExportDebugNow() - trace.startedMs),
+      ...context,
+    };
+
+    trace.entries.push(entry);
+    console.log('[ELPX Export DEBUG]', entry);
+  }
+
+  appendElpxExportPhaseEntry(phase, elapsedMs, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._activeElpxExportTrace;
+    if (!trace) {
+      return;
+    }
+
+    const entry = {
+      phase,
+      ts: new Date().toISOString(),
+      elapsedMs: Math.round(elapsedMs),
+      ...context,
+    };
+
+    trace.entries.push(entry);
+    console.log('[ELPX Export DEBUG]', entry);
+  }
+
+  getElpxExportPhaseEntry(trace, phase, mode = 'first') {
+    if (!trace?.entries?.length) {
+      return null;
+    }
+
+    if (mode === 'last') {
+      for (let i = trace.entries.length - 1; i >= 0; i--) {
+        if (trace.entries[i]?.phase === phase) {
+          return trace.entries[i];
+        }
+      }
+      return null;
+    }
+
+    return trace.entries.find(entry => entry?.phase === phase) || null;
+  }
+
+  getElpxExportPhaseDuration(trace, startPhase, endPhase) {
+    const start = this.getElpxExportPhaseEntry(trace, startPhase, 'first');
+    const end = this.getElpxExportPhaseEntry(trace, endPhase, 'last');
+
+    if (!start || !end) {
+      return null;
+    }
+
+    return Math.max(0, end.elapsedMs - start.elapsedMs);
+  }
+
+  buildElpxExportDerivedSummary(trace) {
+    if (!trace?.entries?.length) {
+      return {};
+    }
+
+    const zipEnd = this.getElpxExportPhaseEntry(trace, 'exporter:zip-generate:end', 'last');
+    const electronEnd = this.getElpxExportPhaseEntry(trace, 'bridge:electron:save-buffer:end', 'last');
+
+    return {
+      zipGenerateMs: this.getElpxExportPhaseDuration(trace, 'exporter:zip-generate:start', 'exporter:zip-generate:end'),
+      electronSaveMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:save-buffer:start', 'bridge:electron:save-buffer:end'),
+      electronPromptMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:dialog:start', 'bridge:electron:dialog:end'),
+      electronNormalizeMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:buffer-normalize:start', 'bridge:electron:buffer-normalize:end'),
+      electronWriteMs: this.getElpxExportPhaseDuration(trace, 'bridge:electron:write:start', 'bridge:electron:write:end'),
+      deflatedFiles: zipEnd?.deflatedFiles ?? null,
+      storedFiles: zipEnd?.storedFiles ?? null,
+      deflatedBytes: zipEnd?.deflatedBytes ?? null,
+      storedBytes: zipEnd?.storedBytes ?? null,
+      electronSaved: electronEnd?.saved ?? null,
+      electronCanceledAt: electronEnd?.canceledAt ?? null,
+    };
+  }
+
+  normalizeElectronSaveResult(result) {
+    if (typeof result === 'boolean') {
+      return {
+        saved: result,
+        canceled: !result,
+        canceledAt: result ? null : 'dialog',
+        filePath: null,
+        error: null,
+        timings: {
+          totalMs: 0,
+          promptMs: 0,
+          normalizeMs: 0,
+          writeMs: 0,
+        },
+      };
+    }
+
+    if (!result || typeof result !== 'object') {
+      return {
+        saved: false,
+        canceled: false,
+        canceledAt: 'write',
+        filePath: null,
+        error: 'Invalid saveBuffer response',
+        timings: {
+          totalMs: 0,
+          promptMs: 0,
+          normalizeMs: 0,
+          writeMs: 0,
+        },
+      };
+    }
+
+    const timings = result.timings || {};
+    const canceledAt = result.canceledAt ?? result.cancelledAt ?? null;
+
+    return {
+      saved: result.saved === true,
+      canceled: result.canceled === true || result.cancelled === true,
+      canceledAt,
+      filePath: result.filePath || null,
+      error: result.error || null,
+      timings: {
+        totalMs: Number.isFinite(timings.totalMs) ? timings.totalMs : 0,
+        promptMs: Number.isFinite(timings.promptMs) ? timings.promptMs : 0,
+        normalizeMs: Number.isFinite(timings.normalizeMs) ? timings.normalizeMs : 0,
+        writeMs: Number.isFinite(timings.writeMs) ? timings.writeMs : 0,
+      },
+    };
+  }
+
+  finalizeElpxExportTrace(outcome, context = {}, traceOverride = null) {
+    const trace = traceOverride || this._activeElpxExportTrace;
+    if (!trace) {
+      return;
+    }
+
+    const runtime = globalThis.window || globalThis;
+    const summary = {
+      outcome,
+      startedAt: trace.startedAt,
+      totalElapsedMs: Math.round(this.getElpxExportDebugNow() - trace.startedMs),
+      entries: trace.entries.length,
+      ...this.buildElpxExportDerivedSummary(trace),
+      ...context,
+    };
+
+    runtime.__lastElpxExportTimeline = trace.entries;
+    runtime.__lastElpxExportSummary = summary;
+    delete runtime.__currentElpxExportTrace;
+    this._activeElpxExportTrace = null;
+    console.log('[ELPX Export DEBUG] Summary', summary);
   }
 
   /**
@@ -491,7 +709,13 @@ class YjsProjectBridge {
       return;
     }
 
-    const affectedPageIds = this.getAffectedPageIdsForBlockStructureChanges(events);
+    // For undo/redo transactions, include ALL block touches (even pure additions)
+    // because we need to restore the exact state. For remote changes, skip pure
+    // additions since they're handled incrementally by renderRemoteComponent.
+    const undoManager = this.documentManager?.undoManager;
+    const isUndoRedo = this.isUndoRedoInProgress ||
+      (undoManager != null && transaction?.origin === undoManager);
+    const affectedPageIds = this.getAffectedPageIdsForBlockStructureChanges(events, isUndoRedo);
     if (affectedPageIds.size === 0) return;
 
     affectedPageIds.forEach((pageId) => this.schedulePageReloadIfCurrent(pageId));
@@ -525,10 +749,10 @@ class YjsProjectBridge {
    * @param {Array} events - Yjs deep observe events
    * @returns {Set<string>}
    */
-  getAffectedPageIdsForBlockStructureChanges(events) {
+  getAffectedPageIdsForBlockStructureChanges(events, includeAllBlockTouches) {
     const affectedPageIds = new Set();
     const navigation = this.documentManager?.getNavigation?.();
-    const includeAnyBlockTouch = this.isUndoRedoInProgress === true;
+    const includeAnyBlockTouch = includeAllBlockTouches === true || this.isUndoRedoInProgress === true;
     if (!navigation || !events || !Array.isArray(events)) {
       return affectedPageIds;
     }
@@ -562,6 +786,30 @@ class YjsProjectBridge {
 
       if (!includeAnyBlockTouch && !hasAdded && !hasDeleted && !hasBlockOrderChange) {
         continue;
+      }
+
+      // Pure additions (no deletions, no reorder) are handled incrementally by
+      // handleRemoteStructureChanges → renderRemoteComponent (#1532).
+      // Block and component additions may arrive in separate Yjs transaction
+      // batches (separate WebSocket messages), so we must skip BOTH independently
+      // rather than requiring them in the same event batch.
+      // Deletions and mixed events (moves) still need a full page reload.
+      if (!includeAnyBlockTouch && hasAdded && !hasDeleted && !hasBlockOrderChange) {
+        const isComponentLevel = path.length >= 4 && path[3] === 'components';
+        const isBlockLevelAddition = path.length === 2 && path[1] === 'blocks';
+        if (isComponentLevel || isBlockLevelAddition) {
+          continue;
+        }
+      }
+
+      // Block order-only changes that accompany additions are also incremental
+      if (!includeAnyBlockTouch && hasBlockOrderChange && !hasAdded && !hasDeleted) {
+        if (path.length === 3 && path[1] === 'blocks') {
+          const changedKeys = Array.from(event.changes.keys.keys?.() || []);
+          if (changedKeys.length === 1 && changedKeys[0] === 'order') {
+            continue;
+          }
+        }
       }
 
       const pageMap = navigation.get(pageIndex);
@@ -635,8 +883,6 @@ class YjsProjectBridge {
             if (pageMap) {
               const pageId = pageMap.get('id') || pageMap.get('pageId');
               Logger.log('[YjsProjectBridge] Remote block added to page:', pageId);
-              // If we're currently viewing this page, reload it
-              this.schedulePageReloadIfCurrent(pageId);
             }
           }
         }
@@ -2274,6 +2520,93 @@ class YjsProjectBridge {
   }
 
   /**
+   * Extract anchor IDs from all components in a Yjs page map.
+   * Finds <a id="..."> and <a name="..."> elements (without href, i.e. anchor bookmarks).
+   *
+   * @param {Y.Map} pageMap - Yjs page map
+   * @param {HTMLElement} tempDiv - Reusable temporary div for HTML parsing
+   * @returns {string[]} - Array of unique anchor IDs found on the page
+   */
+  _extractAnchorsFromPageMap(pageMap, tempDiv) {
+    const anchors = [];
+    const blocks = pageMap.get('blocks');
+    if (!blocks) return anchors;
+
+    for (let j = 0; j < blocks.length; j++) {
+      const blockMap = blocks.get(j);
+      const components = blockMap.get('components');
+      if (!components) continue;
+
+      for (let k = 0; k < components.length; k++) {
+        const compMap = components.get(k);
+        const htmlContent = compMap.get('htmlContent');
+        if (!htmlContent) continue;
+
+        const html = typeof htmlContent === 'string' ? htmlContent : (htmlContent.toString?.() || '');
+        if (!html || !html.includes('<a')) continue;
+
+        tempDiv.innerHTML = html;
+        tempDiv.querySelectorAll('a[id], a[name]').forEach((a) => {
+          const id = a.id || a.getAttribute('name');
+          if (id && !a.hasAttribute('href') && !anchors.includes(id)) anchors.push(id);
+        });
+      }
+    }
+
+    return anchors;
+  }
+
+  /**
+   * Get all named anchors from a single page's Yjs content.
+   * Used by the exelink dialog to find same-page anchors in other components.
+   *
+   * @param {string} pageId - The page to scan
+   * @returns {string[]} - Array of anchor IDs found on the page
+   */
+  getPageAnchors(pageId) {
+    const navigation = this.documentManager?.getNavigation?.();
+    if (!navigation || !pageId) return [];
+
+    const tempDiv = document.createElement('div');
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const id = pageMap.get('id') || pageMap.get('pageId');
+      if (id === pageId) return this._extractAnchorsFromPageMap(pageMap, tempDiv);
+    }
+
+    return [];
+  }
+
+  /**
+   * Get all named anchors from all pages except an optional excluded page.
+   * Used by the exelink dialog to populate cross-page anchor links (exe-node:pageId#anchorName).
+   *
+   * @param {string} [excludePageId] - Page ID to exclude (typically the currently edited page)
+   * @returns {Array<{pageId: string, pageName: string, anchors: string[]}>}
+   */
+  getAllPageAnchors(excludePageId = null) {
+    const navigation = this.documentManager?.getNavigation?.();
+    if (!navigation) return [];
+
+    const result = [];
+    const tempDiv = document.createElement('div');
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const pageId = pageMap.get('id') || pageMap.get('pageId');
+      const pageName = pageMap.get('pageName') || '';
+
+      if (!pageId || pageId === 'root' || pageId === excludePageId) continue;
+
+      const anchors = this._extractAnchorsFromPageMap(pageMap, tempDiv);
+      if (anchors.length > 0) result.push({ pageId, pageName, anchors });
+    }
+
+    return result;
+  }
+
+  /**
    * Update page properties
    * @param {string} pageId - Page ID
    * @param {Object} props - Properties to update
@@ -2562,29 +2895,250 @@ class YjsProjectBridge {
       throw new Error('[YjsProjectBridge] Not initialized');
     }
     const assetsMap = this.documentManager.getAssets();
-    console.log('[YjsProjectBridge DEBUG] getAssetsMap:', {
-      initialized: !!this.documentManager,
-      mapSize: assetsMap?.size || 0
-    });
+    if (this._activeElpxExportTrace) {
+      this._assetsMapDebugCalls += 1;
+      this.logElpxExportPhase('assets-map:read', {
+        call: this._assetsMapDebugCalls,
+        initialized: !!this.documentManager,
+        mapSize: assetsMap?.size || 0,
+        caller: this.getElpxExportCallerFrame(),
+      });
+    }
     return assetsMap;
+  }
+
+  /**
+   * Auto-generate screenshot from the first page HTML and store in Yjs metadata.
+   * Uses SharedExporters to generate a full preview (HTML + CSS + theme),
+   * inlines all CSS into the HTML for self-contained rendering, then captures
+   * with html2canvas in a hidden iframe. Skips if a custom screenshot already exists.
+   * Called before save and export to keep the screenshot up-to-date.
+   */
+  async generateScreenshotFromFirstPage() {
+    if (this._screenshotGenerating) return;
+    this._screenshotGenerating = true;
+    try {
+      if (!this.documentManager) {
+        console.warn('[YjsProjectBridge] Screenshot: no documentManager');
+        return;
+      }
+      const metadata = this.documentManager.getMetadata();
+      // Skip if user has set a custom screenshot
+      if (metadata.get('screenshot')) {
+        Logger.log('[YjsProjectBridge] Screenshot: custom screenshot already set, skipping');
+        return;
+      }
+
+      if (!window.SharedExporters?.generatePreviewForSW) {
+        console.warn('[YjsProjectBridge] Screenshot: SharedExporters.generatePreviewForSW not available');
+        return;
+      }
+
+      Logger.log('[YjsProjectBridge] Screenshot: generating preview files...');
+      // Generate all preview files (HTML + CSS + theme + libs)
+      const result = await window.SharedExporters.generatePreviewForSW(
+        this.documentManager,
+        this.assetCache || null,
+        this.resourceFetcher || null,
+        this.assetManager || null,
+      );
+      if (!result?.success || !result.files) {
+        console.warn('[YjsProjectBridge] Screenshot: preview generation failed', result?.error);
+        return;
+      }
+
+      const indexHtml = result.files['index.html'];
+      if (!indexHtml) {
+        console.warn('[YjsProjectBridge] Screenshot: no index.html in preview files');
+        return;
+      }
+      Logger.log(`[YjsProjectBridge] Screenshot: got ${Object.keys(result.files).length} preview files, rendering...`);
+
+      const decoder = new TextDecoder();
+      let htmlString = decoder.decode(indexHtml);
+
+      // Helper: convert a file path to a data URI using the generated files map
+      const MIME_MAP = {
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
+        woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf',
+        eot: 'application/vnd.ms-fontobject', ico: 'image/x-icon',
+      };
+      const toDataUri = (filePath) => {
+        const buffer = result.files[filePath];
+        if (!buffer) return null;
+        const ext = filePath.split('.').pop().toLowerCase();
+        const mime = MIME_MAP[ext] || 'application/octet-stream';
+        const base64 = this._uint8ArrayToBase64(new Uint8Array(buffer));
+        return `data:${mime};base64,${base64}`;
+      };
+
+      // Helper: resolve url() references inside CSS text relative to the CSS file's directory
+      const resolveCssUrls = (cssText, cssPath) => {
+        const cssDir = cssPath.includes('/') ? cssPath.substring(0, cssPath.lastIndexOf('/') + 1) : '';
+        return cssText.replace(/url\(["']?(?!data:)([^"')]+)["']?\)/gi, (match, urlPath) => {
+          // Resolve relative path from CSS file's directory
+          const resolvedPath = cssDir + urlPath;
+          const dataUri = toDataUri(resolvedPath);
+          return dataUri ? `url("${dataUri}")` : match;
+        });
+      };
+
+      // Inline CSS: replace <link rel="stylesheet"> with <style> tags
+      // This handles both href-before-rel and rel-before-href attribute orders
+      htmlString = htmlString.replace(
+        /<link\s+[^>]*(?:rel=["']stylesheet["'][^>]*href=["']([^"']+)["']|href=["']([^"']+)["'][^>]*rel=["']stylesheet["'])[^>]*\/?>/gi,
+        (match, href1, href2) => {
+          const href = href1 || href2;
+          const cssBuffer = result.files[href];
+          if (cssBuffer) {
+            let cssText = decoder.decode(cssBuffer);
+            cssText = resolveCssUrls(cssText, href);
+            return `<style>/* ${href} */\n${cssText}</style>`;
+          }
+          return match;
+        },
+      );
+
+      // Convert <img src> to data URIs for self-contained rendering
+      htmlString = htmlString.replace(
+        /(<img\s+[^>]*src=["'])([^"']+)(["'][^>]*>)/gi,
+        (match, prefix, src, suffix) => {
+          const dataUri = toDataUri(src);
+          return dataUri ? `${prefix}${dataUri}${suffix}` : match;
+        },
+      );
+
+      // Inject CSS to hide navigation chrome — screenshot should show only content
+      const hideUiCss = `<style id="screenshot-cleanup">
+        #siteNav, .single-page-nav { display: none !important; }
+        .nav-buttons, .nav-button { display: none !important; }
+        #made-with-eXe { display: none !important; }
+        .exe-search-form, #exe-search-form, [id*="search"] form { display: none !important; }
+        #skipNav { display: none !important; }
+        .exe-pagination { display: none !important; }
+        .box-toggle { display: none !important; }
+        .exe-content { margin: 0 !important; padding: 16px !important; }
+        main.page, .exe-web-site main.page { padding-left: 16px !important; padding-right: 16px !important; max-width: 100% !important; }
+        #siteFooter, .exe-web-site #siteFooter { padding-left: 0 !important; display: none !important; }
+        body, .exe-content.exe-export { padding-left: 0 !important; padding-right: 0 !important; }
+      </style>`;
+      htmlString = htmlString.replace('</head>', `${hideUiCss}\n</head>`);
+
+      // Remove all <script> tags — JS is not needed for a static screenshot
+      // and would cause 404 errors since paths are relative to the main page
+      htmlString = htmlString.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+      // Capture screenshot using html2canvas in a hidden iframe
+      const dataUrl = await this._captureHtmlAsScreenshot(htmlString);
+      if (dataUrl) {
+        metadata.set('screenshot', dataUrl);
+        // Re-mark as clean: screenshot is auto-generated metadata, not a user edit,
+        // so it should not trigger "unsaved changes" guards on navigation
+        if (this.documentManager?.markClean) {
+          this.documentManager.markClean();
+        }
+        Logger.log('[YjsProjectBridge] Auto-generated screenshot from first page');
+      }
+    } catch (error) {
+      console.warn('[YjsProjectBridge] Screenshot auto-generation failed:', error);
+    } finally {
+      this._screenshotGenerating = false;
+    }
+  }
+
+  /**
+   * Render HTML string in a hidden iframe and capture as PNG data URL.
+   * @param {string} html - Self-contained HTML with inlined CSS
+   * @returns {Promise<string|null>} PNG data URL or null on failure
+   */
+  async _captureHtmlAsScreenshot(html) {
+    // Load html2canvas if not available
+    if (!window.html2canvas) {
+      try {
+        const script = document.createElement('script');
+        script.src = '/files/perm/idevices/base/rubric/export/html2canvas.js';
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      } catch {
+        return null;
+      }
+    }
+    if (!window.html2canvas) return null;
+
+    // Create hidden iframe for rendering
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1280px;height:900px;border:none;opacity:0;';
+    document.body.appendChild(iframe);
+
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) return null;
+
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+
+      // Wait for content to render
+      await new Promise((resolve) => {
+        if (iframeDoc.readyState === 'complete') {
+          setTimeout(resolve, 500);
+        } else {
+          iframe.onload = () => setTimeout(resolve, 500);
+        }
+      });
+
+      const body = iframeDoc.body;
+      const canvas = await window.html2canvas(body, {
+        backgroundColor: '#ffffff',
+        scale: 1,
+        useCORS: true,
+        width: 1280,
+        height: 720,
+        windowWidth: 1280,
+        logging: false,
+      });
+
+      // Force exact 1280×720 output
+      const resized = document.createElement('canvas');
+      resized.width = 1280;
+      resized.height = 720;
+      const ctx = resized.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 1280, 720);
+        ctx.drawImage(canvas, 0, 0, 1280, 720);
+      }
+
+      return resized.toDataURL('image/png');
+    } finally {
+      document.body.removeChild(iframe);
+    }
   }
 
   /**
    * Export project to .elpx file
    * Uses SharedExporters (TypeScript unified pipeline) when available
    * Filename is automatically generated from project title (sanitized: lowercase, no accents, no special chars)
-   * @param {Object} options - Export options
-   * @param {boolean} options.saveAs - If true, always prompt for save location (Save As behavior)
+   * In Electron/Desktop mode, always prompts for save destination (no silent overwrite).
    */
-  async exportToElpx(options = {}) {
+  async exportToElpx() {
+    const trace = this.createElpxExportTrace();
+
     // Ensure exelearning_version is set in metadata before export
     if (this.documentManager?._updateVersionMetadata) {
+      this.logElpxExportPhase('bridge:version-metadata:start', {}, trace);
       await this.documentManager._updateVersionMetadata();
+      this.logElpxExportPhase('bridge:version-metadata:end', {}, trace);
     }
 
     // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
     if (window.SharedExporters?.createExporter) {
       try {
+        this.logElpxExportPhase('bridge:create-exporter:start', {}, trace);
         const exporter = window.SharedExporters.createExporter(
           'elpx',
           this.documentManager,
@@ -2592,14 +3146,22 @@ class YjsProjectBridge {
           this.resourceFetcher,
           this.assetManager
         );
+        this.logElpxExportPhase('bridge:create-exporter:end', {
+          exporter: exporter?.constructor?.name || 'unknown',
+        }, trace);
         
         // Get Mermaid pre-renderer hook if available
         const exportOptions = {};
         if (window.MermaidPreRenderer) {
           exportOptions.preRenderMermaid = window.MermaidPreRenderer.preRender.bind(window.MermaidPreRenderer);
         }
-        
+        this.logElpxExportPhase('bridge:exporter:run:start', {}, trace);
         const result = await exporter.export(exportOptions);
+        this.logElpxExportPhase('bridge:exporter:run:end', {
+          success: !!result?.success,
+          bytes: result?.data?.byteLength ?? null,
+          filename: result?.filename || null,
+        }, trace);
         if (result.success && result.data) {
           // Use sanitized filename from exporter (lowercase, no accents, no special chars)
           const exportFilename = result.filename || 'export.elpx';
@@ -2607,26 +3169,68 @@ class YjsProjectBridge {
           // Check if Electron mode - use Electron save API for desktop behavior
           // eslint-disable-next-line no-undef
           if (eXeLearning?.config?.isOfflineInstallation && window.electronAPI?.saveBuffer) {
-            // Convert ArrayBuffer to base64 for IPC transfer
             const uint8Array = new Uint8Array(result.data);
-            let binary = '';
-            for (let i = 0; i < uint8Array.length; i++) {
-              binary += String.fromCharCode(uint8Array[i]);
-            }
-            const base64Data = btoa(binary);
             const key = window.__currentProjectId || 'default';
+            const saveBufferStartElapsed = trace
+              ? Math.round(this.getElpxExportDebugNow() - trace.startedMs)
+              : 0;
+            this.logElpxExportPhase('bridge:electron:save-buffer:start', {
+              filename: exportFilename,
+              bytes: uint8Array.byteLength,
+            }, trace);
+            this.logElpxExportPhase('bridge:electron:dialog:start', {
+              filename: exportFilename,
+            }, trace);
+            // saveBuffer returns false when the user cancels the OS save dialog
+            const rawSaveResult = await window.electronAPI.saveBuffer(uint8Array, key, exportFilename);
+            const saveResult = this.normalizeElectronSaveResult(rawSaveResult);
+            const promptEndElapsed = saveBufferStartElapsed + saveResult.timings.promptMs;
+            this.appendElpxExportPhaseEntry('bridge:electron:dialog:end', promptEndElapsed, {
+              filename: exportFilename,
+              filePath: saveResult.filePath,
+              canceled: saveResult.canceled,
+            }, trace);
 
-            if (options.saveAs) {
-              // Save As: always prompt for new location
-              await window.electronAPI.saveBufferAs(base64Data, key, exportFilename);
-            } else {
-              // Save: use remembered path or prompt first time
-              // If opened from legacy .elp, main.js will prompt for new .elpx location
-              await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
+            if (saveResult.timings.normalizeMs > 0 || saveResult.timings.writeMs > 0 || saveResult.saved) {
+              this.appendElpxExportPhaseEntry('bridge:electron:buffer-normalize:start', promptEndElapsed, {
+                filename: exportFilename,
+              }, trace);
+              const normalizeEndElapsed = promptEndElapsed + saveResult.timings.normalizeMs;
+              this.appendElpxExportPhaseEntry('bridge:electron:buffer-normalize:end', normalizeEndElapsed, {
+                filename: exportFilename,
+              }, trace);
+
+              this.appendElpxExportPhaseEntry('bridge:electron:write:start', normalizeEndElapsed, {
+                filename: exportFilename,
+                filePath: saveResult.filePath,
+              }, trace);
+              this.appendElpxExportPhaseEntry('bridge:electron:write:end', normalizeEndElapsed + saveResult.timings.writeMs, {
+                filename: exportFilename,
+                filePath: saveResult.filePath,
+                error: saveResult.error,
+              }, trace);
             }
+
+            this.appendElpxExportPhaseEntry('bridge:electron:save-buffer:end', saveBufferStartElapsed + saveResult.timings.totalMs, {
+              filename: exportFilename,
+              saved: saveResult.saved,
+              canceled: saveResult.canceled,
+              canceledAt: saveResult.canceledAt,
+              filePath: saveResult.filePath,
+              error: saveResult.error,
+              timings: saveResult.timings,
+            }, trace);
+            this.finalizeElpxExportTrace(saveResult.saved ? 'success' : 'cancelled', {
+              filename: exportFilename,
+            }, trace);
+            if (!saveResult.saved) return { saved: false };
             Logger.log('[YjsProjectBridge] ELPX exported via Electron:', exportFilename);
           } else {
             // Browser mode: direct download
+            this.logElpxExportPhase('bridge:browser-download:start', {
+              filename: exportFilename,
+              bytes: result.data.byteLength || null,
+            }, trace);
             const blob = new Blob([result.data], { type: 'application/zip' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -2636,16 +3240,35 @@ class YjsProjectBridge {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+            this.logElpxExportPhase('bridge:browser-download:end', {
+              filename: exportFilename,
+            }, trace);
+            this.finalizeElpxExportTrace('success', {
+              filename: exportFilename,
+            }, trace);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
           }
+          return { saved: true };
         } else {
+          this.finalizeElpxExportTrace('error', {
+            error: result.error || 'Export failed',
+          }, trace);
           throw new Error(result.error || 'Export failed');
         }
       } catch (error) {
+        this.logElpxExportPhase('bridge:error', {
+          message: error?.message || String(error),
+        }, trace);
+        this.finalizeElpxExportTrace('error', {
+          error: error?.message || String(error),
+        }, trace);
         console.error('[YjsProjectBridge] SharedExporters ELPX export failed:', error);
         throw error; // Don't hide errors - let them bubble up for debugging
       }
     } else {
+      this.finalizeElpxExportTrace('error', {
+        error: 'SharedExporters not available',
+      }, trace);
       throw new Error('SharedExporters not available - ELPX export requires exporters.bundle.js');
     }
   }
@@ -2699,6 +3322,9 @@ class YjsProjectBridge {
       }
       if (!this.documentManager?._initialized && typeof this.documentManager?.captureBaselineState === 'function') {
         this.documentManager.captureBaselineState();
+      }
+      if (typeof this.documentManager?.clearUndoStack === 'function') {
+        this.documentManager.clearUndoStack();
       }
     } else if (this.documentManager && !this.documentManager.isDirty) {
       this.documentManager.markDirty();
@@ -3045,12 +3671,12 @@ class YjsProjectBridge {
    * @private
    */
   _uint8ArrayToBase64(uint8Array) {
-    let binary = '';
-    const len = uint8Array.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(uint8Array[i]);
+    const CHUNK = 0x8000;
+    const parts = [];
+    for (let i = 0; i < uint8Array.byteLength; i += CHUNK) {
+      parts.push(String.fromCharCode.apply(null, uint8Array.subarray(i, Math.min(i + CHUNK, uint8Array.byteLength))));
     }
-    return btoa(binary);
+    return btoa(parts.join(''));
   }
 
   /**

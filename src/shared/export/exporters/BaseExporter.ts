@@ -10,11 +10,13 @@ import type {
     ExportDocument,
     ExportPage,
     ExportMetadata,
+    ExportAsset,
     ResourceProvider,
     AssetProvider,
     ZipProvider,
     ExportOptions,
     ExportResult,
+    LibraryDetectionOptions,
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
@@ -58,6 +60,59 @@ export abstract class BaseExporter {
         this.libraryDetector = new LibraryDetector();
     }
 
+    protected isElpxExportDebugEnabled(): boolean {
+        const browserGlobal = globalThis as unknown as {
+            eXeLearning?: {
+                config?: {
+                    debugElpxExport?: boolean;
+                };
+            };
+            window?: {
+                eXeLearning?: {
+                    config?: {
+                        debugElpxExport?: boolean;
+                    };
+                };
+            };
+        };
+
+        return (
+            browserGlobal.window?.eXeLearning?.config?.debugElpxExport === true ||
+            browserGlobal.eXeLearning?.config?.debugElpxExport === true
+        );
+    }
+
+    protected logElpxExportDebugPhase(phase: string, context: Record<string, unknown> = {}): void {
+        if (!this.isElpxExportDebugEnabled()) {
+            return;
+        }
+
+        const browserGlobal = globalThis as unknown as {
+            window?: {
+                __currentElpxExportTrace?: {
+                    startedMs: number;
+                    entries: Array<Record<string, unknown>>;
+                };
+            };
+        };
+
+        const trace = browserGlobal.window?.__currentElpxExportTrace;
+        if (!trace) {
+            return;
+        }
+
+        const now = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        const entry = {
+            phase,
+            ts: new Date().toISOString(),
+            elapsedMs: Math.round(now - trace.startedMs),
+            ...context,
+        };
+
+        trace.entries.push(entry);
+        console.log('[ELPX Export DEBUG]', entry);
+    }
+
     // =========================================================================
     // Abstract Methods (must be implemented by subclasses)
     // =========================================================================
@@ -76,6 +131,33 @@ export abstract class BaseExporter {
      * Get file suffix for this export format (e.g., '_web', '_scorm')
      */
     abstract getFileSuffix(): string;
+
+    // =========================================================================
+    // i18n Content Generation
+    // =========================================================================
+
+    /**
+     * Fetch the pre-built, pre-translated `common_i18n.js` content for the given language.
+     * The file is generated at build time by `scripts/build-i18n-bundles.js` and contains
+     * resolved string literals (no c_() calls) ready to include in the export ZIP.
+     */
+    protected async generateI18nContent(language: string): Promise<string> {
+        return this.resources.fetchI18nFile(language);
+    }
+
+    /**
+     * Fetch translated labels for navigation buttons (Previous / Next / Page counter).
+     * Labels are resolved from XLF translations so the exported HTML already
+     * contains the correct text for the content language — no runtime JS needed.
+     */
+    protected async fetchNavLabels(language: string): Promise<{ previous: string; next: string; page: string }> {
+        const translations = await this.resources.fetchI18nTranslations(language);
+        return {
+            previous: translations.get('Previous') || 'Previous',
+            next: translations.get('Next') || 'Next',
+            page: translations.get('Page') || 'Page',
+        };
+    }
 
     // =========================================================================
     // Structure Access Methods
@@ -269,6 +351,26 @@ export abstract class BaseExporter {
     }
 
     // =========================================================================
+    // Asset Iteration
+    // =========================================================================
+
+    /**
+     * Iterate over all assets using the most efficient method available.
+     * Uses forEachAsset() when supported (streaming, memory-efficient),
+     * otherwise falls back to getAllAssets().
+     */
+    protected async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<void> {
+        if (this.assets.forEachAsset) {
+            await this.assets.forEachAsset(callback);
+        } else {
+            const assets = await this.assets.getAllAssets();
+            for (const asset of assets) {
+                await callback(asset);
+            }
+        }
+    }
+
+    // =========================================================================
     // File Handling
     // =========================================================================
 
@@ -289,18 +391,17 @@ export abstract class BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
-
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const assetId = asset.id;
                 const filename = asset.filename || `asset-${assetId}`;
-                // Use originalPath if available, otherwise construct from id/filename
                 const assetPath = asset.originalPath || `${assetId}/${filename}`;
                 const zipPath = prefix ? `${prefix}${assetPath}` : assetPath;
 
                 this.zip.addFile(zipPath, asset.data);
                 assetsAdded++;
-            }
+            };
+
+            await this.forEachAsset(processAsset);
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
         }
@@ -317,23 +418,27 @@ export abstract class BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
+            this.logElpxExportDebugPhase('exporter:assets-to-zip:start');
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) {
                     console.warn(`[BaseExporter] No export path for asset: ${asset.id}`);
-                    continue;
+                    return;
                 }
 
-                // Store in content/resources/{exportPath}
                 const zipPath = `content/resources/${exportPath}`;
-
                 this.zip.addFile(zipPath, asset.data);
                 if (trackingList) trackingList.push(zipPath);
                 assetsAdded++;
-            }
+            };
+
+            await this.forEachAsset(processAsset);
+            this.logElpxExportDebugPhase('exporter:assets-to-zip:end', {
+                assetsAdded,
+                exportPaths: exportPathMap.size,
+            });
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
         }
@@ -403,19 +508,28 @@ export abstract class BaseExporter {
         this.assetFilenameMap = new Map<string, string>();
 
         try {
-            const assets = await this.assets.getAllAssets();
-
-            for (const asset of assets) {
-                const id = asset.id;
-                let filename = asset.filename;
-
-                if (!filename) {
-                    // Generate filename from mime type
-                    const ext = this.getExtensionFromMime(asset.mime || 'application/octet-stream');
-                    filename = `asset-${id.substring(0, 8)}${ext}`;
+            // Use lightweight metadata listing when available (avoids loading binary data)
+            if (this.assets.listAssetMetadata) {
+                const metadata = await this.assets.listAssetMetadata();
+                for (const item of metadata) {
+                    let filename = item.filename;
+                    if (!filename) {
+                        const ext = this.getExtensionFromMime(item.mime || 'application/octet-stream');
+                        filename = `asset-${item.id.substring(0, 8)}${ext}`;
+                    }
+                    this.assetFilenameMap.set(item.id, filename);
                 }
-
-                this.assetFilenameMap.set(id, filename);
+            } else {
+                const assets = await this.assets.getAllAssets();
+                for (const asset of assets) {
+                    const id = asset.id;
+                    let filename = asset.filename;
+                    if (!filename) {
+                        const ext = this.getExtensionFromMime(asset.mime || 'application/octet-stream');
+                        filename = `asset-${id.substring(0, 8)}${ext}`;
+                    }
+                    this.assetFilenameMap.set(id, filename);
+                }
             }
         } catch (e) {
             console.warn('[BaseExporter] Failed to build asset map:', e);
@@ -440,24 +554,32 @@ export abstract class BaseExporter {
         const usedPaths = new Set<string>();
 
         try {
-            const assets = await this.assets.getAllAssets();
+            this.logElpxExportDebugPhase('exporter:asset-export-map:start');
+            // Use lightweight metadata listing when available (avoids loading binary data)
+            const items: Array<{ id: string; filename: string; folderPath?: string; mime: string }> = this.assets
+                .listAssetMetadata
+                ? await this.assets.listAssetMetadata()
+                : (await this.assets.getAllAssets()).map(a => ({
+                      id: a.id,
+                      filename: a.filename,
+                      folderPath: a.folderPath,
+                      mime: a.mime,
+                  }));
 
-            for (const asset of assets) {
-                let folderPath = asset.folderPath || '';
+            for (const item of items) {
+                let folderPath = item.folderPath || '';
                 // Treat 'unknown' same as missing: derive a proper name with extension from MIME
                 const filename =
-                    asset.filename && asset.filename !== 'unknown'
-                        ? asset.filename
-                        : this._deriveFilenameFromMime(asset.id, asset.mime);
+                    item.filename && item.filename !== 'unknown'
+                        ? item.filename
+                        : this._deriveFilenameFromMime(item.id, item.mime);
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
                 // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
                 // This can happen from corrupted ELPX files or bugs in asset saving
                 if (folderPath === filename) {
-                    // folderPath equals filename - remove the duplication
                     folderPath = '';
                 } else if (folderPath.endsWith(`/${filename}`)) {
-                    // folderPath ends with /filename - remove the trailing duplicate
                     folderPath = folderPath.slice(0, -(filename.length + 1));
                 }
 
@@ -476,8 +598,12 @@ export abstract class BaseExporter {
                 }
 
                 usedPaths.add(finalPath.toLowerCase());
-                this.assetExportPathMap.set(asset.id, finalPath);
+                this.assetExportPathMap.set(item.id, finalPath);
             }
+            this.logElpxExportDebugPhase('exporter:asset-export-map:end', {
+                assets: items.length,
+                uniquePaths: this.assetExportPathMap.size,
+            });
         } catch (e) {
             console.warn('[BaseExporter] Failed to build asset export path map:', e);
         }
@@ -565,6 +691,15 @@ export abstract class BaseExporter {
      * so the XML content keeps the original protocol for re-import compatibility
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
+        const componentCount = pages.reduce((total, page) => {
+            const blocks = page.blocks || [];
+            return total + blocks.reduce((blockTotal, block) => blockTotal + (block.components?.length || 0), 0);
+        }, 0);
+        this.logElpxExportDebugPhase('exporter:preprocess-pages:start', {
+            pages: pages.length,
+            components: componentCount,
+        });
+
         // Deep clone pages to avoid mutating the original document
         // This ensures multiple exports on the same document work correctly
         const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
@@ -593,6 +728,10 @@ export abstract class BaseExporter {
                 }
             }
         }
+        this.logElpxExportDebugPhase('exporter:preprocess-pages:end', {
+            pages: clonedPages.length,
+            components: componentCount,
+        });
         return clonedPages;
     }
 
@@ -702,13 +841,18 @@ export abstract class BaseExporter {
             return content;
         }
 
-        // Replace href="exe-node:pageId" with actual page URLs
-        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageId) => {
+        // Replace href="exe-node:pageId" or href="exe-node:pageId#anchor" with actual page URLs
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            // Split pageId from optional anchor fragment (e.g. "pageId#section1")
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
+
             const pageUrls = pageUrlMap.get(pageId);
             if (pageUrls) {
                 // Use the appropriate URL based on whether we're on index or subpage
                 const url = isFromIndex ? pageUrls.url : pageUrls.urlFromSubpage;
-                return `href="${url}"`;
+                return `href="${url}${anchorFragment}"`;
             }
             // If page not found, leave the link unchanged (might be an external link or error)
             console.warn(`[BaseExporter] Internal link target not found: ${pageId}`);
@@ -765,6 +909,35 @@ export abstract class BaseExporter {
         return htmlParts.join('\n');
     }
 
+    /**
+     * Yield component HTML fragments lazily so callers can detect libraries
+     * without building one giant intermediate string.
+     */
+    protected *iteratePageContentFragments(pages: ExportPage[]): Generator<string> {
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        yield component.content;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Detect required libraries across all page fragments incrementally.
+     */
+    protected getRequiredLibraryFilesForPages(
+        pages: ExportPage[],
+        options: LibraryDetectionOptions = {},
+    ): { files: string[]; patterns: import('../interfaces').LibraryPattern[] } {
+        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragments(
+            this.iteratePageContentFragments(pages),
+            options,
+        );
+    }
+
     // =========================================================================
     // Download Source File iDevice Detection
     // =========================================================================
@@ -803,8 +976,67 @@ export abstract class BaseExporter {
     }
 
     // =========================================================================
-    // ELPX Manifest Generation (for download-source-file iDevice)
+    // ELPX Download Support (for download-source-file iDevice)
     // =========================================================================
+
+    /** Library files required for client-side ELPX download */
+    protected static readonly ELPX_LIB_FILES = ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'];
+
+    /**
+     * Ensure ELPX download libraries (fflate, exe_elpx_download) are present in the ZIP.
+     * Call after library detection step so we only fetch what's missing.
+     */
+    protected async ensureElpxDownloadLibraries(
+        addFile: (path: string, content: Uint8Array | string) => void,
+        commonFiles?: string[],
+    ): Promise<void> {
+        const missingLibs = BaseExporter.ELPX_LIB_FILES.filter(f => !this.zip.hasFile(`libs/${f}`));
+        if (missingLibs.length === 0) return;
+        try {
+            const libContents = await this.resources.fetchLibraryFiles(missingLibs);
+            for (const [libPath, content] of libContents) {
+                addFile(`libs/${libPath}`, content);
+                if (commonFiles) commonFiles.push(`libs/${libPath}`);
+            }
+        } catch {
+            // Continue without ELPX download libraries
+        }
+    }
+
+    /**
+     * Generate ELPX manifest and add it to the ZIP.
+     * Also adds HTML page paths to the file list before generating.
+     *
+     * @param fileList - Tracked file paths to include in manifest
+     * @param pageFileUrls - HTML page file URLs to add to the file list
+     * @param commonFiles - Optional SCORM/IMS common files array to update
+     */
+    protected addElpxManifestToZip(fileList: string[], pageFileUrls: string[], commonFiles?: string[]): void {
+        for (const url of pageFileUrls) {
+            if (!fileList.includes(url)) {
+                fileList.push(url);
+            }
+        }
+        fileList.push('libs/elpx-manifest.js');
+        const manifestJs = this.generateElpxManifestFile(fileList);
+        this.zip.addFile('libs/elpx-manifest.js', manifestJs);
+        if (commonFiles) commonFiles.push('libs/elpx-manifest.js');
+    }
+
+    /**
+     * Inject ELPX download script tags into HTML before </body> for pages
+     * that contain download-source-file iDevice or exe-package:elp links.
+     *
+     * @returns Modified HTML with injected scripts, or original HTML if not applicable
+     */
+    protected injectElpxScripts(html: string, page: ExportPage, isIndex: boolean): string {
+        if (!this.pageHasDownloadSourceFile(page)) return html;
+        const basePath = isIndex ? '' : '../';
+        const fflateScript = `<script src="${basePath}libs/fflate/fflate.umd.js"> </script>`;
+        const elpxDownloadScript = `<script src="${basePath}libs/exe_elpx_download/exe_elpx_download.js"> </script>`;
+        const manifestScript = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
+        return html.replace(/<\/body>/i, `${fflateScript}\n${elpxDownloadScript}\n${manifestScript}\n</body>`);
+    }
 
     /**
      * Generate ELPX manifest as a standalone JS file

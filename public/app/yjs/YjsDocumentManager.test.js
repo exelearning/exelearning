@@ -1395,6 +1395,18 @@ describe('YjsDocumentManager', () => {
       expect(metadata.get('exelearning_version')).toBe('3.0.0');
     });
 
+    it('uses runtime version when available', async () => {
+      global.window.eXeLearning = { version: '4.0.0-beta' };
+      global.fetch = mock(() => Promise.reject(new Error('Should not fetch')));
+
+      await manager._updateVersionMetadata();
+
+      const metadata = manager.getMetadata();
+      expect(metadata.get('exelearning_version')).toBe('4.0.0-beta');
+      expect(global.fetch).not.toHaveBeenCalled();
+      delete global.window.eXeLearning;
+    });
+
     it('handles fetch errors gracefully', async () => {
       global.fetch = mock(() => Promise.reject(new Error('Network error')));
 

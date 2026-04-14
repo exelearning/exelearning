@@ -36,18 +36,35 @@ const IMPORT_STABILITY_MS = 1800;
  * Waits for Yjs bridge to be available and loading screen to disappear
  */
 export async function waitForAppReady(page: Page, timeout = 30000): Promise<void> {
-    // Wait for Yjs bridge initialization
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            return app?.project?._yjsBridge !== undefined;
-        },
-        undefined,
-        { timeout },
-    );
+    const deadline = Date.now() + timeout;
+    let retriedReload = false;
 
-    // Wait for loading screen to disappear
-    await waitForLoadingScreen(page, timeout);
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        const remaining = Math.max(1000, deadline - Date.now());
+
+        try {
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                undefined,
+                { timeout: Math.min(15000, remaining), polling: 100 },
+            );
+
+            await waitForLoadingScreen(page, Math.min(15000, remaining));
+            return;
+        } catch (error) {
+            const onWorkarea = page.url().includes('/workarea');
+            if (retriedReload || !onWorkarea || Date.now() >= deadline) {
+                throw error;
+            }
+
+            retriedReload = true;
+            await page.reload({ waitUntil: 'domcontentloaded' });
+        }
+    }
 }
 
 /**
@@ -1254,6 +1271,8 @@ export async function enableSearchOption(page: Page): Promise<void> {
  * Handles the rename modal that appears after cloning by pressing Escape
  */
 export async function cloneCurrentPage(page: Page): Promise<void> {
+    // Dismiss any blocking alert modal before attempting to click the clone button
+    await dismissBlockingAlertModal(page);
     const cloneBtn = page.locator('.button_nav_action.action_clone');
     await cloneBtn.waitFor({ state: 'visible', timeout: 5000 });
     await cloneBtn.click();

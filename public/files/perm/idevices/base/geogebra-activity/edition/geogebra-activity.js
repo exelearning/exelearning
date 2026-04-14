@@ -33,6 +33,7 @@ var $exeDevice = {
         disableAutoScale: [_('Disable auto-scale'), false],
         showSuggestionButtons: [_('Suggestion buttons'), true],
         playButton: [_('Play button'), false],
+        ShowTitle: [_('Title'), true],
         ShowAuthor: [_('Authorship'), true],
     },
 
@@ -507,14 +508,27 @@ var $exeDevice = {
             const author = $('.auto-geogebra-author', wrapper);
             if (author.length == 1) {
                 let alt = author.text().split(',');
-                if (alt.length == 5) {
+                if (alt.length == 5 || alt.length == 7) {
                     $('#geogebraActivityAuthorURL').text(unescape(alt[0]));
-                    $('#geogebraActivityTitle')
-                        .find('a')
-                        .text(unescape(alt[2]));
-                    $('#geogebraActivityTitle')
-                        .find('a')
-                        .prop('href', unescape(alt[1]));
+                    const titleText = unescape(alt[2]);
+                    const titleUrl = unescape(alt[1]);
+                    if (titleText !== '') {
+                        $('#geogebraActivityTitle').html(
+                            '<a href="' +
+                                titleUrl +
+                                '" target="_blank" rel="noopener noreferrer">' +
+                                titleText +
+                                '</a>'
+                        );
+                    } else {
+                        $('#geogebraActivityTitle').text('');
+                    }
+                    if (alt.length == 7) {
+                        $('#geogebraActivityShowTitle').prop(
+                            'checked',
+                            alt[5] == '1'
+                        );
+                    }
                 }
             }
         }
@@ -616,11 +630,16 @@ var $exeDevice = {
         css += ' auto-geogebra-weight-' + weight;
 
         let author = $('#geogebraActivityAuthorURL').text() || '';
-        let title = $('#geogebraActivityTitle').find('a').text() || '',
-            murl = $('#geogebraActivityTitle').find('a').prop('href') || '';
+        let titleNode = $('#geogebraActivityTitle').find('a').first();
+        let title = titleNode.text() || $('#geogebraActivityTitle').text() || '';
+        let murl = titleNode.prop('href') || urlBase + url;
         if (author != '') {
             let ath = c_('Authorship');
+            let ttl = c_('Title');
             let show = $('#geogebraActivityShowAuthor').prop('checked')
+                ? '1'
+                : '0';
+            let showTitle = $('#geogebraActivityShowTitle').prop('checked')
                 ? '1'
                 : '0';
             divContent +=
@@ -634,6 +653,10 @@ var $exeDevice = {
                 show +
                 ',' +
                 escape(ath) +
+                ',' +
+                showTitle +
+                ',' +
+                escape(ttl) +
                 '</div>';
         }
         divContent +=

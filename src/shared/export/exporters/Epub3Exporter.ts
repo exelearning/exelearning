@@ -15,6 +15,7 @@
  */
 
 import type {
+    ExportAsset,
     ExportPage,
     ExportMetadata,
     ExportOptions,
@@ -25,8 +26,8 @@ import type {
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
-import { generateI18nScript } from '../generators/I18nGenerator';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { VOID_ELEMENTS } from '../../utils/html-constants';
 
 /**
  * EPUB3 XML namespaces
@@ -43,26 +44,6 @@ export const EPUB3_NAMESPACES = {
  * EPUB3 MIME type
  */
 export const EPUB3_MIMETYPE = 'application/epub+zip';
-
-/**
- * Void HTML elements that must be self-closed in XHTML
- */
-const VOID_ELEMENTS = [
-    'area',
-    'base',
-    'br',
-    'col',
-    'embed',
-    'hr',
-    'img',
-    'input',
-    'link',
-    'meta',
-    'param',
-    'source',
-    'track',
-    'wbr',
-];
 
 /**
  * MIME types for EPUB manifest
@@ -245,14 +226,16 @@ export class Epub3Exporter extends BaseExporter {
             this.addManifestItem('css-base', 'content/css/base.css', 'text/css');
 
             // 5b. Add eXeLearning logo for "Made with eXeLearning" footer
-            try {
-                const logoData = await this.resources.fetchExeLogo();
-                if (logoData) {
-                    this.zip.addFile('EPUB/content/img/exe_powered_logo.png', logoData);
-                    this.addManifestItem('exe-logo', 'content/img/exe_powered_logo.png', 'image/png');
+            if (meta.addExeLink !== false) {
+                try {
+                    const logoData = await this.resources.fetchExeLogo();
+                    if (logoData) {
+                        this.zip.addFile('EPUB/content/img/exe_powered_logo.png', logoData);
+                        this.addManifestItem('exe-logo', 'content/img/exe_powered_logo.png', 'image/png');
+                    }
+                } catch {
+                    // Logo not available
                 }
-            } catch {
-                // Logo not available
             }
 
             // 6. Add theme files (already pre-fetched in step 0)
@@ -270,13 +253,9 @@ export class Epub3Exporter extends BaseExporter {
             }
 
             // 7. Detect and fetch required libraries
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            });
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
@@ -305,7 +284,7 @@ export class Epub3Exporter extends BaseExporter {
             }
 
             // 7.5. Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
             this.zip.addFile('EPUB/libs/common_i18n.js', i18nContent);
             this.addManifestItem('common-i18n', 'libs/common_i18n.js', 'application/javascript');
 
@@ -686,6 +665,7 @@ export class Epub3Exporter extends BaseExporter {
             hideNavigation: true,
             // Hide nav buttons - EPUB reader handles navigation
             hideNavButtons: true,
+            addExeLink: meta.addExeLink ?? true,
             // Page counter (only if user has the option enabled)
             addPagination: meta.addPagination === true,
             totalPages: allPages.length,
@@ -771,13 +751,12 @@ export class Epub3Exporter extends BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) {
-                    continue;
+                    return;
                 }
 
                 // Store in EPUB/content/resources/{exportPath} (matching HTML references)
@@ -791,7 +770,9 @@ export class Epub3Exporter extends BaseExporter {
                 this.addManifestItem(this.generateUniqueId(`asset-${asset.id}`), zipPath, mimeType);
 
                 assetsAdded++;
-            }
+            };
+
+            await this.forEachAsset(processAsset);
         } catch (e) {
             console.warn('[Epub3Exporter] Failed to add assets:', e);
         }

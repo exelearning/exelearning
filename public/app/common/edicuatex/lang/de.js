@@ -308,7 +308,7 @@ $i18n['de'] = {
     '\\LARGE{Text}': '\\LARGE{Text}',
     'Huge text': 'Riesiger Text',
     '\\huge{Text}': '\\huge{Text}',
-    'Huger text': 'Größerer Text',
+    'Extra large text': 'Größerer Text',
     '\\Huge{Text}': '\\Huge{Text}',
     'Blackboard bold': 'Tafel fett',
     'Math bold': 'Mathe fett',

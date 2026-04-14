@@ -441,7 +441,30 @@ describe('YjsProjectBridge', () => {
   });
 
   describe('block structure reload detection', () => {
-    it('detects affected page IDs for block additions', () => {
+    it('excludes pure block additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // Pure block additions are empty containers — they must NOT trigger reload
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('detects affected page IDs for block deletions', () => {
       const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
       bridge.documentManager = {
         getNavigation: mock(() => ({
@@ -453,8 +476,8 @@ describe('YjsProjectBridge', () => {
         {
           path: [0, 'blocks'],
           changes: {
-            added: { size: 1 },
-            deleted: { size: 0 },
+            added: { size: 0 },
+            deleted: { size: 1 },
           },
         },
       ];
@@ -486,7 +509,7 @@ describe('YjsProjectBridge', () => {
       expect(Array.from(affected)).toEqual([]);
     });
 
-    it('schedules reload for each affected page on remote transactions', () => {
+    it('schedules reload only for deletions on remote transactions (additions are incremental)', () => {
       const pageMap0 = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
       const pageMap1 = { get: mock((key) => (key === 'id' ? 'page-2' : undefined)) };
 
@@ -521,7 +544,9 @@ describe('YjsProjectBridge', () => {
 
       bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
 
-      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+      // page-1 has a pure addition — handled incrementally, no reload
+      expect(scheduleSpy).not.toHaveBeenCalledWith('page-1');
+      // page-2 has a deletion — needs reload
       expect(scheduleSpy).toHaveBeenCalledWith('page-2');
     });
 
@@ -542,7 +567,7 @@ describe('YjsProjectBridge', () => {
       expect(scheduleSpy).not.toHaveBeenCalled();
     });
 
-    it('schedules reload for local undo/redo transactions', () => {
+    it('schedules reload for local undo/redo transactions (even pure additions)', () => {
       const undoManager = {};
       bridge.documentManager = {
         undoManager,
@@ -553,6 +578,7 @@ describe('YjsProjectBridge', () => {
 
       const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
 
+      // During undo/redo, even pure additions need a reload to restore state
       bridge.scheduleReloadForBlockStructureChanges(
         [
           {
@@ -620,6 +646,245 @@ describe('YjsProjectBridge', () => {
       );
 
       expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('excludes component-level additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A component addition event: path ends with 'components', has added items
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      // Component additions are handled incrementally by renderRemoteComponent,
+      // so they must NOT trigger a destructive page reload.
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('still includes component deletions in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A component deletion event
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('excludes block-level pure additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A block addition event: path is [pageIndex, 'blocks'], pure addition
+      // Block additions are empty containers handled incrementally and must NOT
+      // trigger a destructive page reload, even without a paired component addition
+      // in the same event batch (they may arrive in separate Yjs transactions).
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('still includes block-level deletions in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('still includes block-level mixed add+delete (move) in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('excludes block order-only changes from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks', 1],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+            keys: new Map([['order', { action: 'update' }]]),
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('does not skip component additions during undo/redo (#1532)', () => {
+      bridge.isUndoRedoInProgress = true;
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // Component addition during undo/redo should still trigger reload
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('does not schedule reload for remote component addition (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not schedule reload for remote block-only addition (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      // Block addition arriving alone (component may follow in a separate transaction)
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not schedule reload for remote block order-only change (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks', 1],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+            keys: new Map([['order', { action: 'update' }]]),
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -1717,6 +1982,7 @@ describe('YjsProjectBridge', () => {
 
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
+
   });
 
   describe('asset refresh on late asset arrival', () => {
@@ -2496,8 +2762,10 @@ describe('YjsProjectBridge', () => {
         },
       }];
 
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
       bridge.handleRemoteStructureChanges(events);
-      // Should schedule page reload
+      expect(scheduleSpy).not.toHaveBeenCalled();
     });
 
     it('handles component property updates', () => {
@@ -4435,7 +4703,7 @@ describe('YjsProjectBridge', () => {
       await expect(bridge.exportToElpx()).rejects.toThrow('Export failed');
     });
 
-    it('uses electronAPI.saveBuffer() in Electron mode with saveAs: false', async () => {
+    it('uses electronAPI.saveBuffer() in Electron mode (always prompts)', async () => {
       const mockExporter = {
         export: mock(() => Promise.resolve({
           success: true,
@@ -4451,18 +4719,28 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       global.window.__currentProjectId = 'test-project-123';
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
-        saveBufferAs: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 42,
+            promptMs: 30,
+            normalizeMs: 2,
+            writeMs: 10,
+          },
+        })),
       };
 
-      await bridge.exportToElpx({ saveAs: false });
+      const result = await bridge.exportToElpx();
 
+      expect(result).toEqual({ saved: true });
       expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
+        expect.any(Uint8Array),
         'test-project-123',
         'project.elpx'
       );
-      expect(global.window.electronAPI.saveBufferAs).not.toHaveBeenCalled();
 
       // Cleanup
       delete global.eXeLearning;
@@ -4470,7 +4748,7 @@ describe('YjsProjectBridge', () => {
       delete global.window.electronAPI;
     });
 
-    it('uses electronAPI.saveBufferAs() in Electron mode with saveAs: true', async () => {
+    it('returns saved false when user cancels Electron save dialog', async () => {
       const mockExporter = {
         export: mock(() => Promise.resolve({
           success: true,
@@ -4482,22 +4760,26 @@ describe('YjsProjectBridge', () => {
         createExporter: mock(() => mockExporter),
       };
 
-      // Set up Electron mode
       global.eXeLearning = { config: { isOfflineInstallation: true } };
-      global.window.__currentProjectId = 'test-project-456';
+      global.window.__currentProjectId = 'test-project-123';
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
-        saveBufferAs: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: false,
+          canceled: true,
+          canceledAt: 'dialog',
+          filePath: null,
+          timings: {
+            totalMs: 15,
+            promptMs: 15,
+            normalizeMs: 0,
+            writeMs: 0,
+          },
+        })),
       };
 
-      await bridge.exportToElpx({ saveAs: true });
+      const result = await bridge.exportToElpx();
 
-      expect(global.window.electronAPI.saveBufferAs).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
-        'test-project-456',
-        'project.elpx'
-      );
-      expect(global.window.electronAPI.saveBuffer).not.toHaveBeenCalled();
+      expect(result).toEqual({ saved: false });
 
       // Cleanup
       delete global.eXeLearning;
@@ -4521,13 +4803,24 @@ describe('YjsProjectBridge', () => {
       global.eXeLearning = { config: { isOfflineInstallation: true } };
       delete global.window.__currentProjectId;
       global.window.electronAPI = {
-        saveBuffer: mock(() => Promise.resolve(true)),
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 10,
+            promptMs: 4,
+            normalizeMs: 1,
+            writeMs: 5,
+          },
+        })),
       };
 
-      await bridge.exportToElpx({ saveAs: false });
+      await bridge.exportToElpx();
 
       expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
-        expect.any(String), // base64 data
+        expect.any(Uint8Array),
         'default',
         'project.elpx'
       );
@@ -4535,6 +4828,57 @@ describe('YjsProjectBridge', () => {
       // Cleanup
       delete global.eXeLearning;
       delete global.window.electronAPI;
+    });
+
+    it('stores export debug timeline when enabled', async () => {
+      const mockExporter = {
+        export: mock(() => Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'project.elpx',
+        })),
+      };
+      global.window.SharedExporters = {
+        createExporter: mock(() => mockExporter),
+      };
+
+      global.eXeLearning = { config: { debugElpxExport: true, isOfflineInstallation: true } };
+      global.window.eXeLearning = global.eXeLearning;
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: {
+            totalMs: 44,
+            promptMs: 30,
+            normalizeMs: 4,
+            writeMs: 10,
+          },
+        })),
+      };
+
+      const result = await bridge.exportToElpx();
+
+      expect(result).toEqual({ saved: true });
+      expect(global.window.__lastElpxExportSummary).toEqual(
+        expect.objectContaining({
+          outcome: 'success',
+          filename: 'project.elpx',
+          electronSaveMs: 44,
+          electronPromptMs: 30,
+          electronNormalizeMs: 4,
+          electronWriteMs: 10,
+        })
+      );
+      expect(global.window.__lastElpxExportTimeline.length).toBeGreaterThan(0);
+
+      delete global.eXeLearning;
+      delete global.window.eXeLearning;
+      delete global.window.electronAPI;
+      delete global.window.__lastElpxExportSummary;
+      delete global.window.__lastElpxExportTimeline;
     });
 
     it('falls back to browser download when not in Electron mode', async () => {
@@ -4565,8 +4909,9 @@ describe('YjsProjectBridge', () => {
         removeChild: mock(() => {}),
       };
 
-      await bridge.exportToElpx({ saveAs: false });
+      const result = await bridge.exportToElpx({ saveAs: false });
 
+      expect(result).toEqual({ saved: true });
       expect(mockLink.click).toHaveBeenCalled();
       expect(mockLink.download).toBe('test.elpx');
 
@@ -5975,6 +6320,7 @@ describe('YjsProjectBridge', () => {
         markClean: mock(() => {}),
         markDirty: mock(() => {}),
         captureBaselineState: mock(() => {}),
+        clearUndoStack: mock(() => {}),
         isDirty: false,
         _initialized: true,
       };
@@ -6000,6 +6346,23 @@ describe('YjsProjectBridge', () => {
       await bridge.importFromElpx(file, { clearExisting: true });
 
       expect(bridge.documentManager.markClean).toHaveBeenCalled();
+    });
+
+    it('clears undo stack after import with clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge.documentManager.clearUndoStack).toHaveBeenCalled();
+    });
+
+    it('does not clear undo stack when importing without clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+      bridge.documentManager.isDirty = false;
+
+      await bridge.importFromElpx(file, { clearExisting: false });
+
+      expect(bridge.documentManager.clearUndoStack).not.toHaveBeenCalled();
     });
 
     it('marks document dirty when importing without clearExisting', async () => {
@@ -6232,6 +6595,715 @@ describe('YjsProjectBridge', () => {
       bridge.documentManager = {};
 
       expect(() => bridge.clearMetadataForNewProject()).not.toThrow();
+    });
+  });
+
+  describe('_extractAnchorsFromPageMap', () => {
+    let tempDiv;
+
+    beforeEach(() => {
+      // Use the real DOM (originalDocument) because the outer beforeEach mocks global.document
+      // with a stub whose querySelectorAll always returns [].
+      tempDiv = originalDocument.createElement('div');
+    });
+
+    it('returns empty array when blocks is missing', () => {
+      const pageMap = { get: () => null };
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('returns empty array when no anchor elements found', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<p>No anchors here</p>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('extracts anchor id from <a id="..."> without href', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<p>Text <a id="myanchor">link</a></p>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['myanchor']);
+    });
+
+    it('extracts anchor name from <a name="..."> without href', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a name="section1"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['section1']);
+    });
+
+    it('ignores <a> elements that have href', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="linked" href="#target">link</a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('deduplicates anchors with same id', () => {
+      const compMap1 = { get: (key) => key === 'htmlContent' ? '<a id="dup"></a>' : null };
+      const compMap2 = { get: (key) => key === 'htmlContent' ? '<a id="dup"></a>' : null };
+      const block = {
+        get: (key) => key === 'components' ? {
+          length: 2,
+          get: (i) => i === 0 ? compMap1 : compMap2,
+        } : null,
+      };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['dup']);
+    });
+
+    it('skips components without htmlContent', () => {
+      const compMap = { get: () => null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('skips blocks without components', () => {
+      const block = { get: () => null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('handles htmlContent as object with toString', () => {
+      const htmlObj = { toString: () => '<a id="anchor1"></a>' };
+      const compMap = { get: (key) => key === 'htmlContent' ? htmlObj : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['anchor1']);
+    });
+
+    it('collects anchors from multiple blocks and components', () => {
+      const compMap1 = { get: (key) => key === 'htmlContent' ? '<a id="first"></a>' : null };
+      const compMap2 = { get: (key) => key === 'htmlContent' ? '<a id="second"></a>' : null };
+      const block1 = { get: (key) => key === 'components' ? { length: 1, get: () => compMap1 } : null };
+      const block2 = { get: (key) => key === 'components' ? { length: 1, get: () => compMap2 } : null };
+      const pageMap = {
+        get: (key) => key === 'blocks' ? {
+          length: 2,
+          get: (i) => i === 0 ? block1 : block2,
+        } : null,
+      };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['first', 'second']);
+    });
+  });
+
+  describe('getPageAnchors', () => {
+    beforeEach(() => {
+      // getPageAnchors calls document.createElement('div') internally; override the mock
+      // to return a real DOM element so querySelectorAll works correctly.
+      global.document = { ...global.document, createElement: mock(() => originalDocument.createElement('div')) };
+    });
+
+    it('returns empty array when documentManager is missing', () => {
+      bridge.documentManager = null;
+      expect(bridge.getPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns empty array when navigation is null', () => {
+      bridge.documentManager = { getNavigation: () => null };
+      expect(bridge.getPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns empty array when pageId is empty', () => {
+      bridge.documentManager = { getNavigation: () => ({ length: 0 }) };
+      expect(bridge.getPageAnchors('')).toEqual([]);
+    });
+
+    it('returns empty array when page is not found', () => {
+      const pageMap = { get: (key) => key === 'id' ? 'other-page' : null };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+      expect(bridge.getPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns anchors from matching page', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="top"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+
+      expect(bridge.getPageAnchors('page-1')).toEqual(['top']);
+    });
+
+    it('uses pageId as fallback key', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="section"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = {
+        get: (key) => {
+          if (key === 'id') return undefined;
+          if (key === 'pageId') return 'page-2';
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+
+      expect(bridge.getPageAnchors('page-2')).toEqual(['section']);
+    });
+  });
+
+  describe('getAllPageAnchors', () => {
+    beforeEach(() => {
+      // getAllPageAnchors calls document.createElement('div') internally; override the mock
+      // to return a real DOM element so querySelectorAll works correctly.
+      global.document = { ...global.document, createElement: mock(() => originalDocument.createElement('div')) };
+    });
+
+    it('returns empty array when documentManager is missing', () => {
+      bridge.documentManager = null;
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('returns empty array when navigation is null', () => {
+      bridge.documentManager = { getNavigation: () => null };
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('skips pages with no id', () => {
+      const pageMap = { get: () => null };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('skips root page', () => {
+      const pageMap = { get: (key) => key === 'id' ? 'root' : null };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('skips excludePageId', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="anch"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageName') return 'Page 1';
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+
+      expect(bridge.getAllPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns pages with anchors, excluding those with no anchors', () => {
+      const compMapWithAnchor = { get: (key) => key === 'htmlContent' ? '<a id="sec1"></a>' : null };
+      const compMapNoAnchor = { get: (key) => key === 'htmlContent' ? '<p>no anchor</p>' : null };
+      const blockWithAnchor = { get: (key) => key === 'components' ? { length: 1, get: () => compMapWithAnchor } : null };
+      const blockNoAnchor = { get: (key) => key === 'components' ? { length: 1, get: () => compMapNoAnchor } : null };
+
+      const page1 = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageName') return 'Page One';
+          if (key === 'blocks') return { length: 1, get: () => blockWithAnchor };
+          return null;
+        },
+      };
+      const page2 = {
+        get: (key) => {
+          if (key === 'id') return 'page-2';
+          if (key === 'pageName') return 'Page Two';
+          if (key === 'blocks') return { length: 1, get: () => blockNoAnchor };
+          return null;
+        },
+      };
+
+      bridge.documentManager = {
+        getNavigation: () => ({
+          length: 2,
+          get: (i) => i === 0 ? page1 : page2,
+        }),
+      };
+
+      const result = bridge.getAllPageAnchors();
+      expect(result).toEqual([{ pageId: 'page-1', pageName: 'Page One', anchors: ['sec1'] }]);
+    });
+
+    it('collects anchors from multiple pages', () => {
+      const makeComp = (html) => ({ get: (key) => key === 'htmlContent' ? html : null });
+      const makeBlock = (comp) => ({ get: (key) => key === 'components' ? { length: 1, get: () => comp } : null });
+      const makePage = (id, name, block) => ({
+        get: (key) => {
+          if (key === 'id') return id;
+          if (key === 'pageName') return name;
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      });
+
+      const page1 = makePage('p1', 'Page 1', makeBlock(makeComp('<a id="a1"></a>')));
+      const page2 = makePage('p2', 'Page 2', makeBlock(makeComp('<a id="a2"></a>')));
+
+      bridge.documentManager = {
+        getNavigation: () => ({
+          length: 2,
+          get: (i) => i === 0 ? page1 : page2,
+        }),
+      };
+
+      const result = bridge.getAllPageAnchors();
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ pageId: 'p1', pageName: 'Page 1', anchors: ['a1'] });
+      expect(result[1]).toEqual({ pageId: 'p2', pageName: 'Page 2', anchors: ['a2'] });
+    });
+
+    it('excludes a specific page while including others', () => {
+      const makeComp = (html) => ({ get: (key) => key === 'htmlContent' ? html : null });
+      const makeBlock = (comp) => ({ get: (key) => key === 'components' ? { length: 1, get: () => comp } : null });
+      const makePage = (id, name, block) => ({
+        get: (key) => {
+          if (key === 'id') return id;
+          if (key === 'pageName') return name;
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      });
+
+      const page1 = makePage('p1', 'Page 1', makeBlock(makeComp('<a id="a1"></a>')));
+      const page2 = makePage('p2', 'Page 2', makeBlock(makeComp('<a id="a2"></a>')));
+
+      bridge.documentManager = {
+        getNavigation: () => ({
+          length: 2,
+          get: (i) => i === 0 ? page1 : page2,
+        }),
+      };
+
+      const result = bridge.getAllPageAnchors('p1');
+      expect(result).toHaveLength(1);
+      expect(result[0].pageId).toBe('p2');
+    });
+  });
+
+  describe('generateScreenshotFromFirstPage', () => {
+    let mockMetadata;
+
+    beforeEach(() => {
+      mockMetadata = {
+        get: mock(() => undefined),
+        set: mock(() => undefined),
+        observe: mock(() => undefined),
+        unobserve: mock(() => undefined),
+      };
+    });
+
+    it('returns early when documentManager is null', async () => {
+      bridge.documentManager = null;
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      // No error thrown; the method exited early
+      expect(true).toBe(true);
+    });
+
+    it('returns early when custom screenshot already exists in metadata', async () => {
+      const getMetadataMock = mock(() => ({
+        ...mockMetadata,
+        get: mock(() => 'data:image/png;base64,abc'),
+      }));
+      bridge.documentManager = {
+        getMetadata: getMetadataMock,
+      };
+      window.SharedExporters = { generatePreviewForSW: mock(async () => ({ success: true, files: {} })) };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(window.SharedExporters.generatePreviewForSW).not.toHaveBeenCalled();
+    });
+
+    it('returns early when SharedExporters.generatePreviewForSW is not available', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      delete window.SharedExporters;
+
+      // Should not throw
+      await bridge.generateScreenshotFromFirstPage();
+
+      // metadata.set should never be called
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('returns early when window.SharedExporters is undefined', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = undefined;
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('returns early when generatePreviewForSW returns success false', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({ success: false, error: 'preview failed' })),
+      };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('concurrency guard prevents double execution', async () => {
+      const generatePreviewForSW = mock(async () => ({ success: false }));
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = { generatePreviewForSW };
+
+      // Start two concurrent calls; the guard should make the second a no-op
+      const [, second] = await Promise.all([
+        bridge.generateScreenshotFromFirstPage(),
+        bridge.generateScreenshotFromFirstPage(),
+      ]);
+
+      // generatePreviewForSW should have been called at most once
+      expect(generatePreviewForSW).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns early when index.html is missing from preview files', async () => {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'other.html': encoder.encode('<html></html>').buffer },
+        })),
+      };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('does not call metadata.set when _captureHtmlAsScreenshot returns null', async () => {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'index.html': encoder.encode('<html><body></body></html>').buffer },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async () => null);
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('calls metadata.set with data URL when generation succeeds', async () => {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'index.html': encoder.encode('<html><body>content</body></html>').buffer },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async () => 'data:image/png;base64,fakeScreenshot');
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', 'data:image/png;base64,fakeScreenshot');
+    });
+
+    it('inlines CSS link tags as style tags in the HTML passed to capture', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><head><link rel="stylesheet" href="theme/style.css"></head><body></body></html>').buffer,
+            'theme/style.css': encoder.encode('body { color: red; }').buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).toContain('<style>');
+      expect(capturedHtml).not.toContain('<link rel="stylesheet"');
+    });
+
+    it('removes script tags from the HTML passed to capture', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><head></head><body><script>alert(1)<\/script></body></html>').buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).not.toContain('<script');
+    });
+
+    it('injects screenshot-cleanup CSS to hide UI chrome', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><head></head><body></body></html>').buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).toContain('screenshot-cleanup');
+      expect(capturedHtml).toContain('#siteNav');
+    });
+
+    it('converts img src attributes to data URIs', async () => {
+      const encoder = new TextEncoder();
+      let capturedHtml = '';
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: {
+            'index.html': encoder.encode('<html><body><img src="img/test.png"></body></html>').buffer,
+            'img/test.png': new Uint8Array([137, 80, 78, 71]).buffer,
+          },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async (html) => {
+        capturedHtml = html;
+        return 'data:image/png;base64,x';
+      });
+      // Override _uint8ArrayToBase64 to return a predictable value
+      bridge._uint8ArrayToBase64 = mock(() => 'AAAA');
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(capturedHtml).toContain('data:image/png;base64,');
+      expect(capturedHtml).not.toContain('src="img/test.png"');
+    });
+
+    it('catches and suppresses errors thrown by generatePreviewForSW', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => { throw new Error('boom'); }),
+      };
+
+      // Should not throw
+      await expect(bridge.generateScreenshotFromFirstPage()).resolves.toBeUndefined();
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+    });
+
+    it('resets _screenshotGenerating flag to false after error', async () => {
+      bridge.documentManager = {
+        getMetadata: mock(() => mockMetadata),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => { throw new Error('failure'); }),
+      };
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(bridge._screenshotGenerating).toBe(false);
+    });
+  });
+
+  describe('_captureHtmlAsScreenshot', () => {
+    let mockBody;
+    let originalBody;
+
+    beforeEach(() => {
+      // Ensure html2canvas is not set by default for each test
+      delete window.html2canvas;
+
+      // jsdom may not have document.body; provide a minimal mock
+      mockBody = {
+        appendChild: mock(() => {}),
+        removeChild: mock(() => {}),
+      };
+      originalBody = Object.getOwnPropertyDescriptor(document, 'body');
+      Object.defineProperty(document, 'body', {
+        get: () => mockBody,
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      delete window.html2canvas;
+      if (originalBody) {
+        Object.defineProperty(document, 'body', originalBody);
+      }
+    });
+
+    it('returns null when html2canvas is not available and script loading fails', async () => {
+      // Patch the bridge's internal script-load path: intercept createElement('script')
+      // to immediately invoke onerror, simulating a failed load.
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        if (tag === 'script') {
+          const el = originalCreateElement(tag);
+          // Override appendChild on document.head to fire onerror synchronously
+          const origAppend = document.head ? document.head.appendChild.bind(document.head) : null;
+          if (document.head) {
+            document.head.appendChild = (child) => {
+              if (child === el) {
+                // Restore and fire onerror
+                if (origAppend) document.head.appendChild = origAppend;
+                setTimeout(() => child.onerror && child.onerror(new Error('load failed')), 0);
+                return child;
+              }
+              return origAppend ? origAppend(child) : child;
+            };
+          }
+          return el;
+        }
+        return originalCreateElement(tag);
+      };
+
+      const result = await bridge._captureHtmlAsScreenshot('<html><body>test</body></html>');
+
+      expect(result).toBeNull();
+      document.createElement = originalCreateElement;
+    });
+
+    it('returns null when html2canvas is available but iframe has no contentDocument', async () => {
+      window.html2canvas = mock(async () => ({}));
+
+      // Patch createElement to return an iframe with no contentDocument
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        if (tag === 'iframe') {
+          const iframe = originalCreateElement('iframe');
+          Object.defineProperty(iframe, 'contentDocument', { get: () => null, configurable: true });
+          Object.defineProperty(iframe, 'contentWindow', { get: () => null, configurable: true });
+          return iframe;
+        }
+        return originalCreateElement(tag);
+      };
+
+      const result = await bridge._captureHtmlAsScreenshot('<html><body>test</body></html>');
+
+      expect(result).toBeNull();
+      document.createElement = originalCreateElement;
+    });
+
+    it('calls html2canvas and returns a data URL when html2canvas is available', async () => {
+      const mockCtx = {
+        fillStyle: '',
+        fillRect: mock(() => {}),
+        drawImage: mock(() => {}),
+      };
+      const mockCapture = {
+        width: 800,
+        height: 600,
+        toDataURL: mock(() => 'irrelevant'),
+        getContext: mock(() => mockCtx),
+      };
+      const mockResized = {
+        width: 1280,
+        height: 720,
+        toDataURL: mock(() => 'data:image/png;base64,result'),
+        getContext: mock(() => mockCtx),
+      };
+      window.html2canvas = mock(async () => mockCapture);
+
+      // Patch createElement so canvas returns our mock with getContext
+      const originalCreateElement = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        if (tag === 'canvas') return mockResized;
+        if (tag === 'iframe') {
+          // Return an iframe whose contentDocument supports open/write/close
+          const mockIframeDoc = {
+            open: mock(() => {}),
+            write: mock(() => {}),
+            close: mock(() => {}),
+            readyState: 'complete',
+            body: { appendChild: mock(() => {}) },
+          };
+          return {
+            style: { cssText: '' },
+            contentDocument: mockIframeDoc,
+            contentWindow: { document: mockIframeDoc },
+          };
+        }
+        return originalCreateElement(tag);
+      };
+
+      const result = await bridge._captureHtmlAsScreenshot('<html><body>test</body></html>');
+
+      expect(window.html2canvas).toHaveBeenCalled();
+      expect(result).toBe('data:image/png;base64,result');
+      document.createElement = originalCreateElement;
     });
   });
 });

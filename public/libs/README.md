@@ -77,9 +77,6 @@
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
-*   Package: concurrently
-    *   Copyright: Kimmo Brunfeldt
-    *   License: MIT
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT
@@ -149,6 +146,9 @@
 *   Package: nunjucks
     *   Copyright: James Long
     *   License: BSD-2-Clause
+*   Package: pdfjs-dist
+    *   Copyright: owner or entity authorized by
+    *   License: Apache-2.0
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
     *   License: MIT
@@ -237,6 +237,9 @@
 *   Files: /public/files/perm/fonts/global/playwrite-es/*.woff2
     *   Copyright: TypeTogether, Veronika Burian, José Scaglione
     *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/idevices/\*/export/html2canvas.js
+    *   Copyright: Niklas von Hertzen
+    *   License: MIT
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/fonts/* (Open Sans Font)
     *   Copyright: The Open Sans Project Authors. Designed by Steve Matteson
     *   License: SIL Open Font License version 1.1
@@ -288,6 +291,9 @@
 *   File: /public/libs/jquery-ui/jquery-ui.min.js
     *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
+*   Files: /public/libs/pdfjs/*
+    *   Copyright: Mozilla Foundation
+    *   License: Apache License 2.0
 *   Files: /public/libs/pixo/*
     *   Copyright: Lee Robinson
     *   License: MIT
@@ -315,6 +321,9 @@
 *   Files: /public/style/workarea/fonts/\Catamaran*
     *   Copyright: The Catamaran Authors. Designed by Pria Ravichandran
     *   License: SIL Open Font License version 1.1
+*   Files: /public/style/workarea/images/icons/exe-teacher-only.svg
+    *   Copyright: Lucide Icons and Contributors
+    *   License: ISC
 *   Files: /public/style/workarea/images/icons/[Several icons].svg
     *   Copyright: Cole Bemis, [Feather Icons](https://github.com/feathericons/feather)
     *   License: MIT

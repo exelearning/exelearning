@@ -222,6 +222,21 @@ describe('LibraryDetector', () => {
             expect(result.files).toContain('exe_atools/exe_atools.js');
         });
 
+        it('should include accessibility toolbar even when html is empty (no iDevices)', () => {
+            const result = detector.detectLibraries('', { includeAccessibilityToolbar: true });
+
+            expect(result.libraries.find(l => l.name === 'exe_atools')).toBeDefined();
+            expect(result.files).toContain('exe_atools/exe_atools.js');
+            expect(result.files).toContain('exe_atools/exe_atools.css');
+        });
+
+        it('should include MathJax even when html is empty (no iDevices)', () => {
+            const result = detector.detectLibraries('', { includeMathJax: true });
+
+            expect(result.libraries.find(l => l.name === 'exe_math')).toBeDefined();
+            expect(result.files).toContain('exe_math');
+        });
+
         it('should mark exe_lightbox with isDirectory=true for full directory export', () => {
             const html = '<a href="image.jpg" rel="lightbox">Image</a>';
             const result = detector.detectLibraries(html);
@@ -319,6 +334,30 @@ describe('LibraryDetector', () => {
             const jqueryCount = files.filter(f => f === 'jquery/jquery.min.js').length;
 
             expect(jqueryCount).toBe(1);
+        });
+    });
+
+    describe('incremental fragment scanning', () => {
+        it('should detect libraries across multiple fragments without concatenating them first', () => {
+            const result = detector.detectLibrariesFromFragments([
+                '<div class="exe-fx animated">Effects</div>',
+                '<pre class="highlighted-code">code</pre>',
+            ]);
+
+            expect(result.libraries.map(l => l.name)).toContain('exe_effects');
+            expect(result.libraries.map(l => l.name)).toContain('exe_highlighter');
+        });
+
+        it('should return required files and patterns from fragment iterables', () => {
+            const { files, patterns } = detector.getAllRequiredFilesWithPatternsFromFragments(
+                ['<a href="img.jpg" rel="lightbox">Image</a>', '<p>\\(x^2\\)</p>'],
+                { includeAccessibilityToolbar: true },
+            );
+
+            expect(files).toContain('exe_lightbox/exe_lightbox.js');
+            expect(files).toContain('exe_atools/exe_atools.js');
+            expect(patterns.some(pattern => pattern.name === 'exe_lightbox')).toBe(true);
+            expect(patterns.some(pattern => pattern.name === 'exe_math')).toBe(true);
         });
     });
 

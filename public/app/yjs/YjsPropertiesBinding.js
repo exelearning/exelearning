@@ -497,11 +497,14 @@ class YjsPropertiesBinding {
       }
     }
 
-    // Reload content translations
+    // Reload content translations and refresh $exe_i18n globals
     const locale = window.eXeLearning?.app?.locale;
     if (locale?.loadContentTranslationsStrings) {
       await locale.loadContentTranslationsStrings(language);
       Logger.log(`[YjsPropertiesBinding] Reloaded content translations for: ${language}`);
+    }
+    if (locale?.refreshI18nGlobals) {
+      await locale.refreshI18nGlobals();
     }
   }
 

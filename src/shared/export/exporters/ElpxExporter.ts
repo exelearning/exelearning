@@ -32,9 +32,48 @@ import { Html5Exporter } from './Html5Exporter';
 import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
-import { generateI18nScript } from '../generators/I18nGenerator';
 
 export class ElpxExporter extends Html5Exporter {
+    /**
+     * Decode screenshot from base64 data URL or raw base64 to Uint8Array.
+     * Returns null if the data is not valid PNG.
+     */
+    private decodeScreenshotToBuffer(screenshot: string): Uint8Array | null {
+        try {
+            let base64Data = screenshot;
+            // Handle data URL format (data:image/png;base64,...)
+            if (base64Data.startsWith('data:')) {
+                const commaIndex = base64Data.indexOf(',');
+                if (commaIndex === -1) return null;
+                base64Data = base64Data.substring(commaIndex + 1);
+            }
+            // Decode base64 to binary
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            // Validate PNG signature (first 8 bytes)
+            if (
+                bytes.length >= 8 &&
+                bytes[0] === 0x89 &&
+                bytes[1] === 0x50 &&
+                bytes[2] === 0x4e &&
+                bytes[3] === 0x47 &&
+                bytes[4] === 0x0d &&
+                bytes[5] === 0x0a &&
+                bytes[6] === 0x1a &&
+                bytes[7] === 0x0a
+            ) {
+                return bytes;
+            }
+            console.warn('[ElpxExporter] Screenshot data is not a valid PNG');
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
     /**
      * Get file extension for ELPX format
      */
@@ -61,7 +100,11 @@ export class ElpxExporter extends Html5Exporter {
         const elpxOptions = options as ElpxExportOptions | undefined;
 
         try {
+            this.logElpxExportDebugPhase('exporter:elpx:start');
             let pages = this.buildPageList();
+            this.logElpxExportDebugPhase('exporter:build-page-list:end', {
+                pages: pages.length,
+            });
             const meta = this.getMetadata();
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
             const themeName = elpxOptions?.theme || meta.theme || 'base';
@@ -71,6 +114,9 @@ export class ElpxExporter extends Html5Exporter {
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
+            this.logElpxExportDebugPhase('exporter:prepare-theme:start', {
+                theme: themeName,
+            });
 
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
@@ -88,10 +134,26 @@ export class ElpxExporter extends Html5Exporter {
 
             // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
+            this.logElpxExportDebugPhase('exporter:prepare-theme:end', {
+                theme: themeName,
+                themeFiles: themeFilesMap?.size || 0,
+            });
+
+            // Fetch translated nav button labels for the content language
+            this.logElpxExportDebugPhase('exporter:nav-labels:start', {
+                language: meta.language || 'en',
+            });
+            const navLabels = await this.fetchNavLabels(meta.language || 'en');
+            this.logElpxExportDebugPhase('exporter:nav-labels:end', {
+                language: meta.language || 'en',
+            });
 
             // 1.1 Generate HTML pages with optional Mermaid pre-rendering, store for later — manifest script tag injection happens after manifest is created)
             const pageHtmlMap = new Map<string, string>();
             let mermaidWasRendered = false;
+            this.logElpxExportDebugPhase('exporter:generate-pages:start', {
+                pages: pages.length,
+            });
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -104,6 +166,8 @@ export class ElpxExporter extends Html5Exporter {
                     themeRootFiles,
                     faviconInfo,
                     pageFilenameMap,
+                    undefined,
+                    navLabels,
                 );
 
                 // Pre-render Mermaid diagrams to static SVG if hook is provided
@@ -128,6 +192,9 @@ export class ElpxExporter extends Html5Exporter {
                 const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
                 pageHtmlMap.set(pageFilename, html);
             }
+            this.logElpxExportDebugPhase('exporter:generate-pages:end', {
+                pages: pageHtmlMap.size,
+            });
 
             // 1.2 Add search_index.js if search box is enabled
             if (meta.addSearchBox) {
@@ -136,6 +203,7 @@ export class ElpxExporter extends Html5Exporter {
             }
 
             // 1.3 Add base CSS (fetch from content/css) and Mermaid pre-rendered CSS
+            this.logElpxExportDebugPhase('exporter:content-css:start');
             const contentCssFiles = await this.resources.fetchContentCss();
             let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
@@ -150,6 +218,9 @@ export class ElpxExporter extends Html5Exporter {
                 baseCss = encoder.encode(baseCssText);
             }
             addFile('content/css/base.css', baseCss);
+            this.logElpxExportDebugPhase('exporter:content-css:end', {
+                files: contentCssFiles.size,
+            });
 
             // 1.4 Add eXeLearning logo for "Made with eXeLearning" footer
             try {
@@ -174,28 +245,32 @@ export class ElpxExporter extends Html5Exporter {
 
             // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
             try {
+                this.logElpxExportDebugPhase('exporter:base-libs:start');
                 const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [libPath, content] of baseLibs) {
                     addFile(`libs/${libPath}`, content);
                 }
+                this.logElpxExportDebugPhase('exporter:base-libs:end', {
+                    files: baseLibs.size,
+                });
             } catch {
                 // Base libraries not available - continue anyway
             }
 
             // 1.6.5 Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
             addFile('libs/common_i18n.js', i18nContent);
 
             // 1.7 Detect and fetch additional required libraries based on content
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            });
 
             try {
+                this.logElpxExportDebugPhase('exporter:content-libs:start', {
+                    requestedFiles: allRequiredFiles.length,
+                    patterns: patterns.length,
+                });
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
                 for (const [libPath, content] of libFiles) {
                     // Only add if not already added by base libraries
@@ -204,12 +279,18 @@ export class ElpxExporter extends Html5Exporter {
                         addFile(zipPath, content);
                     }
                 }
+                this.logElpxExportDebugPhase('exporter:content-libs:end', {
+                    files: libFiles.size,
+                });
             } catch {
                 // Additional libraries not available - continue anyway
             }
 
             // 1.8 Fetch and add iDevice assets
             const usedIdevices = this.getUsedIdevices(pages);
+            this.logElpxExportDebugPhase('exporter:idevice-resources:start', {
+                idevices: usedIdevices.length,
+            });
             for (const idevice of usedIdevices) {
                 try {
                     // Normalize iDevice type to directory name (e.g., 'FreeTextIdevice' -> 'text')
@@ -223,6 +304,9 @@ export class ElpxExporter extends Html5Exporter {
                     // Many iDevices don't have extra files - this is normal
                 }
             }
+            this.logElpxExportDebugPhase('exporter:idevice-resources:end', {
+                idevices: usedIdevices.length,
+            });
 
             // 1.9 Add project assets
             await this.addAssetsToZipWithResourcePath(fileList);
@@ -278,10 +362,55 @@ export class ElpxExporter extends Html5Exporter {
             // 2.2 Add DTD file
             this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
 
+            // 2.3 Add project screenshot/thumbnail
+            let screenshotBuffer: Uint8Array | null = null;
+            // Priority 1: custom screenshot from project metadata
+            if (meta.screenshot) {
+                screenshotBuffer = this.decodeScreenshotToBuffer(meta.screenshot);
+            }
+            // Priority 2: auto-generate from first page HTML via browser hook
+            if (!screenshotBuffer && options?.generateScreenshot) {
+                try {
+                    const firstPageHtml = pageHtmlMap.get('index.html');
+                    if (firstPageHtml) {
+                        const dataUrl = await options.generateScreenshot(firstPageHtml);
+                        if (dataUrl) {
+                            screenshotBuffer = this.decodeScreenshotToBuffer(dataUrl);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[ElpxExporter] Screenshot auto-generation failed:', error);
+                }
+            }
+            if (screenshotBuffer) {
+                this.zip.addFile('screenshot.png', screenshotBuffer);
+            }
+
             // =========================================================================
             // SECTION 3: Generate final ZIP
             // =========================================================================
+            this.logElpxExportDebugPhase('exporter:zip-generate:start', {
+                zipFiles: fileList?.length || this.zip.getFilePaths?.().length || null,
+            });
             const buffer = await this.zip.generateAsync();
+            const zipStats =
+                (
+                    this.zip as {
+                        getLastGenerateStats?: () => {
+                            deflatedFiles: number;
+                            storedFiles: number;
+                            deflatedBytes: number;
+                            storedBytes: number;
+                        };
+                    }
+                ).getLastGenerateStats?.() || null;
+            this.logElpxExportDebugPhase('exporter:zip-generate:end', {
+                bytes: buffer.byteLength,
+                deflatedFiles: zipStats?.deflatedFiles ?? null,
+                storedFiles: zipStats?.storedFiles ?? null,
+                deflatedBytes: zipStats?.deflatedBytes ?? null,
+                storedBytes: zipStats?.storedBytes ?? null,
+            });
 
             return {
                 success: true,

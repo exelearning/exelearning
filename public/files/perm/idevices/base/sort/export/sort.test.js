@@ -432,4 +432,165 @@ describe('sort iDevice export', () => {
             ).not.toThrow();
         });
     });
+
+    describe('multimedia validation for image-only cards', () => {
+        beforeEach(() => {
+            document.body.innerHTML = '';
+        });
+
+        function createCardDrawHtml(order, imageUrl = '') {
+            return `
+                <div class="ODNP-CardDraw" data-order="${order}">
+                    <img class="ODNP-Image" data-url="${imageUrl}" />
+                </div>
+            `;
+        }
+
+        it('checkPhrase accepts cards by exact image URL when all cards are image-only', () => {
+            const instance = 20;
+            $eXeOrdena.options[instance] = {
+                type: 1,
+                phrase: {
+                    cards: [
+                        { order: 0, url: 'img/avanza.png', eText: '   ', audio: '   ' },
+                        { order: 1, url: 'img/avanza.png', eText: '', audio: '' },
+                        { order: 2, url: 'img/para.png', eText: '', audio: '' },
+                    ],
+                },
+            };
+
+            document.body.innerHTML = `
+                <div id="ordenaMultimedia-${instance}">
+                    ${createCardDrawHtml(1, 'img/avanza.png')}
+                    ${createCardDrawHtml(0, 'img/avanza.png')}
+                    ${createCardDrawHtml(2, 'img/para.png')}
+                </div>
+            `;
+
+            const result = $eXeOrdena.checkPhrase(instance);
+            expect(result.correct).toBe(true);
+            expect(result.valids).toEqual([1, 0, 2]);
+        });
+
+        it('checkPhrase keeps legacy order validation when phrase is mixed (text/audio present)', () => {
+            const instance = 21;
+            $eXeOrdena.options[instance] = {
+                phrase: {
+                    cards: [
+                        { order: 0, url: 'img/avanza.png', eText: 'texto', audio: '' },
+                        { order: 1, url: 'img/para.png', eText: '', audio: '' },
+                    ],
+                },
+            };
+
+            document.body.innerHTML = `
+                <div id="ordenaMultimedia-${instance}">
+                    ${createCardDrawHtml(1, 'img/avanza.png')}
+                    ${createCardDrawHtml(0, 'img/para.png')}
+                </div>
+            `;
+
+            const result = $eXeOrdena.checkPhrase(instance);
+            expect(result.correct).toBe(false);
+            expect(result.valids).toEqual([]);
+        });
+
+        it('checkPhraseColumns validates by image URL in image-only mode', () => {
+            const instance = 22;
+            $eXeOrdena.options[instance] = {
+                gameColumns: 2,
+                type: 1,
+                phrase: {
+                    cards: [
+                        { order: 0, url: 'img/avanza.png', eText: '', audio: '' },
+                        { order: 1, url: 'img/para.png', eText: '', audio: '' },
+                        { order: 2, url: 'img/avanza.png', eText: '', audio: '' },
+                        { order: 3, url: 'img/para.png', eText: '', audio: '' },
+                    ],
+                },
+            };
+
+            document.body.innerHTML = `
+                <div id="ordenaMultimedia-${instance}">
+                    ${createCardDrawHtml(0, 'img/avanza.png')}
+                    ${createCardDrawHtml(1, 'img/para.png')}
+                    ${createCardDrawHtml(2, 'img/avanza.png')}
+                    ${createCardDrawHtml(3, 'img/para.png')}
+                </div>
+            `;
+
+            const result = $eXeOrdena.checkPhraseColumns(instance);
+            expect(result.correct).toBe(true);
+            expect(result.valids).toEqual([2, 3]);
+        });
+
+        it('checkPhraseColumns does not accept duplicated occurrences beyond expected count', () => {
+            const instance = 23;
+            $eXeOrdena.options[instance] = {
+                gameColumns: 2,
+                type: 1,
+                phrase: {
+                    cards: [
+                        { order: 0, url: 'img/header-a.png', eText: '', audio: '' },
+                        { order: 1, url: 'img/header-b.png', eText: '', audio: '' },
+                        { order: 2, url: 'img/a.png', eText: '', audio: '' },
+                        { order: 3, url: 'img/b.png', eText: '', audio: '' },
+                    ],
+                },
+            };
+
+            document.body.innerHTML = `
+                <div id="ordenaMultimedia-${instance}">
+                    ${createCardDrawHtml(0, 'img/header-a.png')}
+                    ${createCardDrawHtml(1, 'img/header-b.png')}
+                    ${createCardDrawHtml(2, 'img/a.png')}
+                    ${createCardDrawHtml(2, 'img/a.png')}
+                </div>
+            `;
+
+            const result = $eXeOrdena.checkPhraseColumns(instance);
+            expect(result.correct).toBe(false);
+        });
+    });
+
+    describe('content signature helpers', () => {
+        it('sanitizeComparableValue strips HTML in a detached copy and trims', () => {
+            const value = '  <strong>Hello</strong> <em>world</em>  ';
+            const sanitized = $eXeOrdena.sanitizeComparableValue(value);
+
+            expect(sanitized).toBe('Hello world');
+        });
+
+        it('isCardContentSignatureEmpty detects empty and non-empty signatures', () => {
+            const emptySignature = $eXeOrdena.getCardContentSignature('', '', '');
+            const nonEmptySignature = $eXeOrdena.getCardContentSignature(
+                'img/a.png',
+                '',
+                ''
+            );
+
+            expect($eXeOrdena.isCardContentSignatureEmpty(emptySignature)).toBe(
+                true
+            );
+            expect(
+                $eXeOrdena.isCardContentSignatureEmpty(nonEmptySignature)
+            ).toBe(false);
+        });
+
+        it('cardMatchesImagePosition returns false for legacy empty content cards', () => {
+            const phrase = {
+                cards: [{ order: 0, url: '', eText: '   ', audio: '   ' }],
+            };
+            const $cardDraw = $(
+                '<div class="ODNP-CardDraw" data-order="0"></div>'
+            );
+
+            const result = $eXeOrdena.cardMatchesImagePosition(
+                $cardDraw,
+                phrase,
+                0
+            );
+            expect(result).toBe(false);
+        });
+    });
 });

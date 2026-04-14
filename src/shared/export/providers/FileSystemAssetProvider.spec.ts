@@ -214,6 +214,91 @@ describe('FileSystemAssetProvider', () => {
         });
     });
 
+    describe('forEachAsset', () => {
+        it('should process each asset sequentially', async () => {
+            const processed: string[] = [];
+            const count = await provider.forEachAsset(async asset => {
+                processed.push(asset.originalPath);
+            });
+
+            expect(count).toBeGreaterThanOrEqual(4);
+            expect(processed).toContain('resources/images/photo.jpg');
+            expect(processed).toContain('resources/images/icon.png');
+            expect(processed).toContain('resources/media/video.mp4');
+            expect(processed).toContain('content/resources/document.pdf');
+        });
+
+        it('should return 0 for empty directory', async () => {
+            const emptyDir = path.join(os.tmpdir(), `test-empty-${Date.now()}`);
+            await fs.ensureDir(emptyDir);
+
+            const emptyProvider = new FileSystemAssetProvider(emptyDir);
+            const count = await emptyProvider.forEachAsset(async () => {});
+
+            expect(count).toBe(0);
+            await fs.remove(emptyDir);
+        });
+    });
+
+    describe('listAssetMetadata', () => {
+        it('should return metadata without binary data', async () => {
+            const metadata = await provider.listAssetMetadata();
+
+            expect(metadata.length).toBeGreaterThanOrEqual(1);
+            // content/resources/document.pdf should be in the metadata
+            const pdfMeta = metadata.find(m => m.filename === 'document.pdf');
+            expect(pdfMeta).toBeDefined();
+            expect(pdfMeta!.mime).toBe('application/pdf');
+            // Should NOT have data property
+            expect((pdfMeta as any).data).toBeUndefined();
+        });
+
+        it('should return empty array for empty directory', async () => {
+            const emptyDir = path.join(os.tmpdir(), `test-empty-meta-${Date.now()}`);
+            await fs.ensureDir(emptyDir);
+
+            const emptyProvider = new FileSystemAssetProvider(emptyDir);
+            const metadata = await emptyProvider.listAssetMetadata();
+
+            expect(metadata).toEqual([]);
+            await fs.remove(emptyDir);
+        });
+    });
+
+    describe('listAssetMetadata and forEachAsset consistency', () => {
+        it('should return the same asset IDs from both methods', async () => {
+            const meta = await provider.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await provider.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+        });
+
+        it('should include root-level assets in both methods', async () => {
+            // Create a root-level asset file
+            await fs.writeFile(path.join(testDir, 'root-image.jpg'), Buffer.from([0xff, 0xd8, 0xff]));
+
+            // Need fresh provider to avoid cache
+            const freshProvider = new FileSystemAssetProvider(testDir);
+
+            const meta = await freshProvider.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await freshProvider.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+            // Root-level file should be in both
+            expect(idsFromMeta.has('root-image.jpg')).toBe(true);
+        });
+    });
+
     describe('nested directories', () => {
         it('should handle deeply nested asset directories', async () => {
             // Create nested structure

@@ -16,8 +16,15 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
-import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText, shouldShowLicenseFooter } from '../constants';
-
+import {
+    LIBRARY_PATTERNS,
+    getLicenseClass,
+    formatLicenseText,
+    shouldShowLicenseFooter,
+    getLicenseUrl,
+    formatShortLicenseText,
+} from '../constants';
+import { trans } from '../../../services/translation';
 /**
  * PageRenderer class
  * Renders complete HTML pages for export
@@ -83,6 +90,7 @@ export class PageRenderer {
             extraHeadScripts = '',
             onLoadScript = '',
             onUnloadScript = '',
+            detectedLibraries: providedDetectedLibraries,
             // Theme files (CSS/JS from theme root directory)
             themeFiles = [],
             // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
@@ -99,13 +107,14 @@ export class PageRenderer {
         // Detect libraries from ORIGINAL content (before transformation)
         // This is important for exe-package:elp links which get transformed during rendering
         const originalContent = this.collectPageContent(page);
-        const detectedLibraries = this.detectContentLibraries(originalContent);
+        const detectedLibraries = providedDetectedLibraries ?? this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
         const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, {
             author: options.author,
             description: options.description,
             license: options.license,
+            language: options.language,
         });
 
         // Calculate page counter values
@@ -124,6 +133,7 @@ export class PageRenderer {
             currentPageIndex: currentIdx,
             totalPages: total,
             addPagination,
+            pageLabel: options.navLabels?.page,
         });
 
         // Build search box div (only if enabled)
@@ -145,7 +155,7 @@ export class PageRenderer {
         // Build nav buttons HTML (hidden for SCORM/IMS - LMS handles navigation)
         const navButtonsHtml = hideNavButtons
             ? ''
-            : this.renderNavButtons(page, allPages, basePath, language, pageFilenameMap);
+            : this.renderNavButtons(page, allPages, basePath, options.navLabels, pageFilenameMap);
 
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
@@ -154,11 +164,11 @@ ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadSc
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
+<div class="exe-content exe-export pre-js siteNav-hidden">${bodyClassStr.includes('exe-web-site') ? `<a href="#${page.id}" id="skipNav">${trans('Skip to content', {}, language)}</a> ` : ''}${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${pageContent}
 </div></main>${navButtonsHtml}
-${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, language })}
 </div>
 ${madeWithExeHtml}
 </body>
@@ -554,13 +564,14 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             currentPageIndex: number;
             totalPages: number;
             addPagination?: boolean;
+            pageLabel?: string;
         },
     ): string {
-        const { projectTitle, projectSubtitle, currentPageIndex, totalPages, addPagination } = options;
+        const { projectTitle, projectSubtitle, currentPageIndex, totalPages, addPagination, pageLabel } = options;
 
         // Page counter is only shown if addPagination is true
         const pageCounterHtml = addPagination
-            ? ` <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
+            ? ` <p class="page-counter"> <span class="page-counter-label">${pageLabel || 'Page'} </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
             : '';
 
         // Check if page title should be hidden and get effective title
@@ -580,8 +591,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // Theme JS looks for '.main-header .page-header' to move title into .page-content
         // Note: page-counter is inside main-header for CSS compatibility with legacy themes
         return `<header class="main-header">${pageCounterHtml}
-<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
-<div class="page-header"><h2 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h2></div>
+<div class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${subtitleHtml}</div>
+<div class="page-header"><h1 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h1></div>
 </header>`;
     }
 
@@ -598,7 +609,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         projectTitle?: string,
         assetExportPathMap?: Map<string, string>,
-        metadata?: { author?: string; description?: string; license?: string },
+        metadata?: { author?: string; description?: string; license?: string; language?: string },
     ): string {
         let html = '';
 
@@ -621,7 +632,33 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             const safeTitle = this.escapeHtml(projectTitle || '-');
             const safeAuthor = this.escapeHtml(metadata?.author || '-');
             const safeDesc = this.escapeHtml(metadata?.description || '-');
-            const safeLicense = this.escapeHtml(metadata?.license ? formatLicenseText(metadata.license) : '-');
+            const safeLicense = this.escapeHtml(metadata?.license ? formatShortLicenseText(metadata.license) : '-');
+
+            let safeLicenseHtml = safeLicense;
+            if (metadata?.license) {
+                const shortText = formatShortLicenseText(metadata.license);
+                const isStandardCC = shortText.startsWith('Creative Commons');
+
+                if (isStandardCC) {
+                    const licenseUrl = getLicenseUrl(metadata.license);
+                    if (licenseUrl) {
+                        const cssClass = getLicenseClass(metadata.license);
+                        const classAttr = cssClass ? ` class="${cssClass}"` : '';
+                        safeLicenseHtml = `<a href="${licenseUrl}" rel="license"${classAttr}><span></span>${safeLicense}</a>`;
+                    }
+                } else if (
+                    ['propietary license', 'not appropriate', 'public domain'].includes(
+                        metadata.license.toLowerCase().trim(),
+                    )
+                ) {
+                    let displayName = metadata.license;
+                    if (metadata.license.toLowerCase().trim() === 'propietary license')
+                        displayName = 'Proprietary license';
+                    if (metadata.license.toLowerCase().trim() === 'not appropriate') displayName = 'Not appropriate';
+                    if (metadata.license.toLowerCase().trim() === 'public domain') displayName = 'Public domain';
+                    safeLicenseHtml = this.escapeHtml(trans(displayName, {}, metadata.language));
+                }
+            }
 
             // Strip out the read-only classes from the <td> wrappers just in case they slipped through
             html = html.replace(/<td class="mceNonEditable exe-prop-locked\s*"[^>]*>/g, '<td>');
@@ -639,8 +676,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 `<span class="exe-prop-description">${safeDesc}</span>`,
             );
             html = html.replace(
-                /<span class="exe-prop-license[^>]*>.*?<\/span>/g,
-                `<span class="exe-prop-license">${safeLicense}</span>`,
+                /<span class="exe-prop-license[^>]*>[\s\S]*?(?=<\/td>|<\/p>|<\/div>|<\/li>|$)/g,
+                `<span class="exe-prop-license">${safeLicenseHtml}</span>`,
             );
         }
 
@@ -691,43 +728,48 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
     }
 
     /**
-     * Render navigation buttons (prev/next links)
-     * Outputs English text with data-i18n attributes for runtime translation via $exe_i18n.
+     * Render navigation buttons (prev/next links).
+     * Uses pre-translated labels resolved at export time from XLF translations,
+     * so the exported HTML already contains the correct text for the content language.
      * @param page - Current page
      * @param allPages - All pages
      * @param basePath - Base path
-     * @param _language - Deprecated, translation now happens at runtime via $exe_i18n
+     * @param navLabels - Translated labels ({ previous, next }); defaults to English
+     * @param pageFilenameMap - Optional map for collision-safe filenames
      * @returns Navigation buttons HTML
      */
     renderNavButtons(
         page: ExportPage,
         allPages: ExportPage[],
         basePath: string,
-        _language: string = 'en',
+        navLabels?: { previous: string; next: string },
         pageFilenameMap?: Map<string, string>,
     ): string {
+        const prevLabel = navLabels?.previous || 'Previous';
+        const nextLabel = navLabels?.next || 'Next';
+
         const currentIndex = allPages.findIndex(p => p.id === page.id);
         const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
         const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
         const parts: string[] = ['<div class="nav-buttons">'];
 
-        // Previous button
         if (prevPage) {
             const link = this.getPageLink(prevPage, allPages, basePath, pageFilenameMap);
             parts.push(
-                `<a href="${link}" title="Previous" class="nav-button nav-button-left"><span>Previous</span></a>`,
+                `<a href="${link}" title="${prevLabel}" class="nav-button nav-button-left"><span>${prevLabel}</span></a>`,
             );
         } else {
-            parts.push('<span class="nav-button nav-button-left" aria-hidden="true"><span>Previous</span></span>');
+            parts.push(`<span class="nav-button nav-button-left" aria-hidden="true"><span>${prevLabel}</span></span>`);
         }
 
-        // Next button
         if (nextPage) {
             const link = this.getPageLink(nextPage, allPages, basePath, pageFilenameMap);
-            parts.push(`<a href="${link}" title="Next" class="nav-button nav-button-right"><span>Next</span></a>`);
+            parts.push(
+                `<a href="${link}" title="${nextLabel}" class="nav-button nav-button-right"><span>${nextLabel}</span></a>`,
+            );
         } else {
-            parts.push('<span class="nav-button nav-button-right" aria-hidden="true"><span>Next</span></span>');
+            parts.push(`<span class="nav-button nav-button-right" aria-hidden="true"><span>${nextLabel}</span></span>`);
         }
 
         parts.push('</div>');
@@ -743,8 +785,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      * @returns Pagination HTML
      * @deprecated Use renderNavButtons instead
      */
-    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string, language: string = 'en'): string {
-        return this.renderNavButtons(page, allPages, basePath, language);
+    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string): string {
+        return this.renderNavButtons(page, allPages, basePath);
     }
 
     /**
@@ -752,8 +794,13 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      * @param options - Footer options
      * @returns Footer HTML with siteFooter wrapper
      */
-    renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
-        const { license, licenseUrl = '', userFooterContent } = options;
+    renderFooterSection(options: {
+        license: string;
+        licenseUrl?: string;
+        userFooterContent?: string;
+        language?: string;
+    }): string {
+        const { license, licenseUrl = '', userFooterContent, language = 'en' } = options;
 
         let userFooterHtml = '';
         if (userFooterContent) {
@@ -768,12 +815,13 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         }
 
         const licenseText = formatLicenseText(license);
+        const translatedLicenseText = trans(licenseText, {}, language);
         const licenseClass = getLicenseClass(license);
 
         // If there's a license URL, create a link; otherwise, just show the text
         const licenseContent = licenseUrl
-            ? `<a href="${licenseUrl}" class="license">${licenseText}</a>`
-            : `<span class="license">${licenseText}</span>`;
+            ? `<a href="${licenseUrl}" class="license">${translatedLicenseText}</a>`
+            : `<span class="license">${translatedLicenseText}</span>`;
 
         return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span>${licenseContent}</p>
 </div>
@@ -951,8 +999,8 @@ ${userFooterHtml}</div></footer>`;
         } = options;
 
         let contentHtml = '';
-        // Collect content for library detection
-        const allContentParts: string[] = [];
+        const effectiveDetectedLibraries =
+            detectedLibraries.length > 0 ? detectedLibraries : this.detectContentLibrariesForPages(allPages);
 
         for (const page of allPages) {
             // Check if page title should be hidden and get effective title
@@ -963,11 +1011,8 @@ ${userFooterHtml}</div></footer>`;
             // moves the .page-title element out of .page-header via movePageTitle()
             const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
-            // Collect raw content from page components for library detection
-            allContentParts.push(this.collectPageContent(page));
-
             // Single-page sections use main-header > page-header structure for CSS compatibility
-            contentHtml += `<section>
+            contentHtml += `<section id="section-${page.id}">
 <header class="main-header">
 <div class="page-header">
 <h1 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h1>
@@ -978,6 +1023,7 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
     author: options.author,
     description: options.description,
     license: options.license,
+    language: options.language,
 })}
 </div>
 </section>\n`;
@@ -995,24 +1041,6 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
             }
         }
 
-        // Detect content libraries
-        const contentLibraries = this.detectContentLibraries(allContentParts.join('\n'));
-        let libIncludes = '';
-        for (const libName of contentLibraries) {
-            const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
-            if (!libPattern) continue;
-
-            const jsFiles = libPattern.files.filter(f => f.endsWith('.js'));
-            const cssFiles = libPattern.files.filter(f => f.endsWith('.css'));
-
-            for (const jsFile of jsFiles) {
-                libIncludes += `\n<script src="libs/${jsFile}"> </script>`;
-            }
-            for (const cssFile of cssFiles) {
-                libIncludes += `\n<link rel="stylesheet" href="libs/${cssFile}">`;
-            }
-        }
-
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">
 <head>
@@ -1026,13 +1054,13 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
-<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}${libIncludes}
+<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">
 <script src="theme/style.js"> </script>
 <link rel="stylesheet" href="theme/style.css">
 ${this.renderFavicon('', faviconPath, faviconType)}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
-${this.renderDetectedLibraries(detectedLibraries, '')}
+${this.renderDetectedLibraries(effectiveDetectedLibraries, '')}
 ${addAccessibilityToolbar ? `<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">` : ''}
 ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>
@@ -1040,7 +1068,7 @@ ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
 <main class="page">
-<header class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
+<header class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
@@ -1130,8 +1158,10 @@ ${addExeLink ? this.renderMadeWithEXe() : ''}
                     break;
 
                 case 'rel':
-                    // Look for rel="pattern"
-                    found = html.includes(`rel="${lib.pattern}"`) || html.includes(`rel='${lib.pattern}'`);
+                    // Look for rel="pattern" or rel="pattern[X]" (e.g., lightbox, lightbox[gallery1])
+                    found =
+                        new RegExp(`rel="[^"]*${lib.pattern as string}[^"]*"`, 'i').test(html) ||
+                        new RegExp(`rel='[^']*${lib.pattern as string}[^']*'`, 'i').test(html);
                     break;
 
                 case 'regex':
@@ -1145,6 +1175,16 @@ ${addExeLink ? this.renderMadeWithEXe() : ''}
             }
         }
 
+        return Array.from(detectedLibs);
+    }
+
+    private detectContentLibrariesForPages(pages: ExportPage[]): string[] {
+        const detectedLibs = new Set<string>();
+        for (const page of pages) {
+            for (const libName of this.detectContentLibraries(this.collectPageContent(page))) {
+                detectedLibs.add(libName);
+            }
+        }
         return Array.from(detectedLibs);
     }
 

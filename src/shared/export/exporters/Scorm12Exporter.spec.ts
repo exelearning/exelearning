@@ -85,6 +85,14 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider
@@ -349,6 +357,36 @@ describe('Scorm12Exporter', () => {
 
             expect(html).toContain('exe-scorm');
             expect(html).toContain('exe-scorm12');
+        });
+
+        it('should NOT include page-counter when addPagination is false', () => {
+            document = new MockDocument({ addPagination: false }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).not.toContain('page-counter');
+        });
+
+        it('should include page-counter when addPagination is true', () => {
+            document = new MockDocument({ addPagination: true }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('page-counter');
+        });
+
+        it('should NOT include made-with-eXe link when addExeLink is false', () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).not.toContain('made-with-eXe');
+        });
+
+        it('should include made-with-eXe link by default', () => {
+            const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('made-with-eXe');
         });
     });
 

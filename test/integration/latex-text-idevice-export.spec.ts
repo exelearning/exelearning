@@ -35,6 +35,9 @@ const createMockResourceProvider = (): ResourceProvider => ({
     fetchExeLogo: async () => null,
     fetchContentCss: async () => new Map(),
     normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
+    fetchGlobalFontFiles: async (_fontName: string) => null,
+    fetchI18nFile: async (_language: string) => '',
+    fetchI18nTranslations: async (_language: string) => new Map<string, string>(),
 });
 
 // Mock asset provider

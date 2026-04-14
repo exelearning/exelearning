@@ -1,10 +1,12 @@
 /* Add your JavaScript code here */
 jQuery(function () {
-    // alert("DOM is loaded!");
-    // alert(typeof eXeLearning); // undefined in login and error pages
+    // Code here runs when the DOM is loaded (login, workarea, error pages, etc.)
 });
-window.$eXeLearningCustom = {
-    init: function () {
-        // alert("eXeLearning is ready!");
-    },
-};
+if (typeof window.$eXeLearningCustom === 'undefined') {
+    window.$eXeLearningCustom = {
+        init: function () {
+            // Code here runs only in the workarea, after the app has fully loaded.
+            // window.eXeLearning is available here.
+        },
+    };
+}

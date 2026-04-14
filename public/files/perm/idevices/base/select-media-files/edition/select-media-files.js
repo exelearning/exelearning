@@ -121,7 +121,7 @@ var $exeDevice = {
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
-        msgs.msgEOneQuestion = _('Please provide at least one question');
+        msgs.msgEOneQuestion = _('Please create at least one card');
         msgs.msgTypeChoose = _(
             'Please check all the answers in the right order'
         );
@@ -286,19 +286,19 @@ var $exeDevice = {
                                     </div>
                                 </div>
                             </div>
-                            <div class="SLCME-ECustomMessageAudio d-flex flex-nowrap align-items-center gap-2 mb-3">
+                            <div class="SLCME-ECustomMessageAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioDefinition">
                                 <label class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioDefinition" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioDefinition" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
-                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3">
+                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioOK">
                                 <label for="slcmEMessageOK" class="mb-0">${_('Success')}:</label>
                                 <input type="text" id="slcmEMessageOK" class="form-control" />
                                 <label class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioOK" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioOK" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
-                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" >
+                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioKO" >
                                 <label for="slcmEMessageKO" class="mb-0">${_('Error')}:</label>
                                 <input type="text" id="slcmEMessageKO" class="form-control" />
                                 <label class="mb-0">${_('Audio')}:</label>
@@ -379,7 +379,7 @@ var $exeDevice = {
                 dataCard = $exeDevice.cardToJson($cardcopy);
 
             dataCard.id = $exeDevice.getID();
-            $cardactive.after($exeDevice.jsonToCard(dataCard, true));
+            $cardactive.after($exeDevice.jsonToCard(dataCard, false));
             $exeDevice.activeID = dataCard.id;
         } else if ($exeDevice.typeEditC == 1) {
             $exeDevice.hideFlex($('#slcmEPasteC'));
@@ -437,8 +437,18 @@ var $exeDevice = {
         return Math.floor(Math.random() * Date.now());
     },
 
+    initVoiceRecorders: function (target) {
+        const recorder = $exeDevicesEdition?.iDevice?.voiceRecorder;
+        if (typeof recorder?.initVoiceRecorders === 'function') {
+            recorder.initVoiceRecorders(target);
+        }
+    },
+
     enableForm: function (field) {
         $exeDevice.initPhrases();
+
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevice.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues(field);
         $exeDevice.addEvents();
@@ -552,7 +562,7 @@ var $exeDevice = {
                     </div>
                 </div>
                 <span>${_('Audio')}</span>
-                <div class="SLCME-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-3">
+                <div class="SLCME-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudio-${$exeDevice.activeID}">
                     <label class="sr-av">URL</label>
                     <input type="text" id="slcmEURLAudio-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                     <a href="#" id="slcmEPlayAudio-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Audio')}">
@@ -573,6 +583,7 @@ var $exeDevice = {
         }
         const $card = $('#slcmEPhrase').find('div.SLCME-EDatosCarta').last();
         $exeDevice.addEventCard($exeDevice.activeID);
+        $exeDevice.initVoiceRecorders($card);
         $exeDevice.showImage($exeDevice.activeID);
         return $card;
     },
@@ -581,6 +592,10 @@ var $exeDevice = {
         const $container = $('#slcmEDatosCarta-' + cardId);
         if (!$container.length) return;
 
+        $exeDevice.initVoiceRecorders($container);
+
+        const filemanager = window.eXeLearning?.app?.modals?.filemanager;
+
         $container
             .find(
                 '.exe-file-picker:not(.initialized), .exe-image-picker:not(.initialized)'
@@ -588,24 +603,31 @@ var $exeDevice = {
             .each(function () {
                 const $input = $(this);
                 $input.addClass('initialized');
-                const id = $input.attr('id'),
-                    css = $input.hasClass('exe-image-picker')
-                        ? 'exe-pick-image'
-                        : 'exe-pick-any-file',
-                    type = css === 'exe-pick-image' ? 'image' : 'media';
+                const id = $input.attr('id');
+                const idLower = id.toLowerCase();
+                const isImage =
+                    $input.hasClass('exe-image-picker') ||
+                    idLower.includes('urlimage');
+                const css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
 
-                let $fileInput = $('#' + `_browseFor${id}`);
-                if (!$fileInput.length) {
-                    $fileInput = $('<input>', {
-                        id: `_browseFor${id}`,
-                        type: 'file',
-                        accept: type === 'image' ? 'image/*' : undefined,
-                        style: 'display:none;', // Se oculta
-                    }).on('change', function (event) {
-                        $exeDevice.processFile(event.target.files[0], id, type);
-                    });
-                    $container.append($fileInput);
+                let accept = null;
+                if (isImage) {
+                    accept = 'image';
+                } else if (idLower.includes('audio')) {
+                    accept = 'audio';
+                } else if (idLower.includes('video')) {
+                    accept = 'video';
                 }
+
+                const hasOwnPickerButton =
+                    $input.next('input.exe-pick-any-file, input.exe-pick-image').length >
+                        0 ||
+                    $container.find(
+                        `input[type="button"][data-filepicker="${id}"]`
+                    ).length > 0;
+
+                if (hasOwnPickerButton) return;
+
                 if (
                     !$container.find(
                         `input[type="button"][data-filepicker="${id}"]`
@@ -616,73 +638,31 @@ var $exeDevice = {
                         class: css,
                         value: _('Select a file'),
                         'data-filepicker': id,
-                    }).on('click', function () {
-                        $fileInput.trigger('click');
                     });
                     $input.after($button);
                 }
+
+                // For this iDevice we bind locally to avoid legacy handlers opening native dialogs.
+                $container
+                    .find(`input[type="button"][data-filepicker="${id}"]`)
+                    .off('click.selectMediaFilesPicker')
+                    .on('click.selectMediaFilesPicker', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+
+                        if (!filemanager) return;
+
+                        filemanager.show({
+                            accept: accept,
+                            onSelect: function (result) {
+                                $input.val(result.assetUrl);
+                                $input[0].dataset.blobUrl = result.blobUrl;
+                                $input.trigger('change');
+                            },
+                        });
+                    });
             });
-    },
-
-    processFile: function (file, id, type) {
-        try {
-            this.addUploadImage(file, file.name, id, type);
-        } catch (err) {
-            console.error('Error processing file:', err);
-        }
-    },
-
-    addUploadImage: async function (imageData, imageName, id) {
-        let fd = new FormData();
-        fd.append('file', imageData);
-        fd.append('filename', imageName);
-        fd.append('odeSessionId', eXeLearning.app.project.odeSession);
-
-        this.lockScreen();
-        let lockStartTime = Date.now();
-
-        try {
-            let response = await eXe.app.uploadLargeFile(fd);
-            let loadTime = Date.now() - lockStartTime;
-
-            if (response?.savedPath && response?.savedFilename) {
-                let fileUrl = `${response.savedPath}/${response.savedFilename}`;
-                let $fileContainerField = $(`#${id}`);
-
-                if ($fileContainerField.length) {
-                    $fileContainerField.val(fileUrl).trigger('change');
-                }
-            } else {
-                eXe.app.alert(_(response?.code || 'Upload failed'));
-            }
-
-            this.unlockScreen(loadTime);
-        } catch (err) {
-            console.error('Upload failed:', err);
-            this.unlockScreen();
-        }
-    },
-
-    lockScreen: function () {
-        let $loadScreen = $('#load-screen-node-content');
-        $loadScreen
-            .css({ zIndex: 9999, position: 'fixed', top: 0, left: 0 })
-            .removeClass('hide hidden')
-            .addClass('loading');
-    },
-
-    unlockScreen: function (delay = 1000) {
-        delay = delay > 1000 ? 400 : 0;
-        let $loadScreen = $('#load-screen-node-content');
-
-        $loadScreen.removeClass('loading').addClass('hidding');
-        setTimeout(() => {
-            $loadScreen
-                .addClass('hide hidden')
-                .removeClass('hidding')
-                .css({ zIndex: 990, position: 'absolute' })
-                .removeAttr('top left');
-        }, delay);
     },
 
     addEventCard: function (id) {

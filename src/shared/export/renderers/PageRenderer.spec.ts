@@ -344,7 +344,7 @@ describe('PageRenderer', () => {
     });
 
     describe('renderNavButtons', () => {
-        it('should render prev/next nav buttons', () => {
+        it('should render prev/next nav buttons with English fallback labels', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -358,8 +358,23 @@ describe('PageRenderer', () => {
             expect(html).toContain('nav-button-right');
             expect(html).toContain('Previous');
             expect(html).toContain('Next');
-            // No data-i18n attributes (matches legacy PHP)
             expect(html).not.toContain('data-i18n');
+        });
+
+        it('should use translated labels when navLabels is provided', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+                createTestPage({ id: 'page-3', title: 'Third' }),
+            ];
+            const navLabels = { previous: 'Anterior', next: 'Siguiente' };
+
+            const html = renderer.renderNavButtons(pages[1], pages, '', navLabels);
+
+            expect(html).toContain('Anterior');
+            expect(html).toContain('Siguiente');
+            expect(html).not.toContain('Previous');
+            expect(html).not.toContain('Next');
         });
 
         it('should render disabled prev button for first page', () => {
@@ -373,9 +388,8 @@ describe('PageRenderer', () => {
             // First page: disabled prev (span with aria-hidden), enabled next (anchor)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true">');
             expect(html).toContain('<a href=');
-            // No data-i18n attributes
             expect(html).not.toContain('data-i18n');
         });
 
@@ -390,9 +404,8 @@ describe('PageRenderer', () => {
             // Last page: enabled prev (anchor), disabled next (span with aria-hidden)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true">');
             expect(html).toContain('<a href=');
-            // No data-i18n attributes
             expect(html).not.toContain('data-i18n');
         });
 
@@ -403,28 +416,21 @@ describe('PageRenderer', () => {
 
             // Single page: both buttons disabled (spans with aria-hidden)
             expect(html).toContain('nav-buttons');
-            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true"');
-            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true">');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true">');
             expect(html).not.toContain('<a href=');
-            // No data-i18n attributes
-            expect(html).not.toContain('data-i18n');
         });
 
-        it('should always output English text regardless of language param (deprecated)', () => {
-            const pages: ExportPage[] = [
-                createTestPage({ id: 'page-1', title: 'First' }),
-                createTestPage({ id: 'page-2', title: 'Second' }),
-            ];
+        it('should use translated labels for disabled buttons too', () => {
+            const pages: ExportPage[] = [createTestPage({ id: 'page-1', title: 'Only' })];
+            const navLabels = { previous: 'Anterior', next: 'Siguiente' };
 
-            // Language param is deprecated; runtime translation via $exe_i18n
-            const htmlEs = renderer.renderNavButtons(pages[0], pages, '', 'es');
-            const htmlEn = renderer.renderNavButtons(pages[0], pages, '', 'en');
+            const html = renderer.renderNavButtons(pages[0], pages, '', navLabels);
 
-            // Both should output the same English text (runtime translation handles localization)
-            expect(htmlEs).toContain('Previous');
-            expect(htmlEs).toContain('Next');
-            expect(htmlEn).toContain('Previous');
-            expect(htmlEn).toContain('Next');
+            expect(html).toContain('<span>Anterior</span>');
+            expect(html).toContain('<span>Siguiente</span>');
+            expect(html).not.toContain('Previous');
+            expect(html).not.toContain('Next');
         });
     });
 
@@ -460,8 +466,8 @@ describe('PageRenderer', () => {
             expect(html).toContain('class="page-counter"');
             expect(html).toContain('class="page-counter-current-page">3</strong>'); // 2 + 1
             expect(html).toContain('class="page-counter-total">10</strong>');
-            expect(html).toContain('class="package-title">My Project</h1>');
-            expect(html).toContain('class="page-title">My Page</h2>');
+            expect(html).toContain('class="package-title">My Project</p>');
+            expect(html).toContain('class="page-title">My Page</h1>');
         });
 
         it('should NOT render page counter when addPagination is false (default)', () => {
@@ -477,7 +483,7 @@ describe('PageRenderer', () => {
             expect(html).not.toContain('class="page-counter"');
         });
 
-        it('should show Página label in Spanish when addPagination is true', () => {
+        it('should use "Page" as default label when no pageLabel is provided', () => {
             const page = createTestPage();
 
             const html = renderer.renderPageHeader(page, {
@@ -487,7 +493,21 @@ describe('PageRenderer', () => {
                 addPagination: true,
             });
 
-            expect(html).toContain('Página');
+            expect(html).toContain('class="page-counter-label">Page ');
+        });
+
+        it('should use the provided pageLabel in the page counter', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'Test',
+                currentPageIndex: 0,
+                totalPages: 1,
+                addPagination: true,
+                pageLabel: 'Página',
+            });
+
+            expect(html).toContain('class="page-counter-label">Página ');
         });
 
         it('should render package-subtitle when projectSubtitle is provided', () => {
@@ -663,8 +683,9 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('exe-single-page');
-            // Sections don't have IDs in single-page export (matches legacy PHP)
-            expect(html).toContain('<section>');
+            // Sections have id="section-{pageId}" for anchor navigation
+            expect(html).toContain('id="section-page-1"');
+            expect(html).toContain('id="section-page-2"');
             expect(html).toContain('First');
             expect(html).toContain('Second');
         });
@@ -692,9 +713,22 @@ describe('PageRenderer', () => {
 
             // No nav tree with nested structure
             expect(html).not.toContain('class="other-section"');
-            // Sections exist without IDs (matches legacy PHP)
-            expect(html).toContain('<section>');
+            // Sections have id="section-{pageId}" for anchor navigation
+            expect(html).toContain('id="section-parent"');
+            expect(html).toContain('id="section-child"');
             expect(html).toContain('class="page-title">Child</h1>');
+        });
+
+        it('should add id="section-{pageId}" to each section for anchor navigation', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'abc-123', title: 'First' }),
+                createTestPage({ id: 'def-456', title: 'Second' }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, {});
+
+            expect(html).toContain('<section id="section-abc-123">');
+            expect(html).toContain('<section id="section-def-456">');
         });
 
         it('should include favicon reference', () => {
@@ -710,6 +744,37 @@ describe('PageRenderer', () => {
             const pages = [createTestPage()];
             const html = renderer.renderSinglePage(pages);
             expect(html).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
+        });
+
+        it('should use provided detectedLibraries without rescanning all page content', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'component-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<div class="exe-fx">Effects</div>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, {
+                detectedLibraries: ['exe_highlighter'],
+            });
+
+            expect(html).toContain('libs/exe_highlighter/exe_highlighter.js');
+            expect(html).not.toContain('libs/exe_effects/exe_effects.js');
         });
     });
 
@@ -1067,6 +1132,93 @@ describe('PageRenderer', () => {
     });
 
     describe('renderPageContent', () => {
+        it('should sync project properties when content contains exe-prop- classes', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                // Note: we have an mceNonEditable td that should have its classes stripped in output
+                                content: `
+                                    <td class="mceNonEditable exe-prop-locked"><span class="exe-prop-title"></span></td>
+                                    <span class="exe-prop-author"></span>
+                                    <span class="exe-prop-description"></span>
+                                    <span class="exe-prop-license"></span>
+                                `,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(page, '', 'My Testing Project', undefined, {
+                author: 'Pablo',
+                description: 'Test Desc',
+                license: 'creative commons: attribution - share alike 4.0',
+            });
+
+            expect(html).toContain('<td><span class="exe-prop-title">My Testing Project</span></td>');
+            expect(html).toContain('<span class="exe-prop-author">Pablo</span>');
+            expect(html).toContain('<span class="exe-prop-description">Test Desc</span>');
+
+            expect(html).toContain(
+                '<span class="exe-prop-license"><a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license" class="cc cc-by-sa"><span></span>Creative Commons BY-SA 4.0</a></span>',
+            );
+        });
+
+        it('should output a link when license is CC0', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                content: `<span class="exe-prop-license"></span>`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(page, '', 'Title', undefined, {
+                license: 'creative commons: cc0 1.0',
+            });
+
+            expect(html).toContain(
+                '<span class="exe-prop-license"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="license" class="cc cc-0"><span></span>Creative Commons CC0 1.0</a></span>',
+            );
+        });
+
+        it('should output safe simple text when license is not configured without crashing', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                content: `<span class="exe-prop-license"></span>`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(
+                page,
+                '',
+                'Title',
+                undefined,
+                {}, // missing metadata including license
+            );
+
+            // Just a span with escaped '-'
+            expect(html).toContain('<span class="exe-prop-license">-</span>');
+        });
+
         it('should render blocks with components', () => {
             const page = createTestPage({
                 blocks: [
@@ -1378,6 +1530,12 @@ describe('PageRenderer', () => {
 
         it('should detect exe_lightbox by rel attribute', () => {
             const html = '<a rel="lightbox" href="img.jpg"><img src="thumb.jpg"></a>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toContain('exe_lightbox');
+        });
+
+        it('should detect exe_lightbox by rel="lightbox[X]" attribute', () => {
+            const html = '<a rel="lightbox[gallery1]" href="img.jpg"><img src="thumb.jpg"></a>';
             const libs = renderer.detectContentLibraries(html);
             expect(libs).toContain('exe_lightbox');
         });

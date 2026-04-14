@@ -8,7 +8,7 @@
                 <span class="auto-icon" aria-hidden="true">download</span>
                 <span class="btn-label">{{ t.download or 'Download' }}</span>
             </button>
-            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2" title="{{ t.save or 'Save' }}" data-testid="save-button">
+            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2 {% if config.platformIntegration %}d-none{% endif %}" title="{{ t.save or 'Save' }}" data-testid="save-button">
                 <div class="small-icon save-icon-white"></div>
                 <span>{{ t.save or 'Save' }}</span>
             </button>
@@ -22,7 +22,7 @@
                 <span class="medium-icon settings-icon"></span>
             </button>
             <button id="head-top-share-button"
-                    class="btn button-secondary button-share-link d-flex justify-content-center align-items-center exe-online ms-1"
+                    class="btn button-secondary button-share-link d-flex justify-content-center align-items-center exe-online ms-1 {% if config.platformIntegration %}d-none{% endif %}"
                     title="{{ t.share or 'Share' }}"
                     aria-label="{{ t.share or 'Share' }}">
                 <span class="share-visibility-indicator d-flex align-items-center">
@@ -56,9 +56,9 @@
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exeUserMenuToggler">
                     {# Menú móvil plano: visible solo en móviles (d-md-none) #}
                     <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.file or 'File' }}</small></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-new" href="#">{{ t.new or 'New' }}</a></li>
-                    <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-openuserodefiles" href="#">{{ t.open or 'Open' }}</a></li>
-                    <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-save" href="#">{{ t.save or 'Save' }}</a></li>
+                    <li class="d-md-none {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-new" href="#">{{ t.new or 'New' }}</a></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-openuserodefiles" href="#">{{ t.open or 'Open' }}</a></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-save" href="#">{{ t.save or 'Save' }}</a></li>
                     {# Hidden to reduce Open/Import confusion (issue #1223) #}
                     <li class="d-none"><a class="dropdown-item" id="mobile-navbar-button-import-elp" href="#">{{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>
@@ -68,7 +68,7 @@
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-epub3" href="#">ePub3</a></li>
                     <li class="dropdown-divider d-md-none"></li>
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-settings" href="#">{{ t.project_properties or 'Project Properties' }}</a></li>
-                    <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-share" href="#">{{ t.share or 'Share' }}</a></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-share" href="#">{{ t.share or 'Share' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>
                     <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.utilities or 'Utilities' }}</small></li>
                     <li class="d-md-none exe-advanced"><a class="dropdown-item" id="mobile-navbar-button-filemanager" href="#">{{ t.file_manager or 'File manager' }}</a></li>

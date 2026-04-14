@@ -43,6 +43,8 @@ const createMockResourceProvider = (): ResourceProvider => ({
     fetchExeLogo: async () => null,
     fetchContentCss: async () => new Map(),
     fetchGlobalFontFiles: async () => null,
+    fetchI18nFile: async (_language: string): Promise<string> => '',
+    fetchI18nTranslations: async (_language: string) => new Map<string, string>(),
 });
 
 describe('PrintPreviewExporter', () => {
@@ -143,9 +145,9 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toContain('exe-export');
         });
 
-        it('should render page sections', async () => {
+        it('should render page sections with id attributes', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('<section>');
+            expect(result.html).toContain('<section id="section-');
         });
 
         it('should include all page content visible at once', async () => {
@@ -157,7 +159,7 @@ describe('PrintPreviewExporter', () => {
         it('should include package header with project title', async () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('class="package-header"');
-            expect(result.html).toContain('class="package-title">Test Project</h1>');
+            expect(result.html).toContain('class="package-title">Test Project</p>');
         });
 
         it('should include page headers in sections', async () => {

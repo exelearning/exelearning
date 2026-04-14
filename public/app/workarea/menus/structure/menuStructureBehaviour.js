@@ -39,7 +39,6 @@ export default class MenuStructureBehaviour {
         this.lastRangeAnchorId = null;
         this.nodeDrag = null;
         this.enterDragMenuStructureCount = 0;
-        this.dbclickNode = false;
         // Add object to engine
         this.structureEngine.menuStructureBehaviour = this;
     }
@@ -64,7 +63,6 @@ export default class MenuStructureBehaviour {
         this.addNavTestIds();
         // Nav elements drag&drop events
         this.addEventNavElementOnclick();
-        this.addEventNavElementOnDbclick();
         this.addEventNavElementIconOnclick();
         this.addEventNavElementOnMenuIconClic();
         this.addEventNavElementOnAddIconClick();
@@ -132,7 +130,7 @@ export default class MenuStructureBehaviour {
 
                 const navElement = element.parentElement;
                 const isRangeSelection = event.shiftKey;
-                const isToggleSelection = event.ctrlKey || event.metaKey || event.getModifierState?.('CapsLock');
+                const isToggleSelection = event.ctrlKey || event.metaKey;
 
                 if (isRangeSelection || isToggleSelection) {
                     this.handleMultiSelectionClick(navElement, event);
@@ -144,10 +142,7 @@ export default class MenuStructureBehaviour {
 
                 this.selectNode(navElement).then((nodeElement) => {
                     if (eXeLearning.app.project.checkOpenIdevice()) return;
-                    if (nodeElement && this.dbclickNode) {
-                        this.showModalPropertiesNode();
-                        this.dbclickNode = false;
-                    } else if (wasAlreadySelected && nodeElement) {
+                    if (wasAlreadySelected && nodeElement) {
                         this.startInlinePageRename(nodeElement);
                     }
                 });
@@ -156,7 +151,7 @@ export default class MenuStructureBehaviour {
     }
 
     /**
-     * Handle Shift/Ctrl/Cmd/CapsLock click selection for multi-select.
+     * Handle Shift/Ctrl/Cmd click selection for multi-select.
      *
      * @param {Element} navElement
      * @param {MouseEvent} event
@@ -168,7 +163,7 @@ export default class MenuStructureBehaviour {
         if (!clickedId) return;
 
         const isRangeSelection = event.shiftKey;
-        const isAdditiveSelection = event.ctrlKey || event.metaKey || event.getModifierState?.('CapsLock');
+        const isAdditiveSelection = event.ctrlKey || event.metaKey;
         const currentSelection = new Set(this.getSelectedNodeIds({ excludeRoot: false }));
         let nextSelection = new Set(currentSelection);
 
@@ -218,25 +213,6 @@ export default class MenuStructureBehaviour {
         const start = Math.min(anchorIndex, targetIndex);
         const end = Math.max(anchorIndex, targetIndex);
         return navIds.slice(start, end + 1);
-    }
-
-    /**
-     *
-     */
-    addEventNavElementOnDbclick() {
-        var navLabelElements = this.menuNav.querySelectorAll(
-            `.nav-element:not([nav-id="root"]) > .nav-element-text`
-        );
-        navLabelElements.forEach((element) => {
-            element.addEventListener('dblclick', (event) => {
-                // Ignore double-clicks from dropdown trigger
-                if (event.target.closest('.page-settings-trigger')) return;
-
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
-                event.stopPropagation();
-                this.dbclickNode = true;
-            });
-        });
     }
 
     addEventNavElementOnMenuIconClic() {

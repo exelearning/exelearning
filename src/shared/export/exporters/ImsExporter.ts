@@ -21,7 +21,6 @@ import { Html5Exporter } from './Html5Exporter';
 import { ImsManifestGenerator } from '../generators/ImsManifest';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
-import { generateI18nScript } from '../generators/I18nGenerator';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class ImsExporter extends Html5Exporter {
@@ -56,6 +55,16 @@ export class ImsExporter extends Html5Exporter {
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
 
+            // Check for ELPX download support (looks for exe-package:elp in content)
+            const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+            // File tracking for ELPX manifest (only when download-source-file is used)
+            const fileList: string[] | null = needsElpxDownload ? [] : null;
+            const addFile = (path: string, content: Uint8Array | string) => {
+                this.zip.addFile(path, content);
+                if (fileList) fileList.push(path);
+            };
+
             // Initialize manifest generator
             this.manifestGenerator = new ImsManifestGenerator(projectId, pages, {
                 identifier: projectId,
@@ -78,6 +87,7 @@ export class ImsExporter extends Html5Exporter {
             this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
 
             // 1. Generate HTML pages (with optional LaTeX/Mermaid pre-rendering)
+            const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
             let mermaidWasRendered = false;
 
@@ -149,7 +159,7 @@ export class ImsExporter extends Html5Exporter {
                 // Use unique filename from the map (handles title collisions)
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
                 const pageFilename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
-                this.zip.addFile(pageFilename, html);
+                pageHtmlMap.set(pageFilename, html);
 
                 pageFiles[page.id] = {
                     fileUrl: pageFilename,
@@ -179,18 +189,31 @@ export class ImsExporter extends Html5Exporter {
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText);
             }
-            this.zip.addFile('content/css/base.css', baseCss);
+            addFile('content/css/base.css', baseCss);
             commonFiles.push('content/css/base.css');
+
+            // 2b. Add eXeLearning logo for "Made with eXeLearning" footer
+            if (meta.addExeLink !== false) {
+                try {
+                    const logoData = await this.resources.fetchExeLogo();
+                    if (logoData) {
+                        addFile('content/img/exe_powered_logo.png', logoData);
+                        commonFiles.push('content/img/exe_powered_logo.png');
+                    }
+                } catch {
+                    // Logo not available - footer will still render but without background image
+                }
+            }
 
             // 3. Add theme files (already pre-fetched in step 0)
             if (themeFilesMap) {
                 for (const [filePath, content] of themeFilesMap) {
-                    this.zip.addFile(`theme/${filePath}`, content);
+                    addFile(`theme/${filePath}`, content);
                     commonFiles.push(`theme/${filePath}`);
                 }
             } else {
-                this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
+                addFile('theme/style.css', this.getFallbackThemeCss());
+                addFile('theme/style.js', this.getFallbackThemeJs());
                 commonFiles.push('theme/style.css', 'theme/style.js');
             }
 
@@ -198,7 +221,7 @@ export class ImsExporter extends Html5Exporter {
             try {
                 const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [path, content] of baseLibs) {
-                    this.zip.addFile(`libs/${path}`, content);
+                    addFile(`libs/${path}`, content);
                     commonFiles.push(`libs/${path}`);
                 }
             } catch {
@@ -206,20 +229,16 @@ export class ImsExporter extends Html5Exporter {
             }
 
             // 4.5. Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
-            this.zip.addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
+            addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
             commonFiles.push('libs/common_i18n.js');
 
             // 5. Detect and fetch additional required libraries based on content
-            const allHtmlContent = this.collectAllHtmlContent(pages);
-            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
-                allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                    includeMathJax: meta.addMathJax === true,
-                    skipMathJax: latexWasRendered && !meta.addMathJax,
-                },
-            );
+            const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                includeMathJax: meta.addMathJax === true,
+                skipMathJax: latexWasRendered && !meta.addMathJax,
+            });
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
@@ -227,12 +246,17 @@ export class ImsExporter extends Html5Exporter {
                     // Only add if not already added by base libraries
                     const zipPath = `libs/${libPath}`;
                     if (!this.zip.hasFile(zipPath)) {
-                        this.zip.addFile(zipPath, content);
+                        addFile(zipPath, content);
                         commonFiles.push(zipPath);
                     }
                 }
             } catch {
                 // Additional libraries not available - continue anyway
+            }
+
+            // 5b. Ensure ELPX download libraries are present
+            if (needsElpxDownload) {
+                await this.ensureElpxDownloadLibraries(addFile, commonFiles);
             }
 
             // 6. Fetch and add iDevice assets
@@ -242,7 +266,7 @@ export class ImsExporter extends Html5Exporter {
                     const normalizedType = this.resources.normalizeIdeviceType(idevice);
                     const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [path, content] of ideviceFiles) {
-                        this.zip.addFile(`idevices/${normalizedType}/${path}`, content);
+                        addFile(`idevices/${normalizedType}/${path}`, content);
                         commonFiles.push(`idevices/${normalizedType}/${path}`);
                     }
                 } catch {
@@ -256,7 +280,7 @@ export class ImsExporter extends Html5Exporter {
                     const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
                     if (fontFiles) {
                         for (const [filePath, content] of fontFiles) {
-                            this.zip.addFile(filePath, content);
+                            addFile(filePath, content);
                             commonFiles.push(filePath);
                         }
                     }
@@ -265,16 +289,35 @@ export class ImsExporter extends Html5Exporter {
                 }
             }
 
-            // 8. Add project assets
-            await this.addAssetsToZipWithResourcePath();
+            // 8. Add project assets (with tracking for ELPX manifest)
+            await this.addAssetsToZipWithResourcePath(fileList);
 
             // 8b. Add content.xml (ODE format) and content.dtd for re-editing
             const contentXml = generateOdeXml(meta, pages);
-            this.zip.addFile('content.xml', contentXml);
-            this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+            addFile('content.xml', contentXml);
+            addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
             commonFiles.push('content.xml', ODE_DTD_FILENAME);
 
-            // 9. Generate imsmanifest.xml with complete file list
+            // 9. Generate ELPX manifest file if download-source-file is used
+            if (needsElpxDownload && fileList) {
+                const pageUrls = Object.values(pageFiles).map(pf => pf.fileUrl);
+                this.addElpxManifestToZip(fileList, pageUrls, commonFiles);
+            }
+
+            // 10. Add all HTML pages to ZIP (with ELPX script injection on pages with download-source-file)
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const isIndex = i === 0;
+                const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const filename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
+                let html = pageHtmlMap.get(filename) || '';
+                if (needsElpxDownload) {
+                    html = this.injectElpxScripts(html, page, isIndex);
+                }
+                this.zip.addFile(filename, html);
+            }
+
+            // 11. Generate imsmanifest.xml with complete file list
             // Get all files from the ZIP to ensure the manifest lists ALL resources
             const allZipFiles = this.zip.getFilePaths();
             const manifestXml = this.manifestGenerator.generate({
@@ -284,7 +327,7 @@ export class ImsExporter extends Html5Exporter {
             });
             this.zip.addFile('imsmanifest.xml', manifestXml);
 
-            // 10. Generate ZIP buffer
+            // 12. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();
 
             return {
@@ -364,8 +407,8 @@ export class ImsExporter extends Html5Exporter {
             // Export options - IMS specific overrides
             // IMS exports don't use client-side search - LMS handles navigation
             addSearchBox: false,
-            // Force page counter for IMS
-            addPagination: true,
+            addExeLink: meta.addExeLink ?? true,
+            addPagination: meta.addPagination ?? false,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
             bodyClass: bodyClass,

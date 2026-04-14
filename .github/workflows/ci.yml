@@ -39,7 +39,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ github.repository }}
@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: env.CODECOV_TOKEN != ''
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: ./coverage/bun/lcov.info,./coverage/vitest/lcov.info
           token: ${{ env.CODECOV_TOKEN }}
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: ./coverage/bun/junit.xml,./coverage/vitest/junit.xml
           token: ${{ env.CODECOV_TOKEN }}
@@ -104,21 +104,21 @@ jobs:
         run: node scripts/upload-bundle-analysis.js
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build Docker Image
         run: make build
 
       - name: Login to DockerHub
         if: github.repository == 'exelearning/exelearning' && github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Login to GHCR
         if: github.repository == 'exelearning/exelearning' && github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -126,7 +126,7 @@ jobs:
 
       - name: Build and push
         if: github.repository == 'exelearning/exelearning' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/tikismaker' || startsWith(github.ref, 'refs/tags/'))
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true

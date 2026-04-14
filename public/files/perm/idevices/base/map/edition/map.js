@@ -150,7 +150,7 @@ var $exeDevice = {
                 "Mark all the options in the correct order and click on the 'Reply' button."
             ),
             msgWriteAnswer: c_(
-                "Write the correct word o phrase and click on the 'Reply' button."
+                "Write the correct word or phrase and click on the 'Reply' button."
             ),
             msgIdentify: c_('Identify'),
             msgSearch: c_('Find'),
@@ -480,7 +480,7 @@ var $exeDevice = {
                                 </div>
                             </div>
                             <div id="mapaDataAudio" class="MQE-EHide mb-4">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap" data-voice-recorder data-voice-input="#mapaURLAudio">
                                     <label for="mapaURLAudio">${_('Audio')}:</label>
                                     <input type="text" id="mapaURLAudio" class="exe-file-picker form-control me-0" />
                                     <a href="#" id="mapaEPlayAudio" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play audio')}"></a>
@@ -507,7 +507,7 @@ var $exeDevice = {
                                     <a href="#" id="mapaIdentifyMoreAudio" class="MQE-ENavigationButton MQE-EActivo MQE-More" title="${_('Audio')}"></a>
                                 </div>
                                 <div id="mapaDataIdentifyAudio" class="MQE-EHide mb-4">
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap" data-voice-recorder data-voice-input="#mapaURLAudioIdentify">
                                         <label for="mapaURLAudioIdentify">${_('Audio')}:</label>
                                         <input type="text" id="mapaURLAudioIdentify" class="form-control exe-file-picker me-0" />
                                         <a href="#" id="mapaPlayAudioIdentify" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play audio')}"></a>
@@ -1021,6 +1021,9 @@ var $exeDevice = {
 
     enableForm: function () {
         $exeDevice.initPoints();
+
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.showPoint(0);

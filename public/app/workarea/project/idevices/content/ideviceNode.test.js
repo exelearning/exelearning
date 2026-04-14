@@ -381,6 +381,52 @@ describe('IdeviceNode', () => {
             expect(node.getAttribute('drag')).toBe('idevice');
         });
 
+        it('shows visibility indicator when visibility is false in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.visibility.value = 'false';
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).not.toBeNull();
+            expect(indicator.querySelector('.exe-visibility-off-green-icon')).not.toBeNull();
+        });
+
+        it('does not show visibility indicator when visibility is true in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.visibility.value = 'true';
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).toBeNull();
+        });
+
+        it('shows teacher-only indicator when teacherOnly is true in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.teacherOnly = { value: 'true' };
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.teacher-only-indicator');
+            expect(indicator).not.toBeNull();
+            expect(indicator.querySelector('.exe-teacher-only-icon')).not.toBeNull();
+            expect(indicator.querySelector('.visually-hidden').textContent).toBeTruthy();
+        });
+
+        it('does not show teacher-only indicator when teacherOnly is false in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.teacherOnly = { value: 'false' };
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.teacher-only-indicator');
+            expect(indicator).toBeNull();
+        });
+
+        it('shows both indicators when visibility is false and teacherOnly is true', () => {
+            idevice.mode = 'edition';
+            idevice.properties.visibility.value = 'false';
+            idevice.properties.teacherOnly = { value: 'true' };
+            const node = idevice.makeIdeviceContentNode(true);
+            expect(node.querySelector('.visibility-off-indicator')).not.toBeNull();
+            const teacherIndicator = node.querySelector('.teacher-only-indicator');
+            expect(teacherIndicator).not.toBeNull();
+            expect(teacherIndicator.style.left).toBe('41px');
+        });
+
         it('reuses existing element when newNode is false', () => {
             idevice.ideviceContent = document.createElement('div');
             idevice.ideviceContent.classList.add('old-class');
@@ -1141,12 +1187,31 @@ describe('IdeviceNode', () => {
             expect(result).toEqual({ key: 'value' });
         });
 
+        it('does not normalize jsonProperties before opening json iDevice editors', () => {
+            idevice.idevice = { componentType: 'json' };
+            idevice.jsonProperties = { audio: 'blob:http://localhost/audio-1' };
+
+            const result = idevice.getSavedData();
+
+            expect(result).toEqual({ audio: 'blob:http://localhost/audio-1' });
+        });
+
         it('returns htmlView for html type idevice', () => {
             idevice.idevice = { componentType: 'html' };
             idevice.htmlView = '<p>Test</p>';
 
             const result = idevice.getSavedData();
             expect(result).toBe('<p>Test</p>');
+        });
+
+        it('does not normalize htmlView before opening html iDevice editors', () => {
+            idevice.idevice = { componentType: 'html' };
+            idevice.htmlView =
+                '<div class="rosco-IDevice"><a href="blob:http://localhost/image-1" class="rosco-LinkImages">0</a></div>';
+
+            const result = idevice.getSavedData();
+
+            expect(result).toContain('blob:http://localhost/image-1');
         });
 
         it('returns htmlView when componentType is undefined', () => {
@@ -2944,6 +3009,7 @@ describe('IdeviceNode', () => {
             idevice.loadInitScriptIdevice = vi.fn().mockResolvedValue();
             idevice.loadLegacyExeFunctionalitiesExport = vi.fn();
             mockEngine.resetCurrentIdevicesExportView = vi.fn();
+            mockEngine.enableInternalLinks = vi.fn();
             mockEngine.unsetIdeviceActive = vi.fn();
             eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue();
         });
@@ -4973,11 +5039,27 @@ describe('IdeviceNode', () => {
             expect(typeof idevice.loadLegacyExeFunctionalitiesExport).toBe('function');
         });
 
-        it('calls $exe.mermaid.init() to render mermaid diagrams', () => {
-            const mermaidInitSpy = vi.spyOn(global.$exe.mermaid, 'init');
+        it('calls init on all legacy objects and setMultimediaGalleries', () => {
+            global.$exeFX = { init: vi.fn() };
+            global.$exeGames = { init: vi.fn() };
+            global.$exeHighlighter = { init: vi.fn() };
+            global.$exeABCmusic = { init: vi.fn() };
+            global.$exe = { init: vi.fn(), setMultimediaGalleries: vi.fn() };
+
             idevice.loadLegacyExeFunctionalitiesExport();
-            expect(mermaidInitSpy).toHaveBeenCalled();
-            mermaidInitSpy.mockRestore();
+
+            expect(global.$exeFX.init).toHaveBeenCalled();
+            expect(global.$exeGames.init).toHaveBeenCalled();
+            expect(global.$exeHighlighter.init).toHaveBeenCalled();
+            expect(global.$exeABCmusic.init).toHaveBeenCalled();
+            expect(global.$exe.init).toHaveBeenCalled();
+            expect(global.$exe.setMultimediaGalleries).toHaveBeenCalled();
+
+            delete global.$exeFX;
+            delete global.$exeGames;
+            delete global.$exeHighlighter;
+            delete global.$exeABCmusic;
+            delete global.$exe;
         });
     });
 

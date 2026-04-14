@@ -403,7 +403,7 @@ window.$exeExport = {
                 });
             }
         });
-        $('article.box .box-head').css('cursor', 'pointer').on('click', function(e){
+        $('article.box .box-head').has('.box-toggle').css('cursor', 'pointer').on('click', function(e){
             let t = $(e.target);
             if (t.hasClass('box-toggle')) return false;
             $('.box-toggle', this).trigger('click');

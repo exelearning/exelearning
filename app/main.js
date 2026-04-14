@@ -118,18 +118,28 @@ function registerProtocolHandler() {
             return new Response('Forbidden', { status: 403 });
         }
 
+        // SPA fallback: serve index.html for routes without file extensions
+        const spaFallback = () => {
+            if (!path.extname(pathname)) {
+                const indexPath = path.join(staticDir, 'index.html');
+                return net.fetch(pathToFileURL(indexPath).toString());
+            }
+            return new Response('Not Found', { status: 404 });
+        };
+
         try {
             // net.fetch can read from ASAR archives
             const fileUrl = pathToFileURL(filePath).toString();
-            const response = await net.fetch(fileUrl);
+            let response;
+            try {
+                response = await net.fetch(fileUrl);
+            } catch {
+                // net.fetch throws ERR_FILE_NOT_FOUND for missing files
+                return spaFallback();
+            }
 
             if (!response.ok) {
-                // SPA fallback: serve index.html for unknown paths without extensions
-                if (!path.extname(pathname)) {
-                    const indexPath = path.join(staticDir, 'index.html');
-                    return net.fetch(pathToFileURL(indexPath).toString());
-                }
-                return new Response('Not Found', { status: 404 });
+                return spaFallback();
             }
 
             // Determine MIME type
@@ -215,41 +225,31 @@ let customEnv;
 let env;
 
 // ──────────────  Save/Export helpers  ──────────────
-const KNOWN_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 const DEFAULT_EXTENSION = '.elpx';
 
 /**
- * Extract a known extension from a file path or suggested name.
- * Returns the lowercase extension (including the leading dot) if known, null otherwise.
+ * Extract a file extension from a file path or suggested name.
+ * Returns the lowercase extension (including the leading dot) if present, null otherwise.
  * @param {string} filePathOrName - File path or suggested filename
- * @returns {string|null} Known extension (e.g., '.elpx') or null
+ * @returns {string|null} Extension (e.g., '.elpx', '.csv') or null
  */
-function getKnownExt(filePathOrName) {
+function getExt(filePathOrName) {
     try {
         const ext = path.extname(filePathOrName || '') || '';
         if (!ext) return null;
-        const lower = ext.toLowerCase();
-        return KNOWN_EXTENSIONS.has(lower) ? lower : null;
+        return ext.toLowerCase();
     } catch (_e) {
         return null;
     }
 }
 
-// Ensures the filePath has an extension; if missing or unknown, appends one inferred from suggestedName.
+// Ensures the filePath has an extension; if missing, appends one inferred from suggestedName.
 function ensureExt(filePath, suggestedName) {
     if (!filePath) return filePath;
-    const known = getKnownExt(filePath);
-    if (known) return filePath;
-    const inferred = getKnownExt(suggestedName);
+    const currentExt = getExt(filePath);
+    if (currentExt) return filePath;
+    const inferred = getExt(suggestedName);
     return inferred ? filePath + inferred : filePath;
-}
-
-function isLegacyElp(p) {
-    try {
-        return typeof p === 'string' && /\.elp$/i.test(p);
-    } catch (_) {
-        return false;
-    }
 }
 
 function getDialogFilterForExt(ext) {
@@ -262,40 +262,50 @@ function getDialogFilterForExt(ext) {
             return { name: 'EPUB', extensions: ['epub'] };
         case '.xml':
             return { name: 'XML document', extensions: ['xml'] };
-        default:
-            return null;
+        case '.csv':
+            return { name: 'CSV file', extensions: ['csv'] };
+        case '.idevice':
+            return { name: 'eXeLearning iDevice', extensions: ['idevice'] };
+        case '.block':
+            return { name: 'eXeLearning block', extensions: ['block'] };
+        default: {
+            if (!ext) return null;
+            const clean = ext.replace(/^\./, '');
+            return { name: `${clean.toUpperCase()} file`, extensions: [clean] };
+        }
     }
 }
 
-function proposeSavePath(currentPath, suggestedName = null) {
+function proposeSavePath(lastDir, effectiveName = null) {
     try {
-        const ext = getKnownExt(suggestedName) || getKnownExt(currentPath) || DEFAULT_EXTENSION;
-        const dir = currentPath ? path.dirname(currentPath) : app.getPath('documents');
-        let base;
-        if (currentPath) {
-            base = path.basename(currentPath, path.extname(currentPath));
-        } else if (suggestedName) {
-            base = path.basename(suggestedName, path.extname(suggestedName));
-        } else {
-            base = 'document';
-        }
+        const ext = getExt(effectiveName) || DEFAULT_EXTENSION;
+        const dir = lastDir || app.getPath('documents');
+        const base = effectiveName
+            ? path.basename(effectiveName, path.extname(effectiveName))
+            : 'document';
         return path.join(dir, `${base}${ext}`);
     } catch (_e) {
-        return suggestedName || `document${DEFAULT_EXTENSION}`;
+        return effectiveName || `document${DEFAULT_EXTENSION}`;
     }
 }
 
-async function promptSave(owner, currentPath, titleKey, buttonKey, suggestedName = null) {
-    const inferredExt = getKnownExt(suggestedName) || getKnownExt(currentPath) || DEFAULT_EXTENSION;
+async function promptSave(owner, suggestedName = null, lastDir = null, storedName = null) {
+    // suggestedName (caller-computed, dynamic) takes priority over storedName (last saved filename).
+    // lastDir is used as the directory regardless, so the remembered folder is preserved.
+    const effectiveName = suggestedName || storedName;
+    const inferredExt = getExt(effectiveName) || DEFAULT_EXTENSION;
     const filter = getDialogFilterForExt(inferredExt);
+    const isProject = inferredExt === '.elpx';
     const { filePath, canceled } = await dialog.showSaveDialog(owner, {
-        title: tOrDefault(titleKey, defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
-        defaultPath: proposeSavePath(currentPath, suggestedName),
-        buttonLabel: tOrDefault(buttonKey, defaultLocale === 'es' ? 'Guardar' : 'Save'),
+        title: isProject
+            ? tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project')
+            : tOrDefault('save.downloadTitle', defaultLocale === 'es' ? 'Guardar archivo' : 'Save file'),
+        defaultPath: proposeSavePath(lastDir, effectiveName),
+        buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
         ...(filter ? { filters: [filter] } : {}),
     });
     if (canceled || !filePath) return null;
-    return ensureExt(filePath, suggestedName || `document${DEFAULT_EXTENSION}`);
+    return ensureExt(filePath, effectiveName || `document${DEFAULT_EXTENSION}`);
 }
 
 // ──────────────  Simple settings (no external deps)  ──────────────
@@ -322,24 +332,33 @@ function writeSettings(obj) {
     }
 }
 
-function getSavedPath(key) {
+function getLastSaveDir(key) {
     const s = readSettings();
-    return s.savePath?.[key] || null;
+    return s.lastSaveDir?.[key] || null;
 }
 
-function setSavedPath(key, filePath) {
+function setLastSaveDir(key, dirPath) {
     const s = readSettings();
-    s.savePath = s.savePath || {};
-    s.savePath[key] = filePath;
+    s.lastSaveDir = s.lastSaveDir || {};
+    s.lastSaveDir[key] = dirPath;
     writeSettings(s);
 }
 
-function clearSavedPath(key) {
+function getLastSaveInfo(key) {
     const s = readSettings();
-    if (s.savePath && key in s.savePath) {
-        delete s.savePath[key];
-        writeSettings(s);
-    }
+    return {
+        dir: s.lastSaveDir?.[key] || null,
+        name: s.lastSaveName?.[key] || null,
+    };
+}
+
+function setLastSaveInfo(key, dirPath, fileName) {
+    const s = readSettings();
+    s.lastSaveDir = s.lastSaveDir || {};
+    s.lastSaveDir[key] = dirPath;
+    s.lastSaveName = s.lastSaveName || {};
+    s.lastSaveName[key] = fileName;
+    writeSettings(s);
 }
 
 // Map of webContents.id -> next projectKey override for the next download
@@ -420,7 +439,14 @@ function determineDevMode() {
  * 1. CLI flag (--no-update-check or --disable-updates)
  * 2. Environment variable (DISABLE_AUTO_UPDATE=1)
  * 3. CI environment (CI=1 or CI=true)
- * 4. Development version (0.0.0, *-alpha, *-beta, *-dev)
+ * 4. Running from source (`make run-app`, not a packaged binary)
+ * 5. Sentinel version from Makefile/CI (0.0.0 / 0.0.0-alpha / 0.0.0-alpha-build<sha>):
+ *    builds that don't correspond to a release tag.
+ *
+ * Official pre-release tags (v4.0.0-beta3, v4.0.0-rc1, ...) are full
+ * releases and MUST receive auto-updates — they are explicitly NOT filtered.
+ * See issue #1662: the previous `version.includes('-beta')` substring check
+ * disabled the updater on every published beta build.
  *
  * @returns {{ disabled: boolean, reason: string }}
  */
@@ -444,11 +470,17 @@ function shouldDisableAutoUpdate() {
         return { disabled: true, reason: 'CI environment detected (CI=1)' };
     }
 
-    // Development version
+    // Running from source (make run-app, electron .) — not a packaged binary
+    if (!app.isPackaged) {
+        return { disabled: true, reason: 'Running from source (app.isPackaged=false)' };
+    }
+
+    // Sentinel version: Makefile/CI use 0.0.0-alpha[-build<sha>] when there
+    // is no release tag. Official tags like v4.0.0-beta3, v4.0.0-rc1, v4.0.0
+    // and v3.0.2 are NOT sentinels and must receive updates.
     const version = app.getVersion();
-    if (version === '0.0.0' || version === '0.0.0-alpha' ||
-        version.includes('-alpha') || version.includes('-beta') || version.includes('-dev')) {
-        return { disabled: true, reason: `Development version detected (${version})` };
+    if (version === '0.0.0' || version.startsWith('0.0.0-alpha')) {
+        return { disabled: true, reason: `Sentinel version (${version})` };
     }
 
     return { disabled: false, reason: '' };
@@ -646,12 +678,52 @@ function getUnsavedChangesCloseCopy() {
     };
 }
 
+/**
+ * Ask the renderer for the translated close-dialog copy via IPC.
+ * Falls back to null if the renderer does not respond within 3 seconds,
+ * so the caller can use getUnsavedChangesCloseCopy() as a fallback.
+ *
+ * Requires preload.js to expose:
+ *   onGetCloseCopy: (cb) => ipcRenderer.on('app:get-close-copy', (_e) => cb())
+ *   sendCloseCopy:  (copy) => ipcRenderer.send('app:close-copy-response', copy)
+ *
+ * And app.js to register:
+ *   window.electronAPI.onGetCloseCopy(() => {
+ *       window.electronAPI.sendCloseCopy({ title, message, detail, stayButtonLabel, discardButtonLabel });
+ *   });
+ *
+ * @param {BrowserWindow} win
+ * @returns {Promise<object|null>}
+ */
+async function getCloseCopyFromRenderer(win) {
+    if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) {
+        return null;
+    }
+
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            console.warn('[Electron] Renderer did not respond with close copy in time, using fallback');
+            resolve(null);
+        }, 3000);
+
+        ipcMain.once('app:close-copy-response', (_event, copy) => {
+            clearTimeout(timeout);
+            resolve(copy || null);
+        });
+
+        win.webContents.send('app:get-close-copy');
+    });
+}
+/**
+ * Attaches a close guard to an editor window that intercepts the close event
+ * and prompts the user to confirm if there are unsaved changes.
+ *
+ * @param {Electron.BrowserWindow} win - The window to attach the close guard to.
+ * @returns {void}
+ */
 function attachEditorWindowCloseGuard(win) {
     win.on('close', async (event) => {
-        if (isShuttingDown || windowsClosingByConfirmation.has(win)) {
-            return;
-        }
-
+        if (isShuttingDown || windowsClosingByConfirmation.has(win)) return;
         if (windowsCheckingUnsavedChanges.has(win)) {
             event.preventDefault();
             return;
@@ -669,13 +741,13 @@ function attachEditorWindowCloseGuard(win) {
                 return;
             }
 
-            const shouldProceed = confirmWindowCloseWithUnsavedChanges(
-                win,
-                getUnsavedChangesCloseCopy(),
-            );
+            const copy = (await getCloseCopyFromRenderer(win)) 
+                      || getUnsavedChangesCloseCopy();
+
+            const shouldProceed = confirmWindowCloseWithUnsavedChanges(win, copy);
 
             if (!shouldProceed) {
-                console.log('[Electron] Close cancelled because the project has unsaved changes');
+                console.log('[Electron] Close cancelled: unsaved changes');
                 return;
             }
 
@@ -856,34 +928,15 @@ async function createWindow() {
                 }
             }
 
-            let targetPath = getSavedPath(projectKey);
-
+            // Always prompt — no silent overwrite
+            const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
+            const lastDir = getLastSaveDir(projectKey);
+            const targetPath = await promptSave(owner, suggestedName, lastDir);
             if (!targetPath) {
-                const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
-                const { filePath, canceled } = await dialog.showSaveDialog(owner, {
-                    title: tOrDefault(
-                        'save.dialogTitle',
-                        defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project',
-                    ),
-                    defaultPath: suggestedName,
-                    buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
-                });
-                if (canceled || !filePath) {
-                    event.preventDefault();
-                    return;
-                }
-                targetPath = ensureExt(filePath, suggestedName);
-                setSavedPath(projectKey, targetPath);
-            } else {
-                // If remembered path has no extension, append inferred one
-                const fixed = ensureExt(targetPath, suggestedName);
-                if (fixed !== targetPath) {
-                    targetPath = fixed;
-                    setSavedPath(projectKey, targetPath);
-                }
+                event.preventDefault();
+                return;
             }
-
-            // Save directly (overwrite without prompting)
+            setLastSaveDir(projectKey, path.dirname(targetPath));
             item.setSavePath(targetPath);
 
             // Progress feedback and auto-resume on interruption
@@ -1311,78 +1364,30 @@ app.on('activate', () => {
 });
 
 // IPC for explicit Save / Save As (optional from renderer)
-ipcMain.handle('app:save', async (e, { downloadUrl, projectKey, suggestedName }) => {
+// Save URL-based download — always prompts for destination
+async function saveUrlWithDialog(e, { downloadUrl, projectKey, suggestedName }) {
     if (typeof downloadUrl !== 'string' || !downloadUrl) return false;
     try {
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
-        let key = projectKey || 'default';
-        try {
-            if (!projectKey && wc && !wc.isDestroyed?.()) {
-                key = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
-            }
-        } catch (_er) {}
-
-        let targetPath = getSavedPath(key);
         const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
+        const key = projectKey || 'default';
+        const { dir: lastDir, name: storedName } = getLastSaveInfo(key);
 
-        if (!targetPath) {
-            // non remembered path → ask (use suggestedName for default filename)
-            const picked = await promptSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
-            if (!picked) return false;
-            targetPath = picked;
-            setSavedPath(key, targetPath);
-        } else if (isLegacyElp(targetPath)) {
-            // remembered path is .elp → forzar "Save as..." to .elpx
-            const picked = await promptSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
-            if (!picked) return false;
-            targetPath = picked;
-            setSavedPath(key, targetPath);
-        } else {
-            // remembered path not .elp; ensure ext
-            const fixed = ensureExt(targetPath, suggestedName || 'document.elpx');
-            if (fixed !== targetPath) {
-                targetPath = fixed;
-                setSavedPath(key, targetPath);
-            }
-        }
+        const targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
+        if (!targetPath) return false;
+        setLastSaveInfo(key, path.dirname(targetPath), path.basename(targetPath));
 
         return await streamToFile(downloadUrl, targetPath, wc);
     } catch (_e) {
         return false;
     }
-});
+}
+ipcMain.handle('app:save', saveUrlWithDialog);
+ipcMain.handle('app:saveAs', saveUrlWithDialog);
 
-ipcMain.handle('app:saveAs', async (e, { downloadUrl, projectKey, suggestedName }) => {
-    const senderWindow = BrowserWindow.fromWebContents(e.sender);
-    const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
-    const key = projectKey || 'default';
-    const { filePath, canceled } = await dialog.showSaveDialog(senderWindow, {
-        title: tOrDefault('saveAs.dialogTitle', defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
-        defaultPath: suggestedName || 'document.elpx',
-        buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
-    });
-    if (canceled || !filePath) return false;
-    const finalPath = ensureExt(filePath, suggestedName || 'document.elpx');
-    setSavedPath(key, finalPath);
-    if (typeof downloadUrl === 'string' && downloadUrl && wc) {
-        return await streamToFile(downloadUrl, finalPath, wc);
-    }
-    return false;
-});
-
-// Explicitly set the remembered save path for a given project key
-ipcMain.handle('app:setSavedPath', async (_e, { projectKey, filePath }) => {
-    if (!projectKey || !filePath) return false;
-    setSavedPath(projectKey, filePath);
-    return true;
-});
-
-// Clear the remembered save path for a given project key
-ipcMain.handle('app:clearSavedPath', async (_e, { projectKey }) => {
-    if (!projectKey) return false;
-    clearSavedPath(projectKey);
-    return true;
-});
+// No-ops: path-remembering removed — save always prompts for destination
+ipcMain.handle('app:setSavedPath', async () => true);
+ipcMain.handle('app:clearSavedPath', async () => true);
 
 // Open system file picker for .elpx files (offline open)
 ipcMain.handle('app:openElp', async e => {
@@ -1408,77 +1413,146 @@ ipcMain.handle('app:readFile', async (_e, { filePath }) => {
     }
 });
 
-// Save binary data directly (for Yjs exports that generate data client-side)
-ipcMain.handle('app:saveBuffer', async (e, { base64Data, projectKey, suggestedName }) => {
-    if (!base64Data) return false;
+ipcMain.handle('app:getMemoryUsage', async (e) => {
+    let renderer = null;
+    try {
+        if (e?.sender?.getProcessMemoryInfo) {
+            renderer = await e.sender.getProcessMemoryInfo();
+        }
+    } catch (_err) {
+        renderer = null;
+    }
+
+    return {
+        process: process.memoryUsage(),
+        renderer,
+    };
+});
+
+function normalizeBinaryPayload(bufferData, base64Data) {
+    if (bufferData instanceof Uint8Array) {
+        return Buffer.from(bufferData);
+    }
+
+    if (bufferData instanceof ArrayBuffer) {
+        return Buffer.from(new Uint8Array(bufferData));
+    }
+
+    if (Array.isArray(bufferData)) {
+        return Buffer.from(bufferData);
+    }
+
+    if (base64Data) {
+        return Buffer.from(base64Data, 'base64');
+    }
+
+    return null;
+}
+
+function createSaveBufferResponse({
+    saved = false,
+    canceled = false,
+    canceledAt = null,
+    filePath = null,
+    error = null,
+    promptMs = 0,
+    normalizeMs = 0,
+    writeMs = 0,
+    totalMs = 0,
+} = {}) {
+    return {
+        saved,
+        canceled,
+        canceledAt,
+        filePath,
+        error,
+        timings: {
+            totalMs: Math.round(totalMs),
+            promptMs: Math.round(promptMs),
+            normalizeMs: Math.round(normalizeMs),
+            writeMs: Math.round(writeMs),
+        },
+    };
+}
+
+// Save binary data — always prompts for destination (no silent overwrite)
+async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, suggestedName }) {
+    const startedAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+    let afterPromptAt = startedAt;
+    let afterNormalizeAt = startedAt;
+    let targetPath = null;
+
+    if (!bufferData && !base64Data) {
+        return createSaveBufferResponse({
+            saved: false,
+            canceled: false,
+            canceledAt: 'write',
+            error: 'Missing buffer data',
+        });
+    }
     try {
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
-        let key = projectKey || 'default';
-        try {
-            if (!projectKey && wc && !wc.isDestroyed?.()) {
-                key = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
-            }
-        } catch (_er) {}
+        const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
+        const key = projectKey || 'default';
+        const { dir: lastDir, name: storedName } = getLastSaveInfo(key);
 
-        const owner = BrowserWindow.fromWebContents(wc);
-        let targetPath = getSavedPath(key);
+        targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
+        afterPromptAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
         if (!targetPath) {
-            // No remembered path → ask (use suggestedName for default filename)
-            const picked = await promptSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
-            if (!picked) return false;
-            targetPath = picked;
-            setSavedPath(key, targetPath);
-        } else if (isLegacyElp(targetPath)) {
-            // Remembered path is .elp → force "Save as..." to .elpx
-            const picked = await promptSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
-            if (!picked) return false;
-            targetPath = picked;
-            setSavedPath(key, targetPath);
-        } else {
-            // Remembered path not .elp; ensure ext
-            const fixed = ensureExt(targetPath, suggestedName || 'document.elpx');
-            if (fixed !== targetPath) {
-                targetPath = fixed;
-                setSavedPath(key, targetPath);
-            }
+            return createSaveBufferResponse({
+                saved: false,
+                canceled: true,
+                canceledAt: 'dialog',
+                promptMs: afterPromptAt - startedAt,
+                totalMs: afterPromptAt - startedAt,
+            });
         }
+        setLastSaveInfo(key, path.dirname(targetPath), path.basename(targetPath));
 
-        // Write buffer directly to file
-        const buffer = Buffer.from(base64Data, 'base64');
+        const buffer = normalizeBinaryPayload(bufferData, base64Data);
+        afterNormalizeAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        if (!buffer) {
+            return createSaveBufferResponse({
+                saved: false,
+                canceled: false,
+                canceledAt: 'write',
+                filePath: targetPath,
+                error: 'Failed to normalize binary payload',
+                promptMs: afterPromptAt - startedAt,
+                normalizeMs: afterNormalizeAt - afterPromptAt,
+                totalMs: afterNormalizeAt - startedAt,
+            });
+        }
         fs.writeFileSync(targetPath, buffer);
-        return true;
+        const finishedAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        return createSaveBufferResponse({
+            saved: true,
+            canceled: false,
+            canceledAt: null,
+            filePath: targetPath,
+            promptMs: afterPromptAt - startedAt,
+            normalizeMs: afterNormalizeAt - afterPromptAt,
+            writeMs: finishedAt - afterNormalizeAt,
+            totalMs: finishedAt - startedAt,
+        });
     } catch (err) {
         console.error('[app:saveBuffer] Error:', err);
-        return false;
-    }
-});
-
-ipcMain.handle('app:saveBufferAs', async (e, { base64Data, projectKey, suggestedName }) => {
-    if (!base64Data) return false;
-    try {
-        const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
-        const senderWindow = BrowserWindow.fromWebContents(wc);
-        const key = projectKey || 'default';
-
-        const { filePath, canceled } = await dialog.showSaveDialog(senderWindow, {
-            title: tOrDefault('saveAs.dialogTitle', defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
-            defaultPath: suggestedName || 'document.elpx',
-            buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
+        const failedAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+        return createSaveBufferResponse({
+            saved: false,
+            canceled: false,
+            canceledAt: 'write',
+            filePath: targetPath,
+            error: err?.message || String(err),
+            promptMs: afterPromptAt - startedAt,
+            normalizeMs: afterNormalizeAt - afterPromptAt,
+            writeMs: failedAt - afterNormalizeAt,
+            totalMs: failedAt - startedAt,
         });
-        if (canceled || !filePath) return false;
-
-        const finalPath = ensureExt(filePath, suggestedName || 'document.elpx');
-        setSavedPath(key, finalPath);
-
-        // Write buffer directly to file
-        const buffer = Buffer.from(base64Data, 'base64');
-        fs.writeFileSync(finalPath, buffer);
-        return true;
-    } catch (err) {
-        console.error('[app:saveBufferAs] Error:', err);
-        return false;
     }
-});
+}
+ipcMain.handle('app:saveBuffer', saveBufferWithDialog);
+ipcMain.handle('app:saveBufferAs', saveBufferWithDialog);
 
 
 /**

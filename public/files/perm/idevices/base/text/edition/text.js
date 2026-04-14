@@ -63,9 +63,11 @@ var $exeDevice = {
             return null;
         }
 
-        // Check if we have exe-text-activity structure OR simple feedback structure
+        // Check if we have exe-text-activity structure OR simple feedback structure.
+        // Use structural markers (js-feedback + iDevice_buttons) instead of button class names
+        // so both legacy eXe 2.9 (feedbackbutton) and modern (feedbacktooglebutton) formats are detected.
         const hasActivityStructure = html.includes('exe-text-activity');
-        const hasSimpleFeedback = html.includes('feedback') && html.includes('feedbacktooglebutton');
+        const hasSimpleFeedback = html.includes('js-feedback') && html.includes('iDevice_buttons');
 
         if (!hasActivityStructure && !hasSimpleFeedback) {
             return null;
@@ -97,8 +99,9 @@ var $exeDevice = {
             }
         }
 
-        // Extract feedback button text
-        const feedbackButton = tempDiv.querySelector('.feedbacktooglebutton');
+        // Extract feedback button text — try both modern (feedbacktooglebutton) and
+        // legacy eXe 2.9 (feedbackbutton) class names, plus any other combined variants.
+        const feedbackButton = tempDiv.querySelector('.feedbacktooglebutton, .feedbackbutton');
         if (feedbackButton) {
             result[this.feedbakInputId] = feedbackButton.value || feedbackButton.getAttribute('value') || '';
         }
@@ -330,11 +333,17 @@ var $exeDevice = {
 
         let data = { ...this.idevicePreviousData };
 
-        // Check for embedded task info or simple feedback in textTextarea
-        // extractTaskInfoFromHtml handles both exe-text-activity and simple feedback formats
+        if (typeof data[this.textareaId] === 'string' && data[this.textareaId]) {
+            data[this.textareaId] = this.stripLegacyExeTextWrapper(data[this.textareaId]);
+        }
+
+        // Check for embedded task info or simple feedback in textTextarea.
+        // extractTaskInfoFromHtml handles both exe-text-activity (new) and simple feedback (legacy).
+        // Use structural markers to detect both modern (feedbacktooglebutton) and
+        // legacy eXe 2.9 (feedbackbutton) formats without relying on button class names.
         const textContent = data[this.textareaId];
-        if (textContent && (textContent.includes('exe-text-activity') || 
-            (textContent.includes('feedback') && textContent.includes('feedbacktooglebutton')))) {
+        if (textContent && (textContent.includes('exe-text-activity') ||
+            (textContent.includes('js-feedback') && textContent.includes('iDevice_buttons')))) {
             const extractedInfo = this.extractTaskInfoFromHtml(textContent);
             if (extractedInfo) {
                 // Merge extracted info into data (extracted values take precedence)
@@ -395,6 +404,42 @@ var $exeDevice = {
                 el.textContent = val;
             }
         }
+    },
+
+    /**
+     * Remove a top-level legacy wrapper <div class="exe-text">...</div> when present.
+     * This is applied when loading old saved content to avoid persisting legacy wrappers.
+     */
+    stripLegacyExeTextWrapper: function (html) {
+        if (!html || typeof html !== 'string') return html;
+
+        const trimmedHtml = html.trim();
+        if (!/^<div\b/i.test(trimmedHtml)) {
+            return html;
+        }
+
+        if (!/\bclass\s*=\s*["'][^"']*\bexe-text\b[^"']*["']/i.test(trimmedHtml)) {
+            return html;
+        }
+
+        const container = document.createElement('div');
+        container.innerHTML = html;
+
+        const significantNodes = Array.from(container.childNodes).filter((node) => {
+            if (node.nodeType === 3) {
+                return !/^[\s\uFEFF]*$/.test(node.textContent || '');
+            }
+            return node.nodeType === 1;
+        });
+
+        if (significantNodes.length !== 1) return html;
+
+        const root = significantNodes[0];
+        if (!root || root.nodeType !== 1) return html;
+        if (root.tagName !== 'DIV') return html;
+        if (!root.classList || !root.classList.contains('exe-text')) return html;
+
+        return root.innerHTML;
     },
 
     /**

@@ -384,6 +384,52 @@ describe('IdeviceBlockNode', () => {
             expect(node.getAttribute('drop')).toBe('["idevice"]');
         });
 
+        it('shows visibility off indicator when visibility is false', () => {
+            block.properties.visibility.value = 'false';
+            const node = block.generateBlockContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).not.toBeNull();
+            expect(indicator.querySelector('.exe-visibility-off-green-icon')).not.toBeNull();
+        });
+
+        it('does not show visibility off indicator when visibility is true', () => {
+            block.properties.visibility.value = 'true';
+            const node = block.generateBlockContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).toBeNull();
+        });
+
+        it('shows teacher-only indicator when teacherOnly is true', () => {
+            block.properties.teacherOnly = { value: 'true' };
+            const node = block.generateBlockContentNode(true);
+            const indicator = node.querySelector('.teacher-only-indicator');
+            expect(indicator).not.toBeNull();
+            expect(indicator.querySelector('.exe-teacher-only-icon')).not.toBeNull();
+            expect(indicator.querySelector('.visually-hidden').textContent).toBeTruthy();
+        });
+
+        it('does not show teacher-only indicator when teacherOnly is false', () => {
+            block.properties.teacherOnly = { value: 'false' };
+            const node = block.generateBlockContentNode(true);
+            const indicator = node.querySelector('.teacher-only-indicator');
+            expect(indicator).toBeNull();
+        });
+
+        it('shows both indicators when visibility is false and teacherOnly is true', () => {
+            block.properties.visibility.value = 'false';
+            block.properties.teacherOnly = { value: 'true' };
+            const node = block.generateBlockContentNode(true);
+            const visIndicator = node.querySelector('.visibility-off-indicator');
+            const teacherIndicator = node.querySelector('.teacher-only-indicator');
+            expect(visIndicator).not.toBeNull();
+            expect(teacherIndicator).not.toBeNull();
+            // Both at same left, stacked vertically
+            expect(visIndicator.style.left).toBe('-32px');
+            expect(teacherIndicator.style.left).toBe('-32px');
+            expect(visIndicator.style.top).toBe('2px');
+            expect(teacherIndicator.style.top).toBe('26px');
+        });
+
         it('reuses existing element when newNode is false', () => {
             block.blockContent = document.createElement('article');
             block.blockContent.classList.add('old-class');
@@ -760,7 +806,7 @@ describe('IdeviceBlockNode', () => {
     });
 
     describe('downloadBlockSelected', () => {
-        it('throws error when Yjs bridge not initialized', async () => {
+        it('throws error when Collaboration service not ready', async () => {
             eXeLearning.app.project._yjsBridge = null;
             await block.downloadBlockSelected('block-1');
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
