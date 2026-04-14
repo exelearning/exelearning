@@ -326,6 +326,23 @@ test.describe('Block reorder stability — issue #1665', () => {
         await addIdevice(page, 'text');
         await waitForDomAndYjsBlockCount(page, sourcePageId, 2);
 
+        // Newly-added text iDevices auto-enter edition mode. While any
+        // iDevice is in edition, projectManager.checkOpenIdevice() is
+        // truthy and the block arrow click handlers return silently.
+        // Save the open iDevice (if any) so the subsequent arrow clicks
+        // are actually processed. Mirrors what a real user would do
+        // before touching block controls.
+        await page.evaluate(() => {
+            const open = document.querySelector('#node-content div.idevice_node[mode="edition"]');
+            const saveBtn = open?.querySelector('.btn-save-idevice') as HTMLElement | null;
+            saveBtn?.click();
+        });
+        await page.waitForFunction(
+            () => !document.querySelector('#node-content div.idevice_node[mode="edition"]'),
+            undefined,
+            { timeout: 10000 },
+        );
+
         const twoBlocksOrder = await readBlockOrderFromYjs(page, sourcePageId);
         expect(twoBlocksOrder.length).toBe(2);
         expect(twoBlocksOrder[0]).toBe(blockAId);
