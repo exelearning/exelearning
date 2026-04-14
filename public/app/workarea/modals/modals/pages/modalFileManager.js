@@ -2371,8 +2371,13 @@ export default class ModalFilemanager extends Modal {
 
                         let found = false;
 
-                        // Check htmlView or htmlContent (Y.Text or string)
-                        const htmlContent = compMap.get('htmlView') || compMap.get('htmlContent');
+                        // Check htmlContent (Y.Text or string) or htmlView (legacy fallback).
+                        // htmlContent is refreshed on every save; htmlView is only populated
+                        // during initial ELP import and never updated after edits, so reading
+                        // it first causes stale reference counts after image deletion in
+                        // iDevices whose save path only touches jsonProperties/htmlContent
+                        // (issue #1674).
+                        const htmlContent = compMap.get('htmlContent') || compMap.get('htmlView');
                         if (htmlContent) {
                             const content = htmlContent.toString ? htmlContent.toString() : String(htmlContent);
                             if (assetRegex.test(content)) {

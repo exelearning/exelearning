@@ -1749,6 +1749,31 @@ describe('YjsStructureBinding', () => {
       expect(typeof stored).toBe('string');
       expect(JSON.parse(stored)).toEqual(jsonObj);
     });
+
+    // Regression test for issue #1674: updateComponent must drop the stale
+    // `htmlView` plain-string fallback when refreshing `htmlContent`, otherwise
+    // readers (e.g. File Manager reference counter) see stale content after
+    // in-place edits in the desktop/Electron build.
+    it('clears stale htmlView string when htmlContent is updated (issue #1674)', () => {
+      const navigation = mockDocManager.getNavigation();
+      const pageMap = navigation.get(0);
+      const blocks = pageMap.get('blocks');
+      const block = blocks.get(0);
+      const components = block.get('components');
+      const comp = components.get(0);
+
+      // Simulate post-import state: htmlView holds the imported HTML string
+      // (exactly how ElpxImporter/createComponentMapFromApi populate it).
+      comp.set('htmlView', '<p><img src="asset://stale-1674/img.jpg"></p>');
+      expect(comp.get('htmlView')).toBeDefined();
+
+      binding.updateComponent('comp-1', { htmlContent: '<p>image removed</p>' });
+
+      // htmlView must have been deleted so it can't mask the fresh htmlContent.
+      expect(comp.get('htmlView')).toBeUndefined();
+      const fresh = comp.get('htmlContent');
+      expect(fresh.toString()).toBe('<p>image removed</p>');
+    });
   });
 
   describe('deleteComponent', () => {
