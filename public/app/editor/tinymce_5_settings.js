@@ -351,6 +351,13 @@ var $exeTinyMCE = {
             },
             /* enable automatic uploads of images represented by blob or data URIs*/
             automatic_uploads: true,
+            // Prevent TinyMCE from rewriting src/data-mce-src after images_upload_handler
+            // resolves. Our handler returns the blob URI (for display) and we manage the
+            // blob ↔ asset:// mapping ourselves via resolveAssetUrlsInEditor /
+            // prepareHtmlForSync; letting TinyMCE clobber data-mce-src with a blob URL
+            // corrupts previously-resolved images when a second asset:// image is inserted
+            // (issue #1664).
+            images_replace_blob_uris: false,
             file_picker_types: 'file image media',
             /* and here's our custom image picker - opens Media Library modal */
             file_picker_callback: function (cb, value, meta) {
