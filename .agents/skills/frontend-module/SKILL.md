@@ -1,6 +1,6 @@
 ---
 name: frontend-module
-description: Adding or modifying vanilla JavaScript modules in public/app/.
+description: Adding or modifying vanilla JavaScript modules in public/app/. Every change must ship with colocated `*.test.js` Vitest tests, keep patch coverage ≥ 90% on changed lines, add or update a Playwright spec when the behavior is user-visible, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
 ---
 
 # Skill: Frontend Module

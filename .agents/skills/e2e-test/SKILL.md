@@ -1,6 +1,6 @@
 ---
 name: e2e-test
-description: Writing Playwright E2E tests in test/e2e/playwright/.
+description: Writing Playwright E2E tests in test/e2e/playwright/. New user-visible features require an E2E spec in the same PR; specs must be deterministic (no `waitForTimeout`), isolated (each test creates its own project), and green under `make test-e2e` (and `make test-e2e-static` when the static build or embedding is affected) alongside `make fix`, `make test-unit`, and `make test-integration` before submission.
 ---
 
 # Skill: E2E Test
