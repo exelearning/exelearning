@@ -8,6 +8,20 @@ eXeLearning is an open-source (AGPL-3.0) educational content authoring tool. Edu
 
 **Current state:** Early development. Prioritize clean, well-organized code.
 
+### Definition of Done (non-negotiable)
+
+Before any change is submitted (PR, commit push, or handoff), **all** of the following must hold:
+
+1. **`make fix` passes** — lint and formatting are clean.
+2. **Unit tests pass** — `make test-unit` is green (backend `bun test` + frontend `vitest`).
+3. **Integration tests pass** — `make test-integration` is green.
+4. **E2E tests pass** — `make test-e2e` is green (Playwright). Run `make test-e2e-static` too if the change affects the static build, embedding, or export flow.
+5. **Patch coverage ≥ 90%** — every new or modified line must be covered by a test. Check with `make test-coverage` and inspect the diff, not just the global percentage. If a line is genuinely untestable, justify it in the PR description.
+6. **New code ships with tests in the same PR.** A new `.ts` file under `src/` needs a colocated `*.spec.ts`; a new `.js` file under `public/app/` needs a colocated `*.test.js`. User-visible flows need an E2E spec under `test/e2e/playwright/specs/`.
+7. **No skipped or disabled tests** without an issue link and explanation.
+
+These apply to every skill below. If you cannot meet them, stop and ask the user — do not submit partial work.
+
 ### Philosophy
 
 - **No workarounds.** Always build full, long-term-sustainable implementations for >1000 users. Never create compatibility shims or half-baked solutions.
@@ -95,11 +109,17 @@ npx vitest run public/app/path/file.test.js -t "test name"
 bun x playwright test --project=chromium test/e2e/playwright/specs/my-test.spec.ts
 ```
 
-### 5.3 Coverage Targets
+### 5.3 Coverage & Submission Gates
 
-- **Backend (`src/`):** target **90%**
-- **Frontend (`public/app/`):** target **80%**
-- New `.js` files in `public/app/` should have a corresponding `.test.js` file
+**Patch coverage ≥ 90% is required on every PR**, measured against the lines you added or modified — not the global project average. A PR that only raises global coverage but leaves new lines uncovered does not pass.
+
+- **Backend (`src/`):** global target **90%**, patch coverage **≥ 90%** (hard gate).
+- **Frontend (`public/app/`):** global target **80%**, patch coverage **≥ 90%** on changed lines.
+- Every new `.ts` file under `src/` must ship with a colocated `*.spec.ts` in the same PR.
+- Every new `.js` file under `public/app/` must ship with a colocated `*.test.js` in the same PR.
+- User-visible behavior changes (workarea, preview, export, embedding, collaboration) must include or update a Playwright spec under `test/e2e/playwright/specs/`.
+- Before submitting: run `make fix && make test-unit && make test-integration && make test-e2e` and inspect `make test-coverage` for the diff. All four must be green. E2E may be slow — budget time for it rather than skipping.
+- Do not mark tests as `.skip` / `.todo` to land a PR. If a test cannot run in CI, open an issue and link it in the PR description.
 
 ### 5.4 Mocking — Prefer Dependency Injection
 
