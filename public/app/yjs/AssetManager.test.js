@@ -14391,7 +14391,38 @@ describe('downloadMissingAssets detects blob-less assets (#1685)', () => {
     delete global.fetch;
   });
 
-  it('re-downloads assets that have metadata but no blob', async () => {
+  it('re-downloads assets that have metadata but no blob using putBlob', async () => {
+    global.fetch = mock()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [{ clientId: 'asset-1' }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['data'])),
+        headers: { get: () => null },
+      });
+
+    // Simulate: metadata exists but blob is null (Cache API evicted)
+    assetManager.getAsset = mock(() => Promise.resolve({
+      id: 'asset-1',
+      blob: null, // <-- blob evicted!
+      mime: 'image/png',
+      filename: 'img.png',
+    }));
+    assetManager.putBlob = mock(() => Promise.resolve());
+    assetManager.putAsset = mock(() => Promise.resolve());
+
+    const result = await assetManager.downloadMissingAssets('http://api', 'token');
+
+    expect(result).toBe(1);
+    // Should use putBlob (blob-only) to preserve existing Yjs metadata
+    expect(assetManager.putBlob).toHaveBeenCalled();
+    // Should NOT use putAsset which would overwrite metadata
+    expect(assetManager.putAsset).not.toHaveBeenCalled();
+  });
+
+  it('uses putAsset for fully missing assets (no metadata)', async () => {
     const createMockResponse = (blob, headers) => ({
       ok: true,
       blob: () => Promise.resolve(blob),
@@ -14410,19 +14441,17 @@ describe('downloadMissingAssets detects blob-less assets (#1685)', () => {
         'X-Filename': 'img.png',
       }));
 
-    // Simulate: metadata exists but blob is null (Cache API evicted)
-    assetManager.getAsset = mock(() => Promise.resolve({
-      id: 'asset-1',
-      blob: null, // <-- blob evicted!
-      mime: 'image/png',
-      filename: 'img.png',
-    }));
+    // Simulate: completely missing locally
+    assetManager.getAsset = mock(() => Promise.resolve(null));
     assetManager.putAsset = mock(() => Promise.resolve());
+    assetManager.putBlob = mock(() => Promise.resolve());
 
     const result = await assetManager.downloadMissingAssets('http://api', 'token');
 
     expect(result).toBe(1);
+    // Should use putAsset to create both metadata and blob
     expect(assetManager.putAsset).toHaveBeenCalled();
+    expect(assetManager.putBlob).not.toHaveBeenCalled();
   });
 });
 

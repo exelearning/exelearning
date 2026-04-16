@@ -3238,8 +3238,10 @@ class AssetManager {
         const local = await this.getAsset(assetId);
         // Check blob too: metadata may exist in Yjs while the blob was evicted
         // from Cache API (fixes #1685)
-        if (!local || !local.blob) {
-          missing.push(assetId);
+        if (!local) {
+          missing.push({ assetId, hasMetadata: false });
+        } else if (!local.blob) {
+          missing.push({ assetId, hasMetadata: true });
         }
       }
 
@@ -3251,7 +3253,7 @@ class AssetManager {
       Logger.log(`[AssetManager] Downloading ${missing.length} missing assets...`);
 
       let downloaded = 0;
-      for (const assetId of missing) {
+      for (const { assetId, hasMetadata } of missing) {
         try {
           const assetResponse = await fetch(
             `${apiBaseUrl}/projects/${this.projectId}/assets/${assetId}`,
@@ -3261,25 +3263,33 @@ class AssetManager {
           if (!assetResponse.ok) continue;
 
           const blob = await assetResponse.blob();
-          const mime = assetResponse.headers.get('X-Original-Mime') || 'application/octet-stream';
-          const hash = assetResponse.headers.get('X-Asset-Hash') || '';
-          const size = parseInt(assetResponse.headers.get('X-Original-Size') || '0');
-          const filename = assetResponse.headers.get('X-Filename') || undefined;
 
-          const asset = {
-            id: assetId,
-            projectId: this.projectId,
-            blob: blob,
-            mime: mime,
-            hash: hash,
-            size: size,
-            uploaded: true,
-            createdAt: new Date().toISOString(),
-            filename: filename,
-            folderPath: '' // Downloaded assets go to root by default
-          };
+          if (hasMetadata) {
+            // Metadata already exists in Yjs — only restore the blob
+            // to avoid overwriting correct filename/folderPath with
+            // potentially incomplete server headers (#1685).
+            await this.putBlob(assetId, blob);
+          } else {
+            const mime = assetResponse.headers.get('X-Original-Mime') || 'application/octet-stream';
+            const hash = assetResponse.headers.get('X-Asset-Hash') || '';
+            const size = parseInt(assetResponse.headers.get('X-Original-Size') || '0');
+            const filename = assetResponse.headers.get('X-Filename') || undefined;
 
-          await this.putAsset(asset);
+            const asset = {
+              id: assetId,
+              projectId: this.projectId,
+              blob: blob,
+              mime: mime,
+              hash: hash,
+              size: size,
+              uploaded: true,
+              createdAt: new Date().toISOString(),
+              filename: filename,
+              folderPath: '' // Downloaded assets go to root by default
+            };
+
+            await this.putAsset(asset);
+          }
           downloaded++;
         } catch (e) {
           console.error(`[AssetManager] Failed to download ${assetId}:`, e);
