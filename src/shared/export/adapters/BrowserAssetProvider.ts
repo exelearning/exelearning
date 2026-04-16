@@ -424,6 +424,7 @@ export class BrowserAssetProvider implements AssetProvider {
         }
 
         let count = 0;
+        const missingIds: string[] = [];
 
         for (let i = 0; i < metadataEntries.length; i += CONVERSION_BATCH_SIZE) {
             const batch = metadataEntries.slice(i, i + CONVERSION_BATCH_SIZE);
@@ -431,6 +432,7 @@ export class BrowserAssetProvider implements AssetProvider {
                 batch.map(async metadata => {
                     const blob = await this.getBlobWithoutPromoting(metadata.id);
                     if (!blob) {
+                        missingIds.push(metadata.id);
                         return null;
                     }
 
@@ -451,6 +453,12 @@ export class BrowserAssetProvider implements AssetProvider {
                 await callback(asset);
                 count++;
             }
+        }
+
+        if (missingIds.length > 0) {
+            console.warn(
+                `[BrowserAssetProvider] Export is missing ${missingIds.length}/${metadataEntries.length} assets (blob not in cache or server): ${missingIds.join(', ')}`,
+            );
         }
 
         return count;
