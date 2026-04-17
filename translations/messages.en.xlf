@@ -14237,6 +14237,10 @@
         <source>Imported rubric</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="8vdzvp3" resname="Admin panel">
+        <source>Admin panel</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

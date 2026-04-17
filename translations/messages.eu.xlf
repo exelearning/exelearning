@@ -14237,6 +14237,10 @@
         <source>Imported rubric</source>
         <target>~Inportatutako errubrika</target>
       </trans-unit>
+      <trans-unit id="e5i5wc1" resname="Admin panel">
+        <source>Admin panel</source>
+        <target>Administrazio panela</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
