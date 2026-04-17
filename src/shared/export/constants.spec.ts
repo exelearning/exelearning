@@ -703,46 +703,45 @@ describe('Constants', () => {
         });
 
         describe('formatLicenseText', () => {
-            it('should return displayName for known licenses', () => {
+            it('should return key for known licenses', () => {
                 expect(formatLicenseText('creative commons: attribution - share alike 4.0')).toBe(
-                    'creative commons: attribution - share alike 4.0 (BY-SA)',
+                    'creative commons: attribution - share alike 4.0',
                 );
                 expect(formatLicenseText('creative commons: attribution 4.0')).toBe(
-                    'creative commons: attribution 4.0 (BY)',
+                    'creative commons: attribution 4.0',
                 );
                 expect(formatLicenseText('creative commons: attribution - non commercial 4.0')).toBe(
-                    'creative commons: attribution - non commercial 4.0 (BY-NC)',
+                    'creative commons: attribution - non commercial 4.0',
                 );
-                expect(formatLicenseText('creative commons: cc0 1.0')).toBe(
-                    'creative commons: public domain 1.0 (CC0)',
-                );
+                expect(formatLicenseText('creative commons: cc0 1.0')).toBe('creative commons: cc0 1.0');
             });
 
             it('should handle case insensitivity', () => {
                 expect(formatLicenseText('creative commons: attribution - share alike 4.0')).toBe(
-                    'creative commons: attribution - share alike 4.0 (BY-SA)',
+                    'creative commons: attribution - share alike 4.0',
                 );
                 expect(formatLicenseText('CREATIVE COMMONS: ATTRIBUTION - SHARE ALIKE 4.0')).toBe(
-                    'creative commons: attribution - share alike 4.0 (BY-SA)',
+                    'creative commons: attribution - share alike 4.0',
                 );
             });
 
-            it('should pass through full names and return displayName', () => {
-                expect(formatLicenseText('creative commons: attribution - share alike 4.0')).toBe(
-                    'creative commons: attribution - share alike 4.0 (BY-SA)',
+            it('should resolve old legacy names with suffixes to the stable key', () => {
+                expect(formatLicenseText('creative commons: attribution - share alike 4.0 (BY-SA)')).toBe(
+                    'creative commons: attribution - share alike 4.0',
                 );
-                expect(formatLicenseText('public domain')).toBe('Public domain');
-                expect(formatLicenseText('propietary license')).toBe('Proprietary license');
+                expect(formatLicenseText('creative commons: attribution 4.0 (BY)')).toBe(
+                    'creative commons: attribution 4.0',
+                );
+                expect(formatLicenseText('public domain')).toBe('public domain');
+                expect(formatLicenseText('Proprietary license')).toBe('propietary license');
             });
 
             it('should handle CC0 license', () => {
-                expect(formatLicenseText('creative commons: cc0 1.0')).toBe(
-                    'creative commons: public domain 1.0 (CC0)',
-                );
+                expect(formatLicenseText('creative commons: cc0 1.0')).toBe('creative commons: cc0 1.0');
             });
 
             it('should handle public domain (generic)', () => {
-                expect(formatLicenseText('public domain')).toBe('Public domain');
+                expect(formatLicenseText('public domain')).toBe('public domain');
             });
 
             it('should return empty string for empty input (no license specified)', () => {
@@ -750,50 +749,50 @@ describe('Constants', () => {
             });
 
             it('should trim whitespace', () => {
-                expect(formatLicenseText('  public domain  ')).toBe('Public domain');
+                expect(formatLicenseText('  public domain  ')).toBe('public domain');
             });
 
             it('should return displayName for CC 3.0 licenses', () => {
                 expect(formatLicenseText('creative commons: attribution 3.0')).toBe(
-                    'creative commons: attribution 3.0 (BY)',
+                    'creative commons: attribution 3.0',
                 );
                 expect(formatLicenseText('creative commons: attribution - share alike 3.0')).toBe(
-                    'creative commons: attribution - share alike 3.0 (BY-SA)',
+                    'creative commons: attribution - share alike 3.0',
                 );
             });
 
             it('should return displayName for CC 2.5 licenses', () => {
                 expect(formatLicenseText('creative commons: attribution 2.5')).toBe(
-                    'creative commons: attribution 2.5 (BY)',
+                    'creative commons: attribution 2.5',
                 );
                 expect(formatLicenseText('creative commons: attribution - share alike 2.5')).toBe(
-                    'creative commons: attribution - share alike 2.5 (BY-SA)',
+                    'creative commons: attribution - share alike 2.5',
                 );
             });
 
             // New tests for GPL, EUPL, GFDL, and other licenses
             it('should format GPL licenses', () => {
                 expect(formatLicenseText('gnu/gpl')).toBe('gnu/gpl');
-                expect(formatLicenseText('free software license gpl')).toBe('free software license GPL');
+                expect(formatLicenseText('free software license gpl')).toBe('free software license gpl');
             });
 
             it('should format EUPL license', () => {
-                expect(formatLicenseText('free software license eupl')).toBe('free software license EUPL');
+                expect(formatLicenseText('free software license eupl')).toBe('free software license eupl');
             });
 
             it('should format dual GPL/EUPL license', () => {
                 expect(formatLicenseText('dual free content license gpl and eupl')).toBe(
-                    'dual free content license GPL and EUPL',
+                    'dual free content license gpl and eupl',
                 );
             });
 
             it('should format GFDL license', () => {
-                expect(formatLicenseText('license gfdl')).toBe('license GFDL');
+                expect(formatLicenseText('license gfdl')).toBe('license gfdl');
             });
 
             it('should format other license types', () => {
                 expect(formatLicenseText('intellectual property license')).toBe('intellectual property license');
-                expect(formatLicenseText('not appropriate')).toBe('Not appropriate');
+                expect(formatLicenseText('not appropriate')).toBe('not appropriate');
                 expect(formatLicenseText('other free software licenses')).toBe('other free software licenses');
             });
 

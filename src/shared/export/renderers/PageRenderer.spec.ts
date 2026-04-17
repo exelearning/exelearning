@@ -561,8 +561,8 @@ describe('PageRenderer', () => {
             expect(html).toContain('<div id="siteFooterContent">');
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('class="license-label">Licencia: </span>');
-            // formatLicenseText returns displayName with short code suffix
-            expect(html).toContain('class="license">creative commons: attribution - share alike 4.0 (BY-SA)</a>');
+            // formatLicenseText returns the key, and since it is not translated in the test, it returns the key as is
+            expect(html).toContain('class="license">creative commons: attribution - share alike 4.0</a>');
             expect(html).toContain('href="https://creativecommons.org/licenses/by-sa/4.0/"');
         });
 

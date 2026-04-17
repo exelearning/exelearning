@@ -641,6 +641,33 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 // =============================================================================
 
 /**
+ * Resolves a license name (which could be an internal key, a legacy displayName with a suffix like (BY),
+ * or potentially a translated name if previously saved) to its internal stable key.
+ *
+ * @param licenseName - The license name to resolve
+ * @returns The internal key, or the normalized name if not found in the registry
+ */
+export function resolveLicenseKey(licenseName: string): string {
+    if (!licenseName) return '';
+    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    // Fast path: direct lookup in registry
+    if (LICENSE_REGISTRY[cleanName]) {
+        return cleanName;
+    }
+
+    // Fallback: search by displayName to handle legacy cases where the UI saved
+    // something like "creative commons: attribution 4.0 (BY)" into Yjs metadata.
+    for (const [key, entry] of Object.entries(LICENSE_REGISTRY)) {
+        if (cleanName === entry.displayName.toLowerCase().trim().replace(/\s+/g, ' ')) {
+            return key;
+        }
+    }
+
+    return cleanName;
+}
+
+/**
  * Get CSS class for license icon display.
  * Looks up the cssClass from LICENSE_REGISTRY.
  *
@@ -652,11 +679,11 @@ export function getLicenseClass(licenseName: string): string {
         return '';
     }
 
-    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const key = resolveLicenseKey(licenseName);
 
     // Direct lookup in registry
-    if (LICENSE_REGISTRY[cleanName]) {
-        return LICENSE_REGISTRY[cleanName].cssClass;
+    if (LICENSE_REGISTRY[key]) {
+        return LICENSE_REGISTRY[key].cssClass;
     }
 
     return '';
@@ -670,7 +697,7 @@ export function getLicenseClass(licenseName: string): string {
  */
 export function getLicenseUrl(licenseName: string): string {
     if (!licenseName) return '';
-    const key = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const key = resolveLicenseKey(licenseName);
     return LICENSE_REGISTRY[key]?.url || '';
 }
 
@@ -683,8 +710,8 @@ export function getLicenseUrl(licenseName: string): string {
  */
 export function formatLicenseText(licenseName: string): string {
     if (!licenseName) return '';
-    const key = licenseName.toLowerCase().trim();
-    return LICENSE_REGISTRY[key]?.displayName || licenseName;
+    const key = resolveLicenseKey(licenseName);
+    return LICENSE_REGISTRY[key] ? key : licenseName;
 }
 
 /**
