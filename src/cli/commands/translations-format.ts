@@ -92,38 +92,45 @@ export function formatTargetContent(rawContent: string): string {
 }
 
 /**
- * Normalise a single raw trans-unit block (including its leading newline+spaces)
- * to canonical indentation and apply CDATA formatting to <target>.
- */
-export function formatTransUnitBlock(rawBlock: string): string {
-    const openTagMatch = rawBlock.match(/<trans-unit\b[^>]*>/);
-    if (!openTagMatch) return rawBlock;
-    const openTag = openTagMatch[0];
-
-    const sourceMatch = rawBlock.match(/<source>([\s\S]*?)<\/source>/);
-    const sourceContent = sourceMatch ? sourceMatch[1] : '';
-
-    const targetMatch = rawBlock.match(/<target>([\s\S]*?)<\/target>/);
-    const targetContent = targetMatch !== null ? targetMatch[1] : '';
-    const formattedTarget = formatTargetContent(targetContent);
-
-    return (
-        '\n' +
-        `      ${openTag}\n` +
-        `        <source>${sourceContent}</source>\n` +
-        `        <target>${formattedTarget}</target>\n` +
-        `      </trans-unit>`
-    );
-}
-
-/**
- * Apply formatting to the full content of an XLF file:
- * normalise every trans-unit block and add CDATA where required.
+ * Apply formatting to the full content of an XLF file.
+ *
+ * Two independent passes — neither ever parses or reconstructs attribute values
+ * from `<trans-unit>` opening tags, so those are guaranteed to be preserved
+ * exactly as-is:
+ *
+ *   Pass 1 — Indentation (line-by-line, no attribute parsing):
+ *     · `<trans-unit …>` and `</trans-unit>` lines → 6 leading spaces
+ *     · `<source>` and `<target>` lines             → 8 leading spaces
+ *
+ *   Pass 2 — CDATA wrapping:
+ *     · Finds every `<target>…</target>` by matching only the tags themselves
+ *       (not the surrounding `<trans-unit>`), and wraps the content in
+ *       `<![CDATA[…]]>` when `needsCDATA()` returns true.
  */
 export function formatXlfContent(content: string): string {
-    return content.replace(
-        /\n[ \t]*<trans-unit\b[^>]*>[\s\S]*?<\/trans-unit>/g,
-        match => formatTransUnitBlock(match),
+    // Detect original line-ending style so we can preserve it.
+    const eol = content.includes('\r\n') ? '\r\n' : '\n';
+
+    // Pass 1: reindent line by line.
+    const lines = content.split(/\r?\n/);
+    const reindented = lines
+        .map(line => {
+            // <trans-unit …> opening tag — only strip/add leading whitespace;
+            // the tag text (including all attributes) is copied verbatim.
+            if (/^[ \t]*<trans-unit\b/.test(line)) return line.replace(/^[ \t]*/, '      ');
+            if (/^[ \t]*<\/trans-unit>/.test(line))  return line.replace(/^[ \t]*/, '      ');
+            if (/^[ \t]*<source>/.test(line))         return line.replace(/^[ \t]*/, '        ');
+            if (/^[ \t]*<target>/.test(line))         return line.replace(/^[ \t]*/, '        ');
+            return line;
+        })
+        .join(eol);
+
+    // Pass 2: wrap <target> content in CDATA where required.
+    // Only the text between <target> and </target> is changed; the tags
+    // themselves and every other element remain completely untouched.
+    return reindented.replace(
+        /<target>([\s\S]*?)<\/target>/g,
+        (_match, targetContent: string) => `<target>${formatTargetContent(targetContent)}</target>`,
     );
 }
 

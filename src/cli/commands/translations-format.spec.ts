@@ -137,60 +137,58 @@ describe('formatTargetContent', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Unit tests — formatTransUnitBlock
+// Unit tests — formatXlfContent (trans-unit tag preservation)
 // ---------------------------------------------------------------------------
 
-describe('formatTransUnitBlock', () => {
-    let formatTransUnitBlock: (raw: string) => string;
+describe('formatXlfContent — trans-unit tag preservation', () => {
+    let formatXlfContent: (content: string) => string;
 
     beforeEach(async () => {
-        ({ formatTransUnitBlock } = await import('./translations-format'));
+        ({ formatXlfContent } = await import('./translations-format'));
     });
 
-    it('normalises indentation for a plain-text target', () => {
-        const input =
-            '\n    <trans-unit id="abc" resname="Key">\n' +
-            '      <source>Key</source>\n' +
-            '      <target>Valor</target>\n' +
-            '    </trans-unit>';
-        const result = formatTransUnitBlock(input);
-        expect(result).toBe(
-            '\n      <trans-unit id="abc" resname="Key">\n' +
-            '        <source>Key</source>\n' +
-            '        <target>Valor</target>\n' +
-            '      </trans-unit>',
+    function wrapInXlf(block: string): string {
+        return (
+            `<?xml version="1.0" encoding="utf-8"?>\n` +
+            `<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">\n` +
+            `  <file source-language="en" target-language="es" datatype="plaintext" original="file.ext">\n` +
+            `    <header><tool tool-id="symfony" tool-name="Symfony"/></header>\n` +
+            `    <body>\n` +
+            block + `\n` +
+            `    </body>\n` +
+            `  </file>\n` +
+            `</xliff>`
         );
+    }
+
+    it('never modifies the <trans-unit> opening tag, even when resname contains &lt; and &gt;', () => {
+        const openTag = '<trans-unit id="eogm2xw" resname="Invalid filename. Avoid special characters like / \\\\ : * ? &quot; &lt; &gt; |">';
+        const block =
+            `      ${openTag}\n` +
+            `        <source>Invalid filename: &lt; &gt;</source>\n` +
+            `        <target>Nombre de archivo no válido: &lt; &gt;</target>\n` +
+            `      </trans-unit>`;
+        const result = formatXlfContent(wrapInXlf(block));
+        // Opening tag must be preserved verbatim
+        expect(result).toContain(openTag);
+        // id must not change
+        expect(result).toContain('id="eogm2xw"');
+        // resname must not be truncated
+        expect(result).toContain('&gt; |"');
     });
 
-    it('adds CDATA to target when content requires it', () => {
-        const input =
-            '\n      <trans-unit id="pct" resname="%s&amp;percnt; correct">\n' +
-            '        <source>%s&amp;percnt; correct</source>\n' +
-            '        <target>%s&percnt; correcto</target>\n' +
-            '      </trans-unit>';
-        const result = formatTransUnitBlock(input);
-        expect(result).toContain('<target><![CDATA[%s&percnt; correcto]]></target>');
-    });
-
-    it('preserves already-wrapped CDATA in target', () => {
-        const input =
-            '\n      <trans-unit id="pct" resname="key">\n' +
-            '        <source>source</source>\n' +
-            '        <target><![CDATA[%s&percnt; correcto]]></target>\n' +
-            '      </trans-unit>';
-        const result = formatTransUnitBlock(input);
-        expect(result).toContain('<target><![CDATA[%s&percnt; correcto]]></target>');
-    });
-
-    it('does not add CDATA to a safe plain-text target', () => {
-        const input =
-            '\n      <trans-unit id="ok" resname="Simple">\n' +
-            '        <source>Simple</source>\n' +
-            '        <target>Sencillo</target>\n' +
-            '      </trans-unit>';
-        const result = formatTransUnitBlock(input);
-        expect(result).toContain('<target>Sencillo</target>');
-        expect(result).not.toContain('CDATA');
+    it('never modifies the <trans-unit> opening tag when resname contains a literal >', () => {
+        // A literal > in a resname attribute value is valid XML (only < and & must
+        // be escaped in attribute values per the XML spec).
+        const openTag = '<trans-unit id="lit_gt" resname="a > b">';
+        const block =
+            `      ${openTag}\n` +
+            `        <source>a &gt; b</source>\n` +
+            `        <target>a &gt; b</target>\n` +
+            `      </trans-unit>`;
+        const result = formatXlfContent(wrapInXlf(block));
+        expect(result).toContain(openTag);
+        expect(result).toContain('id="lit_gt"');
     });
 });
 
