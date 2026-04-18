@@ -101,7 +101,7 @@
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
     "@biomejs/biome": "^2.4.5",
-    "@codecov/bundle-analyzer": "^1.9.1",
+    "@codecov/bundle-analyzer": "^2.0.1",
     "@electron/notarize": "^3.1.1",
     "@playwright/test": "^1.58.2",
     "@types/bcryptjs": "^3.0.0",
