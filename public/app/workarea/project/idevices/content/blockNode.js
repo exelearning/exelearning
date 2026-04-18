@@ -805,15 +805,20 @@ export default class IdeviceBlockNode {
                             ) {
                                 // Check if there is a block in the previous position
                                 let previousBlock = this.getContentPrevBlock();
-                                let previousOrder = this.order;
                                 if (previousBlock) {
                                     // Add a temporary class to handle display effects
                                     this.blockContent.classList.add('moving');
-                                    // Change order
-                                    this.order--;
-                                    // Update in database
-                                    this.apiUpdateOrder().then((response) => {
-                                        if (response.responseMessage == 'OK') {
+                                    // Issue #1665: when Yjs is enabled, ask
+                                    // the structure binding to move the
+                                    // block by -1 from its CURRENT Y.Doc
+                                    // position. The legacy path mutated
+                                    // this.order and trusted it, which went
+                                    // stale across consecutive clicks.
+                                    const movePromise = this.isYjsEnabled()
+                                        ? this.reorderViaYjsRelative(-1)
+                                        : (this.order--, this.apiUpdateOrder());
+                                    Promise.resolve(movePromise).then((response) => {
+                                        if (response && response.responseMessage == 'OK') {
                                             // Move element
                                             this.engine.nodeContentElement.insertBefore(
                                                 this.blockContent,
@@ -857,15 +862,15 @@ export default class IdeviceBlockNode {
                             ) {
                                 // Check if there is a block in the previous position
                                 let nextBlock = this.getContentNextBlock();
-                                let previousOrder = this.order;
                                 if (nextBlock) {
                                     // Add a temporary class to handle display effects
                                     this.blockContent.classList.add('moving');
-                                    // Change order
-                                    this.order++;
-                                    // Update in database
-                                    this.apiUpdateOrder().then((response) => {
-                                        if (response.responseMessage == 'OK') {
+                                    // Issue #1665: see addBehaviourButtonMoveUpBlock.
+                                    const movePromise = this.isYjsEnabled()
+                                        ? this.reorderViaYjsRelative(+1)
+                                        : (this.order++, this.apiUpdateOrder());
+                                    Promise.resolve(movePromise).then((response) => {
+                                        if (response && response.responseMessage == 'OK') {
                                             // Move element
                                             this.engine.nodeContentElement.insertBefore(
                                                 this.blockContent,
@@ -1409,7 +1414,12 @@ export default class IdeviceBlockNode {
      * @returns {Node}
      */
     getContentNextBlock() {
-        let nextBlock = this.blockContent.nextSibling;
+        // Issue #1667: use nextElementSibling (matches getContentPrevBlock)
+        // so whitespace text nodes between <article.box> siblings — left
+        // behind when a page is rendered from an imported .elpx — don't
+        // make the down-arrow handler silently exit. `nextSibling` would
+        // return the text node and the arrow click would do nothing.
+        let nextBlock = this.blockContent.nextElementSibling;
         if (
             nextBlock &&
             nextBlock.classList &&
@@ -1765,6 +1775,60 @@ export default class IdeviceBlockNode {
             return { responseMessage: 'ERROR' };
         } catch (error) {
             console.error('[BlockNode] Error reordering via Yjs:', error);
+            return { responseMessage: 'ERROR' };
+        }
+    }
+
+    /**
+     * Move this block one position up (-1) or down (+1) using the Yjs
+     * structure binding as the source of truth for the current position.
+     *
+     * Issue #1665: the legacy path mutated `this.order` and forwarded it
+     * to updateBlockOrder. Other JS instances on the same page never had
+     * their `this.order` reconciled with the Y.Doc after a reorder, so
+     * consecutive arrow clicks on different blocks fed updateBlockOrder a
+     * target index computed from a stale snapshot and the blocks "jumped"
+     * positions. moveBlockRelative reads the current index directly from
+     * Yjs, so the per-instance counters become irrelevant.
+     *
+     * @param {number} delta - +1 for move down, -1 for move up
+     * @returns {Object} - { responseMessage: 'OK' | 'ERROR' }
+     */
+    async reorderViaYjsRelative(delta) {
+        try {
+            const bridge = eXeLearning.app?.project?._yjsBridge;
+            const structureBinding = bridge?.structureBinding;
+
+            if (!structureBinding || typeof structureBinding.moveBlockRelative !== 'function') {
+                // Fall back to the absolute path so older bridges keep working.
+                return this.reorderViaYjs();
+            }
+
+            let success = structureBinding.moveBlockRelative(this.blockId, delta);
+            if (!success && this.id && this.id !== this.blockId) {
+                success = structureBinding.moveBlockRelative(this.id, delta);
+            }
+
+            if (success) {
+                // Reconcile this instance's local counter with the new
+                // position so that any code path still reading `this.order`
+                // (drag-and-drop fallback, REST writes, etc.) stays sane.
+                const location = structureBinding.findBlockLocation
+                    ? structureBinding.findBlockLocation(this.blockId)
+                    : null;
+                if (location && typeof location.index === 'number') {
+                    this.order = location.index;
+                }
+
+                setTimeout(() => {
+                    this.blockContent?.classList.remove('moving');
+                }, this.engine.movingClassDuration);
+                return { responseMessage: 'OK' };
+            }
+
+            return { responseMessage: 'ERROR' };
+        } catch (error) {
+            console.error('[BlockNode] Error moving block via Yjs:', error);
             return { responseMessage: 'ERROR' };
         }
     }
