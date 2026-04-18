@@ -1570,6 +1570,62 @@ class YjsStructureBinding {
   }
 
   /**
+   * Locate a block in the navigation by id. Returns the page Y.Map, the
+   * page's blocks Y.Array, and the block's current index in that array,
+   * or null if the block isn't found.
+   *
+   * @param {string} blockId
+   * @returns {{ pageMap: any, blocks: any, index: number } | null}
+   */
+  findBlockLocation(blockId) {
+    const navigation = this.manager.getNavigation();
+    if (!navigation) return null;
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const blocks = pageMap.get('blocks');
+      if (!blocks) continue;
+      for (let j = 0; j < blocks.length; j++) {
+        const blockMap = blocks.get(j);
+        if (blockMap.get('id') === blockId || blockMap.get('blockId') === blockId) {
+          return { pageMap, blocks, index: j };
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Move a block by `delta` positions inside its current page, reading the
+   * block's CURRENT position from the Y.Doc (the source of truth) instead
+   * of trusting a stale per-instance counter.
+   *
+   * Use `delta = +1` for the "move down" arrow, `delta = -1` for "move up".
+   * Larger deltas are accepted and clamped to the page's block range.
+   *
+   * This is the method the click handlers in
+   * public/app/workarea/project/idevices/content/blockNode.js MUST use, so
+   * that consecutive arrow clicks on different blocks do not feed
+   * updateBlockOrder a target index computed from a stale local snapshot.
+   * See issue #1665 for the bug class this avoids.
+   *
+   * @param {string} blockId
+   * @param {number} delta - relative move (+1 down, -1 up, ...)
+   * @returns {boolean} - true if the move was applied
+   */
+  moveBlockRelative(blockId, delta) {
+    if (!Number.isFinite(delta) || delta === 0) return false;
+    const location = this.findBlockLocation(blockId);
+    if (!location) {
+      console.warn(`[YjsStructureBinding] Block ${blockId} not found for relative move`);
+      return false;
+    }
+    const { blocks, index } = location;
+    const targetIndex = Math.min(Math.max(0, index + delta), blocks.length - 1);
+    if (targetIndex === index) return false;
+    return this.updateBlockOrder(blockId, targetIndex);
+  }
+
+  /**
    * Update a block's order by physically reordering it in the Y.Array
    * @param {string} blockId - Block ID
    * @param {number} newOrder - New order value (0-based index)
