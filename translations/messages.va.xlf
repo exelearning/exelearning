@@ -11579,7 +11579,7 @@
       </trans-unit>
       <trans-unit id="t0jmRcI" resname="The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts">
         <source>The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts</source>
-        <target>~El nombre d'intents ha de ser major o igual que el nombre de frases del joc. Utilitza 0 per a un nombre il·limitat d'intents</target></target>
+        <target>~El nombre d'intents ha de ser major o igual que el nombre de frases del joc. Utilitza 0 per a un nombre il·limitat d'intents</target>
       </trans-unit>
       <trans-unit id="D7clkVP" resname="With fixed headers, the number of cards must be bigger than the number of columns">
         <source>With fixed headers, the number of cards must be bigger than the number of columns</source>
