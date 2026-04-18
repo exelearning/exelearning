@@ -40,6 +40,20 @@ export class PageRenderer {
     }
 
     /**
+     * Build the HTML <title> value for a page.
+     * Index page uses the project title alone. Inner pages use
+     * "Page title | Project title" (falling back to the project title
+     * when the page title is empty or duplicates it).
+     */
+    private buildDocumentTitle(page: ExportPage, projectTitle: string, isIndex: boolean): string {
+        if (isIndex) return projectTitle;
+        const pageTitle = (page.title || '').trim();
+        if (!pageTitle) return projectTitle;
+        if (!projectTitle || pageTitle === projectTitle) return pageTitle;
+        return `${pageTitle} | ${projectTitle}`;
+    }
+
+    /**
      * Check if a property value is truthy (handles both boolean and string "true")
      */
     private isTruthyProperty(value: unknown): boolean {
@@ -102,7 +116,7 @@ export class PageRenderer {
             version,
         } = options;
 
-        const pageTitle = isIndex ? projectTitle : page.title || 'Page';
+        const pageTitle = this.buildDocumentTitle(page, projectTitle, isIndex);
 
         // Detect libraries from ORIGINAL content (before transformation)
         // This is important for exe-package:elp links which get transformed during rendering
