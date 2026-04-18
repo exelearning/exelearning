@@ -14237,10 +14237,6 @@
         <source>Imported rubric</source>
         <target>~Importita rubrik</target>
       </trans-unit>
-      <trans-unit id="7dwfurf" resname="Admin panel">
-        <source>Admin panel</source>
-        <target>Administra panelo</target>
-      </trans-unit>
     </body>
   </file>
 </xliff>

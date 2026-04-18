@@ -14237,10 +14237,6 @@
         <source>Imported rubric</source>
         <target>~Rubrică importată</target>
       </trans-unit>
-      <trans-unit id="pyo457g" resname="Admin panel">
-        <source>Admin panel</source>
-        <target>Panou de administrare</target>
-      </trans-unit>
     </body>
   </file>
 </xliff>

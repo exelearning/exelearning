@@ -14237,10 +14237,6 @@
         <source>Imported rubric</source>
         <target>~Rubrica importada</target>
       </trans-unit>
-      <trans-unit id="rbjvwkt" resname="Admin panel">
-        <source>Admin panel</source>
-        <target>Painel de administração</target>
-      </trans-unit>
     </body>
   </file>
 </xliff>

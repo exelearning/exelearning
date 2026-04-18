@@ -14237,10 +14237,6 @@
         <source>Imported rubric</source>
         <target>~Importierte Rubrik</target>
       </trans-unit>
-      <trans-unit id="fss9hal" resname="Admin panel">
-        <source>Admin panel</source>
-        <target>Administrationsbereich</target>
-      </trans-unit>
     </body>
   </file>
 </xliff>
