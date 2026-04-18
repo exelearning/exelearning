@@ -103,7 +103,6 @@ class MockAssetManager {
   async init() {}
   async preloadAllAssets() { return 0; }
   async downloadMissingAssets() { return 0; }
-  setServerConfig() {}
   cleanup() {}
 }
 
