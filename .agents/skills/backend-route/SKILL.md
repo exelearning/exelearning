@@ -1,6 +1,6 @@
 ---
 name: backend-route
-description: Adding or modifying Elysia API route handlers in src/routes/.
+description: Adding or modifying Elysia API route handlers in src/routes/. Every change must ship with colocated `*.spec.ts` tests covering success and error paths, keep patch coverage ≥ 90% on changed lines, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
 ---
 
 # Skill: Backend Route

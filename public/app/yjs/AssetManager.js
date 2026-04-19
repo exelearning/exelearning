@@ -71,6 +71,22 @@ class AssetManager {
     // app:// in Electron. Disable repeated attempts after the first hard failure
     // to avoid thousands of slow exceptions during large imports.
     this.cachePersistenceDisabled = false;
+
+    // Server config for fallback fetch during export (set via setServerConfig)
+    this._serverApiBaseUrl = null;
+    this._serverToken = null;
+  }
+
+  /**
+   * Store server API credentials so getBlobForExport() can fall back to
+   * downloading individual assets when both memory and Cache API miss.
+   * Called from YjsProjectBridge after init.
+   * @param {string} apiBaseUrl - e.g. "https://online.exelearning.dev/api"
+   * @param {string} token - Bearer JWT
+   */
+  setServerConfig(apiBaseUrl, token) {
+    this._serverApiBaseUrl = apiBaseUrl;
+    this._serverToken = token;
   }
 
   /**
@@ -379,6 +395,28 @@ class AssetManager {
   async init() {
     // No-op: blobs stored in memory, no database needed
     Logger.log(`[AssetManager] Initialized (in-memory) for project ${this.projectId}`);
+
+    // Request persistent storage to prevent browser from evicting Cache API
+    // entries under storage pressure (the main cause of #1685).
+    this._requestPersistentStorage();
+  }
+
+  /**
+   * Request persistent storage so the browser does not evict Cache API entries.
+   * Best-effort: fails silently when the API is unavailable or permission denied.
+   * @private
+   */
+  _requestPersistentStorage() {
+    if (typeof navigator === 'undefined' || !navigator.storage?.persist) return;
+    navigator.storage.persist().then(granted => {
+      if (granted) {
+        Logger.log('[AssetManager] Persistent storage granted');
+      } else {
+        Logger.log('[AssetManager] Persistent storage denied by browser');
+      }
+    }).catch(() => {
+      // Ignore — not critical
+    });
   }
 
   /**
@@ -572,11 +610,50 @@ class AssetManager {
   /**
    * Get blob for export/preview without repopulating blobCache from Cache API.
    * This keeps the editor working set bounded after save().
+   *
+   * Falls back to fetching from server when the blob is missing from both
+   * memory and Cache API (fixes #1685: browser evicts Cache API entries
+   * during long editing sessions, causing exports to silently drop assets).
+   *
    * @param {string} id - Asset UUID
    * @returns {Promise<Blob|null>}
    */
   async getBlobForExport(id) {
-    return this.getBlob(id, { restoreToMemory: false });
+    const blob = await this.getBlob(id, { restoreToMemory: false });
+    if (blob) return blob;
+
+    // Fallback: fetch from server when local blob is gone
+    return this._fetchBlobFromServer(id);
+  }
+
+  /**
+   * Fetch a single asset blob from the server REST API.
+   * Used as last-resort fallback when memory + Cache API both miss.
+   * @param {string} id - Asset UUID
+   * @returns {Promise<Blob|null>}
+   * @private
+   */
+  async _fetchBlobFromServer(id) {
+    if (!this._serverApiBaseUrl || !this._serverToken) return null;
+
+    try {
+      const response = await fetch(
+        `${this._serverApiBaseUrl}/projects/${this.projectId}/assets/${id}`,
+        { headers: { 'Authorization': `Bearer ${this._serverToken}` } }
+      );
+      if (!response.ok) return null;
+
+      const blob = await response.blob();
+
+      // Re-populate Cache API so subsequent calls don't hit the server again
+      await this._putToCache(id, blob);
+
+      Logger.log(`[AssetManager] Recovered asset ${id} from server (cache miss)`);
+      return blob;
+    } catch (e) {
+      console.warn(`[AssetManager] Server fallback failed for ${id}:`, e.message);
+      return null;
+    }
   }
 
   /**
@@ -2406,7 +2483,7 @@ class AssetManager {
     const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.[a-z0-9]+)?(?:\/[^"'&]+)?)\2([^>]*>)/gi;
 
     resolvedHTML = resolvedHTML.replace(imgAssetRegex, (fullMatch, beforeSrc, quote, assetUrl, assetId, afterSrc) => {
-      const blobURL = this.blobURLCache.get(assetId);
+      const blobURL = this.getBlobURLSynced(assetId);
 
       if (blobURL) {
         // Asset available - just replace URL
@@ -2543,6 +2620,23 @@ class AssetManager {
 
     let convertedHTML = html;
     let conversions = 0;
+    const logWarn = typeof Logger?.warn === 'function' ? Logger.warn.bind(Logger) : console.warn.bind(console);
+    const getCanonicalAssetUrl = (rawAssetId) => {
+      if (!rawAssetId) return '';
+
+      let assetId = rawAssetId;
+      if (assetId.startsWith('asset://')) {
+        assetId = this.extractAssetId(assetId);
+      }
+      if (!assetId) return '';
+
+      const metadata = this.getAssetMetadata?.(assetId);
+      const filename = metadata?.filename || metadata?.name;
+      if (typeof this.getAssetUrl === 'function') {
+        return this.getAssetUrl(assetId, filename);
+      }
+      return `asset://${assetId}`;
+    };
 
     // Strategy 1: Find img/video/audio tags with blob: src and data-asset-id attribute
     // This is the RELIABLE way - data-asset-id is set when inserting from MediaLibrary
@@ -2556,24 +2650,27 @@ class AssetManager {
       const assetIdMatch = fullAttrs.match(/data-asset-id=(["'])([^"']+)\1/i);
 
       if (assetIdMatch) {
-        const assetId = assetIdMatch[2];
-        // Use 'file' as default filename - the actual filename will be resolved on load
+        const assetUrl = getCanonicalAssetUrl(assetIdMatch[2]);
+        if (!assetUrl) {
+          logWarn(`[AssetManager] Cannot recover blob URL from invalid data-asset-id, clearing: ${blobUrl.substring(0, 50)}...`);
+          return match.replace(blobUrl, '');
+        }
         conversions++;
-        Logger.log(`[AssetManager] Converted blob→asset via data-asset-id: ${assetId.substring(0, 8)}...`);
-        return `<${tagName}${before} src=${quote}asset://${assetId}${quote}${after}>`;
+        Logger.log(`[AssetManager] Converted blob→asset via data-asset-id: ${assetUrl.substring(8, 16)}...`);
+        return `<${tagName}${before} src=${quote}${assetUrl}${quote}${after}>`;
       }
 
       // Strategy 2: Fall back to reverseBlobCache lookup
-      const assetId = this.reverseBlobCache.get(blobUrl);
-      if (assetId) {
+      const assetUrl = getCanonicalAssetUrl(this.reverseBlobCache.get(blobUrl));
+      if (assetUrl) {
         conversions++;
-        Logger.log(`[AssetManager] Converted blob→asset via cache: ${assetId.substring(0, 8)}...`);
-        return match.replace(blobUrl, `asset://${assetId}`);
+        Logger.log(`[AssetManager] Converted blob→asset via cache: ${assetUrl.substring(8, 16)}...`);
+        return match.replace(blobUrl, assetUrl);
       }
 
-      // Could not convert - log warning
-      console.warn(`[AssetManager] FAILED to convert blob URL (no data-asset-id, not in cache): ${blobUrl.substring(0, 50)}...`);
-      return match;
+      // Could not convert - clear the invalid blob URL so it is not persisted
+      logWarn(`[AssetManager] Cannot recover blob URL, clearing: ${blobUrl.substring(0, 50)}...`);
+      return match.replace(blobUrl, '');
     };
 
     convertedHTML = convertedHTML.replace(tagRegex, replaceCallback);
@@ -2583,10 +2680,18 @@ class AssetManager {
     for (const [blobURL, assetId] of this.reverseBlobCache.entries()) {
       if (convertedHTML.includes(blobURL)) {
         const escapedBlobURL = blobURL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        convertedHTML = convertedHTML.replace(new RegExp(escapedBlobURL, 'g'), `asset://${assetId}`);
-        conversions++;
+        const assetUrl = getCanonicalAssetUrl(assetId);
+        if (assetUrl) {
+          convertedHTML = convertedHTML.replace(new RegExp(escapedBlobURL, 'g'), assetUrl);
+          conversions++;
+        }
       }
     }
+
+    convertedHTML = convertedHTML.replace(/blob:https?:\/\/[^"'\s)]+/g, (blobUrl) => {
+      logWarn(`[AssetManager] Cannot recover blob URL, clearing: ${blobUrl.substring(0, 50)}...`);
+      return '';
+    });
 
     if (conversions > 0) {
       Logger.log(`[AssetManager] convertBlobURLsToAssetRefs: ${conversions} conversion(s) made`);
@@ -2611,10 +2716,18 @@ class AssetManager {
     // Handles img, video, audio, a tags
     const regex = /(<(?:img|video|audio|source)[^>]*?)(?:src|href)=(["'])([^"']*)\2([^>]*?)data-asset-url=(["'])([^"']+)\5([^>]*>)/gi;
 
-    return html.replace(regex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
+    let result = html.replace(regex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
       // Replace src with asset URL and remove data-asset-url attribute
       return `${beforeSrc}src=${quote1}${assetUrl}${quote1}${middle}${afterAttr}`;
     });
+
+    const assetSrcRegex = /(<(?:audio|video|iframe)[^>]*?)src=(["'])([^"']*)\2([^>]*?)data-asset-src=(["'])([^"']+)\5([^>]*>)/gi;
+
+    result = result.replace(assetSrcRegex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
+      return `${beforeSrc}src=${quote1}${assetUrl}${quote1}${middle}${afterAttr}`;
+    });
+
+    return result;
   }
 
   /**
@@ -2631,6 +2744,10 @@ class AssetManager {
 
     // Step 2: Convert any remaining blob:// URLs to asset:// refs
     prepared = this.convertBlobURLsToAssetRefs(prepared);
+
+    // Strip data-asset-src from img elements — runtime tracking attr set by
+    // resolveAssetUrlsInEditor; if persisted, it blocks resolution on next edit.
+    prepared = prepared.replace(/(<img\b[^>]*)\s+data-asset-src=(["'])[^"']*\2/gi, '$1');
 
     return prepared;
   }
@@ -3119,8 +3236,12 @@ class AssetManager {
         const assetId = serverAsset.clientId;
         if (!assetId) continue;
         const local = await this.getAsset(assetId);
+        // Check blob too: metadata may exist in Yjs while the blob was evicted
+        // from Cache API (fixes #1685)
         if (!local) {
-          missing.push(assetId);
+          missing.push({ assetId, hasMetadata: false });
+        } else if (!local.blob) {
+          missing.push({ assetId, hasMetadata: true });
         }
       }
 
@@ -3132,7 +3253,7 @@ class AssetManager {
       Logger.log(`[AssetManager] Downloading ${missing.length} missing assets...`);
 
       let downloaded = 0;
-      for (const assetId of missing) {
+      for (const { assetId, hasMetadata } of missing) {
         try {
           const assetResponse = await fetch(
             `${apiBaseUrl}/projects/${this.projectId}/assets/${assetId}`,
@@ -3142,25 +3263,33 @@ class AssetManager {
           if (!assetResponse.ok) continue;
 
           const blob = await assetResponse.blob();
-          const mime = assetResponse.headers.get('X-Original-Mime') || 'application/octet-stream';
-          const hash = assetResponse.headers.get('X-Asset-Hash') || '';
-          const size = parseInt(assetResponse.headers.get('X-Original-Size') || '0');
-          const filename = assetResponse.headers.get('X-Filename') || undefined;
 
-          const asset = {
-            id: assetId,
-            projectId: this.projectId,
-            blob: blob,
-            mime: mime,
-            hash: hash,
-            size: size,
-            uploaded: true,
-            createdAt: new Date().toISOString(),
-            filename: filename,
-            folderPath: '' // Downloaded assets go to root by default
-          };
+          if (hasMetadata) {
+            // Metadata already exists in Yjs — only restore the blob
+            // to avoid overwriting correct filename/folderPath with
+            // potentially incomplete server headers (#1685).
+            await this.putBlob(assetId, blob);
+          } else {
+            const mime = assetResponse.headers.get('X-Original-Mime') || 'application/octet-stream';
+            const hash = assetResponse.headers.get('X-Asset-Hash') || '';
+            const size = parseInt(assetResponse.headers.get('X-Original-Size') || '0');
+            const filename = assetResponse.headers.get('X-Filename') || undefined;
 
-          await this.putAsset(asset);
+            const asset = {
+              id: assetId,
+              projectId: this.projectId,
+              blob: blob,
+              mime: mime,
+              hash: hash,
+              size: size,
+              uploaded: true,
+              createdAt: new Date().toISOString(),
+              filename: filename,
+              folderPath: '' // Downloaded assets go to root by default
+            };
+
+            await this.putAsset(asset);
+          }
           downloaded++;
         } catch (e) {
           console.error(`[AssetManager] Failed to download ${assetId}:`, e);

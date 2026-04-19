@@ -237,6 +237,20 @@ export default class LinkValidationAdapter {
                 normalizedUrl = 'https:' + url;
             }
 
+            // Browsers block HTTP fetches from HTTPS pages (mixed content policy).
+            // Detect this condition early and return a clear message instead of a
+            // generic NetworkError.
+            if (
+                normalizedUrl.startsWith('http://') &&
+                typeof window !== 'undefined' &&
+                window.location.protocol === 'https:'
+            ) {
+                return {
+                    status: 'broken',
+                    error: _('Could not be checked: HTTP content is blocked on HTTPS pages.'),
+                };
+            }
+
             // Create abort controller for timeout
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);

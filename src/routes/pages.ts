@@ -655,7 +655,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             const basePath = getBasePath();
                             let redirectUrl = `${basePath}/workarea?project=${newSessionId}`;
                             if (jwtTokenParam) {
-                                redirectUrl += `&jwt_token=${encodeURIComponent(jwtTokenParam)}`;
+                                redirectUrl += `&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`;
                             }
                             return Response.redirect(redirectUrl, 302);
                         } catch (error) {
@@ -765,11 +765,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 // If no project UUID, create a new project and redirect
                 if (!projectUuid) {
                     // Helper function to build redirect URL with preserved jwt_token
+                    // Helper function to build redirect URL with preserved jwt_token
                     const buildRedirectUrl = (sessionId: string): string => {
                         const basePath = getBasePath();
                         let url = `${basePath}/workarea?project=${sessionId}`;
                         if (jwtTokenParam) {
-                            url += `&jwt_token=${encodeURIComponent(jwtTokenParam)}`;
+                            url += `&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`;
                         }
                         return url;
                     };
@@ -843,6 +844,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     }
                 }
 
+                const workareaRoles: string[] =
+                    typeof currentUser.roles === 'string'
+                        ? JSON.parse(currentUser.roles || '[]')
+                        : currentUser.roles || [];
+
                 const user = {
                     id: userId,
                     username: email,
@@ -851,6 +857,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     odePlatformId: null,
                     newOde: null,
                     gravatarUrl: createGravatarUrl(email, null, email),
+                    roles: workareaRoles,
+                    isAdmin: workareaRoles.includes('ROLE_ADMIN'),
                 };
 
                 const appAuthMethods = await getAuthMethods(
@@ -986,6 +994,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     private: trans('Private', {}, locale),
                     public: trans('Public', {}, locale),
                     preferences: trans('Preferences', {}, locale),
+                    admin_panel: trans('Admin panel', {}, locale),
                     logout: trans('Logout', {}, locale),
                     toggle_panels: trans('Toggle panels', {}, locale),
                     structure_panel: trans('Structure panel', {}, locale),

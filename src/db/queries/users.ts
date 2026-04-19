@@ -16,6 +16,11 @@ export async function findUserById(db: Kysely<Database>, id: number): Promise<Us
     return db.selectFrom('users').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
+export async function findUsersByIds(db: Kysely<Database>, ids: number[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    return db.selectFrom('users').selectAll().where('id', 'in', ids).execute();
+}
+
 export async function findUserByEmail(db: Kysely<Database>, email: string): Promise<User | undefined> {
     return db.selectFrom('users').selectAll().where('email', '=', email).executeTakeFirst();
 }

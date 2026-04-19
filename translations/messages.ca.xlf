@@ -8837,10 +8837,6 @@
         <source>CEDEC's rubrics</source>
         <target>Rúbriques del CEDEC</target>
       </trans-unit>
-      <trans-unit id="4FHSdXr" resname="Rubric use instructions (optional)">
-        <source>Rubric use instructions (optional)</source>
-        <target>Instruccions d'ús de la rúbrica (opcional)</target>
-      </trans-unit>
       <trans-unit id="WRV28cD" resname="Maximum score:">
         <source>Maximum score:</source>
         <target>Puntuació màxima:</target>
@@ -8856,10 +8852,6 @@
       <trans-unit id="EXqwPw9" resname="New row">
         <source>New row</source>
         <target>Fila nova</target>
-      </trans-unit>
-      <trans-unit id="GYFdP4l" resname="Rubric information">
-        <source>Rubric information</source>
-        <target>Informació de la rúbrica</target>
       </trans-unit>
       <trans-unit id="vrJHk5H" resname="Show rubric information">
         <source>Show rubric information</source>
@@ -8928,10 +8920,6 @@
       <trans-unit id="YxuvdUc" resname="Delete the column?">
         <source>Delete the column?</source>
         <target>Vols esborrar la columna?</target>
-      </trans-unit>
-      <trans-unit id="1WTTY.L" resname="Please export the content to apply the rubric.">
-        <source>Please export the content to apply the rubric.</source>
-        <target>Si us plau, exporta el contingut per aplicar la rúbrica.</target>
       </trans-unit>
       <trans-unit id="0fyNG8V" resname="Add at least 3 elements.">
         <source>Add at least 3 elements.</source>
@@ -11077,26 +11065,6 @@
         <source>Toggle content</source>
         <target>Commuta el contingut</target>
       </trans-unit>
-      <trans-unit id="_9u.dBq" resname="Page not found">
-        <source>Page not found</source>
-        <target>Pàgina no trobada</target>
-      </trans-unit>
-      <trans-unit id="2heQoGd" resname="Sorry, but the page cannot be displayed.">
-        <source>Sorry, but the page cannot be displayed.</source>
-        <target>Ho sentim, però la pàgina no es pot mostrar.</target>
-      </trans-unit>
-      <trans-unit id="11nL.4x" resname="The server encountered an error and could not complete your request. Please try again later.">
-        <source>The server encountered an error and could not complete your request. Please try again later.</source>
-        <target>El servidor ha trobat un error i no ha pogut completar la teva sol·licitud. Si us plau, intenta-ho de nou més tard.</target>
-      </trans-unit>
-      <trans-unit id="uV6B6g_" resname="Return to work area">
-        <source>Return to work area</source>
-        <target>Torna a l'àrea de treball</target>
-      </trans-unit>
-      <trans-unit id="aYZKGkc" resname="Return to login">
-        <source>Return to login</source>
-        <target>Torna a l'inici de sessió</target>
-      </trans-unit>
       <trans-unit id="btdi.Hi" resname="Version:">
         <source>Version:</source>
         <target>Versió:</target>
@@ -12253,6 +12221,38 @@
         <source>Finish</source>
         <target>Finalitza</target>
       </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>~Canvis sense desar</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>~Si tanques ara, es perdran els darrers canvis. Queda't per desar el projecte primer.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>~Queda't</target>
+      </trans-unit>
+      <trans-unit id="_9u.dBq" resname="Page not found">
+        <source>Page not found</source>
+        <target>Pàgina no trobada</target>
+      </trans-unit>
+      <trans-unit id="2heQoGd" resname="Sorry, but the page cannot be displayed.">
+        <source>Sorry, but the page cannot be displayed.</source>
+        <target>Ho sentim, però la pàgina no es pot mostrar.</target>
+      </trans-unit>
+      <trans-unit id="11nL.4x" resname="The server encountered an error and could not complete your request. Please try again later.">
+        <source>The server encountered an error and could not complete your request. Please try again later.</source>
+        <target>El servidor ha trobat un error i no ha pogut completar la teva sol·licitud. Si us plau, intenta-ho de nou més tard.</target>
+      </trans-unit>
+      <trans-unit id="uV6B6g_" resname="Return to work area">
+        <source>Return to work area</source>
+        <target>Torna a l'àrea de treball</target>
+      </trans-unit>
+      <trans-unit id="aYZKGkc" resname="Return to login">
+        <source>Return to login</source>
+        <target>Torna a l'inici de sessió</target>
+      </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
         <target>Contingut eXeLearning (.elpx)</target>
@@ -12523,7 +12523,7 @@
       </trans-unit>
       <trans-unit id="u31y8is" resname="Estimated">
         <source>Estimated</source>
-        <target>~Benvolgut</target>
+        <target>~Estimat</target>
       </trans-unit>
       <trans-unit id="dhqyhbg" resname="Savings">
         <source>Savings</source>
@@ -12843,11 +12843,11 @@
       </trans-unit>
       <trans-unit id="p1031vm" resname="Multiple files">
         <source>Multiple files</source>
-        <target>~Multiple archivos</target>
+        <target>~Múltiples arxius</target>
       </trans-unit>
       <trans-unit id="9x47sd8" resname="Failed to delete folder">
         <source>Failed to delete folder</source>
-        <target>~Error al eliminar la carpeta</target>
+        <target>~Error en eliminar la carpeta</target>
       </trans-unit>
       <trans-unit id="uimxcqe" resname="This asset is referenced in %1 iDevices.">
         <source>This asset is referenced in %1 iDevices.</source>
@@ -12855,15 +12855,15 @@
       </trans-unit>
       <trans-unit id="gf0y1ta" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target>~¿Eliminar %1 archivos seleccionados?</target>
+        <target>~Eliminar %1 arxius seleccionats?</target>
       </trans-unit>
       <trans-unit id="fyz46j5" resname="Failed to delete file">
         <source>Failed to delete file</source>
-        <target>~Error al eliminar el archivo</target>
+        <target>~Error en eliminar l'arxiu</target>
       </trans-unit>
       <trans-unit id="bmheezs" resname="Rename folder">
         <source>Rename folder</source>
-        <target>~Renombrar carpeta</target>
+        <target>~Reanomenar carpeta</target>
       </trans-unit>
       <trans-unit id="hq814qk" resname="Enter new folder name:">
         <source>Enter new folder name:</source>
@@ -12871,11 +12871,11 @@
       </trans-unit>
       <trans-unit id="m66tsdk" resname="Failed to rename folder">
         <source>Failed to rename folder</source>
-        <target>~Error al renombrar la carpeta</target>
+        <target>~Error en reanomenar la carpeta</target>
       </trans-unit>
       <trans-unit id="946qn4w" resname="Rename file">
         <source>Rename file</source>
-        <target>~Renombrar archivo</target>
+        <target>~Reanomenar arxiu</target>
       </trans-unit>
       <trans-unit id="v4cy5wu" resname="Enter new filename:">
         <source>Enter new filename:</source>
@@ -12883,7 +12883,7 @@
       </trans-unit>
       <trans-unit id="18dih40" resname="Failed to rename file">
         <source>Failed to rename file</source>
-        <target>~Error al renombrar el archivo</target>
+        <target>~Error en reanomenar l'arxiu</target>
       </trans-unit>
       <trans-unit id="nphqrsh" resname="copy">
         <source>copy</source>
@@ -12911,7 +12911,7 @@
       </trans-unit>
       <trans-unit id="otm8l6d" resname="Failed to duplicate file">
         <source>Failed to duplicate file</source>
-        <target>~Error al duplicar l'arxiu</target>
+        <target>~Error en duplicar l'arxiu</target>
       </trans-unit>
       <trans-unit id="j8hkhex" resname="current">
         <source>current</source>
@@ -13083,7 +13083,7 @@
       </trans-unit>
       <trans-unit id="up5xa9y" resname="Delete this project?">
         <source>Delete this project?</source>
-        <target>~¿Eliminar aquest projecte?</target>
+        <target>~Eliminar aquest projecte?</target>
       </trans-unit>
       <trans-unit id="q6x5v0p" resname="Deleting...">
         <source>Deleting...</source>
@@ -13123,7 +13123,7 @@
       </trans-unit>
       <trans-unit id="8xne3sx" resname="An error occurred while importing the file.">
         <source>An error occurred while importing the file.</source>
-        <target>~Error al importar l'arxiu.</target>
+        <target>~Error en importar l'arxiu.</target>
       </trans-unit>
       <trans-unit id="ct0jllc" resname="The default style will be used instead.">
         <source>The default style will be used instead.</source>
@@ -13231,7 +13231,7 @@
       </trans-unit>
       <trans-unit id="nenz6fk" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target>~¿Eliminar l'autorització d'accés a {email}?</target>
+        <target>~Eliminar l'autorització d'accés a {email}?</target>
       </trans-unit>
       <trans-unit id="738xde3" resname="Removed {email}">
         <source>Removed {email}</source>
@@ -13239,7 +13239,7 @@
       </trans-unit>
       <trans-unit id="imja55p" resname="Failed to remove collaborator">
         <source>Failed to remove collaborator</source>
-        <target>~Error al eliminar al col·laborador</target>
+        <target>~Error en eliminar el col·laborador</target>
       </trans-unit>
       <trans-unit id="z5bblto" resname="Transfer ownership to {email}? You will become an editor.">
         <source>Transfer ownership to {email}? You will become an editor.</source>
@@ -13519,7 +13519,7 @@
       </trans-unit>
       <trans-unit id="tfk1ey9" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
-        <target>~Error al generar el archivo ELPX.</target>
+        <target>~Error en generar l'arxiu ELPX.</target>
       </trans-unit>
       <trans-unit id="gdyxh36" resname="Saving document...">
         <source>Saving document...</source>
@@ -13559,7 +13559,7 @@
       </trans-unit>
       <trans-unit id="iufxbv9" resname="Failed to import style">
         <source>Failed to import style</source>
-        <target>~Error al importar l'estil</target>
+        <target>~Error en importar l'estil</target>
       </trans-unit>
       <trans-unit id="ak7m5ia" resname="Legacy license, please review">
         <source>Legacy license, please review</source>
@@ -13751,7 +13751,7 @@
       </trans-unit>
       <trans-unit id="h4zekw2" resname="Double-click to rename">
         <source>Double-click to rename</source>
-        <target>~Doble clic per renombrar</target>
+        <target>~Doble clic per reanomenar</target>
       </trans-unit>
       <trans-unit id="rw208qw" resname="Close without saving?">
         <source>Close without saving?</source>
@@ -14144,6 +14144,98 @@
       <trans-unit id="5i7k6dq" resname="Current style classes">
         <source>Current style classes</source>
         <target>~Classes de l’estil actual</target>
+      </trans-unit>
+      <trans-unit id="wqrwca1" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>~Tancar sense guardar</target>
+      </trans-unit>
+      <trans-unit id="7kskr8s" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>~No es pot comprovar: el contingut HTTP està bloquejat en pàgines HTTPS.</target>
+      </trans-unit>
+      <trans-unit id="73bgw6a" resname="You can only add one Rubric iDevice per page.">
+        <source>You can only add one Rubric iDevice per page.</source>
+        <target>~Només podeu afegir un iDevice Rúbrica per pàgina.</target>
+      </trans-unit>
+      <trans-unit id="ey280zv" resname="CSV import/export">
+        <source>CSV import/export</source>
+        <target>~Importació/exportació CSV</target>
+      </trans-unit>
+      <trans-unit id="wq1fy8g" resname="You can import rubric data from CSV files.">
+        <source>You can import rubric data from CSV files.</source>
+        <target>~Podeu importar dades de la rúbrica des de fitxers CSV.</target>
+      </trans-unit>
+      <trans-unit id="3izrwqp" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
+        <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
+        <target>~Podeu exportar la rúbrica en format CSV per integrar-la en altres activitats compatibles.</target>
+      </trans-unit>
+      <trans-unit id="bjtggqk" resname="Export CSV">
+        <source>Export CSV</source>
+        <target>~Exportar CSV</target>
+      </trans-unit>
+      <trans-unit id="yqcqr61" resname="Only CSV files are allowed.">
+        <source>Only CSV files are allowed.</source>
+        <target>~Només es permeten fitxers CSV.</target>
+      </trans-unit>
+      <trans-unit id="w6bcd8b" resname="Could not read the selected CSV file.">
+        <source>Could not read the selected CSV file.</source>
+        <target>~No s'ha pogut llegir el fitxer CSV seleccionat.</target>
+      </trans-unit>
+      <trans-unit id="b9impmu" resname="Invalid CSV format.">
+        <source>Invalid CSV format.</source>
+        <target>~Format CSV incorrecte.</target>
+      </trans-unit>
+      <trans-unit id="jpsgzij" resname="CSV imported successfully.">
+        <source>CSV imported successfully.</source>
+        <target>~CSV importat correctament.</target>
+      </trans-unit>
+      <trans-unit id="g3ppcpd" resname="There is no rubric to export.">
+        <source>There is no rubric to export.</source>
+        <target>~No hi ha cap rúbrica per exportar.</target>
+      </trans-unit>
+      <trans-unit id="lsrba5i" resname="Please provide CSV content.">
+        <source>Please provide CSV content.</source>
+        <target>~Proporcioneu contingut CSV.</target>
+      </trans-unit>
+      <trans-unit id="t6frlbx" resname="The CSV must include a header row and at least one data row.">
+        <source>The CSV must include a header row and at least one data row.</source>
+        <target>~El CSV ha d'incloure una fila de capçalera i almenys una fila de dades.</target>
+      </trans-unit>
+      <trans-unit id="2f2m0ys" resname="The CSV must include at least one score column.">
+        <source>The CSV must include at least one score column.</source>
+        <target>~El CSV ha d'incloure almenys una columna de puntuació.</target>
+      </trans-unit>
+      <trans-unit id="xxyi5vj" resname="No rubric rows could be imported from the CSV.">
+        <source>No rubric rows could be imported from the CSV.</source>
+        <target>~No s'ha pogut importar cap fila de rúbrica del CSV.</target>
+      </trans-unit>
+      <trans-unit id="4qm4k7j" resname="Assessment criteria">
+        <source>Assessment criteria</source>
+        <target>~Criteris d'avaluació</target>
+      </trans-unit>
+      <trans-unit id="zj8sv61" resname="Performance level">
+        <source>Performance level</source>
+        <target>~Nivell de rendiment</target>
+      </trans-unit>
+      <trans-unit id="0ix41h6" resname="There are unsaved changes in this row. Close and lose them?">
+        <source>There are unsaved changes in this row. Close and lose them?</source>
+        <target>~Hi ha canvis no guardats en aquesta fila. Tancar i perdre'ls?</target>
+      </trans-unit>
+      <trans-unit id="tof30u2" resname="First row">
+        <source>First row</source>
+        <target>~Primera fila</target>
+      </trans-unit>
+      <trans-unit id="maupfj5" resname="There are unsaved changes in this column. Close and lose them?">
+        <source>There are unsaved changes in this column. Close and lose them?</source>
+        <target>~Hi ha canvis no guardats en aquesta columna. Tancar i perdre'ls?</target>
+      </trans-unit>
+      <trans-unit id="4i96clh" resname="Complete the following rubric">
+        <source>Complete the following rubric</source>
+        <target>~Completeu la rúbrica següent</target>
+      </trans-unit>
+      <trans-unit id="v4psw9s" resname="Imported rubric">
+        <source>Imported rubric</source>
+        <target>~Rúbrica importada</target>
       </trans-unit>
     </body>
   </file>

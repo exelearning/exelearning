@@ -382,6 +382,12 @@ export class ElpxImporter {
         const odeProperties = this.getElement(xmlDoc, 'odeProperties');
         const metadataValues = this.extractMetadata(xmlDoc, odeProperties);
 
+        // Extract screenshot.png from archive root if present
+        const screenshot = this.extractScreenshotFromZip(zip);
+        if (screenshot) {
+            metadataValues.screenshot = screenshot;
+        }
+
         // Calculate order offset for imported pages
         let orderOffset = 0;
         if (!clearExisting) {
@@ -543,6 +549,11 @@ export class ElpxImporter {
                 if (clearExisting) {
                     this.logger.log('[ElpxImporter] Setting legacy metadata...');
                     this.setLegacyMetadata(metadata, parsedData.meta);
+                    // Extract screenshot.png from archive root if present
+                    const legacyScreenshot = this.extractScreenshotFromZip(zip);
+                    if (legacyScreenshot) {
+                        metadata.set('screenshot', legacyScreenshot);
+                    }
                     this.logger.log('[ElpxImporter] Legacy metadata set');
                 }
 
@@ -767,6 +778,18 @@ export class ElpxImporter {
     }
 
     /**
+     * Convert Uint8Array to base64 string
+     */
+    private uint8ArrayToBase64(bytes: Uint8Array): string {
+        const CHUNK = 0x8000;
+        const parts: string[] = [];
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+            parts.push(String.fromCharCode(...bytes.subarray(i, i + CHUNK)));
+        }
+        return btoa(parts.join(''));
+    }
+
+    /**
      * Escape HTML special characters for attribute values
      */
     private escapeHtmlAttr(str: string): string {
@@ -798,6 +821,21 @@ export class ElpxImporter {
             html.includes('iDevice_buttons feedback-button') ||
             html.includes('class="feedback-button')
         );
+    }
+
+    /**
+     * Extract screenshot.png from archive root and return as data URL, or undefined.
+     */
+    private extractScreenshotFromZip(zip: Record<string, Uint8Array>): string | undefined {
+        if (!zip['screenshot.png']) return undefined;
+        try {
+            const base64 = this.uint8ArrayToBase64(zip['screenshot.png']);
+            this.logger.log('[ElpxImporter] Extracted screenshot.png from archive');
+            return `data:image/png;base64,${base64}`;
+        } catch (error) {
+            this.logger.warn('[ElpxImporter] Failed to read screenshot.png:', error);
+            return undefined;
+        }
     }
 
     /**
@@ -868,6 +906,10 @@ export class ElpxImporter {
         metadata.set('globalFont', values.globalFont);
         metadata.set('extraHeadContent', values.extraHeadContent);
         metadata.set('footer', values.footer);
+        // Screenshot (optional, extracted from archive root)
+        if (values.screenshot) {
+            metadata.set('screenshot', values.screenshot);
+        }
     }
 
     /**

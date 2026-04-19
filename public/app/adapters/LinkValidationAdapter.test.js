@@ -274,6 +274,50 @@ describe('LinkValidationAdapter', () => {
                 expect(global.fetch).toHaveBeenCalled();
             });
 
+            it('should return broken for HTTP URL on an HTTPS page (mixed content)', async () => {
+                global.fetch = vi.fn();
+                global.window = { location: { protocol: 'https:' } };
+
+                const result = await adapter.validateLink('http://example.com');
+
+                expect(result.status).toBe('broken');
+                expect(result.error).toBe('Could not be checked: HTTP content is blocked on HTTPS pages.');
+                expect(global.fetch).not.toHaveBeenCalled();
+            });
+
+            it('should NOT block HTTP URL when page is served over HTTP', async () => {
+                global.fetch = vi.fn().mockResolvedValue({ ok: true });
+                global.window = { location: { protocol: 'http:' } };
+
+                const result = await adapter.validateLink('http://example.com');
+
+                expect(result.status).toBe('valid');
+                expect(global.fetch).toHaveBeenCalled();
+            });
+
+            it('should NOT block HTTP URL when window is undefined (non-browser context)', async () => {
+                global.fetch = vi.fn().mockResolvedValue({ ok: true });
+                const originalWindow = global.window;
+                delete global.window;
+
+                const result = await adapter.validateLink('http://example.com');
+
+                expect(result.status).toBe('valid');
+                expect(global.fetch).toHaveBeenCalled();
+                global.window = originalWindow;
+            });
+
+            it('should handle protocol-relative URL on HTTPS page by converting to HTTPS and fetching', async () => {
+                global.fetch = vi.fn().mockResolvedValue({ ok: true });
+                global.window = { location: { protocol: 'https:' } };
+
+                const result = await adapter.validateLink('//cdn.example.com/file.js');
+
+                // Protocol-relative URLs become https://, which is fine on an HTTPS page
+                expect(result.status).toBe('valid');
+                expect(global.fetch).toHaveBeenCalledWith('https://cdn.example.com/file.js', expect.any(Object));
+            });
+
             it('should handle fetch network errors', async () => {
                 global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 

@@ -1187,12 +1187,31 @@ describe('IdeviceNode', () => {
             expect(result).toEqual({ key: 'value' });
         });
 
+        it('does not normalize jsonProperties before opening json iDevice editors', () => {
+            idevice.idevice = { componentType: 'json' };
+            idevice.jsonProperties = { audio: 'blob:http://localhost/audio-1' };
+
+            const result = idevice.getSavedData();
+
+            expect(result).toEqual({ audio: 'blob:http://localhost/audio-1' });
+        });
+
         it('returns htmlView for html type idevice', () => {
             idevice.idevice = { componentType: 'html' };
             idevice.htmlView = '<p>Test</p>';
 
             const result = idevice.getSavedData();
             expect(result).toBe('<p>Test</p>');
+        });
+
+        it('does not normalize htmlView before opening html iDevice editors', () => {
+            idevice.idevice = { componentType: 'html' };
+            idevice.htmlView =
+                '<div class="rosco-IDevice"><a href="blob:http://localhost/image-1" class="rosco-LinkImages">0</a></div>';
+
+            const result = idevice.getSavedData();
+
+            expect(result).toContain('blob:http://localhost/image-1');
         });
 
         it('returns htmlView when componentType is undefined', () => {

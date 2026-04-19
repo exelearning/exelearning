@@ -1,6 +1,6 @@
 ---
 name: api-v1
-description: Adding or modifying external REST API v1 endpoints in src/routes/api/v1/.
+description: Adding or modifying external REST API v1 endpoints in src/routes/api/v1/. Every change must ship with colocated `*.spec.ts` tests covering auth, success, and error paths, update `doc/development/rest-api.md`, keep patch coverage ≥ 90% on changed lines, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
 ---
 
 # Skill: REST API v1 (External)

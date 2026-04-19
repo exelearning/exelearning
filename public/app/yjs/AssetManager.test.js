@@ -1117,13 +1117,11 @@ describe('AssetManager', () => {
       expect(result).toBe(html);
     });
 
-    it('leaves blob URL unchanged when neither data-asset-id nor cache match', () => {
-      // Blob URL not in cache, no data-asset-id
+    it('clears blob URL when neither data-asset-id nor cache match', () => {
       const html = '<img src="blob:http://unknown/xyz">';
       const result = assetManager.convertBlobURLsToAssetRefs(html);
 
-      // Should be unchanged (with warning logged)
-      expect(result).toContain('blob:');
+      expect(result).toBe('<img src="">');
     });
   });
 
@@ -2788,6 +2786,13 @@ describe('convertDataAssetUrlToSrc', () => {
     const html = '<audio src="blob:test" data-asset-url="asset://audio-uuid"></audio>';
     const result = assetManager.convertDataAssetUrlToSrc(html);
     expect(result).toContain('src="asset://audio-uuid"');
+  });
+
+  it('converts media data-asset-src back to src', () => {
+    const html = '<iframe src="blob:test" data-asset-src="asset://iframe-uuid/document.pdf"></iframe>';
+    const result = assetManager.convertDataAssetUrlToSrc(html);
+    expect(result).toContain('src="asset://iframe-uuid/document.pdf"');
+    expect(result).not.toContain('data-asset-src');
   });
 
   it('handles multiple elements', () => {
@@ -11557,8 +11562,8 @@ describe('convertBlobURLsToAssetRefs strategy 2 and 3', () => {
     const blobUrl = 'blob:http://localhost/unknown-blob';
     const html = '<img src="' + blobUrl + '">';
     am.convertBlobURLsToAssetRefs(html);
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('FAILED to convert blob URL')
+    expect(global.Logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Cannot recover blob URL')
     );
   });
 
@@ -12546,6 +12551,13 @@ describe('convertDataAssetUrlToSrc branches', () => {
     expect(result).toContain('src="asset://test-id.png"');
     expect(result).not.toContain('data-asset-url');
   });
+
+  it('converts data-asset-src to src', () => {
+    const html = '<audio src="blob:http://localhost/audio" data-asset-src="asset://audio-id.webm"></audio>';
+    const result = am.convertDataAssetUrlToSrc(html);
+    expect(result).toContain('src="asset://audio-id.webm"');
+    expect(result).not.toContain('data-asset-src');
+  });
 });
 
 describe('prepareHtmlForSync branches', () => {
@@ -12573,6 +12585,15 @@ describe('prepareHtmlForSync branches', () => {
     const result = am.prepareHtmlForSync(html);
     // Should convert blob to asset://
     expect(result).toContain('asset://myasset-id');
+  });
+
+  it('strips data-asset-src from img elements so it is never persisted', () => {
+    const blobUrl = 'blob:http://localhost/img';
+    am.reverseBlobCache.set(blobUrl, 'img-asset-id');
+    const html = '<img src="' + blobUrl + '" data-asset-src="asset://img-asset-id/img.png" data-asset-id="img-asset-id">';
+    const result = am.prepareHtmlForSync(html);
+    expect(result).not.toContain('data-asset-src');
+    expect(result).toContain('asset://img-asset-id');
   });
 });
 
@@ -13735,9 +13756,8 @@ describe('convertBlobURLsToAssetRefs - branch coverage', () => {
     const blobUrl = 'blob:http://localhost/unconvertible';
     const html = `<img src="${blobUrl}" alt="test">`;
     const result = am.convertBlobURLsToAssetRefs(html);
-    // Should log warning and return original match
     expect(console.warn).toHaveBeenCalled();
-    expect(result).toContain(blobUrl);
+    expect(result).toBe('<img src="" alt="test">');
   });
 
   it('converts via data-asset-id attribute', () => {
@@ -14271,5 +14291,176 @@ describe('post-save asset availability', () => {
     const asset = assets.find(a => a.id === 'a1');
     expect(asset).toBeDefined();
     expect(asset.blob).not.toBeNull();
+  });
+});
+
+describe('getBlobForExport server fallback (#1685)', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('project-123');
+    global.Logger = { log: mock(() => {}), warn: mock(() => {}) };
+    spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+    delete global.fetch;
+  });
+
+  it('returns blob from memory when available', async () => {
+    const blob = new Blob(['test']);
+    assetManager.blobCache.set('asset-1', blob);
+
+    const result = await assetManager.getBlobForExport('asset-1');
+
+    expect(result).toBe(blob);
+  });
+
+  it('falls back to server when memory and Cache API miss', async () => {
+    const serverBlob = new Blob(['server-data']);
+    assetManager.setServerConfig('http://api', 'token-123');
+
+    global.fetch = mock(() => Promise.resolve({
+      ok: true,
+      blob: () => Promise.resolve(serverBlob),
+    }));
+
+    const result = await assetManager.getBlobForExport('asset-1');
+
+    expect(result).toBeInstanceOf(Blob);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://api/projects/project-123/assets/asset-1',
+      { headers: { 'Authorization': 'Bearer token-123' } }
+    );
+  });
+
+  it('returns null when server config is not set', async () => {
+    // No setServerConfig call — simulates Electron/offline mode
+    const result = await assetManager.getBlobForExport('asset-1');
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null when server responds with error', async () => {
+    assetManager.setServerConfig('http://api', 'token-123');
+    global.fetch = mock(() => Promise.resolve({ ok: false, status: 404 }));
+
+    const result = await assetManager.getBlobForExport('asset-1');
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null when fetch throws network error', async () => {
+    assetManager.setServerConfig('http://api', 'token-123');
+    global.fetch = mock(() => Promise.reject(new Error('Network error')));
+
+    const result = await assetManager.getBlobForExport('asset-1');
+
+    expect(result).toBeNull();
+  });
+
+  it('re-populates Cache API after server fetch', async () => {
+    const serverBlob = new Blob(['server-data']);
+    assetManager.setServerConfig('http://api', 'token-123');
+    assetManager._putToCache = mock(() => Promise.resolve());
+
+    global.fetch = mock(() => Promise.resolve({
+      ok: true,
+      blob: () => Promise.resolve(serverBlob),
+    }));
+
+    await assetManager.getBlobForExport('asset-1');
+
+    expect(assetManager._putToCache).toHaveBeenCalledWith('asset-1', serverBlob);
+  });
+});
+
+describe('downloadMissingAssets detects blob-less assets (#1685)', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('project-123');
+    global.Logger = { log: mock(() => {}) };
+    spyOn(console, 'warn').mockImplementation(() => {});
+    spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+    delete global.fetch;
+  });
+
+  it('re-downloads assets that have metadata but no blob using putBlob', async () => {
+    global.fetch = mock()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [{ clientId: 'asset-1' }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['data'])),
+        headers: { get: () => null },
+      });
+
+    // Simulate: metadata exists but blob is null (Cache API evicted)
+    assetManager.getAsset = mock(() => Promise.resolve({
+      id: 'asset-1',
+      blob: null, // <-- blob evicted!
+      mime: 'image/png',
+      filename: 'img.png',
+    }));
+    assetManager.putBlob = mock(() => Promise.resolve());
+    assetManager.putAsset = mock(() => Promise.resolve());
+
+    const result = await assetManager.downloadMissingAssets('http://api', 'token');
+
+    expect(result).toBe(1);
+    // Should use putBlob (blob-only) to preserve existing Yjs metadata
+    expect(assetManager.putBlob).toHaveBeenCalled();
+    // Should NOT use putAsset which would overwrite metadata
+    expect(assetManager.putAsset).not.toHaveBeenCalled();
+  });
+
+  it('uses putAsset for fully missing assets (no metadata)', async () => {
+    const createMockResponse = (blob, headers) => ({
+      ok: true,
+      blob: () => Promise.resolve(blob),
+      headers: { get: (name) => headers[name] || null },
+    });
+
+    global.fetch = mock()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [{ clientId: 'asset-1' }] }),
+      })
+      .mockResolvedValueOnce(createMockResponse(new Blob(['data']), {
+        'X-Original-Mime': 'image/png',
+        'X-Asset-Hash': 'hash1',
+        'X-Original-Size': '100',
+        'X-Filename': 'img.png',
+      }));
+
+    // Simulate: completely missing locally
+    assetManager.getAsset = mock(() => Promise.resolve(null));
+    assetManager.putAsset = mock(() => Promise.resolve());
+    assetManager.putBlob = mock(() => Promise.resolve());
+
+    const result = await assetManager.downloadMissingAssets('http://api', 'token');
+
+    expect(result).toBe(1);
+    // Should use putAsset to create both metadata and blob
+    expect(assetManager.putAsset).toHaveBeenCalled();
+    expect(assetManager.putBlob).not.toHaveBeenCalled();
+  });
+});
+
+describe('setServerConfig', () => {
+  it('stores API base URL and token', () => {
+    const am = new AssetManager('proj-1');
+    am.setServerConfig('http://api.example.com', 'my-token');
+
+    expect(am._serverApiBaseUrl).toBe('http://api.example.com');
+    expect(am._serverToken).toBe('my-token');
   });
 });

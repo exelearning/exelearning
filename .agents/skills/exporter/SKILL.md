@@ -1,6 +1,6 @@
 ---
 name: exporter
-description: Adding or modifying export formats (HTML5, SCORM, EPUB3, IMS-CP) in src/shared/export/.
+description: Adding or modifying export formats (HTML5, SCORM, EPUB3, IMS-CP) in src/shared/export/. Every change must ship with colocated `*.spec.ts` tests validating the generated ZIP structure and manifests, keep patch coverage ≥ 90% on changed lines, include or update a Playwright spec exercising both browser-side and server-side export paths, and pass `make fix`, `make test-unit`, `make test-integration`, `make test-e2e`, and `make test-e2e-static` before submission.
 ---
 
 # Skill: Exporter

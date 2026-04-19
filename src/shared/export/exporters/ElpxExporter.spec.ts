@@ -1075,4 +1075,133 @@ describe('ElpxExporter', () => {
             expect(indexHtml).not.toContain('../libs/elpx-manifest.js');
         });
     });
+
+    // =========================================================================
+    // Screenshot / Thumbnail Tests
+    // =========================================================================
+    describe('screenshot support', () => {
+        // Minimal valid 1x1 red PNG (base64)
+        const MINIMAL_PNG_BASE64 =
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+        const MINIMAL_PNG_DATA_URL = `data:image/png;base64,${MINIMAL_PNG_BASE64}`;
+
+        it('should include screenshot.png in archive when metadata has screenshot', async () => {
+            document = new MockDocument({ screenshot: MINIMAL_PNG_DATA_URL }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('screenshot.png')).toBe(true);
+            const screenshotData = zip.files.get('screenshot.png');
+            expect(screenshotData).toBeDefined();
+            // Verify PNG signature
+            const bytes = new Uint8Array(screenshotData as Buffer);
+            expect(bytes[0]).toBe(0x89);
+            expect(bytes[1]).toBe(0x50); // P
+            expect(bytes[2]).toBe(0x4e); // N
+            expect(bytes[3]).toBe(0x47); // G
+        });
+
+        it('should include screenshot.png when metadata has raw base64 (no data URL prefix)', async () => {
+            document = new MockDocument({ screenshot: MINIMAL_PNG_BASE64 }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('screenshot.png')).toBe(true);
+        });
+
+        it('should NOT include screenshot.png when metadata has no screenshot', async () => {
+            document = new MockDocument({}, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('screenshot.png')).toBe(false);
+        });
+
+        it('should NOT include screenshot.png when screenshot data is invalid (not PNG)', async () => {
+            const invalidBase64 = btoa('not a png file');
+            document = new MockDocument({ screenshot: `data:image/png;base64,${invalidBase64}` }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('screenshot.png')).toBe(false);
+        });
+
+        it('should still export successfully even if screenshot is malformed', async () => {
+            document = new MockDocument({ screenshot: 'totally-invalid-data' }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('screenshot.png')).toBe(false);
+        });
+
+        it('should place screenshot.png at archive root (not in subdirectory)', async () => {
+            document = new MockDocument({ screenshot: MINIMAL_PNG_DATA_URL }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Verify it's at root, not in content/ or any subdirectory
+            expect(zip.files.has('screenshot.png')).toBe(true);
+            expect(zip.files.has('content/screenshot.png')).toBe(false);
+            expect(zip.files.has('content/resources/screenshot.png')).toBe(false);
+        });
+
+        it('should auto-generate screenshot via generateScreenshot hook when no custom screenshot', async () => {
+            document = new MockDocument({}, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            // Mock generateScreenshot hook that returns a valid PNG data URL
+            const generateScreenshot = async (_html: string) => MINIMAL_PNG_DATA_URL;
+
+            await exporter.export({ generateScreenshot });
+
+            expect(zip.files.has('screenshot.png')).toBe(true);
+        });
+
+        it('should prefer custom screenshot over generateScreenshot hook', async () => {
+            // Different minimal PNG for custom (just use same base64 — testing priority logic)
+            document = new MockDocument({ screenshot: MINIMAL_PNG_DATA_URL }, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            let hookCalled = false;
+            const generateScreenshot = async (_html: string) => {
+                hookCalled = true;
+                return MINIMAL_PNG_DATA_URL;
+            };
+
+            await exporter.export({ generateScreenshot });
+
+            expect(zip.files.has('screenshot.png')).toBe(true);
+            expect(hookCalled).toBe(false); // Hook should NOT be called when custom exists
+        });
+
+        it('should handle generateScreenshot hook failure gracefully', async () => {
+            document = new MockDocument({}, samplePages);
+            zip = new MockZipProvider();
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            const generateScreenshot = async () => {
+                throw new Error('html2canvas failed');
+            };
+
+            const result = await exporter.export({ generateScreenshot });
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('screenshot.png')).toBe(false);
+        });
+    });
 });

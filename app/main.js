@@ -290,7 +290,9 @@ function proposeSavePath(lastDir, effectiveName = null) {
 }
 
 async function promptSave(owner, suggestedName = null, lastDir = null, storedName = null) {
-    const effectiveName = storedName || suggestedName;
+    // suggestedName (caller-computed, dynamic) takes priority over storedName (last saved filename).
+    // lastDir is used as the directory regardless, so the remembered folder is preserved.
+    const effectiveName = suggestedName || storedName;
     const inferredExt = getExt(effectiveName) || DEFAULT_EXTENSION;
     const filter = getDialogFilterForExt(inferredExt);
     const isProject = inferredExt === '.elpx';
@@ -437,7 +439,14 @@ function determineDevMode() {
  * 1. CLI flag (--no-update-check or --disable-updates)
  * 2. Environment variable (DISABLE_AUTO_UPDATE=1)
  * 3. CI environment (CI=1 or CI=true)
- * 4. Development version (0.0.0, *-alpha, *-beta, *-dev)
+ * 4. Running from source (`make run-app`, not a packaged binary)
+ * 5. Sentinel version from Makefile/CI (0.0.0 / 0.0.0-alpha / 0.0.0-alpha-build<sha>):
+ *    builds that don't correspond to a release tag.
+ *
+ * Official pre-release tags (v4.0.0-beta3, v4.0.0-rc1, ...) are full
+ * releases and MUST receive auto-updates — they are explicitly NOT filtered.
+ * See issue #1662: the previous `version.includes('-beta')` substring check
+ * disabled the updater on every published beta build.
  *
  * @returns {{ disabled: boolean, reason: string }}
  */
@@ -461,11 +470,17 @@ function shouldDisableAutoUpdate() {
         return { disabled: true, reason: 'CI environment detected (CI=1)' };
     }
 
-    // Development version
+    // Running from source (make run-app, electron .) — not a packaged binary
+    if (!app.isPackaged) {
+        return { disabled: true, reason: 'Running from source (app.isPackaged=false)' };
+    }
+
+    // Sentinel version: Makefile/CI use 0.0.0-alpha[-build<sha>] when there
+    // is no release tag. Official tags like v4.0.0-beta3, v4.0.0-rc1, v4.0.0
+    // and v3.0.2 are NOT sentinels and must receive updates.
     const version = app.getVersion();
-    if (version === '0.0.0' || version === '0.0.0-alpha' ||
-        version.includes('-alpha') || version.includes('-beta') || version.includes('-dev')) {
-        return { disabled: true, reason: `Development version detected (${version})` };
+    if (version === '0.0.0' || version.startsWith('0.0.0-alpha')) {
+        return { disabled: true, reason: `Sentinel version (${version})` };
     }
 
     return { disabled: false, reason: '' };
@@ -663,12 +678,52 @@ function getUnsavedChangesCloseCopy() {
     };
 }
 
+/**
+ * Ask the renderer for the translated close-dialog copy via IPC.
+ * Falls back to null if the renderer does not respond within 3 seconds,
+ * so the caller can use getUnsavedChangesCloseCopy() as a fallback.
+ *
+ * Requires preload.js to expose:
+ *   onGetCloseCopy: (cb) => ipcRenderer.on('app:get-close-copy', (_e) => cb())
+ *   sendCloseCopy:  (copy) => ipcRenderer.send('app:close-copy-response', copy)
+ *
+ * And app.js to register:
+ *   window.electronAPI.onGetCloseCopy(() => {
+ *       window.electronAPI.sendCloseCopy({ title, message, detail, stayButtonLabel, discardButtonLabel });
+ *   });
+ *
+ * @param {BrowserWindow} win
+ * @returns {Promise<object|null>}
+ */
+async function getCloseCopyFromRenderer(win) {
+    if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) {
+        return null;
+    }
+
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            console.warn('[Electron] Renderer did not respond with close copy in time, using fallback');
+            resolve(null);
+        }, 3000);
+
+        ipcMain.once('app:close-copy-response', (_event, copy) => {
+            clearTimeout(timeout);
+            resolve(copy || null);
+        });
+
+        win.webContents.send('app:get-close-copy');
+    });
+}
+/**
+ * Attaches a close guard to an editor window that intercepts the close event
+ * and prompts the user to confirm if there are unsaved changes.
+ *
+ * @param {Electron.BrowserWindow} win - The window to attach the close guard to.
+ * @returns {void}
+ */
 function attachEditorWindowCloseGuard(win) {
     win.on('close', async (event) => {
-        if (isShuttingDown || windowsClosingByConfirmation.has(win)) {
-            return;
-        }
-
+        if (isShuttingDown || windowsClosingByConfirmation.has(win)) return;
         if (windowsCheckingUnsavedChanges.has(win)) {
             event.preventDefault();
             return;
@@ -686,13 +741,13 @@ function attachEditorWindowCloseGuard(win) {
                 return;
             }
 
-            const shouldProceed = confirmWindowCloseWithUnsavedChanges(
-                win,
-                getUnsavedChangesCloseCopy(),
-            );
+            const copy = (await getCloseCopyFromRenderer(win)) 
+                      || getUnsavedChangesCloseCopy();
+
+            const shouldProceed = confirmWindowCloseWithUnsavedChanges(win, copy);
 
             if (!shouldProceed) {
-                console.log('[Electron] Close cancelled because the project has unsaved changes');
+                console.log('[Electron] Close cancelled: unsaved changes');
                 return;
             }
 

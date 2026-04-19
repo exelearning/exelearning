@@ -1102,9 +1102,24 @@ async function buildStaticBundle() {
     console.log(`Version: ${buildVersion} (${buildHash})`);
     console.log('='.repeat(60));
 
-    // Clean output directory
+    // Clean output directory (retry for Windows EBUSY locks)
     if (fs.existsSync(outputDir)) {
-        fs.rmSync(outputDir, { recursive: true });
+        let lastError: unknown;
+        for (let attempt = 1; attempt <= 5; attempt++) {
+            try {
+                fs.rmSync(outputDir, { recursive: true, force: true });
+                lastError = undefined;
+                break;
+            } catch (err: unknown) {
+                lastError = err;
+                const code = (err as NodeJS.ErrnoException).code;
+                if (code !== 'EBUSY' && code !== 'EPERM' && code !== 'ENOTEMPTY') throw err;
+                // Wait and retry: another process (Explorer, AV) may be scanning the dir
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (globalThis as any).Bun?.sleepSync(attempt * 200);
+            }
+        }
+        if (lastError) throw lastError;
     }
     fs.mkdirSync(outputDir, { recursive: true });
 

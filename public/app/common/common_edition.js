@@ -299,9 +299,9 @@ var $exeDevicesEdition = {
                     $exeDevicesEdition.iDevice.gamification.scorm.addEvents();
                 },
 
-                getTab: function (hidebutton = false, hiderepeat = false, onlybutton = false) {
-                    const displaybutton = hidebutton ? `style="display:none;"` : '';
-                    const displayrepeat = hiderepeat ? `style="display:none;"` : '';
+                getTab: function (hidebutton = false, onlybutton = false) {
+                    const buttonClass = hidebutton ? 'd-none' : 'd-flex';
+                    const buttonLiClass = hidebutton ? 'd-none' : '';
                     const message = onlybutton ? _("Save the score") : _("Automatically save the score");
                     return `
                         <div class="exe-form-tab" title="${_('SCORM')}">
@@ -312,67 +312,53 @@ var $exeDevicesEdition = {
                             <div class="d-flex align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMAutomatically">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
                                 <label class="form-check-label" for="eXeGameSCORMAutoSave">${message}</label>
-                                <span id="eXeGameSCORgameAuto" class="ms-3" style="display:none;">
-                                    <div class="form-check form-check-inline" ${displayrepeat}>
-                                        <input class="form-check-input" type="checkbox" id="eXeGameSCORMRepeatActivityAuto" checked />
-                                        <label class="form-check-label" for="eXeGameSCORMRepeatActivityAuto">${_("Repeat activity")}</label>
-                                    </div>
-                                </span>
+                                <span id="eXeGameSCORgameAuto" class="ms-3 d-none"></span>
                             </div>
-                            <div class="d-flex align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMblock" ${displaybutton}>
+                            <div class="${buttonClass} align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMblock">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
                                 <label class="form-check-label" for="eXeGameSCORMButtonSave">${_("Show a button to save the score")}</label>
-                                <span id="eXeGameSCORgame" class="d-inline-flex align-items-center flex-wrap gap-2 ms-3" style="display:none;">
+                                <span id="eXeGameSCORgame" class="d-inline-flex align-items-center flex-wrap gap-2 ms-3 d-none">
                                     <label for="eXeGameSCORMbuttonText" class="form-label mb-0">${_("Button text")}: </label>
                                     <input type="text" max="100" name="eXeGameSCORMbuttonText" id="eXeGameSCORMbuttonText" value="${_("Save score")}" class="form-control " style="width: auto; min-width: 140px;" />
-                                    <div class="form-check" ${displayrepeat}>
-                                        <input class="form-check-input" type="checkbox" id="eXeGameSCORMRepeatActivity" checked />
-                                        <label class="form-check-label" for="eXeGameSCORMRepeatActivity">${_("Repeat activity")}</label>
-                                    </div>
                                 </span>
                             </div>
-                            <div id="eXeGameSCORMinstructionsAuto" class="mb-3 ml-2">
+                            <div id="eXeGameSCORMinstructionsAuto" class="mb-3 ml-2 d-none">
                                 <ul class="mb-3">
                                     <li>${_("This will only work when exported as SCORM")}</li>
-                                    <li ${displaybutton}>${_("The score will be automatically saved after answering each question and at the end of the game.")}</li>
+                                    <li class="${buttonLiClass}">${_("The score will be automatically saved after answering each question and at the end of the game.")}</li>
                                 </ul>
                             </div>
-                            <div id="eXeGameSCORMinstructionsButton" class="mb-3 ml-2">
+                            <div id="eXeGameSCORMinstructionsButton" class="mb-3 ml-2 d-none">
                                 <ul class="mb-3">
                                     <li>${_("The button will only be displayed when exported as SCORM.")}</li>
                                 </ul>
                             </div>
-                            <div id="eXeGameSCORMPercentaje" class="d-flex align-items-center gap-2" >
+                            <div id="eXeGameSCORMPercentaje" class="d-flex align-items-center gap-2 d-none">
                                 <label for="eXeGameSCORMWeight" class="form-label mb-0">${_("Weighted")}: </label>
                                 <input type="number" id="eXeGameSCORMWeight" name="eXeGameSCORMWeight" value="100" min="1" max="100" class="form-control" style="width: 9.5ch !important; max-width:9.5ch  !important;" />
-                                <span>%</span>   
+                                <span>%</span>
                             </div>
                         </div>`;
                 },
 
                 setValues: function (isScorm, textButtonScorm, repeatActivity = true, weighted = 100) {
-                    $("#eXeGameSCORgame").css("visibility", "hidden");
-                    $("#eXeGameSCORgameAuto").css("visibility", "hidden");
-                    $("#eXeGameSCORMPercentaje").css("visibility", "visible");
-                    $("#eXeGameSCORMinstructionsButton").hide();
-                    $("#eXeGameSCORMinstructionsAuto").hide();
+                    $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto").addClass('d-none');
 
                     $('#eXeGameSCORMWeight').val(weighted);
 
                     if (isScorm == 0) {
                         $('#eXeGameSCORMNoSave').prop('checked', true);
-                        $("#eXeGameSCORMPercentaje").css("visibility", "hidden");
                     } else if (isScorm == 1) {
                         $('#eXeGameSCORMAutoSave').prop('checked', true);
-                        $('#eXeGameSCORgameAuto').css("visibility", "visible");
-                        $('#eXeGameSCORMRepeatActivityAuto').prop("checked", repeatActivity);
-                        $('#eXeGameSCORMinstructionsAuto').show();
+                        $('#eXeGameSCORgameAuto').removeClass('d-none');
+                        $('#eXeGameSCORMinstructionsAuto').removeClass('d-none');
+                        $('#eXeGameSCORMPercentaje').removeClass('d-none');
                     } else if (isScorm == 2) {
                         $('#eXeGameSCORMButtonSave').prop('checked', true);
                         $('#eXeGameSCORMbuttonText').val(textButtonScorm);
-                        $('#eXeGameSCORgame').css("visibility", "visible");
-                        $('#eXeGameSCORMinstructionsButton').show();
-                        $('#eXeGameSCORMRepeatActivity').prop("checked", repeatActivity);
+                        $('#eXeGameSCORgame').removeClass('d-none');
+                        $('#eXeGameSCORMinstructionsButton').removeClass('d-none');
+                        $('#eXeGameSCORMPercentaje').removeClass('d-none');
                     }
                 },
 
@@ -389,40 +375,28 @@ var $exeDevicesEdition = {
                 },
 
                 addEvents: function () {
+                    const showWithFade = function (selector) {
+                        $(selector).stop(true, true).removeClass('d-none').css({
+                            opacity: 0,
+                        }).animate({
+                            opacity: 1,
+                        }, 500);
+                    };
+
                     $('input[type=radio][name="eXeGameSCORM"]').on('change', function () {
-                        $("#eXeGameSCORgame,#eXeGameSCORgameAuto, #eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto").hide();
+                        $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto,#eXeGameSCORMPercentaje").addClass('d-none').css('opacity', '');
                         switch ($(this).val()) {
                             case '0':
-                                $("#eXeGameSCORMPercentaje").css("visibility", "hidden");
                                 break;
                             case '1':
-                                $("#eXeGameSCORMinstructionsAuto").hide().css({
-                                    opacity: 0,
-                                    visibility: "visible"
-                                }).show().animate({
-                                    opacity: 1
-                                }, 500);
-                                $("#eXeGameSCORMPercentaje").hide().css({
-                                    opacity: 0,
-                                    visibility: "visible"
-                                }).show().animate({
-                                    opacity: 1
-                                }, 500);
+                                showWithFade('#eXeGameSCORgameAuto');
+                                showWithFade('#eXeGameSCORMinstructionsAuto');
+                                showWithFade('#eXeGameSCORMPercentaje');
                                 break;
                             case '2':
-                                $("#eXeGameSCORMinstructionsButton").hide().css({
-                                    opacity: 0,
-                                    visibility: "visible"
-                                }).show().animate({
-                                    opacity: 1
-                                }, 500);
-
-                                $("#eXeGameSCORMPercentaje").hide().css({
-                                    opacity: 0,
-                                    visibility: "visible"
-                                }).show().animate({
-                                    opacity: 1
-                                }, 500);
+                                showWithFade('#eXeGameSCORgame');
+                                showWithFade('#eXeGameSCORMinstructionsButton');
+                                showWithFade('#eXeGameSCORMPercentaje');
                                 break;
                         }
                     });

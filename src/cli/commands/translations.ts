@@ -16,7 +16,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Glob } from 'bun';
 
-const TRANSLATIONS_DIR = path.join(process.cwd(), 'translations');
+// Resolved lazily so tests that mock process.cwd() after importing this module
+// (translations.spec.ts, translations-sort.spec.ts) still see the expected path.
+function getTranslationsDir(): string {
+    return path.join(process.cwd(), 'translations');
+}
 
 export interface TranslationsResult {
     success: boolean;
@@ -54,6 +58,27 @@ const EXCLUDE_FILE_PATTERNS = [
  */
 const EXCLUDE_EXACT_KEYS = new Set([
     'P + \\\\tfrac12 \\\\rho v^2 + \\\\rho g h = \\\\text{constant}', // Bernoulli equation example in edicuatex lang file
+    // TO DO: screenshot tab strings (pending localization)
+    'Screenshot',
+    'Current project screenshot preview',
+    'No screenshot yet. It will be auto-generated when you save or export.',
+    'Upload custom image',
+    'Screenshot must be smaller than 2 MB.',
+    'Invalid image',
+    'The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.',
+    'Generate from content',
+    'Not available',
+    'Screenshot generation is not available.',
+    'Generation failed',
+    'Could not generate screenshot from content. Try uploading an image instead.',
+    'Replace screenshot',
+    'This will delete the current image. Do you want to continue?',
+    'Delete screenshot',
+    'Delete the current image? This action cannot be undone.',
+    'Recommendations',
+    'Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.',
+    'The image will be used as a preview of this educational resource across different platforms.',
+    // END TO DO
 ]);
 
 /**
@@ -85,7 +110,7 @@ function isInvalidKey(key: string): boolean {
 /**
  * Extract translation keys from source files
  */
-async function extractTranslationKeys(): Promise<Set<string>> {
+export async function extractTranslationKeys(): Promise<Set<string>> {
     const keys = new Set<string>();
 
     // Patterns for static single/double-quoted strings.
@@ -178,7 +203,7 @@ function generateTransUnitId(): string {
 /**
  * Add new keys to XLF file
  */
-function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: string; added: number } {
+export function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: string; added: number } {
     // Find existing keys in XLF
     const existingKeys = new Set<string>();
     const resnamePattern = /resname="([^"]+)"/g;
@@ -221,7 +246,7 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
 /**
  * Escape XML special characters
  */
-function escapeXml(str: string): string {
+export function escapeXml(str: string): string {
     return str
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -241,7 +266,7 @@ function escapeXmlText(str: string): string {
 /**
  * Unescape XML entities back to plain characters
  */
-function unescapeXml(str: string): string {
+export function unescapeXml(str: string): string {
     return str
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
@@ -324,7 +349,7 @@ async function processLocale(
     cleanOnly: boolean,
     removeObsolete: boolean,
 ): Promise<{ extracted: number; cleaned: boolean; removed: number }> {
-    const xlfPath = path.join(TRANSLATIONS_DIR, `messages.${locale}.xlf`);
+    const xlfPath = path.join(getTranslationsDir(), `messages.${locale}.xlf`);
 
     if (!fs.existsSync(xlfPath)) {
         warning(`XLF file not found: ${xlfPath}`);
@@ -391,10 +416,11 @@ export async function execute(
     }
 
     // Check translations directory exists
-    if (!fs.existsSync(TRANSLATIONS_DIR)) {
+    const translationsDir = getTranslationsDir();
+    if (!fs.existsSync(translationsDir)) {
         return {
             success: false,
-            message: `Translations directory not found: ${TRANSLATIONS_DIR}`,
+            message: `Translations directory not found: ${translationsDir}`,
         };
     }
 

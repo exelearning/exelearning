@@ -1,6 +1,6 @@
 ---
 name: backend-service
-description: Adding or modifying business logic services in src/services/ with dependency injection.
+description: Adding or modifying business logic services in src/services/ with dependency injection. Every change must ship with colocated `*.spec.ts` tests, keep patch coverage ≥ 90% on changed lines, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
 ---
 
 # Skill: Backend Service

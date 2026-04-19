@@ -1,6 +1,6 @@
 ---
 name: i18n
-description: Adding translatable strings or modifying translations with _() / c_() helpers.
+description: Adding translatable strings or modifying translations with _() / c_() helpers. Every change must run `make translations` to sync keys, keep existing unit/integration/E2E suites green, maintain patch coverage ≥ 90% on any touched code, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
 ---
 
 # Skill: Internationalization (i18n)

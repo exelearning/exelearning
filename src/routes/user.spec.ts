@@ -12,6 +12,11 @@ const TEST_JWT_SECRET = process.env.APP_SECRET || 'test-secret-for-user-routes-t
 
 // Override APP_SECRET for tests
 const originalAppSecret = process.env.APP_SECRET;
+// user.ts:getJwtSecret() prefers JWT_SECRET over APP_SECRET. Other specs in the
+// same Bun process (auth.spec.ts, admin.spec.ts, api/v1/*.spec.ts, ...) set
+// process.env.JWT_SECRET and don't clean it up, which would make jwt.verify()
+// use a different secret than the one this test signs with, breaking auth.
+const originalJwtSecret = process.env.JWT_SECRET;
 
 describe('User Routes', () => {
     let app: Elysia;
@@ -67,8 +72,10 @@ describe('User Routes', () => {
     }
 
     beforeEach(async () => {
-        // Set test secret
+        // Set test secret on both vars so getJwtSecret() (JWT_SECRET || APP_SECRET)
+        // always resolves to the same value this spec signs with.
         process.env.APP_SECRET = TEST_JWT_SECRET;
+        process.env.JWT_SECRET = TEST_JWT_SECRET;
 
         savedPreferences = new Map();
         mockUsers = new Map();
@@ -107,11 +114,16 @@ describe('User Routes', () => {
     });
 
     afterEach(() => {
-        // Restore original APP_SECRET
+        // Restore original APP_SECRET / JWT_SECRET
         if (originalAppSecret) {
             process.env.APP_SECRET = originalAppSecret;
         } else {
             delete process.env.APP_SECRET;
+        }
+        if (originalJwtSecret !== undefined) {
+            process.env.JWT_SECRET = originalJwtSecret;
+        } else {
+            delete process.env.JWT_SECRET;
         }
     });
 

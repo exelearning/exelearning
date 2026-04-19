@@ -8841,10 +8841,6 @@
         <source>CEDEC's rubrics</source>
         <target>Rúbricas del CEDEC</target>
       </trans-unit>
-      <trans-unit id="4FHSdXr" resname="Rubric use instructions (optional)">
-        <source>Rubric use instructions (optional)</source>
-        <target>Instrucciones de uso de la rúbrica (opcional)</target>
-      </trans-unit>
       <trans-unit id="WRV28cD" resname="Maximum score:">
         <source>Maximum score:</source>
         <target>Calificación máxima:</target>
@@ -8860,10 +8856,6 @@
       <trans-unit id="EXqwPw9" resname="New row">
         <source>New row</source>
         <target>Nueva fila</target>
-      </trans-unit>
-      <trans-unit id="GYFdP4l" resname="Rubric information">
-        <source>Rubric information</source>
-        <target>Información sobre la rúbrica</target>
       </trans-unit>
       <trans-unit id="vrJHk5H" resname="Show rubric information">
         <source>Show rubric information</source>
@@ -8932,10 +8924,6 @@
       <trans-unit id="YxuvdUc" resname="Delete the column?">
         <source>Delete the column?</source>
         <target>¿Borrar la columna?</target>
-      </trans-unit>
-      <trans-unit id="1WTTY.L" resname="Please export the content to apply the rubric.">
-        <source>Please export the content to apply the rubric.</source>
-        <target>Exporta el contenido para aplicar la rúbrica.</target>
       </trans-unit>
       <trans-unit id="0fyNG8V" resname="Add at least 3 elements.">
         <source>Add at least 3 elements.</source>
@@ -10929,10 +10917,6 @@
         <source>Title HTML</source>
         <target>Título HTML</target>
       </trans-unit>
-      <trans-unit id="HdPgTtl1" resname="Hide page title">
-        <source>Hide page title</source>
-        <target>Ocultar título de la página</target>
-      </trans-unit>
       <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
         <source>Advanced (SEO)</source>
         <target>Avanzado (SEO)</target>
@@ -12233,7 +12217,6 @@
         <source>Adds additional information to the main title.</source>
         <target>Añade información adicional al título principal.</target>
       </trans-unit>
-      <!-- Error page translations -->
       <trans-unit id="error.page_not_found" resname="Page not found">
         <source>Page not found</source>
         <target>Página no encontrada</target>
@@ -12274,7 +12257,6 @@
         <source>Server error</source>
         <target>Error del servidor</target>
       </trans-unit>
-      <!-- Logical exception translations -->
       <trans-unit id="send_to_platform_001" resname="Send to %s">
         <source>Send to %s</source>
         <target>Enviar a %s</target>
@@ -12282,6 +12264,38 @@
       <trans-unit id="finish_001" resname="Finish">
         <source>Finish</source>
         <target>Finalizar</target>
+      </trans-unit>
+      <trans-unit id="gs_001" resname="Search pages and content...">
+        <source>Search pages and content...</source>
+        <target>Buscar páginas y contenido...</target>
+      </trans-unit>
+      <trans-unit id="gs_002" resname="Search results">
+        <source>Search results</source>
+        <target>Resultados de búsqueda</target>
+      </trans-unit>
+      <trans-unit id="gs_003" resname="No results found">
+        <source>No results found</source>
+        <target>No se encontraron resultados</target>
+      </trans-unit>
+      <trans-unit id="gs_006" resname="in">
+        <source>in</source>
+        <target>en</target>
+      </trans-unit>
+      <trans-unit id="h72md8e" resname="Unsaved changes">
+        <source>Unsaved changes</source>
+        <target>Cambios sin guardar</target>
+      </trans-unit>
+      <trans-unit id="jimwjje" resname="If you close now, your latest changes will be lost. Stay to save the project first.">
+        <source>If you close now, your latest changes will be lost. Stay to save the project first.</source>
+        <target>Si cierras ahora, perderás los últimos cambios. Guarda tu proyecto antes de salir.</target>
+      </trans-unit>
+      <trans-unit id="u7vmbw9" resname="Stay">
+        <source>Stay</source>
+        <target>Permanecer</target>
+      </trans-unit>
+      <trans-unit id="HdPgTtl1" resname="Hide page title">
+        <source>Hide page title</source>
+        <target>Ocultar título de la página</target>
       </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
@@ -12311,24 +12325,7 @@
         <source>Status</source>
         <target>Estado</target>
       </trans-unit>
-      <!-- Global Search Modal translations -->
-      <trans-unit id="gs_001" resname="Search pages and content...">
-        <source>Search pages and content...</source>
-        <target>Buscar páginas y contenido...</target>
-      </trans-unit>
-      <trans-unit id="gs_002" resname="Search results">
-        <source>Search results</source>
-        <target>Resultados de búsqueda</target>
-      </trans-unit>
-      <trans-unit id="gs_003" resname="No results found">
-        <source>No results found</source>
-        <target>No se encontraron resultados</target>
-      </trans-unit>
-      <trans-unit id="gs_006" resname="in">
-        <source>in</source>
-        <target>en</target>
-      </trans-unit>
-            <trans-unit id="iw514ot" resname="Default AI Assistant">
+      <trans-unit id="iw514ot" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
         <target>Asistente de IA predeterminado</target>
       </trans-unit>
@@ -14147,6 +14144,98 @@
       <trans-unit id="8g3d529" resname="Current style classes">
         <source>Current style classes</source>
         <target>Clases del estilo actual</target>
+      </trans-unit>
+      <trans-unit id="4uiedjj" resname="Close without saving">
+        <source>Close without saving</source>
+        <target>Cerrar sin guardar</target>
+      </trans-unit>
+      <trans-unit id="oggmabv" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
+        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target>No se pudo comprobar: el contenido HTTP está bloqueado en páginas HTTPS.</target>
+      </trans-unit>
+      <trans-unit id="sb4p2ku" resname="You can only add one Rubric iDevice per page.">
+        <source>You can only add one Rubric iDevice per page.</source>
+        <target>Solo puedes añadir un iDevice Rúbrica por página.</target>
+      </trans-unit>
+      <trans-unit id="bry8pxu" resname="CSV import/export">
+        <source>CSV import/export</source>
+        <target>Importar/exportar CSV</target>
+      </trans-unit>
+      <trans-unit id="mglmc2t" resname="You can import rubric data from CSV files.">
+        <source>You can import rubric data from CSV files.</source>
+        <target>Puedes importar datos de una rúbrica desde un archivo CSV.</target>
+      </trans-unit>
+      <trans-unit id="y3cd180" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
+        <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
+        <target>Puedes exportar la rúbrica en formato CSV para integrarla en otras actividades compatibles.</target>
+      </trans-unit>
+      <trans-unit id="hirifdz" resname="Export CSV">
+        <source>Export CSV</source>
+        <target>Exportar CSV</target>
+      </trans-unit>
+      <trans-unit id="joe4vfl" resname="Only CSV files are allowed.">
+        <source>Only CSV files are allowed.</source>
+        <target>Solo se permiten archivos CSV.</target>
+      </trans-unit>
+      <trans-unit id="3b6ic02" resname="Could not read the selected CSV file.">
+        <source>Could not read the selected CSV file.</source>
+        <target>No se pudo leer el archivo CSV seleccionado.</target>
+      </trans-unit>
+      <trans-unit id="w3cxbhv" resname="Invalid CSV format.">
+        <source>Invalid CSV format.</source>
+        <target>Formato CSV incorrecto.</target>
+      </trans-unit>
+      <trans-unit id="enfhk5n" resname="CSV imported successfully.">
+        <source>CSV imported successfully.</source>
+        <target>CSV importado correctamente.</target>
+      </trans-unit>
+      <trans-unit id="1jf2qfk" resname="There is no rubric to export.">
+        <source>There is no rubric to export.</source>
+        <target>No hay ninguna rúbrica disponible para exportar.</target>
+      </trans-unit>
+      <trans-unit id="mzc84f0" resname="Please provide CSV content.">
+        <source>Please provide CSV content.</source>
+        <target>Proporciona un CSV con contenido.</target>
+      </trans-unit>
+      <trans-unit id="7l89bch" resname="The CSV must include a header row and at least one data row.">
+        <source>The CSV must include a header row and at least one data row.</source>
+        <target>El CSV debe incluir una fila de encabezado y al menos una fila de datos.</target>
+      </trans-unit>
+      <trans-unit id="86fhkw3" resname="The CSV must include at least one score column.">
+        <source>The CSV must include at least one score column.</source>
+        <target>El CSV debe incluir al menos una columna de puntuación.</target>
+      </trans-unit>
+      <trans-unit id="dyrjjw7" resname="No rubric rows could be imported from the CSV.">
+        <source>No rubric rows could be imported from the CSV.</source>
+        <target>No se pudo importar ninguna rúbrica del CSV.</target>
+      </trans-unit>
+      <trans-unit id="53coar6" resname="Assessment criteria">
+        <source>Assessment criteria</source>
+        <target>Criterios de evaluación</target>
+      </trans-unit>
+      <trans-unit id="zzrqiji" resname="Performance level">
+        <source>Performance level</source>
+        <target>Nivel de desempeño</target>
+      </trans-unit>
+      <trans-unit id="fm66wna" resname="There are unsaved changes in this row. Close and lose them?">
+        <source>There are unsaved changes in this row. Close and lose them?</source>
+        <target>Hay cambios sin guardar en esta fila. ¿Cerrar y perderlos?</target>
+      </trans-unit>
+      <trans-unit id="6jqpmwy" resname="First row">
+        <source>First row</source>
+        <target>Primera fila</target>
+      </trans-unit>
+      <trans-unit id="u1ylxri" resname="There are unsaved changes in this column. Close and lose them?">
+        <source>There are unsaved changes in this column. Close and lose them?</source>
+        <target>Hay cambios sin guardar en esta columna. ¿Cerrar y perderlos?</target>
+      </trans-unit>
+      <trans-unit id="txdbu14" resname="Complete the following rubric">
+        <source>Complete the following rubric</source>
+        <target>Completa la siguiente rúbrica</target>
+      </trans-unit>
+      <trans-unit id="0lnw512" resname="Imported rubric">
+        <source>Imported rubric</source>
+        <target>Rúbrica importada</target>
       </trans-unit>
     </body>
   </file>

@@ -559,6 +559,11 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
+        const initialType = parseInt(
+            $('input.ODNE-EType[name=odntype]:checked').val(),
+            10
+        );
+        $exeDevice.showTypeGame(initialType);
         $exeDevice.addEvents();
     },
 

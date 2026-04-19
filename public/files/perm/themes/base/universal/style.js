@@ -1,5 +1,5 @@
 /*!
- * eXeLearning v3.0.1 Example Style Script File
+ * eXeLearning v4.0.0 Universal Style Script File
  * -----------------------
  * Author: Ignacio Gros
  * Project: eXeLearning.net
@@ -12,7 +12,7 @@
  *       and included in this style.
  */
 
-var exampleStyle = {
+var eXeUniversalStyle = {
     breadcrumbs : true,
     dropdownNavigation : true,
     init: function () {
@@ -34,7 +34,7 @@ var exampleStyle = {
         if (!$('body').hasClass('exe-web-site')) {
             $('.package-header').prepend(togglers);
             // Dark mode
-            exampleStyle.darkMode.init();
+            eXeUniversalStyle.darkMode.init();
             return;
         }
         // Add menu and search bar togglers
@@ -62,27 +62,27 @@ var exampleStyle = {
         if (url.length > 1) {
             if (url[1].indexOf('nav=false') != -1) {
                 $('body').addClass('siteNav-off');
-                exampleStyle.params('add');
+                eXeUniversalStyle.params('add');
             }
         }
         // Dark mode
         this.darkMode.init();
         // Menu toggler
         $('#siteNavToggler').on('click', function () {
-            if (exampleStyle.isLowRes()) {
+            if (eXeUniversalStyle.isLowRes()) {
                 $('#exe-client-search').hide();
                 if ($('body').hasClass('siteNav-off')) {
                     $('body').removeClass('siteNav-off');
                 } else {
                     if ($('#siteNav').isInViewport()) {
                         $('body').addClass('siteNav-off');
-                        exampleStyle.params('add');
+                        eXeUniversalStyle.params('add');
                     }
                 }
                 window.scroll(0, 0);
             } else {
                 $('body').toggleClass('siteNav-off');
-                exampleStyle.params(
+                eXeUniversalStyle.params(
                     $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
@@ -93,7 +93,7 @@ var exampleStyle = {
             if (bar.is(':visible')) {
                 bar.hide();
             } else {
-                if (exampleStyle.isLowRes()) {
+                if (eXeUniversalStyle.isLowRes()) {
                     $('body').addClass('siteNav-off');
                 }
                 bar.show();
@@ -104,7 +104,7 @@ var exampleStyle = {
         // Allways close the menu in low resolution
         $("#siteNav a").on('click', function(event){
             if (event.target.nodeName == 'A') {
-                if (exampleStyle.isLowRes()) {
+                if (eXeUniversalStyle.isLowRes()) {
                     event.preventDefault();
                     window.location = this.href + '?nav=false';
                 }
@@ -116,8 +116,6 @@ var exampleStyle = {
         this.dropdownMenus();
         // Search form
         this.searchForm();
-        // Made with eXeLearning + EducaMadrid
-        this.madeWith();
     },
     isLocalStorageAvailable : function(){
         var x = '';
@@ -134,7 +132,7 @@ var exampleStyle = {
             $("#darkModeToggler").on("click",function(){
                 var active = 'off';
                 if (!$("html").hasClass("exe-dark-mode")) active = 'on';
-                exampleStyle.darkMode.setMode(active);
+                eXeUniversalStyle.darkMode.setMode(active);
             });
         },
         setMode : function(active){
@@ -169,13 +167,6 @@ var exampleStyle = {
     searchForm: function () {
         $('#exe-client-search-text').attr('class', 'form-control');
     },
-    madeWith : function () {
-        // Made with eXeLearning + EducaMadrid
-        var lnk = $("#made-with-eXe a");
-        var htm = lnk.html();
-            htm = htm.replace(" eXeLearning", " eXeLearning + EducaMadrid");
-        lnk.html(htm);
-    },
     isLowRes: function () {
         return $(window).width() <= 576;
     },
@@ -193,7 +184,7 @@ var exampleStyle = {
         if(!this.breadcrumbs) return;
         if ($("html").attr("id")=="exe-index") return false;
         function getNodeLinks(){
-            var res = '<li><strong><span>'+exampleStyle.truncate($(".page-header .page-title").text())+'</span></strong></li>';
+            var res = '<li><strong><span>'+eXeUniversalStyle.truncate($(".page-header .page-title").text())+'</span></strong></li>';
             var extra = "";
             var loc = window.location.href;
                 loc = loc.split("/");
@@ -215,7 +206,7 @@ var exampleStyle = {
                     var li = e.parent();
                     li.parents('li').each(function() {
                         var a = $("a",this).eq(0);
-                        extra = '<li><a href="'+a.attr("href")+'" title="'+exampleStyle.removeQuotes(a.text())+'"><span>'+exampleStyle.truncate(a.text())+'</span></a></li>' + extra;
+                        extra = '<li><a href="'+a.attr("href")+'" title="'+eXeUniversalStyle.removeQuotes(a.text())+'"><span>'+eXeUniversalStyle.truncate(a.text())+'</span></a></li>' + extra;
                     });
                 }
             });
@@ -225,7 +216,7 @@ var exampleStyle = {
             }
             var img = 'theme/img/home.png';
             if ($('html').attr('id')!='exe-index') img = '../' + img;
-            var tit = exampleStyle.removeQuotes(mainTit);
+            var tit = eXeUniversalStyle.removeQuotes(mainTit);
             return '<li><a href="'+mainLnk+'" id="siteBreadcrumbsHome" title="'+tit+'"><img src="'+img+'" width="19" height="19" alt="'+tit+'"><span class="sr-av">'+mainTit+'</span></a></li>' + extra + res;
         }
         var breadcrumb = '<div id="siteBreadcrumbs"><ul>'+getNodeLinks()+'</ul></div>';
@@ -243,8 +234,8 @@ var exampleStyle = {
             lnk.append('<button id="child-section-'+i+'-toggler" title="'+$exe_i18n.more+'" class="'+css+'"><span>'+$exe_i18n.more+'</span></button>');
             $("#child-section-"+i+"-toggler").on("click", function(event){
                 event.preventDefault();
-                if (exampleStyle.dropdownMenusWorking == true) return;
-                exampleStyle.dropdownMenusWorking = true;
+                if (eXeUniversalStyle.dropdownMenusWorking == true) return;
+                eXeUniversalStyle.dropdownMenusWorking = true;
                 var id = this.id;
                     id = id.replace("-toggler", "");
                 var ul = $("#"+id);
@@ -254,7 +245,7 @@ var exampleStyle = {
                             lnk.removeClass("open-ul");
                             lnk.addClass("closed-ul");
                         // $(this).removeClass("other-section-visible");
-                        exampleStyle.dropdownMenusWorking = false;
+                        eXeUniversalStyle.dropdownMenusWorking = false;
                     });
                 } else {
                     ul.slideDown("fast", function(){
@@ -262,7 +253,7 @@ var exampleStyle = {
                             lnk.removeClass("closed-ul");
                             lnk.addClass("open-ul");
                         // $(this).addClass("other-section-visible");
-                        exampleStyle.dropdownMenusWorking = false;
+                        eXeUniversalStyle.dropdownMenusWorking = false;
                     });
                 }
             });
@@ -287,14 +278,14 @@ var exampleStyle = {
     },
     params: function (act) {
         $('.nav-buttons a').each(function () {
-            exampleStyle.param(this, act);
+            eXeUniversalStyle.param(this, act);
         });
     },
 };
 $(function () {
-    exampleStyle.init();
+    eXeUniversalStyle.init();
 });
-exampleStyle.darkMode.setMode();
+eXeUniversalStyle.darkMode.setMode();
 $.fn.isInViewport = function () {
     var elementTop = $(this).offset().top;
     var elementBottom = elementTop + $(this).outerHeight();
