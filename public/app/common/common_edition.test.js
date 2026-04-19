@@ -602,13 +602,14 @@ describe('common_edition.js', () => {
       expect(result).toContain('exe-form-tab');
     });
 
-    it('getTab with hidebutton hides button option', () => {
+    it('getTab with hidebutton applies d-none class to button block', () => {
       const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(true);
-      expect(result).toContain('display:none');
+      expect(result).toContain('id="eXeGameSCORMblock"');
+      expect(result).toContain('d-none');
     });
 
     it('getTab with onlybutton changes message', () => {
-      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(false, false, true);
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(false, true);
       expect(result).toContain('Save the score');
     });
 
@@ -654,6 +655,30 @@ describe('common_edition.js', () => {
       expect($('#eXeGameSCORMbuttonText').val()).toBe('My Button');
     });
 
+    it('setValues only shows weighted when saving score', () => {
+      document.body.innerHTML = `
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" />
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
+        <span id="eXeGameSCORgame"></span>
+        <span id="eXeGameSCORgameAuto"></span>
+        <div id="eXeGameSCORMPercentaje"></div>
+        <div id="eXeGameSCORMinstructionsButton"></div>
+        <div id="eXeGameSCORMinstructionsAuto"></div>
+        <input type="text" id="eXeGameSCORMbuttonText" />
+        <input type="number" id="eXeGameSCORMWeight" />
+      `;
+
+      globalThis.$exeDevicesEdition.iDevice.gamification.scorm.setValues(0, 'Save', true, 100);
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(true);
+
+      globalThis.$exeDevicesEdition.iDevice.gamification.scorm.setValues(1, 'Save', true, 100);
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(false);
+
+      globalThis.$exeDevicesEdition.iDevice.gamification.scorm.setValues(2, 'Save', true, 100);
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(false);
+    });
+
     it('getValues returns SCORM values with empty weight', () => {
       document.body.innerHTML = `
         <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" checked />
@@ -673,7 +698,7 @@ describe('common_edition.js', () => {
         <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
         <span id="eXeGameSCORgame"></span>
         <span id="eXeGameSCORgameAuto"></span>
-        <div id="eXeGameSCORMPercentaje" style="visibility:visible"></div>
+        <div id="eXeGameSCORMPercentaje"></div>
         <div id="eXeGameSCORMinstructionsButton"></div>
         <div id="eXeGameSCORMinstructionsAuto"></div>
         <input type="number" id="eXeGameSCORMWeight" />
@@ -683,16 +708,17 @@ describe('common_edition.js', () => {
 
       // Change to no save (value 0) - should hide percentage
       $('#eXeGameSCORMNoSave').prop('checked', true).trigger('change');
-      // The handler hides the percentage div
-      expect($('#eXeGameSCORMPercentaje').css('visibility')).toBe('hidden');
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(true);
 
       // Change to auto save (value 1)
       $('#eXeGameSCORMAutoSave').prop('checked', true).trigger('change');
       vi.runAllTimers();
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(false);
 
       // Change to button save (value 2)
       $('#eXeGameSCORMButtonSave').prop('checked', true).trigger('change');
       vi.runAllTimers();
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(false);
 
       vi.useRealTimers();
     });

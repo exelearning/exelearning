@@ -246,8 +246,6 @@ var $exeDevice = {
             previousData.evaluationID ?? '';
         this.ideviceBody.querySelector('#evaluationIDInput').disabled =
             !previousData.evaluation;
-        this.ideviceBody.querySelector('#eXeGameSCORMRepeatActivity').checked =
-            previousData.repeatActivity ?? true;
         this.ideviceBody.querySelector('#frmEQuestionsRandom').checked =
             previousData.questionsRandom || false;
         this.ideviceBody.querySelector('#frmEPercentageQuestions').value =
@@ -297,9 +295,6 @@ var $exeDevice = {
         ).checked;
         this.evaluationID =
             this.ideviceBody.querySelector('#evaluationIDInput').value;
-        this.repeatActivity = this.ideviceBody.querySelector(
-            '#eXeGameSCORMRepeatActivity'
-        ).checked;
         this.eXeFormInstructions = this.getEditorTinyMCEValue(
             'eXeGameInstructions'
         );

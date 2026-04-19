@@ -464,4 +464,90 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect($('#ri_RubricAuthor').val()).toBe('Author "quoted"');
     expect($('#ri_RubricAuthorURL').val()).toBe('https://example.com/?q="quoted"');
   });
+
+  // ==========================================================================
+  // SCORM integration
+  // ==========================================================================
+
+  describe('loadPreviousValues SCORM integration', () => {
+    function buildPreviousHtml(extraPayload) {
+      const payload = escape(JSON.stringify({
+        title: 'Rubrica',
+        categories: ['C1'],
+        scores: ['L1'],
+        descriptions: [[{ text: 'D1', weight: '1' }]],
+        ...extraPayload,
+      }));
+
+      return `
+        <div class="rubric-IDevice">
+          <div class="rubric">
+            <div class="exe-rubrics-DataGame js-hidden">${payload}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    it('forwards SCORM fields from stored data to scorm.setValues', () => {
+      vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
+      const setValuesSpy = vi.spyOn(
+        globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
+        'setValues'
+      );
+
+      $exeDevice.idevicePreviousData = buildPreviousHtml({
+        isScorm: 2,
+        textButtonScorm: 'Guardar nota',
+        repeatActivity: false,
+        weighted: 75,
+      });
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValuesSpy).toHaveBeenCalledTimes(1);
+      expect(setValuesSpy).toHaveBeenCalledWith(2, 'Guardar nota', false, 75);
+    });
+
+    it('passes undefined SCORM fields when absent in stored data', () => {
+      vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
+      const setValuesSpy = vi.spyOn(
+        globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
+        'setValues'
+      );
+
+      $exeDevice.idevicePreviousData = buildPreviousHtml({});
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValuesSpy).toHaveBeenCalledTimes(1);
+      // normalizeStoredRubricData may strip unknown fields; accept undefined
+      const [isScorm, textButtonScorm, repeatActivity, weighted] = setValuesSpy.mock.calls[0];
+      expect(isScorm).toBeUndefined();
+      expect(textButtonScorm).toBeUndefined();
+      expect(repeatActivity).toBeUndefined();
+      expect(weighted).toBeUndefined();
+    });
+
+    it('does nothing when idevicePreviousData is empty', () => {
+      const setValuesSpy = vi.spyOn(
+        globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
+        'setValues'
+      );
+      $exeDevice.idevicePreviousData = '';
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValuesSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ci18n SCORM strings', () => {
+    it('exposes SCORM-related translatable messages', () => {
+      expect($exeDevice.ci18n.msgYouScore).toBe('Your score');
+      expect($exeDevice.ci18n.msgEndGameScore).toMatch(/rubric/i);
+      expect($exeDevice.ci18n.msgScoreScorm).toMatch(/SCORM/);
+      expect($exeDevice.ci18n.msgScore).toBe('Score');
+      expect($exeDevice.ci18n.msgWeight).toBe('Weight');
+    });
+  });
 });
