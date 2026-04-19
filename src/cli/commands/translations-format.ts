@@ -118,9 +118,9 @@ export function formatXlfContent(content: string): string {
             // <trans-unit …> opening tag — only strip/add leading whitespace;
             // the tag text (including all attributes) is copied verbatim.
             if (/^[ \t]*<trans-unit\b/.test(line)) return line.replace(/^[ \t]*/, '      ');
-            if (/^[ \t]*<\/trans-unit>/.test(line))  return line.replace(/^[ \t]*/, '      ');
-            if (/^[ \t]*<source>/.test(line))         return line.replace(/^[ \t]*/, '        ');
-            if (/^[ \t]*<target>/.test(line))         return line.replace(/^[ \t]*/, '        ');
+            if (/^[ \t]*<\/trans-unit>/.test(line)) return line.replace(/^[ \t]*/, '      ');
+            if (/^[ \t]*<source>/.test(line)) return line.replace(/^[ \t]*/, '        ');
+            if (/^[ \t]*<target>/.test(line)) return line.replace(/^[ \t]*/, '        ');
             return line;
         })
         .join(eol);
@@ -159,9 +159,7 @@ export async function execute(
     // "en" is the source language — its targets are always identical to the
     // source, so CDATA normalisation does not apply. Exclude it unless the
     // caller explicitly requests it.
-    const localesToFormat = specificLocale
-        ? [specificLocale]
-        : Object.keys(LOCALES).filter(l => l !== 'en');
+    const localesToFormat = specificLocale ? [specificLocale] : Object.keys(LOCALES).filter(l => l !== 'en');
 
     const dir = translationsDir();
     let formattedCount = 0;
@@ -186,9 +184,10 @@ export async function execute(
     }
 
     const scope = specificLocale ? `messages.${specificLocale}.xlf` : `${formattedCount + unchangedCount} XLF file(s)`;
-    const detail = formattedCount > 0
-        ? `${formattedCount} file(s) updated, ${unchangedCount} already correct.`
-        : `All files already correctly formatted.`;
+    const detail =
+        formattedCount > 0
+            ? `${formattedCount} file(s) updated, ${unchangedCount} already correct.`
+            : `All files already correctly formatted.`;
 
     return {
         success: true,

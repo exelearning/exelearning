@@ -9,10 +9,7 @@ import * as path from 'path';
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeXlf(
-    targetLang: string,
-    units: { id: string; resname: string; source: string; target: string }[],
-): string {
+function makeXlf(targetLang: string, units: { id: string; resname: string; source: string; target: string }[]): string {
     const body = units
         .map(
             u =>
@@ -68,7 +65,7 @@ describe('needsCDATA', () => {
     });
 
     it('returns false for text with valid &apos; entity', () => {
-        expect(needsCDATA("it&apos;s fine")).toBe(false);
+        expect(needsCDATA('it&apos;s fine')).toBe(false);
     });
 
     it('returns false for empty string', () => {
@@ -154,7 +151,8 @@ describe('formatXlfContent — trans-unit tag preservation', () => {
             `  <file source-language="en" target-language="es" datatype="plaintext" original="file.ext">\n` +
             `    <header><tool tool-id="symfony" tool-name="Symfony"/></header>\n` +
             `    <body>\n` +
-            block + `\n` +
+            block +
+            `\n` +
             `    </body>\n` +
             `  </file>\n` +
             `</xliff>`
@@ -162,7 +160,8 @@ describe('formatXlfContent — trans-unit tag preservation', () => {
     }
 
     it('never modifies the <trans-unit> opening tag, even when resname contains &lt; and &gt;', () => {
-        const openTag = '<trans-unit id="eogm2xw" resname="Invalid filename. Avoid special characters like / \\\\ : * ? &quot; &lt; &gt; |">';
+        const openTag =
+            '<trans-unit id="eogm2xw" resname="Invalid filename. Avoid special characters like / \\\\ : * ? &quot; &lt; &gt; |">';
         const block =
             `      ${openTag}\n` +
             `        <source>Invalid filename: &lt; &gt;</source>\n` +
@@ -214,9 +213,7 @@ describe('formatXlfContent', () => {
     });
 
     it('is idempotent — running twice produces the same output', () => {
-        const xlf = makeXlf('es', [
-            { id: 'u1', resname: 'key', source: 'key', target: '%s&percnt; right' },
-        ]);
+        const xlf = makeXlf('es', [{ id: 'u1', resname: 'key', source: 'key', target: '%s&percnt; right' }]);
         const once = formatXlfContent(xlf);
         const twice = formatXlfContent(once);
         expect(twice).toBe(once);
@@ -266,9 +263,7 @@ describe('execute', () => {
 
     it('succeeds and formats a specific locale file', async () => {
         const xlfPath = path.join(testTranslationsDir, 'messages.es.xlf');
-        const original = makeXlf('es', [
-            { id: 'u1', resname: 'key', source: 'key', target: '%s&percnt; correcto' },
-        ]);
+        const original = makeXlf('es', [{ id: 'u1', resname: 'key', source: 'key', target: '%s&percnt; correcto' }]);
         await fs.writeFile(xlfPath, original);
 
         const { execute } = await import('./translations-format');
@@ -302,9 +297,7 @@ describe('execute', () => {
 
     it('does not modify safe files', async () => {
         const xlfPath = path.join(testTranslationsDir, 'messages.es.xlf');
-        const original = makeXlf('es', [
-            { id: 'u1', resname: 'Safe', source: 'Safe', target: 'Seguro' },
-        ]);
+        const original = makeXlf('es', [{ id: 'u1', resname: 'Safe', source: 'Safe', target: 'Seguro' }]);
         // Normalise so round-trip indentation doesn't cause spurious diff
         const { formatXlfContent } = await import('./translations-format');
         const normalised = formatXlfContent(original);
