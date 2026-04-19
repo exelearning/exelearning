@@ -1183,8 +1183,10 @@ test.describe('Image Gallery iDevice', () => {
             await newItem.click();
             await page.waitForTimeout(300);
 
-            // Click insert button
-            await page.click('#modalFileManager .media-library-insert-btn');
+            // Wait for insert button to be enabled and click it
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await insertBtn.waitFor({ state: 'visible', timeout: 30000 });
+            await insertBtn.click({ timeout: 30000 });
             await page.waitForTimeout(500);
         }
 
