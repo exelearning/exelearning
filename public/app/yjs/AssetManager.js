@@ -71,6 +71,22 @@ class AssetManager {
     // app:// in Electron. Disable repeated attempts after the first hard failure
     // to avoid thousands of slow exceptions during large imports.
     this.cachePersistenceDisabled = false;
+
+    // Server config for fallback fetch during export (set via setServerConfig)
+    this._serverApiBaseUrl = null;
+    this._serverToken = null;
+  }
+
+  /**
+   * Store server API credentials so getBlobForExport() can fall back to
+   * downloading individual assets when both memory and Cache API miss.
+   * Called from YjsProjectBridge after init.
+   * @param {string} apiBaseUrl - e.g. "https://online.exelearning.dev/api"
+   * @param {string} token - Bearer JWT
+   */
+  setServerConfig(apiBaseUrl, token) {
+    this._serverApiBaseUrl = apiBaseUrl;
+    this._serverToken = token;
   }
 
   /**
@@ -379,6 +395,28 @@ class AssetManager {
   async init() {
     // No-op: blobs stored in memory, no database needed
     Logger.log(`[AssetManager] Initialized (in-memory) for project ${this.projectId}`);
+
+    // Request persistent storage to prevent browser from evicting Cache API
+    // entries under storage pressure (the main cause of #1685).
+    this._requestPersistentStorage();
+  }
+
+  /**
+   * Request persistent storage so the browser does not evict Cache API entries.
+   * Best-effort: fails silently when the API is unavailable or permission denied.
+   * @private
+   */
+  _requestPersistentStorage() {
+    if (typeof navigator === 'undefined' || !navigator.storage?.persist) return;
+    navigator.storage.persist().then(granted => {
+      if (granted) {
+        Logger.log('[AssetManager] Persistent storage granted');
+      } else {
+        Logger.log('[AssetManager] Persistent storage denied by browser');
+      }
+    }).catch(() => {
+      // Ignore — not critical
+    });
   }
 
   /**
@@ -572,11 +610,50 @@ class AssetManager {
   /**
    * Get blob for export/preview without repopulating blobCache from Cache API.
    * This keeps the editor working set bounded after save().
+   *
+   * Falls back to fetching from server when the blob is missing from both
+   * memory and Cache API (fixes #1685: browser evicts Cache API entries
+   * during long editing sessions, causing exports to silently drop assets).
+   *
    * @param {string} id - Asset UUID
    * @returns {Promise<Blob|null>}
    */
   async getBlobForExport(id) {
-    return this.getBlob(id, { restoreToMemory: false });
+    const blob = await this.getBlob(id, { restoreToMemory: false });
+    if (blob) return blob;
+
+    // Fallback: fetch from server when local blob is gone
+    return this._fetchBlobFromServer(id);
+  }
+
+  /**
+   * Fetch a single asset blob from the server REST API.
+   * Used as last-resort fallback when memory + Cache API both miss.
+   * @param {string} id - Asset UUID
+   * @returns {Promise<Blob|null>}
+   * @private
+   */
+  async _fetchBlobFromServer(id) {
+    if (!this._serverApiBaseUrl || !this._serverToken) return null;
+
+    try {
+      const response = await fetch(
+        `${this._serverApiBaseUrl}/projects/${this.projectId}/assets/${id}`,
+        { headers: { 'Authorization': `Bearer ${this._serverToken}` } }
+      );
+      if (!response.ok) return null;
+
+      const blob = await response.blob();
+
+      // Re-populate Cache API so subsequent calls don't hit the server again
+      await this._putToCache(id, blob);
+
+      Logger.log(`[AssetManager] Recovered asset ${id} from server (cache miss)`);
+      return blob;
+    } catch (e) {
+      console.warn(`[AssetManager] Server fallback failed for ${id}:`, e.message);
+      return null;
+    }
   }
 
   /**
@@ -3159,8 +3236,12 @@ class AssetManager {
         const assetId = serverAsset.clientId;
         if (!assetId) continue;
         const local = await this.getAsset(assetId);
+        // Check blob too: metadata may exist in Yjs while the blob was evicted
+        // from Cache API (fixes #1685)
         if (!local) {
-          missing.push(assetId);
+          missing.push({ assetId, hasMetadata: false });
+        } else if (!local.blob) {
+          missing.push({ assetId, hasMetadata: true });
         }
       }
 
@@ -3172,7 +3253,7 @@ class AssetManager {
       Logger.log(`[AssetManager] Downloading ${missing.length} missing assets...`);
 
       let downloaded = 0;
-      for (const assetId of missing) {
+      for (const { assetId, hasMetadata } of missing) {
         try {
           const assetResponse = await fetch(
             `${apiBaseUrl}/projects/${this.projectId}/assets/${assetId}`,
@@ -3182,25 +3263,33 @@ class AssetManager {
           if (!assetResponse.ok) continue;
 
           const blob = await assetResponse.blob();
-          const mime = assetResponse.headers.get('X-Original-Mime') || 'application/octet-stream';
-          const hash = assetResponse.headers.get('X-Asset-Hash') || '';
-          const size = parseInt(assetResponse.headers.get('X-Original-Size') || '0');
-          const filename = assetResponse.headers.get('X-Filename') || undefined;
 
-          const asset = {
-            id: assetId,
-            projectId: this.projectId,
-            blob: blob,
-            mime: mime,
-            hash: hash,
-            size: size,
-            uploaded: true,
-            createdAt: new Date().toISOString(),
-            filename: filename,
-            folderPath: '' // Downloaded assets go to root by default
-          };
+          if (hasMetadata) {
+            // Metadata already exists in Yjs — only restore the blob
+            // to avoid overwriting correct filename/folderPath with
+            // potentially incomplete server headers (#1685).
+            await this.putBlob(assetId, blob);
+          } else {
+            const mime = assetResponse.headers.get('X-Original-Mime') || 'application/octet-stream';
+            const hash = assetResponse.headers.get('X-Asset-Hash') || '';
+            const size = parseInt(assetResponse.headers.get('X-Original-Size') || '0');
+            const filename = assetResponse.headers.get('X-Filename') || undefined;
 
-          await this.putAsset(asset);
+            const asset = {
+              id: assetId,
+              projectId: this.projectId,
+              blob: blob,
+              mime: mime,
+              hash: hash,
+              size: size,
+              uploaded: true,
+              createdAt: new Date().toISOString(),
+              filename: filename,
+              folderPath: '' // Downloaded assets go to root by default
+            };
+
+            await this.putAsset(asset);
+          }
           downloaded++;
         } catch (e) {
           console.error(`[AssetManager] Failed to download ${assetId}:`, e);
