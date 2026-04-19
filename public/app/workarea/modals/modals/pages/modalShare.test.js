@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 import ModalShare from './modalShare.js';
 
 // Mock avatar utils
@@ -610,37 +612,40 @@ describe('ModalShare', () => {
     });
 
     it('should do nothing when user cancels confirm', async () => {
-      window.confirm = vi.fn(() => false);
+      // confirm mock does not call the callback (user cancelled)
       await modal.handleRemove(2, 'editor@example.com');
       expect(window.eXeLearning.app.api.removeProjectCollaborator).not.toHaveBeenCalled();
     });
 
     it('should remove collaborator and reload on success', async () => {
-      window.confirm = vi.fn(() => true);
+      window.eXe.app.confirm.mockImplementationOnce((title, msg, cb) => cb && cb());
       window.eXeLearning.app.project.odeId = 'proj-123';
       const announceSpy = vi.spyOn(modal, 'announce');
       await modal.handleRemove(2, 'editor@example.com');
+      await flushPromises();
       expect(window.eXeLearning.app.api.removeProjectCollaborator).toHaveBeenCalledWith('proj-123', 2);
       expect(announceSpy).toHaveBeenCalled();
     });
 
     it('should show error on failed response', async () => {
-      window.confirm = vi.fn(() => true);
+      window.eXe.app.confirm.mockImplementationOnce((title, msg, cb) => cb && cb());
       window.eXeLearning.app.api.removeProjectCollaborator.mockResolvedValueOnce({
         responseMessage: 'ERROR',
         detail: 'Cannot remove',
       });
       const errorSpy = vi.spyOn(modal, 'showError');
       await modal.handleRemove(2, 'editor@example.com');
+      await flushPromises();
       expect(errorSpy).toHaveBeenCalledWith('Cannot remove');
     });
 
     it('should show error on API exception', async () => {
-      window.confirm = vi.fn(() => true);
+      window.eXe.app.confirm.mockImplementationOnce((title, msg, cb) => cb && cb());
       window.eXeLearning.app.api.removeProjectCollaborator.mockRejectedValueOnce(new Error('fail'));
       const errorSpy = vi.spyOn(modal, 'showError');
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       await modal.handleRemove(2, 'editor@example.com');
+      await flushPromises();
       expect(errorSpy).toHaveBeenCalled();
       consoleErrorSpy.mockRestore();
     });
@@ -655,48 +660,52 @@ describe('ModalShare', () => {
     });
 
     it('should do nothing when user cancels confirm', async () => {
-      window.confirm = vi.fn(() => false);
+      // confirm mock does not call the callback (user cancelled)
       await modal.handleMakeOwner(2, 'editor@example.com');
       expect(window.eXeLearning.app.api.transferProjectOwnership).not.toHaveBeenCalled();
     });
 
     it('should transfer ownership and re-render on success', async () => {
-      window.confirm = vi.fn(() => true);
+      window.eXe.app.confirm.mockImplementationOnce((title, msg, cb) => cb && cb());
       window.eXeLearning.app.project.odeId = 'proj-123';
       const announceSpy = vi.spyOn(modal, 'announce');
       await modal.handleMakeOwner(2, 'editor@example.com');
+      await flushPromises();
       expect(window.eXeLearning.app.api.transferProjectOwnership).toHaveBeenCalledWith('proj-123', 2);
       expect(announceSpy).toHaveBeenCalled();
     });
 
     it('should update share button pill after ownership transfer', async () => {
-      window.confirm = vi.fn(() => true);
+      window.eXe.app.confirm.mockImplementationOnce((title, msg, cb) => cb && cb());
       window.eXeLearning.app.project.odeId = 'proj-123';
       const updatePillSpy = vi.fn();
       window.eXeLearning.app.interface = {
         shareButton: { updateVisibilityPill: updatePillSpy },
       };
       await modal.handleMakeOwner(2, 'editor@example.com');
+      await flushPromises();
       expect(updatePillSpy).toHaveBeenCalledWith('private');
     });
 
     it('should show error on failed response', async () => {
-      window.confirm = vi.fn(() => true);
+      window.eXe.app.confirm.mockImplementationOnce((title, msg, cb) => cb && cb());
       window.eXeLearning.app.api.transferProjectOwnership.mockResolvedValueOnce({
         responseMessage: 'ERROR',
         detail: 'Not allowed',
       });
       const errorSpy = vi.spyOn(modal, 'showError');
       await modal.handleMakeOwner(2, 'editor@example.com');
+      await flushPromises();
       expect(errorSpy).toHaveBeenCalledWith('Not allowed');
     });
 
     it('should show error on API exception', async () => {
-      window.confirm = vi.fn(() => true);
+      window.eXe.app.confirm.mockImplementationOnce((title, msg, cb) => cb && cb());
       window.eXeLearning.app.api.transferProjectOwnership.mockRejectedValueOnce(new Error('fail'));
       const errorSpy = vi.spyOn(modal, 'showError');
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       await modal.handleMakeOwner(2, 'editor@example.com');
+      await flushPromises();
       expect(errorSpy).toHaveBeenCalled();
       consoleErrorSpy.mockRestore();
     });
