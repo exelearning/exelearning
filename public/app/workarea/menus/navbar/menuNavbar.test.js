@@ -50,11 +50,11 @@ describe('MenuNavbar', () => {
   let mockLinks;
 
   beforeEach(() => {
-    // Mock links
+    // Mock links: two JS-driven (href="#") and one real navigation link
     mockLinks = [
-      { addEventListener: vi.fn() },
-      { addEventListener: vi.fn() },
-      { addEventListener: vi.fn() },
+      { addEventListener: vi.fn(), getAttribute: vi.fn().mockReturnValue('#') },
+      { addEventListener: vi.fn(), getAttribute: vi.fn().mockReturnValue('#') },
+      { addEventListener: vi.fn(), getAttribute: vi.fn().mockReturnValue('/admin') },
     ];
 
     // Mock navbar element
@@ -130,26 +130,31 @@ describe('MenuNavbar', () => {
       expect(mockNavbarElement.querySelectorAll).toHaveBeenCalledWith('a');
     });
 
-    it('should add click event listener to each link', () => {
+    it('should add click event listener only to JS-driven links (href="#")', () => {
       menuNavbar.disableLinks();
 
-      mockLinks.forEach((link) => {
-        expect(link.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
-      });
+      // Links with href="#" get a listener
+      expect(mockLinks[0].addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+      expect(mockLinks[1].addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+      // Link with a real href must NOT get a listener
+      expect(mockLinks[2].addEventListener).not.toHaveBeenCalled();
     });
 
-    it('should prevent default on link click', () => {
+    it('should prevent default on JS-driven link click', () => {
       menuNavbar.disableLinks();
 
-      // Get the first link's click handler
       const clickHandler = mockLinks[0].addEventListener.mock.calls[0][1];
-      const mockEvent = {
-        preventDefault: vi.fn(),
-      };
-
+      const mockEvent = { preventDefault: vi.fn() };
       clickHandler(mockEvent);
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();
+    });
+
+    it('should not prevent default navigation for real-href links', () => {
+      menuNavbar.disableLinks();
+
+      // The real-href link (index 2) has no listener attached, so no preventDefault is called
+      expect(mockLinks[2].addEventListener).not.toHaveBeenCalled();
     });
   });
 
@@ -217,10 +222,11 @@ describe('MenuNavbar', () => {
     it('should fully initialize navbar on load', () => {
       menuNavbar.load();
 
-      // Links should be disabled
-      mockLinks.forEach((link) => {
-        expect(link.addEventListener).toHaveBeenCalled();
-      });
+      // JS-driven links (href="#") should be disabled
+      expect(mockLinks[0].addEventListener).toHaveBeenCalled();
+      expect(mockLinks[1].addEventListener).toHaveBeenCalled();
+      // Real-href links must remain enabled
+      expect(mockLinks[2].addEventListener).not.toHaveBeenCalled();
 
       // All navbar items should be created
       expect(menuNavbar.file).toBeDefined();
@@ -235,15 +241,12 @@ describe('MenuNavbar', () => {
       expect(menuNavbar.help.setEvents).toHaveBeenCalled();
     });
 
-    it('should prevent link navigation after load', () => {
+    it('should prevent link navigation for JS-driven links after load', () => {
       menuNavbar.load();
 
-      // Simulate clicking a link
+      // Simulate clicking a JS-driven link (href="#")
       const clickHandler = mockLinks[0].addEventListener.mock.calls[0][1];
-      const mockEvent = {
-        preventDefault: vi.fn(),
-      };
-
+      const mockEvent = { preventDefault: vi.fn() };
       clickHandler(mockEvent);
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();

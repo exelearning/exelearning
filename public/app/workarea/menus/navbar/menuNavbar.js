@@ -19,14 +19,19 @@ export default class MenuNavbar {
     }
 
     /**
-     * Disable all navbar links
+     * Disable all navbar links that are JS-driven (href="#").
+     * Links with a real href (e.g. the admin panel link) are left alone so
+     * the browser navigates normally.
      *
      */
     disableLinks() {
         this.navbar.querySelectorAll('a').forEach((link) => {
-            link.addEventListener('click', (event) => {
-                event.preventDefault();
-            });
+            const href = link.getAttribute('href');
+            if (href === '#' || href === null) {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                });
+            }
         });
     }
 
