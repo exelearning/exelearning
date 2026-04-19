@@ -311,4 +311,153 @@ describe('execute', () => {
         expect(written).toBe(normalised);
         expect(written).not.toContain('CDATA');
     });
+
+    it('processes all locales when no specific locale is given', async () => {
+        const { execute, configure } = await import('./translations-format');
+        let formattedLocale: string | null = null;
+        configure({
+            fileExists: p => p.includes('messages.es.xlf'),
+            readFile: p => {
+                formattedLocale = p.includes('messages.es.xlf') ? 'es' : 'other';
+                return makeXlf('es', [{ id: 'u1', resname: 'key', source: 'key', target: '%s&percnt; correcto' }]);
+            },
+            writeFile: () => {},
+        });
+
+        const result = await execute([], {});
+
+        expect(result.success).toBe(true);
+        expect(result.message).toContain('XLF file(s)');
+        expect(formattedLocale).toBe('es');
+    });
+
+    it('reports "All files already correctly formatted" when nothing changed', async () => {
+        const { execute, configure } = await import('./translations-format');
+        const unchanged = makeXlf('es', [{ id: 'u1', resname: 'Safe', source: 'Safe', target: 'Seguro' }]);
+        const { formatXlfContent } = await import('./translations-format');
+        const normalised = formatXlfContent(unchanged);
+        configure({
+            fileExists: p => p.includes('messages.es.xlf'),
+            readFile: () => normalised,
+            writeFile: () => {},
+        });
+
+        const result = await execute([], { locale: 'es' });
+
+        expect(result.success).toBe(true);
+        expect(result.message).toContain('All files already correctly formatted');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Unit tests — printHelp
+// ---------------------------------------------------------------------------
+
+describe('printHelp', () => {
+    it('should print help text without throwing', async () => {
+        const { printHelp } = await import('./translations-format');
+        expect(() => printHelp()).not.toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Unit tests — runMain
+// ---------------------------------------------------------------------------
+
+describe('runMain', () => {
+    const originalExit = process.exit;
+    let exitCode: number | undefined;
+
+    beforeEach(() => {
+        exitCode = undefined;
+        process.exit = ((code: number) => {
+            exitCode = code;
+        }) as never;
+    });
+
+    afterEach(async () => {
+        process.exit = originalExit;
+        const { resetDependencies } = await import('./translations-format');
+        resetDependencies();
+    });
+
+    it('prints help and exits 0 when --help is passed', async () => {
+        const { runMain } = await import('./translations-format');
+        await runMain(['bun', 'cli', '--help']);
+        expect(exitCode).toBe(0);
+    });
+
+    it('exits 0 on successful execution', async () => {
+        const { runMain, configure } = await import('./translations-format');
+        configure({ fileExists: () => false, readFile: () => '', writeFile: () => {} });
+        await runMain(['bun', 'cli', '--locale=es']);
+        expect(exitCode).toBe(0);
+    });
+
+    it('exits 1 on unknown locale', async () => {
+        const { runMain } = await import('./translations-format');
+        await runMain(['bun', 'cli', '--locale=xx']);
+        expect(exitCode).toBe(1);
+    });
+
+    it('exits 1 when execute throws', async () => {
+        const { runMain, configure } = await import('./translations-format');
+        configure({
+            fileExists: () => {
+                throw new Error('disk error');
+            },
+            readFile: () => '',
+            writeFile: () => {},
+        });
+        await runMain(['bun', 'cli', '--locale=es']);
+        expect(exitCode).toBe(1);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Unit tests — formatXlfContent edge cases
+// ---------------------------------------------------------------------------
+
+describe('formatXlfContent — edge cases', () => {
+    let formatXlfContent: (content: string) => string;
+
+    beforeEach(async () => {
+        ({ formatXlfContent } = await import('./translations-format'));
+    });
+
+    it('preserves Windows CRLF line endings', () => {
+        const xlf = makeXlf('es', [{ id: 'u1', resname: 'Safe', source: 'Safe', target: 'Seguro' }]).replace(
+            /\n/g,
+            '\r\n',
+        );
+        const result = formatXlfContent(xlf);
+        expect(result).toContain('\r\n');
+    });
+
+    it('normalises indentation for trans-unit closing tag', () => {
+        const content =
+            `<?xml version="1.0"?>\n` +
+            `<xliff>\n` +
+            `            <trans-unit id="x">\n` +
+            `              <source>S</source>\n` +
+            `              <target>T</target>\n` +
+            `            </trans-unit>\n` +
+            `</xliff>`;
+        const result = formatXlfContent(content);
+        const lines = result.split('\n');
+        const closingLine = lines.find(l => l.includes('</trans-unit>'));
+        expect(closingLine).toBe('      </trans-unit>');
+    });
+
+    it('handles multiple target elements in one file', () => {
+        const xlf = makeXlf('es', [
+            { id: 'u1', resname: 'A', source: 'A', target: 'a < b' },
+            { id: 'u2', resname: 'B', source: 'B', target: 'safe' },
+            { id: 'u3', resname: 'C', source: 'C', target: '%s&percnt; done' },
+        ]);
+        const result = formatXlfContent(xlf);
+        expect(result).toContain('<target><![CDATA[a < b]]></target>');
+        expect(result).toContain('<target>safe</target>');
+        expect(result).toContain('<target><![CDATA[%s&percnt; done]]></target>');
+    });
 });
