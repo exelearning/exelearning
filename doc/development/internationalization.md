@@ -120,6 +120,27 @@ make translations-sort LOCALE=es
 
 XML comments inside `<body>` (e.g. `<!-- Section name -->`) are discarded during sorting, as they would be out of context after reordering.
 
+### Format XLF Files
+
+Normalise `<target>` content and fix indentation in all XLF files:
+
+- Wraps `<target>` content in `<![CDATA[...]]>` when it contains characters that are invalid as raw XML (bare `<`, or `&` not followed by a predefined entity reference such as `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`).
+- Already-wrapped CDATA sections and valid plain-text targets are left untouched.
+- Normalises indentation: 6 spaces before `<trans-unit>`, 8 spaces before `<source>` and `<target>`.
+- Skips `messages.en.xlf` by default (English is the source language; its `<target>` entries mirror `<source>` and never need CDATA normalisation).
+
+```bash
+# Format all locales (except "en")
+make translations-format
+
+# Format a specific locale
+make translations-format LOCALE=es
+
+# Equivalent CLI command
+bun cli translations:format
+bun cli translations:format --locale=es
+```
+
 ### Other CLI Options
 
 ```bash
@@ -146,9 +167,12 @@ make translations
 
 # 3. Sort all XLF files to match the canonical order of messages.en.xlf
 make translations-sort
+
+# 4. Wrap any <target> values that need CDATA and normalise indentation
+make translations-format
 ```
 
-All three commands accept an optional `LOCALE=xx` argument to restrict the operation to a single language.
+All four commands accept an optional `LOCALE=xx` argument to restrict the operation to a single language.
 
 ## Extraction Sources
 
@@ -322,6 +346,7 @@ setLocale(locale);
 - Run `make translations` after adding any new translatable strings.
 - Run `make translations-cleanup` periodically to remove keys that no longer exist in the source.
 - Run `make translations-sort` to keep all XLF files consistently ordered (makes diffs easier to review).
+- Run `make translations-format` to wrap any `<target>` values that require CDATA and normalise indentation.
 - Never hardcode UI strings — always wrap them in `_()`, `c_()`, or `trans()`.
 
 ---

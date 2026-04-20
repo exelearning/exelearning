@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## v4.0.0-rc2 – 2026-04-21
+
+### Added
+
+- Projects now automatically generate a `screenshot.png` thumbnail on each save; included in `.elpx` archives and manageable from Project Properties
+- Admin panel link added to the user dropdown menu for admin users
+- Case Study iDevice: feedback button now supports separate labels for shown/hidden states using `Show|Hide` syntax (aligned with Text iDevice)
+- Download Source File iDevice: progress bar displayed while preparing the file
+- Rubric iDevice: add SCORM score support
+- File Manager: single-file uploads now automatically select the uploaded file
+- New `make translations-format` command to add `CDATA` tags where needed and normalize indentation in translation files
+- Updated Galician (GL), Italian (IT) and Romanian (RO) translations
+- Reviewed automated Valencian (VA) placeholder translations
+
+### Fixed
+
+- Exports no longer produce missing images when cached asset blobs are evicted under storage pressure
+- Exported pages now include "Page title | Project title" in the `<title>` element for non-index pages
+- Rubric iDevice: resolve UI and accessibility issues
+- Several iDevices: fix LaTeX rendering issues
+- TinyMCE: images no longer appear broken after paste or drag-and-drop uploads
+- Workarea: content box minimize/restore arrows order corrected
+- File Manager: asset reference count now updates correctly after deleting an image without reopening the project
+- Export Page, Export Box and Export iDevice now correctly write files in the desktop app
+- Block reorder arrows now move to the correct position in collaborative sessions
+- Share modal: confirmation dialogs now use the application UI instead of the browser native dialog
+- Desktop app: first save filename is now preserved for subsequent saves in the same session
+- Auto-updater now activates correctly on official beta and RC builds
+- LMS integration: base64-encoded ELP resources sent via Moodle LTI are now correctly loaded on launch
+- LMS integration: standalone controls (New, Open, Share, Save) are now hidden when running inside an LMS
+
+### Upgraded
+
+- @codecov/bundle-analyzer: 1.9.1 → 2.0.1
+- actions/github-script: 8 → 9
+- actions/upload-pages-artifact: 4 → 5
+- esbuild: 0.27.7 → 0.28.0
+
+---
+
 ## v4.0.0-rc1 – 2026-04-07
 
 ### Added

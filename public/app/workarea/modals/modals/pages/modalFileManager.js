@@ -2010,13 +2010,15 @@ export default class ModalFilemanager extends Modal {
         Logger.log(`[MediaLibrary] uploadFiles: assetManager.projectId = ${this.assetManager.projectId}, folder = "${this.currentPath}"`);
 
         let uploadedCount = 0;
+        let lastUploadedUrl = null;
 
         for (const file of files) {
             try {
                 Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}, folder: "${this.currentPath}"`);
                 // Upload to current folder
-                await this.assetManager.insertImage(file, { folderPath: this.currentPath });
+                const url = await this.assetManager.insertImage(file, { folderPath: this.currentPath });
                 uploadedCount++;
+                lastUploadedUrl = url;
             } catch (err) {
                 console.error(`[MediaLibrary] Failed to upload ${file.name}:`, err);
             }
@@ -2025,6 +2027,28 @@ export default class ModalFilemanager extends Modal {
         if (uploadedCount > 0) {
             Logger.log(`[MediaLibrary] Uploaded ${uploadedCount} files to folder "${this.currentPath}"`);
             await this.loadAssets();
+
+            if (uploadedCount === 1 && lastUploadedUrl) {
+                const assetId = lastUploadedUrl.replace(/^asset:\/\//, '').replace(/\.[^.]*$/, '');
+                await this.autoSelectUploadedAsset(assetId);
+            }
+        }
+    }
+
+    /**
+     * Auto-select an asset after upload, as if the user clicked it.
+     * @param {string} assetId
+     */
+    async autoSelectUploadedAsset(assetId) {
+        const asset = this.assets.find(a => a.id === assetId);
+        if (!asset) return;
+
+        if (this.viewMode === 'list') {
+            const row = this.listTbody?.querySelector(`[data-asset-id="${assetId}"]`);
+            if (row) await this.selectAssetInList(asset, row);
+        } else {
+            const item = this.grid?.querySelector(`[data-asset-id="${assetId}"]`);
+            if (item) await this.selectAsset(asset, item);
         }
     }
 
