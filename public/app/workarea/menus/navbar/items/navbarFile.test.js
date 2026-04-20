@@ -1136,6 +1136,53 @@ describe('NavbarFile', () => {
             expect(global.fetch).not.toHaveBeenCalled();
         });
 
+        // Regression for PR #1670 third review (ignaciogros, issue #1666):
+        // Save A.elpx → File → New → Save must NOT pre-fill A.elpx. The
+        // static/Electron branch of createSession() used to call
+        // window.newProject() (bare location.reload) without clearing the
+        // global "current file" slot held by the main process, so the next
+        // Save dialog on Windows still proposed the previously saved name.
+        it('should clear the Electron saved path before reloading via window.newProject (PR #1670)', async () => {
+            const clearSavedPath = vi.fn().mockResolvedValue(true);
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+            window.__EXE_STATIC_MODE__ = true;
+            window.electronAPI = { clearSavedPath };
+            window.newProject = vi.fn();
+
+            await navbarFile.createSession();
+
+            expect(clearSavedPath).toHaveBeenCalled();
+            expect(clearSavedPath.mock.invocationCallOrder[0]).toBeLessThan(
+                window.newProject.mock.invocationCallOrder[0],
+            );
+            expect(window.newProject).toHaveBeenCalled();
+        });
+
+        it('should also clear the Electron saved path on the transitionToProject branch (PR #1670)', async () => {
+            const clearSavedPath = vi.fn().mockResolvedValue(true);
+            const transitionSpy = vi.fn().mockResolvedValue();
+            window.electronAPI = { clearSavedPath };
+            eXeLearning.app.project.transitionToProject = transitionSpy;
+
+            await navbarFile.createSession();
+
+            expect(clearSavedPath).toHaveBeenCalled();
+            expect(transitionSpy).toHaveBeenCalledWith({
+                action: 'new',
+                skipSave: true,
+            });
+        });
+
+        it('should survive a missing clearSavedPath without throwing (PR #1670)', async () => {
+            window.electronAPI = {};
+            window.__EXE_STATIC_MODE__ = true;
+            window.newProject = vi.fn();
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+
+            await expect(navbarFile.createSession()).resolves.toBeUndefined();
+            expect(window.newProject).toHaveBeenCalled();
+        });
+
         it('should use transitionToProject when available', async () => {
             const transitionSpy = vi.fn().mockResolvedValue();
             eXeLearning.app.project.transitionToProject = transitionSpy;
@@ -1308,6 +1355,25 @@ describe('NavbarFile', () => {
             expect(window.electronAPI.openElp).toHaveBeenCalled();
             expect(eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalled();
             expect(window.__originalElpPath).toBe('/tmp/test.elpx');
+        });
+
+        it('should persist the opened file path via setSavedPath (PR #1670)', async () => {
+            eXeLearning.config.isOfflineInstallation = true;
+            const setSavedPath = vi.fn().mockResolvedValue(true);
+            window.electronAPI = {
+                openElp: vi.fn().mockResolvedValue('/tmp/remembered.elpx'),
+                readFile: vi.fn().mockResolvedValue({
+                    ok: true,
+                    base64: Buffer.from('test').toString('base64'),
+                }),
+                setSavedPath,
+            };
+            global.atob = (value) => Buffer.from(value, 'base64').toString('binary');
+
+            navbarFile.openUserOdeFilesEvent();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(setSavedPath).toHaveBeenCalledWith('/tmp/remembered.elpx');
         });
 
         it('should show alert when offline file read fails', async () => {

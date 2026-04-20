@@ -1123,18 +1123,21 @@ describe('App utility methods', () => {
         openuserodefiles: { largeFilesUpload: largeFilesUploadSpy },
       };
 
+      const setSavedPath = vi.fn().mockResolvedValue(true);
       window.electronAPI = {
         readFile: vi.fn().mockResolvedValue({
           ok: true,
           base64: btoa('test content'),
           mtimeMs: Date.now(),
         }),
-        setSavedPath: vi.fn(),
+        setSavedPath,
       };
 
       await appInstance.openFileFromPath('/test/project.elpx');
 
       expect(largeFilesUploadSpy).toHaveBeenCalledWith(expect.any(File));
+      // PR #1670: the opened path is persisted so the next Save pre-fills it.
+      expect(setSavedPath).toHaveBeenCalledWith('/test/project.elpx');
       delete window.electronAPI;
     });
 

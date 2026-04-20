@@ -1212,6 +1212,20 @@ export default class NavbarFile {
      * Creates a new project/session. Always does a full page reload in online mode.
      */
     async createSession() {
+        // Desktop/static path reloads via `window.newProject()` and never
+        // reaches `transitionToProject`, so the global "current file" slot
+        // (see `app/main.js` + `app/save-utils.js`) would still carry the
+        // previously saved file name across the reload. Clear it here so
+        // File → New always starts with no remembered value (issue #1666,
+        // PR #1670 third review — ignaciogros).
+        try {
+            if (typeof window.electronAPI?.clearSavedPath === 'function') {
+                await window.electronAPI.clearSavedPath();
+            }
+        } catch (_e) {
+            // Best effort — failing here must not block creating a new project.
+        }
+
         if (
             this.isStaticMode() &&
             typeof window.newProject === 'function'
@@ -1645,6 +1659,17 @@ export default class NavbarFile {
                         window.__originalElpPath = filePath;
                     } catch (_e) {
                         // Intentional: Electron-specific assignment may fail
+                    }
+                    // Also persist it to Electron settings so the next Save
+                    // dialog pre-fills with this file's name even after the
+                    // full page reload that follows the import (PR #1670
+                    // review).
+                    try {
+                        if (typeof window.electronAPI?.setSavedPath === 'function') {
+                            await window.electronAPI.setSavedPath(filePath);
+                        }
+                    } catch (_e) {
+                        // Best effort — failing here must not break Open.
                     }
                     eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                         file

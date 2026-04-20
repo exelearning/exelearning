@@ -690,6 +690,17 @@ export default class projectManager {
 
         switch (action) {
             case 'new': {
+                // Forget the Electron-side associated file BEFORE the reload
+                // so the next Save dialog starts fresh with the project
+                // title (PR #1670 review — "new file should start with no
+                // remembered value").
+                try {
+                    if (typeof window.electronAPI?.clearSavedPath === 'function') {
+                        await window.electronAPI.clearSavedPath();
+                    }
+                } catch (_e) {
+                    // Best effort.
+                }
                 if (isStaticMode) {
                     // Static/Electron: reload generates a fresh UUID automatically
                     window.location.reload();
@@ -718,6 +729,17 @@ export default class projectManager {
                 }
                 break;
             case 'import': {
+                // Remember the imported file's name so the next Save dialog
+                // pre-fills with it (PR #1670 review). Only the basename is
+                // available here — the main process stores it in the global
+                // "current file" slot as-is, with an empty dir fallback.
+                try {
+                    if (file?.name && typeof window.electronAPI?.setSavedPath === 'function') {
+                        await window.electronAPI.setSavedPath(file.name);
+                    }
+                } catch (_e) {
+                    // Best effort.
+                }
                 // Store file in IndexedDB before reload
                 await storePendingImport(file);
                 if (isStaticMode) {
