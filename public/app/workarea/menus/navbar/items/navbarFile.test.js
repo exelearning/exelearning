@@ -2775,6 +2775,87 @@ describe('NavbarFile', () => {
             expect(largeFilesUploadSpy).toHaveBeenCalledWith(mockFile);
         });
 
+        // Regression for issue #1666: save A → new → save B → open A via
+        // the static <input type="file"> must propose A.elpx in the next
+        // Save dialog, not B.elpx. The static path used to skip
+        // setSavedPath entirely, so the main-process "current file" slot
+        // still held B's name.
+        it('should persist the opened file name via setSavedPath in static mode', async () => {
+            const largeFilesUploadSpy = vi.fn();
+            const setSavedPath = vi.fn().mockResolvedValue(true);
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: largeFilesUploadSpy,
+            };
+            window.electronAPI = { setSavedPath };
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'documento-sin-titulo-x.elpx', {
+                type: 'application/octet-stream',
+            });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            expect(setSavedPath).toHaveBeenCalledWith('documento-sin-titulo-x.elpx');
+            expect(setSavedPath.mock.invocationCallOrder[0]).toBeLessThan(
+                largeFilesUploadSpy.mock.invocationCallOrder[0],
+            );
+
+            delete window.electronAPI;
+        });
+
+        it('should forward the full path via setSavedPath when electronAPI.getFilePath is available', async () => {
+            const largeFilesUploadSpy = vi.fn();
+            const setSavedPath = vi.fn().mockResolvedValue(true);
+            const getFilePath = vi.fn().mockReturnValue('/Users/me/Desktop/documento-sin-titulo-x.elpx');
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: largeFilesUploadSpy,
+            };
+            window.electronAPI = { setSavedPath, getFilePath };
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'documento-sin-titulo-x.elpx', {
+                type: 'application/octet-stream',
+            });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            expect(getFilePath).toHaveBeenCalledWith(mockFile);
+            expect(setSavedPath).toHaveBeenCalledWith('/Users/me/Desktop/documento-sin-titulo-x.elpx');
+
+            delete window.electronAPI;
+        });
+
+        it('should survive a missing setSavedPath without blocking the upload', async () => {
+            const largeFilesUploadSpy = vi.fn();
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: largeFilesUploadSpy,
+            };
+            window.electronAPI = {};
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'documento-sin-titulo-x.elpx', {
+                type: 'application/octet-stream',
+            });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            expect(largeFilesUploadSpy).toHaveBeenCalledWith(mockFile);
+
+            delete window.electronAPI;
+        });
+
         it('should not process when no file selected', async () => {
             const largeFilesUploadSpy = vi.fn();
             eXeLearning.app.modals.openuserodefiles = {

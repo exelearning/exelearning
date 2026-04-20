@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 // Expose safe APIs for renderer
 // Save always prompts for destination — no silent overwrite.
@@ -23,6 +23,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // persisted to settings.json by the main process.
   setSavedPath: (filePath) => ipcRenderer.invoke('app:setSavedPath', { filePath }),
   clearSavedPath: () => ipcRenderer.invoke('app:clearSavedPath'),
+  // Retrieve the absolute path for a File picked via <input type="file">.
+  // Needed in static/Electron mode so the Save dialog can reopen in the
+  // same folder the file came from (issue #1666).
+  getFilePath: (file) => {
+    try {
+      return webUtils?.getPathForFile ? webUtils.getPathForFile(file) : null;
+    } catch (_e) {
+      return null;
+    }
+  },
   openElp: () => ipcRenderer.invoke('app:openElp'),
   readFile: (filePath) => ipcRenderer.invoke('app:readFile', { filePath }),
   getMemoryUsage: () => ipcRenderer.invoke('app:getMemoryUsage'),

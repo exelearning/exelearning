@@ -1702,9 +1702,24 @@ export default class NavbarFile {
             fileInput.style.display = 'none';
             document.body.appendChild(fileInput);
 
-            fileInput.addEventListener('change', (e) => {
+            fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
+                    // Persist the picked file to the main-process "current
+                    // file" slot so the next Save dialog pre-fills with it.
+                    // Prefer the absolute path (via Electron's webUtils)
+                    // when available so the folder is remembered too.
+                    try {
+                        if (typeof window.electronAPI?.setSavedPath === 'function') {
+                            const fullPath =
+                                typeof window.electronAPI?.getFilePath === 'function'
+                                    ? window.electronAPI.getFilePath(file)
+                                    : null;
+                            await window.electronAPI.setSavedPath(fullPath || file.name);
+                        }
+                    } catch (_e) {
+                        // Best effort — must not block Open.
+                    }
                     // Reuse unified open flow (handles unsaved modal + static import)
                     eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
                 }
