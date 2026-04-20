@@ -901,7 +901,7 @@ var $quickquestionsvideo = {
                             );
                         if (latex) {
                             $exeDevices.iDevice.gamification.math.updateLatex(
-                                `vquextProgressBar-${instance}`
+                                `#vquextProgressBar-${instance}`
                             );
                         }
                         $(this).find('div.VQXTP-Tooltip').fadeIn(300);
@@ -2155,7 +2155,7 @@ var $quickquestionsvideo = {
             color: color,
         });
         $exeDevices.iDevice.gamification.math.updateLatex(
-            `vquextPAuthor-${instance}`
+            `#vquextPAuthor-${instance}`
         );
     },
 
@@ -2224,7 +2224,7 @@ var $quickquestionsvideo = {
             latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `vquextQuestionDiv-${instance}`
+                `#vquextQuestionDiv-${instance}`
             );
         }
     },
@@ -2262,7 +2262,7 @@ var $quickquestionsvideo = {
             latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `vquextQuestionDiv-${instance}`
+                `#vquextQuestionDiv-${instance}`
             );
         }
     },

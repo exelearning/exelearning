@@ -987,7 +987,7 @@ var $trueorfalse = {
             'font-size': '1.1em',
         });
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMessage' + instance
+            '#tofPMessage-' + instance
         );
     },
 

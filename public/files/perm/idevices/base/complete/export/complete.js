@@ -361,7 +361,7 @@ var $eXeCompleta = {
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `cmptGameContainer-${instance}`
+                `#cmptGameContainer-${instance}`
             );
 
         $(`#cmptStartGame-${instance}`).on('click', (e) => {
@@ -659,7 +659,7 @@ var $eXeCompleta = {
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `cmptGameContainer-${instance}`
+                `#cmptGameContainer-${instance}`
             );
         }
 
