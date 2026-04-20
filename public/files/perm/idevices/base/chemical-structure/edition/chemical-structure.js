@@ -534,7 +534,9 @@ var $exeDevice = {
                 // with the empty MOL V3000 stub that Ketcher emits for blank canvases.
                 if (fromClear) return;
                 $exeDevice.requestExport().then(function (exported) {
-                    if (!exported.isEmpty) $exeDevice.applyExportToCurrentQuestion(exported);
+                    // Always reflect current editor state — including empties — so the
+                    // textarea and stored question data stay in sync with the canvas.
+                    $exeDevice.applyExportToCurrentQuestion(exported);
                     if (fromTextarea) $('#chemEditorStatus').text('');
                 }).catch(function () {
                     if (fromTextarea) $('#chemEditorStatus').text('');

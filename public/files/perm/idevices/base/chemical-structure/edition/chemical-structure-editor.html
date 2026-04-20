@@ -64,8 +64,10 @@
 
             var editorReady = false;
             var pendingLoad = null;
-            var lastDirty = false;
             var hideUiObserver = null;
+            var canvasObserver = null;
+            var changeBound = false;
+            var dirtyThrottleTimer = null;
             // Trusted parent origin, captured from the first message received from window.parent.
             // CS_READY is sent with '*' before any parent message arrives; all subsequent
             // messages use the captured origin to prevent cross-origin data leaks.
@@ -236,15 +238,45 @@
                 });
             }
 
-            function bindChangeTracking() {
-                var ketcher = getKetcher();
-                if (!ketcher || !ketcher.editor || typeof ketcher.editor.subscribe !== 'function') return;
+            // Throttle CS_DIRTY so rapid change bursts produce at most one message per 150ms.
+            // Parent already debounces at 600ms before exporting; this is just to avoid flooding postMessage.
+            function notifyDirty() {
+                if (dirtyThrottleTimer) return;
+                dirtyThrottleTimer = setTimeout(function () {
+                    dirtyThrottleTimer = null;
+                }, 150);
+                post('CS_DIRTY', { dirty: true });
+            }
 
-                ketcher.editor.subscribe('change', function () {
-                    if (lastDirty) return;
-                    lastDirty = true;
-                    post('CS_DIRTY', { dirty: true });
-                });
+            function bindChangeTracking() {
+                if (changeBound) return;
+                var ketcher = getKetcher();
+                if (!ketcher || !ketcher.editor || typeof ketcher.editor.subscribe !== 'function') {
+                    // Ketcher exists but editor/subscribe not ready yet — retry shortly.
+                    setTimeout(bindChangeTracking, 200);
+                    return;
+                }
+
+                try {
+                    ketcher.editor.subscribe('change', function () { notifyDirty(); });
+                    changeBound = true;
+                } catch (e) {
+                    setTimeout(bindChangeTracking, 200);
+                }
+            }
+
+            // Belt-and-suspenders: watch the canvas SVG for DOM mutations.
+            // If the 'change' subscription misses an event (or Ketcher rebuilds its editor
+            // and drops our listener) the observer still catches structural edits.
+            function bindCanvasObserver() {
+                if (canvasObserver) return;
+                var canvasSvg = document.querySelector('svg[data-testid="canvas"]');
+                if (!canvasSvg) {
+                    setTimeout(bindCanvasObserver, 200);
+                    return;
+                }
+                canvasObserver = new MutationObserver(function () { notifyDirty(); });
+                canvasObserver.observe(canvasSvg, { childList: true, subtree: true, attributes: true });
             }
 
             function handleMessage(event) {
@@ -258,7 +290,6 @@
 
                 } else if (type === 'CS_REQUEST_EXPORT') {
                     exportStructure().then(function (result) {
-                        lastDirty = false;
                         hideError();
                         post('CS_EXPORT_RESULT', result);
                     }).catch(function (err) {
@@ -269,8 +300,7 @@
                     var ketcher = getKetcher();
                     if (!ketcher) { showError('Ketcher not available'); return; }
                     ketcher.setMolecule('').then(function () {
-                        lastDirty = true;
-                        post('CS_DIRTY', { dirty: true });
+                        notifyDirty();
                     }).catch(function (err) {
                         showError('Clear failed: ' + (err && err.message || String(err)));
                     });
@@ -287,6 +317,7 @@
                         clearInterval(timer);
                         editorReady = true;
                         bindChangeTracking();
+                        bindCanvasObserver();
                         if (pendingLoad) {
                             loadStructure(pendingLoad);
                             pendingLoad = null;
