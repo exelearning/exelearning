@@ -342,6 +342,69 @@ describe('ElpxImporter', () => {
         });
     });
 
+    describe('top-level directory wrapper', () => {
+        it('should import an ELP whose contents are nested under a single top-level directory', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            // Re-pack the fixture so every entry lives under "repo-main/" — this mirrors
+            // the shape of a GitHub repository archive served by github-proxy.exelearning.dev.
+            const fflate = await import('fflate');
+            const originalEntries = fflate.unzipSync(new Uint8Array(elpBuffer));
+            const wrapped: Record<string, Uint8Array> = {};
+            for (const [path, data] of Object.entries(originalEntries)) {
+                wrapped[`repo-main/${path}`] = data;
+            }
+            const wrappedBuffer = fflate.zipSync(wrapped);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const result = await importer.importFromBuffer(wrappedBuffer);
+
+            expect(result.pages).toBeGreaterThan(0);
+            expect(ydoc.getArray('navigation').length).toBe(result.pages);
+
+            ydoc.destroy();
+        });
+
+        it('should not strip the prefix when files also live at the root', async () => {
+            const fflate = await import('fflate');
+            const zip = fflate.zipSync({
+                'repo-main/unrelated.txt': new Uint8Array([1]),
+                'README.md': new Uint8Array([2]),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            // No content.xml anywhere, and the root isn't a single-directory wrapper,
+            // so the importer must still reject the archive.
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(
+                'Unable to open this file: content.xml is missing',
+            );
+
+            ydoc.destroy();
+        });
+
+        it('should not strip when there are multiple top-level directories', async () => {
+            const fflate = await import('fflate');
+            const zip = fflate.zipSync({
+                'a/content.xml': new Uint8Array([1]),
+                'b/other.txt': new Uint8Array([2]),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(
+                'Unable to open this file: content.xml is missing',
+            );
+
+            ydoc.destroy();
+        });
+    });
+
     describe('error handling', () => {
         it('should throw error for invalid ZIP file', async () => {
             const ydoc = new Y.Doc();
