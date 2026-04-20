@@ -27,7 +27,7 @@
 - Block reorder arrows now move to the correct position in collaborative sessions
 - Share modal: confirmation dialogs now use the application UI instead of the browser native dialog
 - Static bundle: allow `?url=` imports without `.elpx`, `.elp`, or `.zip` file extension in pathname
-- Desktop app: first save filename is now preserved for subsequent saves in the same session
+- Desktop app: first save filename and last accessed folder are now preserved for subsequent saves in the same session
 - Auto-updater now activates correctly on official beta and RC builds
 - LMS integration: base64-encoded ELP resources sent via Moodle LTI are now correctly loaded on launch
 - LMS integration: standalone controls (New, Open, Share, Save) are now hidden when running inside an LMS
