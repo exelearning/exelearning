@@ -22,6 +22,7 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
+import { formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 
 /**
@@ -150,12 +151,23 @@ export abstract class BaseExporter {
      * Labels are resolved from XLF translations so the exported HTML already
      * contains the correct text for the content language — no runtime JS needed.
      */
-    protected async fetchNavLabels(language: string): Promise<{ previous: string; next: string; page: string }> {
+    protected async fetchNavLabels(
+        language: string,
+        license?: string,
+    ): Promise<{ previous: string; next: string; page: string; license?: string }> {
         const translations = await this.resources.fetchI18nTranslations(language);
+        let translatedLicense = license;
+
+        if (license) {
+            const key = formatLicenseText(license);
+            translatedLicense = translations.get(key) || key;
+        }
+
         return {
             previous: translations.get('Previous') || 'Previous',
             next: translations.get('Next') || 'Next',
             page: translations.get('Page') || 'Page',
+            license: translatedLicense,
         };
     }
 

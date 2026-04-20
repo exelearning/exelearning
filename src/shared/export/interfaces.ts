@@ -643,7 +643,7 @@ export interface PageRenderOptions {
     isEpub?: boolean;
 
     /** Translated labels for navigation buttons (resolved at export time from XLF) */
-    navLabels?: { previous: string; next: string; page: string };
+    navLabels?: { previous: string; next: string; page: string; license?: string };
 
     // Detected library names from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: string[];

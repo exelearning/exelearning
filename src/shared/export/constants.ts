@@ -702,16 +702,20 @@ export function getLicenseUrl(licenseName: string): string {
 }
 
 /**
- * Format license text for display in footer.
- * Returns the displayName from registry if found, otherwise returns the input as-is.
+ * Format license text for translation and display.
+ * Returns the stable string used for translation lookups in .xlf files.
+ * CC licenses use their lowecase keys, while others use their Title Cased displayNames.
  *
  * @param licenseName - The license name from metadata
- * @returns Formatted license text for display
+ * @returns Formatted license translation key
  */
 export function formatLicenseText(licenseName: string): string {
     if (!licenseName) return '';
     const key = resolveLicenseKey(licenseName);
-    return LICENSE_REGISTRY[key] ? key : licenseName;
+    const entry = LICENSE_REGISTRY[key];
+    if (!entry) return licenseName;
+
+    return key.startsWith('creative commons') ? key : entry.displayName;
 }
 
 /**
