@@ -485,28 +485,26 @@ export default class ModalShare extends Modal {
     async handleRemove(userId, email) {
         const confirmMessage = _("Remove {email}'s access to this project?").replace('{email}', email);
 
-        if (!confirm(confirmMessage)) {
-            return;
-        }
+        eXe.app.confirm(_('Attention'), confirmMessage, async () => {
+            try {
+                const projectId = eXeLearning.app.project?.odeId;
+                const response = await eXeLearning.app.api.removeProjectCollaborator(
+                    projectId,
+                    userId
+                );
 
-        try {
-            const projectId = eXeLearning.app.project?.odeId;
-            const response = await eXeLearning.app.api.removeProjectCollaborator(
-                projectId,
-                userId
-            );
-
-            if (response.responseMessage === 'OK') {
-                await this.loadProjectData(projectId);
-                this.renderPeopleList();
-                this.announce(_('Removed {email}').replace('{email}', email));
-            } else {
-                this.showError(response.detail || _('Failed to remove collaborator'));
+                if (response.responseMessage === 'OK') {
+                    await this.loadProjectData(projectId);
+                    this.renderPeopleList();
+                    this.announce(_('Removed {email}').replace('{email}', email));
+                } else {
+                    this.showError(response.detail || _('Failed to remove collaborator'));
+                }
+            } catch (error) {
+                console.error('Failed to remove collaborator:', error);
+                this.showError(_('Failed to remove collaborator'));
             }
-        } catch (error) {
-            console.error('Failed to remove collaborator:', error);
-            this.showError(_('Failed to remove collaborator'));
-        }
+        });
     }
 
     /**
@@ -515,43 +513,41 @@ export default class ModalShare extends Modal {
     async handleMakeOwner(userId, email) {
         const confirmMessage = _('Transfer ownership to {email}? You will become an editor.').replace('{email}', email);
 
-        if (!confirm(confirmMessage)) {
-            return;
-        }
+        eXe.app.confirm(_('Attention'), confirmMessage, async () => {
+            try {
+                const projectId = eXeLearning.app.project?.odeId;
+                const response = await eXeLearning.app.api.transferProjectOwnership(
+                    projectId,
+                    userId
+                );
 
-        try {
-            const projectId = eXeLearning.app.project?.odeId;
-            const response = await eXeLearning.app.api.transferProjectOwnership(
-                projectId,
-                userId
-            );
+                if (response.responseMessage === 'OK') {
+                    await this.loadProjectData(projectId);
 
-            if (response.responseMessage === 'OK') {
-                await this.loadProjectData(projectId);
+                    // Update isOwner flag
+                    this.currentUserIsOwner = this.projectData?.isOwner === true;
 
-                // Update isOwner flag
-                this.currentUserIsOwner = this.projectData?.isOwner === true;
+                    // Re-render all sections
+                    this.renderInviteSection();
+                    this.renderPeopleList();
+                    this.renderVisibilitySection();
 
-                // Re-render all sections
-                this.renderInviteSection();
-                this.renderPeopleList();
-                this.renderVisibilitySection();
+                    this.announce(_('Ownership transferred to {email}').replace('{email}', email));
 
-                this.announce(_('Ownership transferred to {email}').replace('{email}', email));
-
-                // Update share button pill
-                if (eXeLearning.app.interface?.shareButton) {
-                    eXeLearning.app.interface.shareButton.updateVisibilityPill(
-                        this.projectData.visibility
-                    );
+                    // Update share button pill
+                    if (eXeLearning.app.interface?.shareButton) {
+                        eXeLearning.app.interface.shareButton.updateVisibilityPill(
+                            this.projectData.visibility
+                        );
+                    }
+                } else {
+                    this.showError(response.detail || _('Failed to transfer ownership'));
                 }
-            } else {
-                this.showError(response.detail || _('Failed to transfer ownership'));
+            } catch (error) {
+                console.error('Failed to transfer ownership:', error);
+                this.showError(_('Failed to transfer ownership'));
             }
-        } catch (error) {
-            console.error('Failed to transfer ownership:', error);
-            this.showError(_('Failed to transfer ownership'));
-        }
+        });
     }
 
     /**

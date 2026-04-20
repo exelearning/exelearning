@@ -15,6 +15,7 @@ import * as generateJwt from './commands/generate-jwt';
 import * as tmpCleanup from './commands/tmp-cleanup';
 import * as translations from './commands/translations';
 import * as translationsSort from './commands/translations-sort';
+import * as translationsFormat from './commands/translations-format';
 import * as migrate from './commands/migrate';
 import * as elpConvert from './commands/elp-convert';
 import * as elpExport from './commands/elp-export';
@@ -40,6 +41,7 @@ const COMMANDS: Record<string, CommandModule> = {
     'tmp:cleanup': tmpCleanup,
     translations: translations,
     'translations:sort': translationsSort,
+    'translations:format': translationsFormat,
     migrate: migrate,
     'elp:convert': elpConvert,
     'elp:export': elpExport,
@@ -192,6 +194,7 @@ ${colors.cyan('Maintenance:')}
   tmp:cleanup [--max-age=86400]              Clean temporary files
   translations [--locale=en]                  Extract/clean translations
   translations:sort [--locale=en]             Sort trans-units to match messages.en.xlf
+  translations:format [--locale=en]           Add CDATA where needed and normalise indentation
   projects:purge --yes                        Delete all projects and assets
   projects:cleanup [--unsaved-age=24]        Clean unsaved/guest projects
   update-licenses [--dry-run]                Update license info in public/libs/README.md

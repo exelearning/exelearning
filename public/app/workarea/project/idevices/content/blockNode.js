@@ -423,7 +423,7 @@ export default class IdeviceBlockNode {
         const spanIcon = document.createElement('span');
         spanIcon.className = 'auto-icon';
         spanIcon.setAttribute('aria-hidden', 'true');
-        spanIcon.textContent = 'keyboard_arrow_down';
+        spanIcon.textContent = 'keyboard_arrow_up';
         const spanHidden = document.createElement('span');
         spanHidden.className = 'visually-hidden';
         spanHidden.textContent = _('Hide');
@@ -1181,7 +1181,7 @@ export default class IdeviceBlockNode {
         this.toggleElement.classList.remove('box-toggle-on');
         this.toggleElement.setAttribute('title', _('Show'));
         this.toggleElement.querySelector('span').innerHTML =
-            'keyboard_arrow_up';
+            'keyboard_arrow_down';
     }
 
     /**
@@ -1194,7 +1194,7 @@ export default class IdeviceBlockNode {
         this.toggleElement.classList.add('box-toggle-on');
         this.toggleElement.setAttribute('title', _('Hide'));
         this.toggleElement.querySelector('span').innerHTML =
-            'keyboard_arrow_down';
+            'keyboard_arrow_up';
     }
 
     /*********************************

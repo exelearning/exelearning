@@ -1175,16 +1175,22 @@ test.describe('Image Gallery iDevice', () => {
                 timeout: 15000,
             });
 
-            // Wait a bit for the UI to update
-            await page.waitForTimeout(500);
-
-            // Select the newly uploaded item (last item in grid that's not a folder)
             const newItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').last();
-            await newItem.click();
-            await page.waitForTimeout(300);
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
 
-            // Click insert button
-            await page.click('#modalFileManager .media-library-insert-btn');
+            // Retry clicking the item until the insert button becomes enabled.
+            // After upload the grid re-renders and event handlers may not be ready on the first click.
+            await expect
+                .poll(
+                    async () => {
+                        await newItem.click();
+                        return insertBtn.isEnabled();
+                    },
+                    { timeout: 30000, intervals: [500, 1000, 2000] },
+                )
+                .toBe(true);
+
+            await insertBtn.click();
             await page.waitForTimeout(500);
         }
 
@@ -1237,8 +1243,8 @@ test.describe('Image Gallery iDevice', () => {
             await navigateToFolder(page, 'photos');
             await createFolderInFileManager(page, 'vacation');
             await navigateToFolder(page, 'vacation');
-            // Reuse sample-2.jpg - we're testing path handling, not unique images
-            await uploadAndSelectImage(page, 'test/fixtures/sample-2.jpg');
+            // Use a distinct image to avoid content-hash collision with call 1 (same UUID → broken autoSelect)
+            await uploadAndSelectImage(page, 'test/fixtures/sample-4.jpg');
 
             // Verify third image was added
             await expect(imageContainers).toHaveCount(3, { timeout: 15000 });

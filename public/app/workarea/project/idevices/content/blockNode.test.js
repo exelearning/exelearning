@@ -507,7 +507,7 @@ describe('IdeviceBlockNode', () => {
             block.toggleElement = document.createElement('button');
             block.toggleElement.classList.add('box-toggle-on');
             const span = document.createElement('span');
-            span.innerHTML = 'keyboard_arrow_down';
+            span.innerHTML = 'keyboard_arrow_up';
             block.toggleElement.appendChild(span);
         });
 
@@ -1226,7 +1226,7 @@ describe('IdeviceBlockNode', () => {
         beforeEach(() => {
             block.blockContent = document.createElement('div');
             block.toggleElement = document.createElement('button');
-            block.toggleElement.innerHTML = '<span>keyboard_arrow_down</span>';
+            block.toggleElement.innerHTML = '<span>keyboard_arrow_up</span>';
             block.toggleElement.classList.add('box-toggle-on');
         });
 
@@ -1250,7 +1250,7 @@ describe('IdeviceBlockNode', () => {
         it('updates toggle element title and icon', () => {
             block.toggleOff();
             expect(block.toggleElement.getAttribute('title')).toBe('Show');
-            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_up');
+            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_down');
         });
     });
 
@@ -1259,7 +1259,7 @@ describe('IdeviceBlockNode', () => {
             block.blockContent = document.createElement('div');
             block.blockContent.classList.add('hidden-idevices');
             block.toggleElement = document.createElement('button');
-            block.toggleElement.innerHTML = '<span>keyboard_arrow_up</span>';
+            block.toggleElement.innerHTML = '<span>keyboard_arrow_down</span>';
             block.toggleElement.classList.add('box-toggle-off');
         });
 
@@ -1277,7 +1277,7 @@ describe('IdeviceBlockNode', () => {
         it('updates toggle element title and icon', () => {
             block.toggleOn();
             expect(block.toggleElement.getAttribute('title')).toBe('Hide');
-            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_down');
+            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_up');
         });
     });
 
@@ -1448,7 +1448,7 @@ describe('IdeviceBlockNode', () => {
         beforeEach(() => {
             block.blockContent = document.createElement('div');
             block.toggleElement = document.createElement('button');
-            block.toggleElement.innerHTML = '<span>keyboard_arrow_down</span>';
+            block.toggleElement.innerHTML = '<span>keyboard_arrow_up</span>';
         });
 
         it('sets export-view attribute when visibility is true', () => {
