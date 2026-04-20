@@ -175,7 +175,7 @@ describe('modalTemplateSelection', () => {
       expect(window.__originalElpPath).toBeUndefined();
     });
 
-    it('should also clear the Electron saved path via clearSavedPath (PR #1670)', async () => {
+    it('should also clear the Electron saved path via clearSavedPath', async () => {
       const clearSavedPath = vi.fn().mockResolvedValue(true);
       window.electronAPI = { clearSavedPath };
 

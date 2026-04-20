@@ -3416,7 +3416,7 @@ describe('ProjectManager', () => {
                 expect(window.location.reload).toHaveBeenCalled();
             });
 
-            it('new action: clears the Electron saved path so the next Save starts fresh (PR #1670)', async () => {
+            it('new action: clears the Electron saved path so the next Save starts fresh', async () => {
                 const clearSavedPath = vi.fn().mockResolvedValue(true);
                 window.electronAPI = { clearSavedPath };
 
@@ -3436,7 +3436,7 @@ describe('ProjectManager', () => {
                 delete window.electronAPI;
             });
 
-            it('import action: persists the imported file name via setSavedPath (PR #1670)', async () => {
+            it('import action: persists the imported file name via setSavedPath', async () => {
                 const setSavedPath = vi.fn().mockResolvedValue(true);
                 window.electronAPI = { setSavedPath };
                 const file = new File(['content'], 'Imported.elpx');

@@ -1136,13 +1136,13 @@ describe('NavbarFile', () => {
             expect(global.fetch).not.toHaveBeenCalled();
         });
 
-        // Regression for PR #1670 third review (ignaciogros, issue #1666):
-        // Save A.elpx → File → New → Save must NOT pre-fill A.elpx. The
-        // static/Electron branch of createSession() used to call
-        // window.newProject() (bare location.reload) without clearing the
-        // global "current file" slot held by the main process, so the next
-        // Save dialog on Windows still proposed the previously saved name.
-        it('should clear the Electron saved path before reloading via window.newProject (PR #1670)', async () => {
+        // Regression for issue #1666: Save A.elpx → File → New → Save
+        // must NOT pre-fill A.elpx. The static/Electron branch of
+        // createSession() reloads via window.newProject() (a bare
+        // location.reload), so the main-process "current file" slot
+        // must be cleared first or the next Save dialog would still
+        // propose the previously saved name.
+        it('should clear the Electron saved path before reloading via window.newProject', async () => {
             const clearSavedPath = vi.fn().mockResolvedValue(true);
             eXeLearning.app.capabilities = { storage: { remote: false } };
             window.__EXE_STATIC_MODE__ = true;
@@ -1158,7 +1158,7 @@ describe('NavbarFile', () => {
             expect(window.newProject).toHaveBeenCalled();
         });
 
-        it('should also clear the Electron saved path on the transitionToProject branch (PR #1670)', async () => {
+        it('should also clear the Electron saved path on the transitionToProject branch', async () => {
             const clearSavedPath = vi.fn().mockResolvedValue(true);
             const transitionSpy = vi.fn().mockResolvedValue();
             window.electronAPI = { clearSavedPath };
@@ -1173,7 +1173,7 @@ describe('NavbarFile', () => {
             });
         });
 
-        it('should survive a missing clearSavedPath without throwing (PR #1670)', async () => {
+        it('should survive a missing clearSavedPath without throwing', async () => {
             window.electronAPI = {};
             window.__EXE_STATIC_MODE__ = true;
             window.newProject = vi.fn();
@@ -1357,7 +1357,7 @@ describe('NavbarFile', () => {
             expect(window.__originalElpPath).toBe('/tmp/test.elpx');
         });
 
-        it('should persist the opened file path via setSavedPath (PR #1670)', async () => {
+        it('should persist the opened file path via setSavedPath', async () => {
             eXeLearning.config.isOfflineInstallation = true;
             const setSavedPath = vi.fn().mockResolvedValue(true);
             window.electronAPI = {

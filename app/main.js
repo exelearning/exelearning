@@ -235,6 +235,7 @@ const {
     splitSavePath,
     pickStoredSaveInfo,
     clearSavedNameCache,
+    resolveSaveDir,
 } = require('./save-utils');
 
 function proposeSavePath(lastDir, effectiveName = null) {
@@ -242,9 +243,6 @@ function proposeSavePath(lastDir, effectiveName = null) {
 }
 
 async function promptSave(owner, suggestedName = null, lastDir = null, storedName = null) {
-    // Restores v4.0.0-beta4 behaviour regressed in #1519 / fixes #1666: the
-    // last chosen file name wins when its extension matches the current
-    // export target, so subsequent saves default to the name the user typed.
     const effectiveName = resolveEffectiveSaveName(suggestedName, storedName);
     const inferredExt = getExt(effectiveName) || DEFAULT_EXTENSION;
     const filter = getDialogFilterForExt(inferredExt);
@@ -290,13 +288,6 @@ function getLastSaveDir(key) {
     return s.lastSaveDir?.[key] || null;
 }
 
-function setLastSaveDir(key, dirPath) {
-    const s = readSettings();
-    s.lastSaveDir = s.lastSaveDir || {};
-    s.lastSaveDir[key] = dirPath;
-    writeSettings(s);
-}
-
 function getLastSaveInfo(key) {
     const s = readSettings();
     return {
@@ -305,22 +296,6 @@ function getLastSaveInfo(key) {
     };
 }
 
-function setLastSaveInfo(key, dirPath, fileName) {
-    const s = readSettings();
-    s.lastSaveDir = s.lastSaveDir || {};
-    s.lastSaveDir[key] = dirPath;
-    s.lastSaveName = s.lastSaveName || {};
-    s.lastSaveName[key] = fileName;
-    writeSettings(s);
-}
-
-// ──────────────  Global "current file" slot (PR #1670 review)  ──────────────
-// A single entry that tracks the file currently associated with the window,
-// independently of the in-memory per-project key. The renderer sets it when
-// the user opens a file from disk and clears it when they start a new
-// project — so promptSave can pre-fill the dialog with the real file name
-// even across the full page reload that follows those actions (the per-key
-// slot above is useless there because the project UUID changes on reload).
 function getCurrentFileSaveInfo() {
     const s = readSettings();
     return {
@@ -329,27 +304,63 @@ function getCurrentFileSaveInfo() {
     };
 }
 
-function setCurrentFileSaveInfo(dirPath, fileName) {
+function getLastUsedDir() {
     const s = readSettings();
-    // Drop any stale per-project name cache before installing the new global
-    // slot — otherwise a leftover `lastSaveName[<uuid>]` from a previous file
-    // would still take priority and the dialog would propose the wrong name
-    // after File → Open (save A → open B → dialog must show B, not A). See
-    // PR #1670 review (ignaciogros) and the regression tests in save-utils.spec.ts.
+    return typeof s.lastUsedDir === 'string' && s.lastUsedDir.length > 0 ? s.lastUsedDir : null;
+}
+
+/**
+ * Apply a Save-dialog outcome to settings.json in a single read+write:
+ * wipes the stale per-project name cache, then updates the global slot,
+ * the per-project entry, and the session-wide lastUsedDir fallback.
+ * Called after the user picks a target in promptSave.
+ */
+function persistSaveLocation(key, dirPath, fileName) {
+    const s = readSettings();
     clearSavedNameCache(s);
     s.currentFileSave = { dir: dirPath || null, name: fileName || null };
+    if (key) {
+        s.lastSaveDir = s.lastSaveDir || {};
+        s.lastSaveDir[key] = dirPath;
+        s.lastSaveName = s.lastSaveName || {};
+        s.lastSaveName[key] = fileName;
+    }
+    if (dirPath) s.lastUsedDir = dirPath;
+    writeSettings(s);
+}
+
+/**
+ * Store the file currently associated with the window without touching the
+ * per-project slot. Used by the setSavedPath IPC when the renderer opens a
+ * file from disk.
+ */
+function setCurrentFileSaveInfo(dirPath, fileName) {
+    const s = readSettings();
+    clearSavedNameCache(s);
+    s.currentFileSave = { dir: dirPath || null, name: fileName || null };
+    if (dirPath) s.lastUsedDir = dirPath;
+    writeSettings(s);
+}
+
+function setLastUsedDir(dirPath) {
+    if (!dirPath) return;
+    const s = readSettings();
+    s.lastUsedDir = dirPath;
+    writeSettings(s);
+}
+
+function setLastSaveDir(key, dirPath) {
+    const s = readSettings();
+    s.lastSaveDir = s.lastSaveDir || {};
+    s.lastSaveDir[key] = dirPath;
+    if (dirPath) s.lastUsedDir = dirPath;
     writeSettings(s);
 }
 
 function clearCurrentFileSaveInfo() {
     const s = readSettings();
-    // Same rationale as setCurrentFileSaveInfo: "new project" must forget the
-    // name on both slots, otherwise the per-project cache would resurface it
-    // after the full page reload that follows File → New.
     clearSavedNameCache(s);
-    if (s.currentFileSave) {
-        delete s.currentFileSave;
-    }
+    delete s.currentFileSave;
     writeSettings(s);
 }
 
@@ -922,7 +933,7 @@ async function createWindow() {
 
             // Always prompt — no silent overwrite
             const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
-            const lastDir = getLastSaveDir(projectKey);
+            const lastDir = getLastSaveDir(projectKey) || getLastUsedDir();
             const targetPath = await promptSave(owner, suggestedName, lastDir);
             if (!targetPath) {
                 event.preventDefault();
@@ -1115,16 +1126,18 @@ function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
 ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, suggestedDirName }) => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
     try {
-        // Pick destination folder
+        const lastUsedDir = getLastUsedDir();
         const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
             title: tOrDefault(
                 'export.folder.dialogTitle',
                 defaultLocale === 'es' ? 'Exportar a carpeta' : 'Export to folder',
             ),
             properties: ['openDirectory', 'createDirectory'],
+            ...(lastUsedDir ? { defaultPath: lastUsedDir } : {}),
         });
         if (canceled || !filePaths || !filePaths.length) return { ok: false, canceled: true };
         const destDir = filePaths[0];
+        setLastUsedDir(destDir);
 
         // Download ZIP to a temp path
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
@@ -1174,16 +1187,18 @@ ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, sugges
 ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirName }) => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
     try {
-        // Pick destination folder
+        const lastUsedDir = getLastUsedDir();
         const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
             title: tOrDefault(
                 'export.folder.dialogTitle',
                 defaultLocale === 'es' ? 'Exportar a carpeta' : 'Export to folder',
             ),
             properties: ['openDirectory', 'createDirectory'],
+            ...(lastUsedDir ? { defaultPath: lastUsedDir } : {}),
         });
         if (canceled || !filePaths || !filePaths.length) return { ok: false, canceled: true };
         const destDir = filePaths[0];
+        setLastUsedDir(destDir);
 
         // Decode base64 and unzip using fflate
         const buffer = Buffer.from(base64Data, 'base64');
@@ -1365,20 +1380,12 @@ async function saveUrlWithDialog(e, { downloadUrl, projectKey, suggestedName }) 
         const key = projectKey || 'default';
         const perKey = getLastSaveInfo(key);
         const globalInfo = getCurrentFileSaveInfo();
-        // Global slot wins over the per-project cache: it tracks the file
-        // currently associated with the window and is what setSavedPath /
-        // clearSavedPath manipulate. See PR #1670 review regression.
-        const { dir: lastDir, name: storedName } = pickStoredSaveInfo(perKey, globalInfo);
+        const { name: storedName } = pickStoredSaveInfo(perKey, globalInfo);
+        const lastDir = resolveSaveDir(perKey, globalInfo, getLastUsedDir());
 
         const targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
         if (!targetPath) return false;
-        const savedDir = path.dirname(targetPath);
-        const savedName = path.basename(targetPath);
-        // Global slot first (it wipes the stale per-key name cache), then
-        // repopulate the per-key slot for the just-saved project so repeated
-        // saves of the same project keep pre-filling the chosen name.
-        setCurrentFileSaveInfo(savedDir, savedName);
-        setLastSaveInfo(key, savedDir, savedName);
+        persistSaveLocation(key, path.dirname(targetPath), path.basename(targetPath));
 
         return await streamToFile(downloadUrl, targetPath, wc);
     } catch (_e) {
@@ -1417,12 +1424,15 @@ ipcMain.handle('app:clearSavedPath', async () => {
 // Open system file picker for .elpx files (offline open)
 ipcMain.handle('app:openElp', async e => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
+    const lastUsedDir = getLastUsedDir();
     const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
         title: tOrDefault('open.dialogTitle', defaultLocale === 'es' ? 'Abrir proyecto' : 'Open project'),
         properties: ['openFile'],
         filters: [{ name: 'eXeLearning project', extensions: ['elpx', 'elp', 'zip'] }],
+        ...(lastUsedDir ? { defaultPath: lastUsedDir } : {}),
     });
     if (canceled || !filePaths || !filePaths.length) return null;
+    setLastUsedDir(path.dirname(filePaths[0]));
     return filePaths[0];
 });
 
@@ -1521,9 +1531,8 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
         const key = projectKey || 'default';
         const perKey = getLastSaveInfo(key);
         const globalInfo = getCurrentFileSaveInfo();
-        // Global slot has priority; see the twin handler above and PR #1670
-        // review for the full rationale and regression scenarios.
-        const { dir: lastDir, name: storedName } = pickStoredSaveInfo(perKey, globalInfo);
+        const { name: storedName } = pickStoredSaveInfo(perKey, globalInfo);
+        const lastDir = resolveSaveDir(perKey, globalInfo, getLastUsedDir());
 
         targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
         afterPromptAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
@@ -1536,16 +1545,7 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
                 totalMs: afterPromptAt - startedAt,
             });
         }
-        {
-            const savedDir = path.dirname(targetPath);
-            const savedName = path.basename(targetPath);
-            // Global slot first: it wipes the stale per-key name cache that
-            // could still shadow the just-saved name. Then repopulate the
-            // per-key slot so repeated saves of the same project keep
-            // pre-filling the chosen name.
-            setCurrentFileSaveInfo(savedDir, savedName);
-            setLastSaveInfo(key, savedDir, savedName);
-        }
+        persistSaveLocation(key, path.dirname(targetPath), path.basename(targetPath));
 
         const buffer = normalizeBinaryPayload(bufferData, base64Data);
         afterNormalizeAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();

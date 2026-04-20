@@ -9,6 +9,7 @@ const {
     splitSavePath,
     pickStoredSaveInfo,
     clearSavedNameCache,
+    resolveSaveDir,
     DEFAULT_EXTENSION,
 } = require('./save-utils');
 
@@ -88,27 +89,22 @@ describe('save-utils', () => {
         });
 
         it('falls back to effective name when an unexpected error occurs', () => {
-            // Forces the internal try/catch by passing a bad type.
             const result = proposeSavePath({} as unknown as string, 'broken.elpx');
             expect(typeof result).toBe('string');
             expect(result.endsWith('broken.elpx')).toBe(true);
         });
     });
 
-    describe('resolveEffectiveSaveName — regression #1666', () => {
-        it('returns the stored name when the user has already chosen one and the extension matches (beta4 behaviour)', () => {
-            // Regression scenario reported in issue #1666: on subsequent saves
-            // the dialog must default to the previously chosen file name.
+    describe('resolveEffectiveSaveName', () => {
+        it('returns the stored name when extensions match', () => {
             expect(resolveEffectiveSaveName('fresh-project.elpx', 'user_chose.elpx')).toBe('user_chose.elpx');
         });
 
-        it('returns the suggested name when there is no stored name yet (first save)', () => {
+        it('returns the suggested name when there is no stored name', () => {
             expect(resolveEffectiveSaveName('fresh-project.elpx', null)).toBe('fresh-project.elpx');
         });
 
-        it('prefers the suggested name when the extension differs (different export target)', () => {
-            // Saving the project as .elpx stored "my_course.elpx". Now the user
-            // exports the same project as .zip — we must NOT reuse "my_course.elpx".
+        it('prefers the suggested name when extensions differ (cross-format export)', () => {
             expect(resolveEffectiveSaveName('export.zip', 'my_course.elpx')).toBe('export.zip');
         });
 
@@ -122,18 +118,17 @@ describe('save-utils', () => {
             expect(resolveEffectiveSaveName('', '')).toBeNull();
         });
 
-        it('treats a suggested name without an extension as compatible with any stored extension', () => {
-            // Callers occasionally pass a bare project title — do not throw it away.
+        it('treats an extensionless suggestedName as compatible with any stored extension', () => {
             expect(resolveEffectiveSaveName('Course Title', 'user_chose.elpx')).toBe('user_chose.elpx');
         });
 
-        it('is case-insensitive when comparing extensions', () => {
+        it('compares extensions case-insensitively', () => {
             expect(resolveEffectiveSaveName('fresh.ELPX', 'user_chose.elpx')).toBe('user_chose.elpx');
             expect(resolveEffectiveSaveName('fresh.elpx', 'user_chose.ELPX')).toBe('user_chose.ELPX');
         });
     });
 
-    describe('splitSavePath — regression PR #1670 review', () => {
+    describe('splitSavePath', () => {
         it('splits a POSIX path into dir and basename', () => {
             expect(splitSavePath('/home/user/docs/first.elpx')).toEqual({
                 dir: '/home/user/docs',
@@ -142,12 +137,10 @@ describe('save-utils', () => {
         });
 
         it('splits a Windows-style path into dir and basename', () => {
-            const result = splitSavePath('C:\\Users\\me\\Documents\\second.elpx');
-            expect(result).not.toBeNull();
-            expect(result.name).toBe('second.elpx');
-            // path.dirname behaviour on POSIX treats the full string as one segment,
-            // but we still want the basename to survive so the dialog can pre-fill it.
-            expect(typeof result.dir).toBe('string');
+            expect(splitSavePath('C:\\Users\\me\\Documents\\second.elpx')).toEqual({
+                dir: 'C:/Users/me/Documents',
+                name: 'second.elpx',
+            });
         });
 
         it('returns null for nullish / invalid input', () => {
@@ -158,63 +151,24 @@ describe('save-utils', () => {
         });
 
         it('handles a bare file name (no directory component)', () => {
-            const result = splitSavePath('bare.elpx');
-            expect(result).not.toBeNull();
-            expect(result.name).toBe('bare.elpx');
+            expect(splitSavePath('bare.elpx')).toEqual({ dir: '', name: 'bare.elpx' });
         });
     });
 
-    describe('Scenario from PR #1670 review (ignaciogros)', () => {
-        // These scenarios exercise the pure name-resolution layer against the
-        // three user flows called out in the review:
-        //   1. Open a file -> save must pre-fill with that file's name.
-        //   2. New project -> save must pre-fill with the project title, not a stale name.
-        //   3. Save A then open B -> save must pre-fill B's name, never A's.
-
-        it('(1) opening a file seeds the stored name so the next save pre-fills it', () => {
-            const opened = splitSavePath('/docs/my-course.elpx');
-            expect(opened).not.toBeNull();
-            // Caller persists opened.name; promptSave then resolves with it.
-            expect(resolveEffectiveSaveName('Untitled.elpx', opened.name)).toBe('my-course.elpx');
-        });
-
-        it('(2) new project clears the stored name so promptSave uses the project title', () => {
-            // After "new project", caller must clear storedName; promptSave then
-            // falls back to the freshly suggested project-title-based name.
-            expect(resolveEffectiveSaveName('Brand New Project.elpx', null)).toBe('Brand New Project.elpx');
-        });
-
-        it('(3) opening B after saving A does not leak A.elpx into the dialog', () => {
-            // The caller must overwrite the stored name with B's name on open,
-            // so the resolver reports B even when "A.elpx" was the last value it saw.
-            const openedB = splitSavePath('/docs/B.elpx');
-            expect(openedB).not.toBeNull();
-            // storedName after opening B is "B.elpx", not "A.elpx".
-            expect(resolveEffectiveSaveName('Untitled.elpx', openedB.name)).toBe('B.elpx');
-        });
-    });
-
-    describe('pickStoredSaveInfo — regression PR #1670 (2nd review)', () => {
-        it('global slot wins over the per-project cache when it has a name', () => {
-            // Exact bug reported by @ignaciogros: save A, then open B — the
-            // dialog must propose B, even though perKey still contains A.
-            const perKey = { dir: '/docs', name: 'A.elpx' };
-            const globalInfo = { dir: '/elsewhere', name: 'B.elpx' };
-            expect(pickStoredSaveInfo(perKey, globalInfo)).toEqual({
-                dir: '/elsewhere',
-                name: 'B.elpx',
-            });
+    describe('pickStoredSaveInfo', () => {
+        it('prefers the global slot over the per-project cache', () => {
+            expect(
+                pickStoredSaveInfo(
+                    { dir: '/docs', name: 'A.elpx' },
+                    { dir: '/elsewhere', name: 'B.elpx' },
+                ),
+            ).toEqual({ dir: '/elsewhere', name: 'B.elpx' });
         });
 
         it('falls back to perKey when the global slot is empty', () => {
-            // Repeated saves of the same project must still prefill the
-            // previously chosen name when nothing else touched the global slot.
-            const perKey = { dir: '/docs', name: 'A.elpx' };
-            const globalInfo = { dir: null, name: null };
-            expect(pickStoredSaveInfo(perKey, globalInfo)).toEqual({
-                dir: '/docs',
-                name: 'A.elpx',
-            });
+            expect(
+                pickStoredSaveInfo({ dir: '/docs', name: 'A.elpx' }, { dir: null, name: null }),
+            ).toEqual({ dir: '/docs', name: 'A.elpx' });
         });
 
         it('returns nulls when both slots are empty', () => {
@@ -226,33 +180,76 @@ describe('save-utils', () => {
             expect(pickStoredSaveInfo(undefined, undefined)).toEqual({ dir: null, name: null });
         });
 
-        it('mixes dir and name from the two slots when only one side is populated', () => {
-            // setSavedPath only seeds the global slot; the per-project cache
-            // may still hold the directory from a previous save. That's fine
-            // — we prefer the global name (fresh) and keep the per-key dir
-            // only when the global slot has none.
-            expect(pickStoredSaveInfo({ dir: '/docs', name: 'A.elpx' }, { dir: null, name: 'B.elpx' })).toEqual({
-                dir: '/docs',
-                name: 'B.elpx',
-            });
+        it('mixes dir and name across slots when only one side has each', () => {
+            expect(
+                pickStoredSaveInfo({ dir: '/docs', name: 'A.elpx' }, { dir: null, name: 'B.elpx' }),
+            ).toEqual({ dir: '/docs', name: 'B.elpx' });
         });
     });
 
-    describe('clearSavedNameCache — regression PR #1670 (2nd review)', () => {
-        it('wipes the per-project name map in place', () => {
+    describe('resolveSaveDir', () => {
+        it('prefers the global slot directory over the per-project cache', () => {
+            expect(
+                resolveSaveDir(
+                    { dir: '/perKey', name: 'A.elpx' },
+                    { dir: '/global', name: 'B.elpx' },
+                    '/lastUsed',
+                ),
+            ).toBe('/global');
+        });
+
+        it('falls back to the per-project cache when the global slot has no directory', () => {
+            expect(
+                resolveSaveDir(
+                    { dir: '/perKey', name: 'A.elpx' },
+                    { dir: null, name: null },
+                    '/lastUsed',
+                ),
+            ).toBe('/perKey');
+        });
+
+        it('falls back to lastUsedDir when neither perKey nor global has a directory', () => {
+            expect(
+                resolveSaveDir(
+                    { dir: null, name: null },
+                    { dir: null, name: null },
+                    '/Users/me/Desktop',
+                ),
+            ).toBe('/Users/me/Desktop');
+        });
+
+        it('returns null when nothing is known', () => {
+            expect(resolveSaveDir(null, null, null)).toBeNull();
+        });
+
+        it('ignores empty or non-string lastUsedDir', () => {
+            expect(resolveSaveDir(null, null, '')).toBeNull();
+            expect(resolveSaveDir(null, null, undefined)).toBeNull();
+            expect(resolveSaveDir(null, null, 42 as unknown as string)).toBeNull();
+        });
+
+        it('never shadows an explicit per-project or global directory', () => {
+            expect(
+                resolveSaveDir(
+                    { dir: '/Downloads', name: 'A.elpx' },
+                    { dir: null, name: null },
+                    '/Desktop',
+                ),
+            ).toBe('/Downloads');
+        });
+    });
+
+    describe('clearSavedNameCache', () => {
+        it('wipes the per-project name map without touching directories or the global slot', () => {
             const settings = {
                 lastSaveDir: { 'uuid-a': '/docs', 'uuid-b': '/elsewhere' },
                 lastSaveName: { 'uuid-a': 'A.elpx', 'uuid-b': 'B.elpx' },
                 currentFileSave: { dir: '/docs', name: 'A.elpx' },
             };
             const ret = clearSavedNameCache(settings);
-            expect(ret).toBe(settings); // mutates in place
+            expect(ret).toBe(settings);
             expect(settings.lastSaveName).toEqual({});
-            // Must NOT touch the directory cache — we still want to remember
-            // where the user last saved things.
             expect(settings.lastSaveDir).toEqual({ 'uuid-a': '/docs', 'uuid-b': '/elsewhere' });
-            // Must NOT remove the global slot on its own — that's the
-            // caller's responsibility (clearCurrentFileSaveInfo does both).
             expect(settings.currentFileSave).toEqual({ dir: '/docs', name: 'A.elpx' });
         });
 
@@ -268,39 +265,41 @@ describe('save-utils', () => {
         });
     });
 
-    describe('Scenario from PR #1670 (2nd review, ignaciogros)', () => {
-        // These scenarios simulate the real Electron flow against the pure
-        // state helpers, so every assertion maps directly to a click in the
-        // desktop app:
-        //
-        //   save A  →  clicks Save, types A.elpx
-        //   save   =  applySave(settings, key, dir, name)   (main.js:save handler)
-        //   open B  →  File > Open, picks B.elpx
-        //   open   =  applySetCurrentFile(settings, dir, name)  (setSavedPath IPC)
-        //   new    →  File > New
-        //   new    =  applyClear(settings)                   (clearSavedPath IPC)
-
-        const applySave = (settings: Record<string, unknown>, key: string, dir: string, name: string) => {
-            // Mirrors the fixed order in main.js: global slot first (wipes the
-            // stale per-key cache), then repopulate the current project's slot.
+    // End-to-end simulation of the real Electron save/open/new flow against
+    // the pure state helpers. Each applyX() mirrors a specific user gesture:
+    //   applySave — Save dialog OK'd with { key, dir, name }
+    //   applySetCurrentFile — File > Open (setSavedPath IPC)
+    //   applyClear — File > New (clearSavedPath IPC)
+    describe('save/open/new flow', () => {
+        const applySave = (
+            settings: Record<string, unknown>,
+            key: string,
+            dir: string,
+            name: string,
+        ) => {
             clearSavedNameCache(settings);
             (settings as { currentFileSave?: unknown }).currentFileSave = { dir, name };
             const s = settings as {
                 lastSaveDir?: Record<string, string>;
                 lastSaveName?: Record<string, string>;
+                lastUsedDir?: string;
             };
             s.lastSaveDir = s.lastSaveDir || {};
             s.lastSaveDir[key] = dir;
             s.lastSaveName = s.lastSaveName || {};
             s.lastSaveName[key] = name;
+            if (dir) s.lastUsedDir = dir;
         };
 
         const applySetCurrentFile = (settings: Record<string, unknown>, dir: string, name: string) => {
             clearSavedNameCache(settings);
             (settings as { currentFileSave?: unknown }).currentFileSave = { dir, name };
+            if (dir) (settings as { lastUsedDir?: string }).lastUsedDir = dir;
         };
 
         const applyClear = (settings: Record<string, unknown>) => {
+            // lastUsedDir must survive File > New — that's what makes folder
+            // memory persistent across new projects.
             clearSavedNameCache(settings);
             delete (settings as { currentFileSave?: unknown }).currentFileSave;
         };
@@ -317,33 +316,35 @@ describe('save-utils', () => {
             );
         };
 
-        it('save A → open B → Save dialog pre-fills B.elpx, never A.elpx', () => {
-            // The user's exact complaint: "I save a file and then open another
-            // one, and it remembers the name of the first saved file, making
-            // it easy to overwrite it unintentionally."
+        const readSaveDir = (settings: Record<string, unknown>, key: string) => {
+            const s = settings as {
+                lastSaveDir?: Record<string, string>;
+                lastSaveName?: Record<string, string>;
+                currentFileSave?: { dir?: string | null; name?: string | null };
+                lastUsedDir?: string;
+            };
+            return resolveSaveDir(
+                { dir: s.lastSaveDir?.[key] || null, name: s.lastSaveName?.[key] || null },
+                { dir: s.currentFileSave?.dir || null, name: s.currentFileSave?.name || null },
+                s.lastUsedDir || null,
+            );
+        };
+
+        it('save A → open B: the Save dialog pre-fills B, never A', () => {
             const settings: Record<string, unknown> = {};
             applySave(settings, 'uuid-a', '/docs', 'A.elpx');
             applySetCurrentFile(settings, '/elsewhere', 'B.elpx');
-            expect(readStored(settings, 'uuid-a').name).toBe('B.elpx');
-            expect(readStored(settings, 'uuid-a').dir).toBe('/elsewhere');
+            expect(readStored(settings, 'uuid-a')).toEqual({ dir: '/elsewhere', name: 'B.elpx' });
         });
 
-        it('save documento-sin-titulo-1.elpx → File > New → Save dialog does NOT pre-fill that name', () => {
-            // Ignacio's latest repro: the fallback key 'default' was leaking
-            // the previous file name across `location.reload()`, because
-            // clearCurrentFileSaveInfo only cleared the global slot and left
-            // `lastSaveName['default']` untouched.
+        it('save → File > New: the name cache on the fallback "default" key is not leaked after reload', () => {
             const settings: Record<string, unknown> = {};
             applySave(settings, 'default', '/docs', 'documento-sin-titulo-1.elpx');
-            // File > New. transitionToProject clears, then location.reload()
-            // re-enters the app with the same 'default' key (no project id yet).
             applyClear(settings);
             expect(readStored(settings, 'default').name).toBeNull();
         });
 
-        it('save A → File > New → save B → File > New → dialog is empty again (no cross-session leak)', () => {
-            // Belt-and-braces: two back-to-back new projects should never
-            // resurrect a name from the first one.
+        it('save A → New → save B → New: two back-to-back new projects never resurrect A', () => {
             const settings: Record<string, unknown> = {};
             applySave(settings, 'default', '/docs', 'A.elpx');
             applyClear(settings);
@@ -352,13 +353,42 @@ describe('save-utils', () => {
             expect(readStored(settings, 'default').name).toBeNull();
         });
 
-        it('save A → save A again uses A.elpx (no regression on the happy path)', () => {
-            // The whole point of PR #1670 round 1 was that repeated saves of
-            // the same project prefill the chosen name. Make sure the round-2
-            // fix doesn't undo that.
+        it('save A → save A again keeps pre-filling A (happy path)', () => {
             const settings: Record<string, unknown> = {};
             applySave(settings, 'uuid-a', '/docs', 'A.elpx');
             expect(readStored(settings, 'uuid-a').name).toBe('A.elpx');
+        });
+
+        it('save on /Desktop → File > New: Save for a fresh project still defaults to /Desktop', () => {
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'uuid-a', '/Users/me/Desktop', 'A.elpx');
+            applyClear(settings);
+            expect(readSaveDir(settings, 'fresh-uuid')).toBe('/Users/me/Desktop');
+        });
+
+        it('open /Desktop/B.elpx then a pathless setSavedPath: lastUsedDir still holds /Desktop', () => {
+            // Reproduces the projectManager clobber: the import flow calls
+            // setSavedPath(file.name) with only the basename after the
+            // Electron file picker already seeded the full path. lastUsedDir
+            // preserves the dir so the Save dialog still finds /Desktop.
+            const settings: Record<string, unknown> = {};
+            applySetCurrentFile(settings, '/Users/me/Desktop', 'B.elpx');
+            applySetCurrentFile(settings, '', 'B.elpx');
+            expect(readSaveDir(settings, 'fresh-uuid')).toBe('/Users/me/Desktop');
+        });
+
+        it('lastUsedDir survives File > New', () => {
+            const settings: Record<string, unknown> = { lastUsedDir: '/Users/me/Desktop' };
+            applyClear(settings);
+            expect((settings as { lastUsedDir?: string }).lastUsedDir).toBe('/Users/me/Desktop');
+        });
+
+        it('two saves in different folders: lastUsedDir tracks the most recent one', () => {
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'uuid-a', '/Users/me/Desktop', 'A.elpx');
+            applySave(settings, 'uuid-b', '/Users/me/Downloads', 'B.elpx');
+            applyClear(settings);
+            expect(readSaveDir(settings, 'fresh-uuid')).toBe('/Users/me/Downloads');
         });
     });
 });

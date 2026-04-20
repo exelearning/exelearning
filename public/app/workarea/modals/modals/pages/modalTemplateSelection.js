@@ -113,9 +113,8 @@ export default class modalTemplateSelection extends Modal {
             } catch (_e) {
                 // Intentional: property may not exist or be non-configurable
             }
-            // Also forget the Electron-side associated file so the next Save
-            // dialog starts fresh with the project title (PR #1670 review —
-            // "new file should start with no remembered value").
+            // Also forget the main-process associated file so the next
+            // Save dialog starts fresh with the project title.
             try {
                 if (typeof window.electronAPI?.clearSavedPath === 'function') {
                     await window.electronAPI.clearSavedPath();

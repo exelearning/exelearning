@@ -690,10 +690,9 @@ export default class projectManager {
 
         switch (action) {
             case 'new': {
-                // Forget the Electron-side associated file BEFORE the reload
-                // so the next Save dialog starts fresh with the project
-                // title (PR #1670 review — "new file should start with no
-                // remembered value").
+                // Forget the main-process associated file BEFORE the
+                // reload so the next Save dialog starts fresh with the
+                // project title.
                 try {
                     if (typeof window.electronAPI?.clearSavedPath === 'function') {
                         await window.electronAPI.clearSavedPath();
@@ -729,10 +728,10 @@ export default class projectManager {
                 }
                 break;
             case 'import': {
-                // Remember the imported file's name so the next Save dialog
-                // pre-fills with it (PR #1670 review). Only the basename is
-                // available here — the main process stores it in the global
-                // "current file" slot as-is, with an empty dir fallback.
+                // Persist the imported file's basename so the next Save
+                // dialog pre-fills with it. The main process pairs this
+                // with the global dir set by the native file picker (or
+                // falls back to lastUsedDir for pathless imports).
                 try {
                     if (file?.name && typeof window.electronAPI?.setSavedPath === 'function') {
                         await window.electronAPI.setSavedPath(file.name);

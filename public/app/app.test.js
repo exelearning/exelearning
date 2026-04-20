@@ -1136,7 +1136,6 @@ describe('App utility methods', () => {
       await appInstance.openFileFromPath('/test/project.elpx');
 
       expect(largeFilesUploadSpy).toHaveBeenCalledWith(expect.any(File));
-      // PR #1670: the opened path is persisted so the next Save pre-fills it.
       expect(setSavedPath).toHaveBeenCalledWith('/test/project.elpx');
       delete window.electronAPI;
     });
