@@ -144,37 +144,58 @@ function getIdeviceDragHandle(idevice: Locator): Locator {
 }
 
 /**
- * Helper to drag and drop an element to a target block
- * Drops into the block body area (the element with drop="["idevice"]" attribute)
+ * Helper to drag and drop an element to a target block.
+ *
+ * Dispatches HTML5 DragEvents directly from the page context. Neither
+ * locator.dragTo() (CDP) nor page.mouse (mouse events only) reliably triggers
+ * the full dragstart→dragover→drop→dragend sequence that the iDevices engine
+ * relies on.
+ *
+ * Key timing: the dragstart handler calls isAvalaibleOdeComponent() which is
+ * async. We wait 500 ms before firing dragover so that callback can resolve and
+ * set draggedElement.inNodeContent / inBlockContent. Without this wait the
+ * engine's dragover handler finds the element in an incomplete state.
  */
 async function dragAndDrop(page: Page, source: Locator, target: Locator): Promise<void> {
-    // The drop zone is the element with drop attribute set to accept idevices
-    // This is typically .block-content or a div inside the block (NOT .idevice_node)
-    const dropZone = target.locator('[drop*="idevice"]').first();
+    // Prefer .box-content as drop zone — the actual iDevice container below the header.
+    const boxContent = target.locator('.box-content').first();
+    const dropTarget = (await boxContent.count()) > 0 ? boxContent : target;
 
-    if ((await dropZone.count()) > 0) {
-        // Drop onto the proper drop zone (block content area)
-        await source.dragTo(dropZone);
-    } else {
-        // Fallback: use the block itself with position offset below header
-        const targetBox = await target.boundingBox();
-        if (!targetBox) {
-            throw new Error('Could not get bounding box for target');
-        }
+    const sourceHandle = await source.elementHandle();
+    const targetHandle = await dropTarget.elementHandle();
+    if (!sourceHandle || !targetHandle) throw new Error('dragAndDrop: could not resolve element handles');
 
-        // Calculate target position below header (~60px)
-        const headerHeight = 60;
-        const targetY = Math.min(headerHeight + 50, targetBox.height - 20);
+    await page.evaluate(
+        ([src, tgt]: [any, any]) => {
+            return new Promise<void>(resolve => {
+                const rect = (tgt as Element).getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const mk = (type: string) =>
+                    new DragEvent(type, { bubbles: true, cancelable: true, clientX: cx, clientY: cy });
 
-        await source.dragTo(target, {
-            targetPosition: {
-                x: targetBox.width / 2,
-                y: targetY,
-            },
-        });
-    }
+                (src as Element).dispatchEvent(mk('dragstart'));
 
-    await page.waitForTimeout(500);
+                // Wait for the async isAvalaibleOdeComponent call in the dragstart
+                // handler to resolve before firing dragover.
+                setTimeout(() => {
+                    (tgt as Element).dispatchEvent(mk('dragenter'));
+                    (tgt as Element).dispatchEvent(mk('dragover'));
+
+                    setTimeout(() => {
+                        (tgt as Element).dispatchEvent(mk('drop'));
+                        setTimeout(() => {
+                            (src as Element).dispatchEvent(mk('dragend'));
+                            resolve();
+                        }, 100);
+                    }, 100);
+                }, 500);
+            });
+        },
+        [sourceHandle, targetHandle],
+    );
+
+    await page.waitForTimeout(800);
 }
 
 /**
@@ -343,12 +364,12 @@ test.describe('iDevice Drag and Drop', () => {
             expect(await countIdevicesInBlock(getBlock(page, 1))).toBe(1);
 
             // Step 2: Move one iDevice from Block 1 to Block 2
+            // Block 1 retains 1 iDevice so no empty-block dialog appears
             {
                 const block2 = getBlock(page, 1);
                 const ideviceToMove = getBlock(page, 0).locator('.idevice_node').last();
                 const moveHandle = getIdeviceDragHandle(ideviceToMove);
                 await dragAndDrop(page, moveHandle, block2);
-                await handleConfirmDialog(page, false);
                 await page.waitForTimeout(500);
             }
 
@@ -358,7 +379,7 @@ test.describe('iDevice Drag and Drop', () => {
 
             // Step 3: THE KEY TEST - Move one iDevice from Block 2 BACK to Block 1
             // This verifies that a block can still receive drops after iDevices were moved out
-            // Try moving the second iDevice from Block 2 (the one that was originally moved there)
+            // Block 2 retains 1 iDevice so no empty-block dialog appears
             {
                 const block1 = getBlock(page, 0);
                 const block2 = getBlock(page, 1);
@@ -375,7 +396,6 @@ test.describe('iDevice Drag and Drop', () => {
                 const returnHandle = ideviceToReturn.locator('.idevice_actions').first();
 
                 await dragAndDrop(page, returnHandle, block1);
-                await handleConfirmDialog(page, false);
                 await page.waitForTimeout(500);
             }
 
@@ -516,9 +536,13 @@ test.describe('iDevice Drag and Drop', () => {
                 expect(blockCount).toBe(1);
             }
 
-            // Verify iDevice is in Block 1
-            const idevicesInBlock1 = await countIdevicesInBlock(getBlock(page, 0));
-            expect(idevicesInBlock1).toBe(2);
+            // Verify iDevice is in Block 1 (poll to allow Yjs sync to settle)
+            await expect
+                .poll(async () => await countIdevicesInBlock(getBlock(page, 0)), {
+                    timeout: 10000,
+                    intervals: [250, 500, 1000],
+                })
+                .toBe(2);
         });
 
         test('should create new block when iDevice is moved outside all blocks', async ({
@@ -688,12 +712,19 @@ test.describe('iDevice Drag and Drop', () => {
             await handleConfirmDialog(page, false);
             await page.waitForTimeout(500);
 
-            // Verify both blocks have correct iDevice counts
-            const finalBlock1Idevices = await countIdevicesInBlock(getBlock(page, 0));
-            const finalBlock2Idevices = await countIdevicesInBlock(getBlock(page, 1));
-
-            expect(finalBlock1Idevices).toBe(1);
-            expect(finalBlock2Idevices).toBe(1);
+            // Verify both blocks have correct iDevice counts (poll to allow Yjs sync to settle)
+            await expect
+                .poll(async () => await countIdevicesInBlock(getBlock(page, 0)), {
+                    timeout: 10000,
+                    intervals: [250, 500, 1000],
+                })
+                .toBe(1);
+            await expect
+                .poll(async () => await countIdevicesInBlock(getBlock(page, 1)), {
+                    timeout: 10000,
+                    intervals: [250, 500, 1000],
+                })
+                .toBe(1);
 
             // Now delete Block 1 and verify Block 2's iDevice survives
             await deleteBlock(page, getBlock(page, 0));

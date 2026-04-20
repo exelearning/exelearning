@@ -64,3 +64,9 @@ When merging:
 
 This strategy provides clarity, simplicity, and traceability for contributors and maintainers alike.
 
+---
+
+## Generating the CHANGELOG
+
+Use `.agents/skills/changelog/SKILL.md` as a prompt for an AI agent to draft the next changelog entry from merged pull requests. The skill will ask for the target version, fetch all PRs merged since the last published release, and insert a draft block at the top of `public/CHANGELOG.md`. **Always review and edit the draft before committing.**
+
