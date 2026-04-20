@@ -167,7 +167,7 @@ async function dragAndDrop(page: Page, source: Locator, target: Locator): Promis
 
     await page.evaluate(
         ([src, tgt]: [any, any]) => {
-            return new Promise<void>((resolve) => {
+            return new Promise<void>(resolve => {
                 const rect = (tgt as Element).getBoundingClientRect();
                 const cx = rect.left + rect.width / 2;
                 const cy = rect.top + rect.height / 2;
