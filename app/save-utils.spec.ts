@@ -270,6 +270,9 @@ describe('save-utils', () => {
     //   applySave — Save dialog OK'd with { key, dir, name }
     //   applySetCurrentFile — File > Open (setSavedPath IPC)
     //   applyClear — File > New (clearSavedPath IPC)
+    //   applyStartup — app process (re)launches with no argv/open-file
+    //                  (same clear as File > New, mirrors the call added
+    //                   in app.whenReady for issue #1666 follow-up)
     describe('save/open/new flow', () => {
         const applySave = (
             settings: Record<string, unknown>,
@@ -300,6 +303,15 @@ describe('save-utils', () => {
         const applyClear = (settings: Record<string, unknown>) => {
             // lastUsedDir must survive File > New — that's what makes folder
             // memory persistent across new projects.
+            clearSavedNameCache(settings);
+            delete (settings as { currentFileSave?: unknown }).currentFileSave;
+        };
+
+        // Mirrors app.whenReady()'s clearCurrentFileSaveInfo() call: on a
+        // fresh launch the window has no file associated with it yet, so
+        // the window-scoped slot must be wiped. Directory memory stays so
+        // the Save dialog still opens at the last folder the user chose.
+        const applyStartup = (settings: Record<string, unknown>) => {
             clearSavedNameCache(settings);
             delete (settings as { currentFileSave?: unknown }).currentFileSave;
         };
@@ -389,6 +401,61 @@ describe('save-utils', () => {
             applySave(settings, 'uuid-b', '/Users/me/Downloads', 'B.elpx');
             applyClear(settings);
             expect(readSaveDir(settings, 'fresh-uuid')).toBe('/Users/me/Downloads');
+        });
+
+        // Regression: issue #1666 follow-up. The first fix cleared the slot
+        // on File > New / File > Open, but a save → quit → relaunch cycle
+        // left the stale filename on disk, so the next Save dialog still
+        // pre-filled with "documento-sin-titulo-a.elpx" even after the user
+        // renamed the project to "Documento sin título 001".
+        it('save → quit → relaunch: the dialog follows the renamed title, not the stale file', () => {
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'uuid-a', '/Users/me/Desktop', 'documento-sin-titulo-a.elpx');
+            // App quit + fresh relaunch. settings.json is read back, then
+            // applyStartup wipes the window-scoped slot and the per-project
+            // name cache. The directory memory survives.
+            applyStartup(settings);
+            // When the user hits Save after renaming, the dialog sees no
+            // storedName and falls back to the suggestedName derived from
+            // the new title — which is what the user expects.
+            const stored = readStored(settings, 'uuid-a');
+            expect(stored.name).toBeNull();
+            expect(resolveEffectiveSaveName('documento-sin-titulo-001.elpx', stored.name)).toBe(
+                'documento-sin-titulo-001.elpx',
+            );
+            // Folder still remembered so the dialog opens at /Desktop.
+            expect(readSaveDir(settings, 'uuid-a')).toBe('/Users/me/Desktop');
+        });
+
+        it('save → quit → relaunch without renaming: Save still works (title-derived name), folder preserved', () => {
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'uuid-a', '/Users/me/Desktop', 'my-course.elpx');
+            applyStartup(settings);
+            const stored = readStored(settings, 'uuid-a');
+            // Title didn't change, so the suggestedName still sanitises to
+            // the same name — the dialog proposes it just like before.
+            expect(resolveEffectiveSaveName('my-course.elpx', stored.name)).toBe('my-course.elpx');
+            expect(readSaveDir(settings, 'uuid-a')).toBe('/Users/me/Desktop');
+        });
+
+        it('relaunch preserves lastUsedDir so a brand-new project still defaults to the last folder', () => {
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'uuid-a', '/Users/me/Desktop', 'A.elpx');
+            applyStartup(settings);
+            // Different UUID (new project created after relaunch): the
+            // per-project cache has no entry for it, but lastUsedDir does.
+            expect(readSaveDir(settings, 'fresh-uuid-after-restart')).toBe('/Users/me/Desktop');
+        });
+
+        it('relaunch with argv file: setSavedPath re-seeds the slot after the startup clear', () => {
+            const settings: Record<string, unknown> = {};
+            applySave(settings, 'uuid-a', '/Users/me/Desktop', 'A.elpx');
+            applyStartup(settings);
+            // Simulate the renderer's openFileFromPath → setSavedPath(filePath)
+            // after reading the file handed in on argv or 'open-file'.
+            applySetCurrentFile(settings, '/Users/me/Desktop', 'A.elpx');
+            const stored = readStored(settings, 'uuid-a');
+            expect(stored).toEqual({ dir: '/Users/me/Desktop', name: 'A.elpx' });
         });
     });
 });

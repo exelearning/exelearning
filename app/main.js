@@ -1320,6 +1320,13 @@ app.on('new-window-for-tab', () => {
 });
 
 app.whenReady().then(() => {
+    // A fresh process has no file "currently associated" with the window
+    // yet — clear the on-disk slot so a leftover filename from a previous
+    // run does not shadow the title-derived suggestedName on first Save.
+    // If the launch is opening a file (argv / macOS 'open-file'), the
+    // renderer re-seeds this via setSavedPath after the import completes.
+    clearCurrentFileSaveInfo();
+
     // macOS: Always show tab bar (even with single window)
     if (process.platform === 'darwin') {
         systemPreferences.setUserDefault('AppleWindowTabbingMode', 'string', 'always');
