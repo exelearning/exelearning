@@ -538,7 +538,7 @@ var $eXeIdentifica = {
                 .fadeOut(400)
                 .fadeIn(300);
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `idfGameContainer-${instance}`
+                `#idfGameContainer-${instance}`
             );
         });
 
@@ -1118,7 +1118,7 @@ var $eXeIdentifica = {
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `idfGameContainer-${instance}`
+                `#idfGameContainer-${instance}`
             );
         }
 

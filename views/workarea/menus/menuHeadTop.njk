@@ -85,6 +85,10 @@
 
                     {# Items existentes #}
                     <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ t.preferences or 'Preferences' }}</a></li>
+                    {% if user.isAdmin %}
+                    <li class="dropdown-divider exe-online"></li>
+                    <li class="exe-online"><a class="dropdown-item" id="navbar-button-admin-panel" href="{{ basePath }}/admin" data-testid="admin-panel-link" hreflang="en">Admin</a></li>
+                    {% endif %}
                     <li class="dropdown-divider exe-online"></li>
                     <li class="exe-online"><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ t.logout or 'Logout' }}</a></li>
                 </ul>

@@ -27,6 +27,30 @@ var $exeDevice = {
         print: c_('Print'),
         apply: c_('Apply'),
         newWindow: c_('New Window'),
+        msgEndGameScore: c_(
+            'Please complete the rubric before saving your score.'
+        ),
+        msgScoreScorm: c_(
+            "The score can't be saved because this page is not part of a SCORM package."
+        ),
+        msgOnlySaveScore: c_('You can only save the score once!'),
+        msgYouScore: c_('Your score'),
+        msgOnlySaveAuto: c_(
+            'Your score will be saved after each change. You can only complete once.'
+        ),
+        msgSaveAuto: c_(
+            'Your score will be automatically saved after each change.'
+        ),
+        msgSeveralScore: c_(
+            'You can save the score as many times as you want'
+        ),
+        msgYouLastScore: c_('The last score saved is'),
+        msgActityComply: c_('You have already done this activity.'),
+        msgPlaySeveralTimes: c_(
+            'You can do this activity as many times as you want'
+        ),
+        msgScore: c_('Score'),
+        msgWeight: c_('Weight'),
     },
 
     // Default rubrics (just one for the moment)
@@ -149,11 +173,12 @@ var $exeDevice = {
 
         const html = `
             <div id="ri_IdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">
+                <p class="exe-block-info exe-block-dismissible position-relative">
                     ${_('Complete the table to define a scoring guide. Define the score or value of each descriptor.')}
                     <a href="https://youtu.be/T_QtGkH68EY?t=92" target="_blank" hreflang="es" rel="lightbox">${_('Learn how to apply a rubric')}</a>.
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
+                    <button type="button" class="btn-close exe-block-close" aria-label="${_('Hide')}"></button>
                 </p>
+
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following rubric'))}
                     <fieldset class="exe-fieldset ">
@@ -193,11 +218,20 @@ var $exeDevice = {
                         </div>
                     </fieldset>
                 </div>
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
+
+        // Dismiss info block
+        $('.exe-block-dismissible .exe-block-close').on('click', function () {
+            $(this).parent().fadeOut();
+            return false;
+        });
+
         this.renderRubricTemplateControls();
         this.loadPreviousValues();
         this.initCSVTabControls();
@@ -299,6 +333,13 @@ var $exeDevice = {
         if (data.textAfter) {
             $('#eXeIdeviceTextAfter').val(data.textAfter);
         }
+
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+            data.isScorm,
+            data.textButtonScorm,
+            data.repeatActivity,
+            data.weighted
+        );
 
         this.originalData = data;
     },
@@ -1638,6 +1679,12 @@ var $exeDevice = {
 
         data.i18n = this.collectRubricStringsFromForm();
 
+        var scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        data.isScorm = scorm.isScorm;
+        data.textButtonScorm = scorm.textButtonScorm;
+        data.repeatActivity = scorm.repeatActivity;
+        data.weighted = scorm.weighted || 100;
+
         var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
         var textAfter = textAfterEditor
             ? textAfterEditor.getContent()
@@ -1697,7 +1744,7 @@ var $exeDevice = {
                     _('Edit') +
                     '" aria-label="' +
                     _('Edit') +
-                    '"><span class="ri_EditTDIcon" aria-hidden="true">&#9998;</span><span class="sr-av">' +
+                    '"><span class="sr-av">' +
                     _('Edit') +
                     '</span></a>';
             }
@@ -1710,18 +1757,24 @@ var $exeDevice = {
             '<span class="ri_Actions ri_RowActions">\
         <a href="#" class="ri_MoveTRUp" title="' +
             _('Up') +
-            '"><span class="sr-av">&#8593;</span></a> \
+            '"><span class="sr-av">' +
+            _('Up') +
+            '</span></a> \
         <a href="#" class="ri_MoveTRDown" title="' +
             _('Down') +
-            '"><span class="sr-av">&#8595;</span></a> \
+            '"><span class="sr-av">' +
+            _('Down') +
+            '</span></a> \
         <a href="#" class="ri_EditTR" title="' +
             _('Edit') +
-            '"><span aria-hidden="true">&#9998;</span><span class="sr-av">' +
+            '"><span class="sr-av">' +
             _('Edit') +
             '</span></a> \
         <a href="#" class="ri_DeleteTR" title="' +
             _('Delete') +
-            '"><span class="sr-av">&#120;</span></a> \
+            '"><span class="sr-av">' +
+            _('Delete') +
+            '</span></a> \
       </span>';
         $('tbody tr', this.editor).each(function () {
             $(this.firstChild).append(trActions);
@@ -1765,18 +1818,24 @@ var $exeDevice = {
             '<span class="ri_Actions ri_ColActions">\
         <a href="#" class="ri_MoveTRToTheLeft" title="' +
             _('Left') +
-            '"><span class="sr-av">&#8592;</span></a> \
+            '"><span class="sr-av">' +
+            _('Left') +
+            '</span></a> \
         <a href="#" class="ri_MoveTRToTheRight" title="' +
             _('Right') +
-            '"><span class="sr-av">&#8594;</span></a> \
+            '"><span class="sr-av">' +
+            _('Right') +
+            '</span></a> \
         <a href="#" class="ri_EditColumn d-none" title="' +
             _('Edit') +
-            '"><span aria-hidden="true">&#9998;</span><span class="sr-av">' +
+            '"><span class="sr-av">' +
             _('Edit') +
             '</span></a> \
         <a href="#" class="ri_DeleteColumn" title="' +
             _('Delete') +
-            '"><span class="sr-av">&#120;</span></a> \
+            '"><span class="sr-av">' +
+            _('Delete') +
+            '</span></a> \
       </span>';
         $('thead th', this.editor).each(function () {
             $(this).prepend(thActions);

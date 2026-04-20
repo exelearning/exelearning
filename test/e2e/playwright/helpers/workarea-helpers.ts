@@ -755,8 +755,22 @@ export async function addIdevice(page: Page, ideviceType: string): Promise<void>
         );
     }
 
-    // Find the iDevice item - wait for it to be visible first
+    // Find the iDevice item. It may be inside a collapsed category
+    // (`.idevice_category.off`), in which case the draggable button exists in
+    // the DOM but is not visible. Expand its parent category first so the
+    // click below can actually dispatch.
     const idevice = page.locator(`.idevice_item[id="${ideviceType}"], [data-testid="idevice-${ideviceType}"]`).first();
+    await idevice.waitFor({ state: 'attached', timeout: 10000 });
+    await page.evaluate(type => {
+        const item =
+            document.querySelector(`.idevice_item[id="${type}"]`) ||
+            document.querySelector(`[data-testid="idevice-${type}"]`);
+        const category = item?.closest('.idevice_category');
+        if (category?.classList.contains('off')) {
+            const heading = category.querySelector('h3.idevice_category_name, .label') as HTMLElement | null;
+            heading?.click();
+        }
+    }, ideviceType);
     await idevice.waitFor({ state: 'visible', timeout: 10000 });
     await idevice.scrollIntoViewIfNeeded();
     await idevice.click();

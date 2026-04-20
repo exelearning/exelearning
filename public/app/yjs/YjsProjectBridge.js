@@ -451,6 +451,13 @@ class YjsProjectBridge {
       if (this.assetManager) {
         const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
         const token = authToken || '';
+
+        // Store server config so getBlobForExport() can fall back to server
+        // when Cache API entries are evicted during long editing sessions (#1685)
+        if (token) {
+          this.assetManager.setServerConfig(apiBaseUrl, token);
+        }
+
         if (token && projectId) {
           // Don't await - download in background to avoid blocking UI
           this.assetManager.downloadMissingAssets(apiBaseUrl, token)

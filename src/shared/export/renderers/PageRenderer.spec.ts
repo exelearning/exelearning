@@ -49,9 +49,47 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('<html lang="en"');
-            expect(html).toContain('<title>Test Page</title>');
+            expect(html).toContain('<title>Test Page | Test Project</title>');
             expect(html).toContain('class="page"'); // main element with page class
             expect(html).toContain('id="siteNav"'); // navigation present
+        });
+
+        it('should render index page <title> as project title only', () => {
+            const page = createTestPage({ title: 'Home' });
+            const options = createDefaultOptions({ allPages: [page], isIndex: true });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('<title>Test Project</title>');
+            expect(html).not.toContain('<title>Home | Test Project</title>');
+        });
+
+        it('should render non-index page <title> as "Page title | Project title"', () => {
+            const page = createTestPage({ title: 'Chapter 1' });
+            const options = createDefaultOptions({ allPages: [page], isIndex: false });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('<title>Chapter 1 | Test Project</title>');
+        });
+
+        it('should fall back to project title when page title is empty', () => {
+            const page = createTestPage({ title: '' });
+            const options = createDefaultOptions({ allPages: [page], isIndex: false });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('<title>Test Project</title>');
+        });
+
+        it('should avoid duplicating title when page and project match', () => {
+            const page = createTestPage({ title: 'Test Project' });
+            const options = createDefaultOptions({ allPages: [page], isIndex: false });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('<title>Test Project</title>');
+            expect(html).not.toContain('Test Project | Test Project');
         });
 
         it('should set correct html id for index page', () => {
