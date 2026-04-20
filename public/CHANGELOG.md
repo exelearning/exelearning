@@ -19,6 +19,7 @@
 - Exports no longer produce missing images when cached asset blobs are evicted under storage pressure
 - Exported pages now include "Page title | Project title" in the `<title>` element for non-index pages
 - Rubric iDevice: resolve UI and accessibility issues
+- Several iDevices: fix LaTeX rendering issues
 - TinyMCE: images no longer appear broken after paste or drag-and-drop uploads
 - Workarea: content box minimize/restore arrows order corrected
 - File Manager: asset reference count now updates correctly after deleting an image without reopening the project
