@@ -38,18 +38,16 @@ test.describe('Static ?url= import', () => {
 
         await page.goto(`/?url=${encodeURIComponent(remoteUrl)}`);
 
-        await page.waitForFunction(
-            () => (window as any).eXeLearning?.app !== undefined,
-            undefined,
-            { timeout: 30000 },
-        );
+        await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, undefined, { timeout: 30000 });
 
         // No error message on the load screen or stored for deferred alert.
         const deferredError = await page.evaluate(() => (window as any).__exeStaticUrlError ?? null);
         expect(deferredError).toBeNull();
     });
 
-    test('accepts URL without extension and no Content-Disposition when payload is a ZIP (magic-byte fallback)', async ({ page }) => {
+    test('accepts URL without extension and no Content-Disposition when payload is a ZIP (magic-byte fallback)', async ({
+        page,
+    }) => {
         const zipBody = fs.readFileSync(FIXTURE_PATH);
         const remoteUrl = 'https://example.test.invalid/download/archive';
 
@@ -66,11 +64,7 @@ test.describe('Static ?url= import', () => {
 
         await page.goto(`/?url=${encodeURIComponent(remoteUrl)}`);
 
-        await page.waitForFunction(
-            () => (window as any).eXeLearning?.app !== undefined,
-            undefined,
-            { timeout: 30000 },
-        );
+        await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, undefined, { timeout: 30000 });
 
         const deferredError = await page.evaluate(() => (window as any).__exeStaticUrlError ?? null);
         expect(deferredError).toBeNull();
@@ -92,11 +86,9 @@ test.describe('Static ?url= import', () => {
 
         await page.goto(`/?url=${encodeURIComponent(remoteUrl)}`);
 
-        await page.waitForFunction(
-            () => typeof (window as any).__exeStaticUrlError === 'string',
-            undefined,
-            { timeout: 30000 },
-        );
+        await page.waitForFunction(() => typeof (window as any).__exeStaticUrlError === 'string', undefined, {
+            timeout: 30000,
+        });
 
         const deferredError = await page.evaluate(() => (window as any).__exeStaticUrlError);
         expect(deferredError).toMatch(/\.elpx, \.elp, or \.zip/);
