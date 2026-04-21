@@ -451,69 +451,69 @@ export interface LicenseEntry {
 export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
     // === Creative Commons 4.0 (Current) ===
     'creative commons: attribution 4.0': {
-        displayName: 'creative commons: attribution 4.0 (BY)',
+        displayName: 'Creative Commons: Attribution 4.0 (BY)',
         url: 'https://creativecommons.org/licenses/by/4.0/',
         cssClass: 'cc',
     },
     'creative commons: attribution - share alike 4.0': {
-        displayName: 'creative commons: attribution - share alike 4.0 (BY-SA)',
+        displayName: 'Creative Commons: Attribution - Share Alike 4.0 (BY-SA)',
         url: 'https://creativecommons.org/licenses/by-sa/4.0/',
         cssClass: 'cc cc-by-sa',
     },
     'creative commons: attribution - non derived work 4.0': {
-        displayName: 'creative commons: attribution - non derived work 4.0 (BY-ND)',
+        displayName: 'Creative Commons: Attribution - Non Derived Work 4.0 (BY-ND)',
         url: 'https://creativecommons.org/licenses/by-nd/4.0/',
         cssClass: 'cc cc-by-nd',
     },
     'creative commons: attribution - non commercial 4.0': {
-        displayName: 'creative commons: attribution - non commercial 4.0 (BY-NC)',
+        displayName: 'Creative Commons: Attribution - Non Commercial 4.0 (BY-NC)',
         url: 'https://creativecommons.org/licenses/by-nc/4.0/',
         cssClass: 'cc cc-by-nc',
     },
     'creative commons: attribution - non commercial - share alike 4.0': {
-        displayName: 'creative commons: attribution - non commercial - share alike 4.0 (BY-NC-SA)',
+        displayName: 'Creative Commons: Attribution - Non Commercial - Share Alike 4.0 (BY-NC-SA)',
         url: 'https://creativecommons.org/licenses/by-nc-sa/4.0/',
         cssClass: 'cc cc-by-nc-sa',
     },
     'creative commons: attribution - non derived work - non commercial 4.0': {
-        displayName: 'creative commons: attribution - non derived work - non commercial 4.0 (BY-NC-ND)',
+        displayName: 'Creative Commons: Attribution - Non Derived Work - Non Commercial 4.0 (BY-NC-ND)',
         url: 'https://creativecommons.org/licenses/by-nc-nd/4.0/',
         cssClass: 'cc cc-by-nc-nd',
     },
 
     // === Creative Commons 3.0 (Legacy - not selectable in dropdown) ===
     'creative commons: attribution 3.0': {
-        displayName: 'creative commons: attribution 3.0 (BY)',
+        displayName: 'Creative Commons: Attribution 3.0 (BY)',
         url: 'https://creativecommons.org/licenses/by/3.0/',
         cssClass: 'cc',
         legacy: true,
     },
     'creative commons: attribution - share alike 3.0': {
-        displayName: 'creative commons: attribution - share alike 3.0 (BY-SA)',
+        displayName: 'Creative Commons: Attribution - Share Alike 3.0 (BY-SA)',
         url: 'https://creativecommons.org/licenses/by-sa/3.0/',
         cssClass: 'cc cc-by-sa',
         legacy: true,
     },
     'creative commons: attribution - non derived work 3.0': {
-        displayName: 'creative commons: attribution - non derived work 3.0 (BY-ND)',
+        displayName: 'Creative Commons: Attribution - Non Derived Work 3.0 (BY-ND)',
         url: 'https://creativecommons.org/licenses/by-nd/3.0/',
         cssClass: 'cc cc-by-nd',
         legacy: true,
     },
     'creative commons: attribution - non commercial 3.0': {
-        displayName: 'creative commons: attribution - non commercial 3.0 (BY-NC)',
+        displayName: 'Creative Commons: Attribution - Non Commercial 3.0 (BY-NC)',
         url: 'https://creativecommons.org/licenses/by-nc/3.0/',
         cssClass: 'cc cc-by-nc',
         legacy: true,
     },
     'creative commons: attribution - non commercial - share alike 3.0': {
-        displayName: 'creative commons: attribution - non commercial - share alike 3.0 (BY-NC-SA)',
+        displayName: 'Creative Commons: Attribution - Non Commercial - Share Alike 3.0 (BY-NC-SA)',
         url: 'https://creativecommons.org/licenses/by-nc-sa/3.0/',
         cssClass: 'cc cc-by-nc-sa',
         legacy: true,
     },
     'creative commons: attribution - non derived work - non commercial 3.0': {
-        displayName: 'creative commons: attribution - non derived work - non commercial 3.0 (BY-NC-ND)',
+        displayName: 'Creative Commons: Attribution - Non Derived Work - Non Commercial 3.0 (BY-NC-ND)',
         url: 'https://creativecommons.org/licenses/by-nc-nd/3.0/',
         cssClass: 'cc cc-by-nc-nd',
         legacy: true,
@@ -521,37 +521,37 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 
     // === Creative Commons 2.5 (Legacy - not selectable in dropdown) ===
     'creative commons: attribution 2.5': {
-        displayName: 'creative commons: attribution 2.5 (BY)',
+        displayName: 'Creative Commons: Attribution 2.5 (BY)',
         url: 'https://creativecommons.org/licenses/by/2.5/',
         cssClass: 'cc',
         legacy: true,
     },
     'creative commons: attribution - share alike 2.5': {
-        displayName: 'creative commons: attribution - share alike 2.5 (BY-SA)',
+        displayName: 'Creative Commons: Attribution - Share Alike 2.5 (BY-SA)',
         url: 'https://creativecommons.org/licenses/by-sa/2.5/',
         cssClass: 'cc cc-by-sa',
         legacy: true,
     },
     'creative commons: attribution - non derived work 2.5': {
-        displayName: 'creative commons: attribution - non derived work 2.5 (BY-ND)',
+        displayName: 'Creative Commons: Attribution - Non Derived Work 2.5 (BY-ND)',
         url: 'https://creativecommons.org/licenses/by-nd/2.5/',
         cssClass: 'cc cc-by-nd',
         legacy: true,
     },
     'creative commons: attribution - non commercial 2.5': {
-        displayName: 'creative commons: attribution - non commercial 2.5 (BY-NC)',
+        displayName: 'Creative Commons: Attribution - Non Commercial 2.5 (BY-NC)',
         url: 'https://creativecommons.org/licenses/by-nc/2.5/',
         cssClass: 'cc cc-by-nc',
         legacy: true,
     },
     'creative commons: attribution - non commercial - share alike 2.5': {
-        displayName: 'creative commons: attribution - non commercial - share alike 2.5 (BY-NC-SA)',
+        displayName: 'Creative Commons: Attribution - Non Commercial - Share Alike 2.5 (BY-NC-SA)',
         url: 'https://creativecommons.org/licenses/by-nc-sa/2.5/',
         cssClass: 'cc cc-by-nc-sa',
         legacy: true,
     },
     'creative commons: attribution - non derived work - non commercial 2.5': {
-        displayName: 'creative commons: attribution - non derived work - non commercial 2.5 (BY-NC-ND)',
+        displayName: 'Creative Commons: Attribution - Non Derived Work - Non Commercial 2.5 (BY-NC-ND)',
         url: 'https://creativecommons.org/licenses/by-nc-nd/2.5/',
         cssClass: 'cc cc-by-nc-nd',
         legacy: true,
@@ -559,7 +559,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 
     // === Creative Commons CC0 1.0 (Public Domain Dedication) ===
     'creative commons: cc0 1.0': {
-        displayName: 'creative commons: public domain 1.0 (CC0)',
+        displayName: 'Creative Commons: Public Domain 1.0 (CC0)',
         url: 'https://creativecommons.org/publicdomain/zero/1.0/',
         cssClass: 'cc cc-0',
     },
@@ -573,13 +573,13 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 
     // === GNU/GPL Licenses (Legacy - not selectable in dropdown, no icon in themes) ===
     'gnu/gpl': {
-        displayName: 'gnu/gpl',
+        displayName: 'GNU/GPL',
         url: 'https://www.gnu.org/licenses/gpl.html',
         cssClass: '',
         legacy: true,
     },
     'free software license gpl': {
-        displayName: 'free software license GPL',
+        displayName: 'Free Software License GPL',
         url: 'https://www.gnu.org/licenses/gpl.html',
         cssClass: '',
         legacy: true,
@@ -587,7 +587,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 
     // === EUPL License (Legacy - not selectable in dropdown, no icon in themes) ===
     'free software license eupl': {
-        displayName: 'free software license EUPL',
+        displayName: 'Free Software License EUPL',
         url: 'https://eupl.eu/',
         cssClass: '',
         legacy: true,
@@ -595,7 +595,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 
     // === Dual License GPL + EUPL (Legacy - not selectable in dropdown, no icon in themes) ===
     'dual free content license gpl and eupl': {
-        displayName: 'dual free content license GPL and EUPL',
+        displayName: 'Dual Free Content License GPL and EUPL',
         url: '',
         cssClass: '',
         legacy: true,
@@ -603,7 +603,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 
     // === GFDL License (Legacy - not selectable in dropdown, no icon in themes) ===
     'license gfdl': {
-        displayName: 'license GFDL',
+        displayName: 'License GFDL',
         url: 'https://www.gnu.org/licenses/fdl.html',
         cssClass: '',
         legacy: true,
@@ -611,7 +611,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 
     // === Other Licenses (Legacy - not selectable in dropdown) ===
     'other free software licenses': {
-        displayName: 'other free software licenses',
+        displayName: 'Other Free Software Licenses',
         url: '',
         cssClass: '',
         legacy: true,
@@ -623,7 +623,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
         hideInFooter: true,
     },
     'intellectual property license': {
-        displayName: 'intellectual property license',
+        displayName: 'Intellectual Property License',
         url: '',
         cssClass: '',
         legacy: true,
@@ -641,6 +641,33 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
 // =============================================================================
 
 /**
+ * Resolves a license name (which could be an internal key, a legacy displayName with a suffix like (BY),
+ * or potentially a translated name if previously saved) to its internal stable key.
+ *
+ * @param licenseName - The license name to resolve
+ * @returns The internal key, or the normalized name if not found in the registry
+ */
+export function resolveLicenseKey(licenseName: string): string {
+    if (!licenseName) return '';
+    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    // Fast path: direct lookup in registry
+    if (LICENSE_REGISTRY[cleanName]) {
+        return cleanName;
+    }
+
+    // Fallback: search by displayName to handle legacy cases where the UI saved
+    // something like "creative commons: attribution 4.0 (BY)" into Yjs metadata.
+    for (const [key, entry] of Object.entries(LICENSE_REGISTRY)) {
+        if (cleanName === entry.displayName.toLowerCase().trim().replace(/\s+/g, ' ')) {
+            return key;
+        }
+    }
+
+    return cleanName;
+}
+
+/**
  * Get CSS class for license icon display.
  * Looks up the cssClass from LICENSE_REGISTRY.
  *
@@ -652,11 +679,11 @@ export function getLicenseClass(licenseName: string): string {
         return '';
     }
 
-    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const key = resolveLicenseKey(licenseName);
 
     // Direct lookup in registry
-    if (LICENSE_REGISTRY[cleanName]) {
-        return LICENSE_REGISTRY[cleanName].cssClass;
+    if (LICENSE_REGISTRY[key]) {
+        return LICENSE_REGISTRY[key].cssClass;
     }
 
     return '';
@@ -670,21 +697,25 @@ export function getLicenseClass(licenseName: string): string {
  */
 export function getLicenseUrl(licenseName: string): string {
     if (!licenseName) return '';
-    const key = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const key = resolveLicenseKey(licenseName);
     return LICENSE_REGISTRY[key]?.url || '';
 }
 
 /**
- * Format license text for display in footer.
- * Returns the displayName from registry if found, otherwise returns the input as-is.
+ * Format license text for translation and display.
+ * Returns the stable string used for translation lookups in .xlf files.
+ * CC licenses use their lowecase keys, while others use their Title Cased displayNames.
  *
  * @param licenseName - The license name from metadata
- * @returns Formatted license text for display
+ * @returns Formatted license translation key
  */
 export function formatLicenseText(licenseName: string): string {
     if (!licenseName) return '';
-    const key = licenseName.toLowerCase().trim();
-    return LICENSE_REGISTRY[key]?.displayName || licenseName;
+    const key = resolveLicenseKey(licenseName);
+    const entry = LICENSE_REGISTRY[key];
+    if (!entry) return licenseName;
+
+    return key.startsWith('creative commons') ? key : entry.displayName;
 }
 
 /**
@@ -696,7 +727,7 @@ export function formatLicenseText(licenseName: string): string {
  */
 export function formatShortLicenseText(licenseName: string): string {
     if (!licenseName) return '';
-    const key = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const key = resolveLicenseKey(licenseName);
     const entry = LICENSE_REGISTRY[key];
 
     if (entry?.url?.includes('creativecommons.org/licenses/')) {

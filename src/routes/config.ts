@@ -44,7 +44,7 @@ import { buildParameterResponse } from './parameter-response';
 const LICENSES: Record<string, string> = Object.fromEntries(
     Object.entries(LICENSE_REGISTRY)
         .filter(([, entry]) => !entry.legacy)
-        .map(([key, entry]) => [key, `${TRANS_PREFIX}${entry.displayName}`]),
+        .map(([key, entry]) => [key, `${TRANS_PREFIX}${key.startsWith('creative commons') ? key : entry.displayName}`]),
 );
 
 const configParams = buildConfigParams({ TRANS_PREFIX, LICENSES, PACKAGE_LOCALES, LOCALES });
