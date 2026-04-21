@@ -1861,5 +1861,28 @@ describe('common_edition.js', () => {
 
       expect(globalThis._('Unknown')).toBe('Unknown');
     });
+
+    it('_ function strips the "~" fuzzy marker from top.translations', () => {
+      // XLF files use a leading "~" to flag machine-translated placeholders.
+      // The marker stays in the files for translator review but must never
+      // reach the iDevice editor UI.
+      document.documentElement.setAttribute('lang', 'fr');
+      globalThis.$exeDevice.i18n = undefined;
+      globalThis.top.translations = { Next: '~Siguiente' };
+
+      globalThis.$exeDevicesEdition.iDevice.init();
+
+      expect(globalThis._('Next')).toBe('Siguiente');
+    });
+
+    it('_ function strips the "~" fuzzy marker from $exeDevice.i18n', () => {
+      document.documentElement.setAttribute('lang', 'es');
+      globalThis.$exeDevice.i18n = { es: { Next: '~Siguiente' } };
+      globalThis.top.translations = {};
+
+      globalThis.$exeDevicesEdition.iDevice.init();
+
+      expect(globalThis._('Next')).toBe('Siguiente');
+    });
   });
 });

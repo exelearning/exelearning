@@ -41,14 +41,23 @@ var $exeDevicesEdition = {
             }
 
             // Replace the _ function (see locale.js)
+            // Strip the leading "~" marker used to flag machine-translated
+            // placeholder entries. The marker stays in the XLF files for
+            // translator review but must never reach the iDevice editor UI.
+            var stripFuzzy = function (value) {
+                if (typeof value === "string" && value.charAt(0) === "~") {
+                    return value.substring(1);
+                }
+                return value;
+            };
             _ = function (str) {
                 if (typeof ($exeDevice.i18n) != "undefined") {
                     var lang = $("HTML").attr("lang");
                     if (typeof ($exeDevice.i18n[lang]) != "undefined") {
-                        return top.translations[str] || $exeDevice.i18n[lang][str] || str;
+                        return stripFuzzy(top.translations[str] || $exeDevice.i18n[lang][str] || str);
                     }
                 }
-                return top.translations[str] || str;
+                return stripFuzzy(top.translations[str] || str);
             }
 
             // Enable the iDevice
