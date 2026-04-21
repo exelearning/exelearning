@@ -95,6 +95,9 @@ export class Scorm12Exporter extends Html5Exporter {
             // Configure iDevice renderer with theme files for icon resolution
             this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
 
+            // Fetch translated nav labels for the content language (includes license)
+            const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
+
             // 1. Generate HTML pages (with SCORM support, optional LaTeX and Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -112,6 +115,7 @@ export class Scorm12Exporter extends Html5Exporter {
                     i,
                     faviconInfo,
                     pageFilenameMap,
+                    navLabels,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -407,6 +411,7 @@ export class Scorm12Exporter extends Html5Exporter {
         pageIndex?: number,
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
+        navLabels?: { previous: string; next: string; license?: string },
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -465,6 +470,8 @@ export class Scorm12Exporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Page filename map for navigation links (handles title collisions)
             pageFilenameMap,
+            // Pre-translated nav button labels (resolved from XLF at export time)
+            navLabels,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
         });

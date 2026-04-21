@@ -1001,6 +1001,7 @@ ${userFooterHtml}</div></footer>`;
             version?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
+            navLabels?: { previous?: string; next?: string; page?: string; license?: string };
         } = {},
     ): string {
         const {
@@ -1020,6 +1021,7 @@ ${userFooterHtml}</div></footer>`;
             detectedLibraries = [],
             addMathJax = false,
             addAccessibilityToolbar = false,
+            navLabels,
         } = options;
 
         let contentHtml = '';
@@ -1048,6 +1050,7 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
     description: options.description,
     license: options.license,
     language: options.language,
+    translatedLicense: navLabels?.license,
 })}
 </div>
 </section>\n`;
@@ -1095,7 +1098,7 @@ ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 <header class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
-${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, navLabels })}
 </div>
 ${addExeLink ? this.renderMadeWithEXe() : ''}
 </body>
