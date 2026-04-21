@@ -225,74 +225,25 @@ let customEnv;
 let env;
 
 // ──────────────  Save/Export helpers  ──────────────
-const DEFAULT_EXTENSION = '.elpx';
-
-/**
- * Extract a file extension from a file path or suggested name.
- * Returns the lowercase extension (including the leading dot) if present, null otherwise.
- * @param {string} filePathOrName - File path or suggested filename
- * @returns {string|null} Extension (e.g., '.elpx', '.csv') or null
- */
-function getExt(filePathOrName) {
-    try {
-        const ext = path.extname(filePathOrName || '') || '';
-        if (!ext) return null;
-        return ext.toLowerCase();
-    } catch (_e) {
-        return null;
-    }
-}
-
-// Ensures the filePath has an extension; if missing, appends one inferred from suggestedName.
-function ensureExt(filePath, suggestedName) {
-    if (!filePath) return filePath;
-    const currentExt = getExt(filePath);
-    if (currentExt) return filePath;
-    const inferred = getExt(suggestedName);
-    return inferred ? filePath + inferred : filePath;
-}
-
-function getDialogFilterForExt(ext) {
-    switch ((ext || '').toLowerCase()) {
-        case '.elpx':
-            return { name: 'eXeLearning project', extensions: ['elpx'] };
-        case '.zip':
-            return { name: 'ZIP archive', extensions: ['zip'] };
-        case '.epub':
-            return { name: 'EPUB', extensions: ['epub'] };
-        case '.xml':
-            return { name: 'XML document', extensions: ['xml'] };
-        case '.csv':
-            return { name: 'CSV file', extensions: ['csv'] };
-        case '.idevice':
-            return { name: 'eXeLearning iDevice', extensions: ['idevice'] };
-        case '.block':
-            return { name: 'eXeLearning block', extensions: ['block'] };
-        default: {
-            if (!ext) return null;
-            const clean = ext.replace(/^\./, '');
-            return { name: `${clean.toUpperCase()} file`, extensions: [clean] };
-        }
-    }
-}
+const {
+    DEFAULT_EXTENSION,
+    getExt,
+    ensureExt,
+    getDialogFilterForExt,
+    proposeSavePath: proposeSavePathPure,
+    resolveEffectiveSaveName,
+    splitSavePath,
+    pickStoredSaveInfo,
+    clearSavedNameCache,
+    resolveSaveDir,
+} = require('./save-utils');
 
 function proposeSavePath(lastDir, effectiveName = null) {
-    try {
-        const ext = getExt(effectiveName) || DEFAULT_EXTENSION;
-        const dir = lastDir || app.getPath('documents');
-        const base = effectiveName
-            ? path.basename(effectiveName, path.extname(effectiveName))
-            : 'document';
-        return path.join(dir, `${base}${ext}`);
-    } catch (_e) {
-        return effectiveName || `document${DEFAULT_EXTENSION}`;
-    }
+    return proposeSavePathPure(lastDir || app.getPath('documents'), effectiveName);
 }
 
 async function promptSave(owner, suggestedName = null, lastDir = null, storedName = null) {
-    // suggestedName (caller-computed, dynamic) takes priority over storedName (last saved filename).
-    // lastDir is used as the directory regardless, so the remembered folder is preserved.
-    const effectiveName = suggestedName || storedName;
+    const effectiveName = resolveEffectiveSaveName(suggestedName, storedName);
     const inferredExt = getExt(effectiveName) || DEFAULT_EXTENSION;
     const filter = getDialogFilterForExt(inferredExt);
     const isProject = inferredExt === '.elpx';
@@ -337,13 +288,6 @@ function getLastSaveDir(key) {
     return s.lastSaveDir?.[key] || null;
 }
 
-function setLastSaveDir(key, dirPath) {
-    const s = readSettings();
-    s.lastSaveDir = s.lastSaveDir || {};
-    s.lastSaveDir[key] = dirPath;
-    writeSettings(s);
-}
-
 function getLastSaveInfo(key) {
     const s = readSettings();
     return {
@@ -352,12 +296,71 @@ function getLastSaveInfo(key) {
     };
 }
 
-function setLastSaveInfo(key, dirPath, fileName) {
+function getCurrentFileSaveInfo() {
+    const s = readSettings();
+    return {
+        dir: s.currentFileSave?.dir || null,
+        name: s.currentFileSave?.name || null,
+    };
+}
+
+function getLastUsedDir() {
+    const s = readSettings();
+    return typeof s.lastUsedDir === 'string' && s.lastUsedDir.length > 0 ? s.lastUsedDir : null;
+}
+
+/**
+ * Apply a Save-dialog outcome to settings.json in a single read+write:
+ * wipes the stale per-project name cache, then updates the global slot,
+ * the per-project entry, and the session-wide lastUsedDir fallback.
+ * Called after the user picks a target in promptSave.
+ */
+function persistSaveLocation(key, dirPath, fileName) {
+    const s = readSettings();
+    clearSavedNameCache(s);
+    s.currentFileSave = { dir: dirPath || null, name: fileName || null };
+    if (key) {
+        s.lastSaveDir = s.lastSaveDir || {};
+        s.lastSaveDir[key] = dirPath;
+        s.lastSaveName = s.lastSaveName || {};
+        s.lastSaveName[key] = fileName;
+    }
+    if (dirPath) s.lastUsedDir = dirPath;
+    writeSettings(s);
+}
+
+/**
+ * Store the file currently associated with the window without touching the
+ * per-project slot. Used by the setSavedPath IPC when the renderer opens a
+ * file from disk.
+ */
+function setCurrentFileSaveInfo(dirPath, fileName) {
+    const s = readSettings();
+    clearSavedNameCache(s);
+    s.currentFileSave = { dir: dirPath || null, name: fileName || null };
+    if (dirPath) s.lastUsedDir = dirPath;
+    writeSettings(s);
+}
+
+function setLastUsedDir(dirPath) {
+    if (!dirPath) return;
+    const s = readSettings();
+    s.lastUsedDir = dirPath;
+    writeSettings(s);
+}
+
+function setLastSaveDir(key, dirPath) {
     const s = readSettings();
     s.lastSaveDir = s.lastSaveDir || {};
     s.lastSaveDir[key] = dirPath;
-    s.lastSaveName = s.lastSaveName || {};
-    s.lastSaveName[key] = fileName;
+    if (dirPath) s.lastUsedDir = dirPath;
+    writeSettings(s);
+}
+
+function clearCurrentFileSaveInfo() {
+    const s = readSettings();
+    clearSavedNameCache(s);
+    delete s.currentFileSave;
     writeSettings(s);
 }
 
@@ -930,7 +933,7 @@ async function createWindow() {
 
             // Always prompt — no silent overwrite
             const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
-            const lastDir = getLastSaveDir(projectKey);
+            const lastDir = getLastSaveDir(projectKey) || getLastUsedDir();
             const targetPath = await promptSave(owner, suggestedName, lastDir);
             if (!targetPath) {
                 event.preventDefault();
@@ -1123,16 +1126,18 @@ function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
 ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, suggestedDirName }) => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
     try {
-        // Pick destination folder
+        const lastUsedDir = getLastUsedDir();
         const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
             title: tOrDefault(
                 'export.folder.dialogTitle',
                 defaultLocale === 'es' ? 'Exportar a carpeta' : 'Export to folder',
             ),
             properties: ['openDirectory', 'createDirectory'],
+            ...(lastUsedDir ? { defaultPath: lastUsedDir } : {}),
         });
         if (canceled || !filePaths || !filePaths.length) return { ok: false, canceled: true };
         const destDir = filePaths[0];
+        setLastUsedDir(destDir);
 
         // Download ZIP to a temp path
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
@@ -1182,16 +1187,18 @@ ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, sugges
 ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirName }) => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
     try {
-        // Pick destination folder
+        const lastUsedDir = getLastUsedDir();
         const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
             title: tOrDefault(
                 'export.folder.dialogTitle',
                 defaultLocale === 'es' ? 'Exportar a carpeta' : 'Export to folder',
             ),
             properties: ['openDirectory', 'createDirectory'],
+            ...(lastUsedDir ? { defaultPath: lastUsedDir } : {}),
         });
         if (canceled || !filePaths || !filePaths.length) return { ok: false, canceled: true };
         const destDir = filePaths[0];
+        setLastUsedDir(destDir);
 
         // Decode base64 and unzip using fflate
         const buffer = Buffer.from(base64Data, 'base64');
@@ -1313,6 +1320,13 @@ app.on('new-window-for-tab', () => {
 });
 
 app.whenReady().then(() => {
+    // A fresh process has no file "currently associated" with the window
+    // yet — clear the on-disk slot so a leftover filename from a previous
+    // run does not shadow the title-derived suggestedName on first Save.
+    // If the launch is opening a file (argv / macOS 'open-file'), the
+    // renderer re-seeds this via setSavedPath after the import completes.
+    clearCurrentFileSaveInfo();
+
     // macOS: Always show tab bar (even with single window)
     if (process.platform === 'darwin') {
         systemPreferences.setUserDefault('AppleWindowTabbingMode', 'string', 'always');
@@ -1371,11 +1385,14 @@ async function saveUrlWithDialog(e, { downloadUrl, projectKey, suggestedName }) 
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
         const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
         const key = projectKey || 'default';
-        const { dir: lastDir, name: storedName } = getLastSaveInfo(key);
+        const perKey = getLastSaveInfo(key);
+        const globalInfo = getCurrentFileSaveInfo();
+        const { name: storedName } = pickStoredSaveInfo(perKey, globalInfo);
+        const lastDir = resolveSaveDir(perKey, globalInfo, getLastUsedDir());
 
         const targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
         if (!targetPath) return false;
-        setLastSaveInfo(key, path.dirname(targetPath), path.basename(targetPath));
+        persistSaveLocation(key, path.dirname(targetPath), path.basename(targetPath));
 
         return await streamToFile(downloadUrl, targetPath, wc);
     } catch (_e) {
@@ -1385,19 +1402,44 @@ async function saveUrlWithDialog(e, { downloadUrl, projectKey, suggestedName }) 
 ipcMain.handle('app:save', saveUrlWithDialog);
 ipcMain.handle('app:saveAs', saveUrlWithDialog);
 
-// No-ops: path-remembering removed — save always prompts for destination
-ipcMain.handle('app:setSavedPath', async () => true);
-ipcMain.handle('app:clearSavedPath', async () => true);
+// Persist the file currently associated with the window so the next Save
+// dialog pre-fills with its name. Called by the renderer when the user picks
+// a file from disk (File > Open or Electron file association).
+ipcMain.handle('app:setSavedPath', async (_e, payload = {}) => {
+    try {
+        const filePath = typeof payload === 'string' ? payload : payload?.filePath;
+        const split = splitSavePath(filePath);
+        if (!split) return false;
+        setCurrentFileSaveInfo(split.dir, split.name);
+        return true;
+    } catch (_err) {
+        return false;
+    }
+});
+
+// Forget the previously-associated file. Called by the renderer when the user
+// starts a fresh project so the Save dialog falls back to the project title.
+ipcMain.handle('app:clearSavedPath', async () => {
+    try {
+        clearCurrentFileSaveInfo();
+        return true;
+    } catch (_err) {
+        return false;
+    }
+});
 
 // Open system file picker for .elpx files (offline open)
 ipcMain.handle('app:openElp', async e => {
     const senderWindow = BrowserWindow.fromWebContents(e.sender);
+    const lastUsedDir = getLastUsedDir();
     const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
         title: tOrDefault('open.dialogTitle', defaultLocale === 'es' ? 'Abrir proyecto' : 'Open project'),
         properties: ['openFile'],
         filters: [{ name: 'eXeLearning project', extensions: ['elpx', 'elp', 'zip'] }],
+        ...(lastUsedDir ? { defaultPath: lastUsedDir } : {}),
     });
     if (canceled || !filePaths || !filePaths.length) return null;
+    setLastUsedDir(path.dirname(filePaths[0]));
     return filePaths[0];
 });
 
@@ -1494,7 +1536,10 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
         const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
         const key = projectKey || 'default';
-        const { dir: lastDir, name: storedName } = getLastSaveInfo(key);
+        const perKey = getLastSaveInfo(key);
+        const globalInfo = getCurrentFileSaveInfo();
+        const { name: storedName } = pickStoredSaveInfo(perKey, globalInfo);
+        const lastDir = resolveSaveDir(perKey, globalInfo, getLastUsedDir());
 
         targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
         afterPromptAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();
@@ -1507,7 +1552,7 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
                 totalMs: afterPromptAt - startedAt,
             });
         }
-        setLastSaveInfo(key, path.dirname(targetPath), path.basename(targetPath));
+        persistSaveLocation(key, path.dirname(targetPath), path.basename(targetPath));
 
         const buffer = normalizeBinaryPayload(bufferData, base64Data);
         afterNormalizeAt = globalThis.performance?.now ? globalThis.performance.now() : Date.now();

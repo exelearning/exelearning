@@ -1212,6 +1212,18 @@ export default class NavbarFile {
      * Creates a new project/session. Always does a full page reload in online mode.
      */
     async createSession() {
+        // Desktop/static reloads via `window.newProject()` bypass
+        // transitionToProject, so the main-process "current file" slot
+        // would still carry the previously saved file name across the
+        // reload. Clear it so File → New starts with no remembered value.
+        try {
+            if (typeof window.electronAPI?.clearSavedPath === 'function') {
+                await window.electronAPI.clearSavedPath();
+            }
+        } catch (_e) {
+            // Best effort — must not block creating a new project.
+        }
+
         if (
             this.isStaticMode() &&
             typeof window.newProject === 'function'
@@ -1646,6 +1658,16 @@ export default class NavbarFile {
                     } catch (_e) {
                         // Intentional: Electron-specific assignment may fail
                     }
+                    // Persist to main-process settings so the next Save
+                    // dialog pre-fills with this file's name even after
+                    // the reload that follows the import.
+                    try {
+                        if (typeof window.electronAPI?.setSavedPath === 'function') {
+                            await window.electronAPI.setSavedPath(filePath);
+                        }
+                    } catch (_e) {
+                        // Best effort — must not break Open.
+                    }
                     eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                         file
                     );
@@ -1680,9 +1702,24 @@ export default class NavbarFile {
             fileInput.style.display = 'none';
             document.body.appendChild(fileInput);
 
-            fileInput.addEventListener('change', (e) => {
+            fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
+                    // Persist the picked file to the main-process "current
+                    // file" slot so the next Save dialog pre-fills with it.
+                    // Prefer the absolute path (via Electron's webUtils)
+                    // when available so the folder is remembered too.
+                    try {
+                        if (typeof window.electronAPI?.setSavedPath === 'function') {
+                            const fullPath =
+                                typeof window.electronAPI?.getFilePath === 'function'
+                                    ? window.electronAPI.getFilePath(file)
+                                    : null;
+                            await window.electronAPI.setSavedPath(fullPath || file.name);
+                        }
+                    } catch (_e) {
+                        // Best effort — must not block Open.
+                    }
                     // Reuse unified open flow (handles unsaved modal + static import)
                     eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
                 }

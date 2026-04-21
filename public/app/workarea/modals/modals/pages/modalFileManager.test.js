@@ -699,6 +699,7 @@ describe('ModalFilemanager', () => {
   describe('uploadFiles', () => {
     it('should upload files and reload assets', async () => {
       const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
       const file = new File(['x'], 'sample.png', { type: 'image/png' });
       await modal.uploadFiles([file]);
       // Now uploads to current folder (empty = root by default)
@@ -708,6 +709,7 @@ describe('ModalFilemanager', () => {
 
     it('should upload files to current folder', async () => {
       const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
       modal.currentPath = 'images/icons';
       const file = new File(['x'], 'icon.svg', { type: 'image/svg+xml' });
       await modal.uploadFiles([file]);
@@ -721,6 +723,71 @@ describe('ModalFilemanager', () => {
       const file = new File(['x'], 'sample.png', { type: 'image/png' });
       await modal.uploadFiles([file]);
       expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalled();
+    });
+
+    it('should auto-select the uploaded file when exactly one file is uploaded', async () => {
+      vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      const autoSelectSpy = vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
+      window.eXeLearning.app.project._yjsBridge.assetManager.insertImage.mockResolvedValueOnce('asset://test-uuid.png');
+      const file = new File(['x'], 'sample.png', { type: 'image/png' });
+      await modal.uploadFiles([file]);
+      expect(autoSelectSpy).toHaveBeenCalledWith('test-uuid');
+    });
+
+    it('should not auto-select when multiple files are uploaded', async () => {
+      vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      const autoSelectSpy = vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
+      window.eXeLearning.app.project._yjsBridge.assetManager.insertImage
+        .mockResolvedValueOnce('asset://uuid-1.png')
+        .mockResolvedValueOnce('asset://uuid-2.jpg');
+      const files = [
+        new File(['x'], 'a.png', { type: 'image/png' }),
+        new File(['y'], 'b.jpg', { type: 'image/jpeg' }),
+      ];
+      await modal.uploadFiles(files);
+      expect(autoSelectSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('autoSelectUploadedAsset', () => {
+    const asset = { id: 'asset-abc', filename: 'photo.jpg', mime: 'image/jpeg' };
+
+    beforeEach(() => {
+      modal.assets = [asset];
+    });
+
+    it('should select asset in grid view', async () => {
+      modal.viewMode = 'grid';
+      const item = document.createElement('div');
+      item.dataset.assetId = 'asset-abc';
+      modal.grid.appendChild(item);
+      const selectSpy = vi.spyOn(modal, 'selectAsset').mockResolvedValue();
+      await modal.autoSelectUploadedAsset('asset-abc');
+      expect(selectSpy).toHaveBeenCalledWith(asset, item);
+    });
+
+    it('should select asset in list view', async () => {
+      modal.viewMode = 'list';
+      const row = document.createElement('tr');
+      row.dataset.assetId = 'asset-abc';
+      modal.listTbody.appendChild(row);
+      const selectSpy = vi.spyOn(modal, 'selectAssetInList').mockResolvedValue();
+      await modal.autoSelectUploadedAsset('asset-abc');
+      expect(selectSpy).toHaveBeenCalledWith(asset, row);
+    });
+
+    it('should do nothing when asset is not found', async () => {
+      modal.assets = [];
+      const selectSpy = vi.spyOn(modal, 'selectAsset').mockResolvedValue();
+      await modal.autoSelectUploadedAsset('asset-abc');
+      expect(selectSpy).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing when DOM element is not found', async () => {
+      modal.viewMode = 'grid';
+      const selectSpy = vi.spyOn(modal, 'selectAsset').mockResolvedValue();
+      await modal.autoSelectUploadedAsset('asset-abc');
+      expect(selectSpy).not.toHaveBeenCalled();
     });
   });
 
