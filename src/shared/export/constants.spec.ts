@@ -731,6 +731,9 @@ describe('Constants', () => {
                 expect(formatLicenseText('creative commons: attribution - share alike 4.0')).toBe(
                     'Creative Commons: Attribution - Share Alike 4.0 (BY-SA)',
                 );
+                expect(formatLicenseText('creative commons: attribution 4.0 (BY)')).toBe(
+                    'Creative Commons: Attribution 4.0 (BY)',
+                );
                 expect(formatLicenseText('public domain')).toBe('Public domain');
                 expect(formatLicenseText('Proprietary license')).toBe('Proprietary license');
             });
