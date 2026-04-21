@@ -727,7 +727,7 @@ export function formatLicenseText(licenseName: string): string {
  */
 export function formatShortLicenseText(licenseName: string): string {
     if (!licenseName) return '';
-    const key = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const key = resolveLicenseKey(licenseName);
     const entry = LICENSE_REGISTRY[key];
 
     if (entry?.url?.includes('creativecommons.org/licenses/')) {

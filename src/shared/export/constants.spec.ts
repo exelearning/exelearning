@@ -703,45 +703,41 @@ describe('Constants', () => {
         });
 
         describe('formatLicenseText', () => {
-            it('should return key for known licenses', () => {
+            it('should return key for known CC licenses', () => {
                 expect(formatLicenseText('creative commons: attribution - share alike 4.0')).toBe(
-                    'Creative Commons: Attribution - Share Alike 4.0 (BY-SA)',
+                    'creative commons: attribution - share alike 4.0',
                 );
                 expect(formatLicenseText('creative commons: attribution 4.0')).toBe(
-                    'Creative Commons: Attribution 4.0 (BY)',
+                    'creative commons: attribution 4.0',
                 );
                 expect(formatLicenseText('creative commons: attribution - non commercial 4.0')).toBe(
-                    'Creative Commons: Attribution - Non Commercial 4.0 (BY-NC)',
+                    'creative commons: attribution - non commercial 4.0',
                 );
-                expect(formatLicenseText('creative commons: cc0 1.0')).toBe(
-                    'Creative Commons: Public Domain 1.0 (CC0)',
-                );
+                expect(formatLicenseText('creative commons: cc0 1.0')).toBe('creative commons: cc0 1.0');
             });
 
             it('should handle case insensitivity', () => {
                 expect(formatLicenseText('creative commons: attribution - share alike 4.0')).toBe(
-                    'Creative Commons: Attribution - Share Alike 4.0 (BY-SA)',
+                    'creative commons: attribution - share alike 4.0',
                 );
                 expect(formatLicenseText('CREATIVE COMMONS: ATTRIBUTION - SHARE ALIKE 4.0')).toBe(
-                    'Creative Commons: Attribution - Share Alike 4.0 (BY-SA)',
+                    'creative commons: attribution - share alike 4.0',
                 );
             });
 
             it('should pass through full names and return displayName', () => {
                 expect(formatLicenseText('creative commons: attribution - share alike 4.0')).toBe(
-                    'Creative Commons: Attribution - Share Alike 4.0 (BY-SA)',
+                    'creative commons: attribution - share alike 4.0',
                 );
                 expect(formatLicenseText('creative commons: attribution 4.0 (BY)')).toBe(
-                    'Creative Commons: Attribution 4.0 (BY)',
+                    'creative commons: attribution 4.0',
                 );
                 expect(formatLicenseText('public domain')).toBe('Public domain');
                 expect(formatLicenseText('Proprietary license')).toBe('Proprietary license');
             });
 
             it('should handle CC0 license', () => {
-                expect(formatLicenseText('creative commons: cc0 1.0')).toBe(
-                    'Creative Commons: Public Domain 1.0 (CC0)',
-                );
+                expect(formatLicenseText('creative commons: cc0 1.0')).toBe('creative commons: cc0 1.0');
             });
 
             it('should handle public domain (generic)', () => {
@@ -756,21 +752,21 @@ describe('Constants', () => {
                 expect(formatLicenseText('  public domain  ')).toBe('Public domain');
             });
 
-            it('should return displayName for CC 3.0 licenses', () => {
+            it('should return key for CC 3.0 licenses', () => {
                 expect(formatLicenseText('creative commons: attribution 3.0')).toBe(
-                    'Creative Commons: Attribution 3.0 (BY)',
+                    'creative commons: attribution 3.0',
                 );
                 expect(formatLicenseText('creative commons: attribution - share alike 3.0')).toBe(
-                    'Creative Commons: Attribution - Share Alike 3.0 (BY-SA)',
+                    'creative commons: attribution - share alike 3.0',
                 );
             });
 
-            it('should return displayName for CC 2.5 licenses', () => {
+            it('should return key for CC 2.5 licenses', () => {
                 expect(formatLicenseText('creative commons: attribution 2.5')).toBe(
-                    'Creative Commons: Attribution 2.5 (BY)',
+                    'creative commons: attribution 2.5',
                 );
                 expect(formatLicenseText('creative commons: attribution - share alike 2.5')).toBe(
-                    'Creative Commons: Attribution - Share Alike 2.5 (BY-SA)',
+                    'creative commons: attribution - share alike 2.5',
                 );
             });
 
@@ -823,7 +819,7 @@ describe('Constants', () => {
 
             it('should return fallback displayName for other licenses', () => {
                 expect(formatShortLicenseText('public domain')).toBe('Public domain');
-                expect(formatShortLicenseText('gnu/gpl')).toBe('gnu/gpl');
+                expect(formatShortLicenseText('gnu/gpl')).toBe('GNU/GPL');
             });
         });
 
