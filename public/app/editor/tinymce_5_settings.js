@@ -586,6 +586,19 @@ var $exeTinyMCE = {
                 this.buttons3,
             ],
             setup: function (ed) {
+                // Issue #1712: paste_as_text:true makes TinyMCE's paste plugin
+                // route HTML pastes through pasteText(), which HTML-encodes the
+                // payload and strips any <img> tags. As a result, images copied
+                // from another app/web page (clipboard typically ships both the
+                // image file AND a text/html fragment) are silently dropped.
+                // Intercept the paste event before the paste plugin, pull image
+                // files out of clipboardData.items, store them via AssetManager
+                // and insert the <img> ourselves. preventDefault() stops the
+                // paste plugin from then stripping the same content as text.
+                ed.on('paste', function (e) {
+                    $exeTinyMCE.handleImagePaste(ed, e);
+                });
+
                 ed.on('BeforeSetContent', function(e) {
                     if (typeof e.content !== 'string') return;
 
@@ -745,6 +758,79 @@ var $exeTinyMCE = {
         };
         // Clean up flag when editor is destroyed so re-init can re-patch
         ed.on('remove', function () { delete ed.windowManager._assetPatched; });
+    },
+
+    /**
+     * Extract image files from a paste event and insert them via AssetManager
+     * (issue #1712). Non-image pastes fall through untouched so the default
+     * paste plugin still handles text.
+     *
+     * @param {Object} ed - TinyMCE editor instance
+     * @param {ClipboardEvent} e - paste event
+     */
+    handleImagePaste: async function (ed, e) {
+        if (!e || !e.clipboardData) return;
+        var items = e.clipboardData.items;
+        if (!items || !items.length) return;
+
+        var files = [];
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            if (item && item.kind === 'file' && typeof item.type === 'string' && item.type.indexOf('image/') === 0) {
+                var file = typeof item.getAsFile === 'function' ? item.getAsFile() : null;
+                if (file) files.push(file);
+            }
+        }
+        if (!files.length) return;
+
+        // Prevent the paste plugin from running: with paste_as_text:true it
+        // would call pasteText() and HTML-encode everything, dropping the <img>.
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+
+        var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        if (!assetManager || typeof assetManager.insertImage !== 'function') {
+            console.error('[TinyMCE] Cannot paste image: AssetManager is not available');
+            return;
+        }
+
+        $exeTinyMCE.lockScreen();
+        try {
+            for (var f = 0; f < files.length; f++) {
+                var pasted = files[f];
+                try {
+                    var assetUrl = await assetManager.insertImage(pasted);
+                    var assetId = typeof assetManager.extractAssetId === 'function'
+                        ? assetManager.extractAssetId(assetUrl)
+                        : null;
+
+                    // Resolve to a blob URL so the editor can render the image
+                    // immediately. prepareHtmlForSync converts blob → asset:// on save.
+                    var displayUrl = assetUrl;
+                    if (typeof assetManager.resolveAssetURL === 'function') {
+                        var resolved = await assetManager.resolveAssetURL(assetUrl);
+                        if (resolved) {
+                            displayUrl = resolved;
+                            if (assetId && assetManager.reverseBlobCache) {
+                                assetManager.reverseBlobCache.set(resolved, assetId);
+                            }
+                        }
+                    }
+
+                    var attrs = [
+                        'src="' + displayUrl + '"',
+                        'data-mce-src="' + assetUrl + '"',
+                        'alt=""',
+                    ];
+                    if (assetId) attrs.push('data-asset-id="' + assetId + '"');
+                    ed.insertContent('<img ' + attrs.join(' ') + '>');
+                } catch (err) {
+                    console.error('[TinyMCE] Failed to store pasted image:', err);
+                }
+            }
+        } finally {
+            $exeTinyMCE.unlockScreen();
+        }
     },
 
     prepareContentForEditorLoad: function (content) {

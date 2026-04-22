@@ -2616,4 +2616,219 @@ describe('TinyMCE 5 Settings', () => {
       expect(document.getElementById('editor-toggler')).toBeNull();
     });
   });
+
+  // ─── paste image from clipboard (issue #1712) ─────────────────────────────
+  //
+  // When the user pastes an image from the OS clipboard (or from another app),
+  // the clipboardData usually contains a text/html fragment AND an image file.
+  // TinyMCE 5's paste plugin, with `paste_as_text: true`, takes the text path
+  // and calls pasteText() which HTML-encodes the payload — stripping the
+  // <img> tag entirely. The built-in `paste_data_images` + `images_upload_handler`
+  // flow is only exercised when the clipboard has no text/html at all
+  // (e.g. a raw OS screenshot). Result: images from the clipboard silently
+  // disappear.
+  //
+  // The fix intercepts the paste event before the paste plugin, detects image
+  // files in clipboardData.items, stores them via the AssetManager and inserts
+  // an <img> tag directly into the editor — bypassing the text-paste stripping.
+
+  describe('paste image from clipboard (#1712)', () => {
+    beforeEach(() => {
+      globalThis.$exeTinyMCE.init = realExeTinyMCEInit;
+    });
+
+    function buildClipboardPasteEvent(items) {
+      const preventDefault = vi.fn();
+      const stopPropagation = vi.fn();
+      return {
+        type: 'paste',
+        preventDefault,
+        stopPropagation,
+        clipboardData: {
+          items,
+          types: items.map((i) => i.type),
+        },
+      };
+    }
+
+    function getPasteHandler(mockEditor) {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      config.setup(mockEditor);
+      const pasteCall = mockEditor.on.mock.calls.find((call) => call[0] === 'paste');
+      return pasteCall ? pasteCall[1] : null;
+    }
+
+    it('registers a paste handler on the editor in setup()', () => {
+      const mockEditor = { on: vi.fn(), getBody: () => document.createElement('div') };
+      const handler = getPasteHandler(mockEditor);
+      expect(handler).toBeTypeOf('function');
+    });
+
+    it('extracts image files from clipboardData.items and stores them via AssetManager', async () => {
+      const blob = new Blob(['png'], { type: 'image/png' });
+      const file = new File([blob], 'pasted.png', { type: 'image/png' });
+      const assetManager = {
+        reverseBlobCache: new Map(),
+        insertImage: vi.fn().mockResolvedValue('asset://asset-paste/pasted.png'),
+        extractAssetId: vi.fn().mockReturnValue('asset-paste'),
+        resolveAssetURL: vi.fn().mockResolvedValue('blob:http://localhost/resolved-paste'),
+      };
+      window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        insertContent: vi.fn(),
+      };
+      const handler = getPasteHandler(mockEditor);
+
+      const event = buildClipboardPasteEvent([
+        { kind: 'file', type: 'image/png', getAsFile: () => file },
+      ]);
+
+      await handler(event);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(assetManager.insertImage).toHaveBeenCalledWith(expect.any(File));
+      expect(mockEditor.insertContent).toHaveBeenCalledWith(
+        expect.stringContaining('blob:http://localhost/resolved-paste'),
+      );
+      expect(mockEditor.insertContent).toHaveBeenCalledWith(
+        expect.stringContaining('data-asset-id="asset-paste"'),
+      );
+      expect(mockEditor.insertContent).toHaveBeenCalledWith(
+        expect.stringContaining('data-mce-src="asset://asset-paste/pasted.png"'),
+      );
+      expect(assetManager.reverseBlobCache.get('blob:http://localhost/resolved-paste')).toBe(
+        'asset-paste',
+      );
+    });
+
+    it('lets non-image paste events fall through to the default paste plugin', async () => {
+      const assetManager = {
+        reverseBlobCache: new Map(),
+        insertImage: vi.fn(),
+        extractAssetId: vi.fn(),
+        resolveAssetURL: vi.fn(),
+      };
+      window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        insertContent: vi.fn(),
+      };
+      const handler = getPasteHandler(mockEditor);
+
+      // Text-only paste → no image items
+      const event = buildClipboardPasteEvent([
+        { kind: 'string', type: 'text/plain', getAsFile: () => null },
+      ]);
+
+      await handler(event);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(assetManager.insertImage).not.toHaveBeenCalled();
+      expect(mockEditor.insertContent).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when AssetManager is not available', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      delete window.eXeLearning.app.project;
+
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        insertContent: vi.fn(),
+      };
+      const handler = getPasteHandler(mockEditor);
+
+      const file = new File([new Blob(['x'])], 'x.png', { type: 'image/png' });
+      const event = buildClipboardPasteEvent([
+        { kind: 'file', type: 'image/png', getAsFile: () => file },
+      ]);
+
+      await handler(event);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(mockEditor.insertContent).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it('handles missing clipboardData gracefully', async () => {
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        insertContent: vi.fn(),
+      };
+      const handler = getPasteHandler(mockEditor);
+
+      await Promise.resolve(handler({ type: 'paste' }));
+      expect(mockEditor.insertContent).not.toHaveBeenCalled();
+    });
+
+    it('logs and skips when AssetManager.insertImage rejects', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const assetManager = {
+        reverseBlobCache: new Map(),
+        insertImage: vi.fn().mockRejectedValue(new Error('boom')),
+        extractAssetId: vi.fn(),
+        resolveAssetURL: vi.fn(),
+      };
+      window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        insertContent: vi.fn(),
+      };
+      const handler = getPasteHandler(mockEditor);
+
+      const file = new File([new Blob(['x'])], 'x.png', { type: 'image/png' });
+      const event = buildClipboardPasteEvent([
+        { kind: 'file', type: 'image/png', getAsFile: () => file },
+      ]);
+
+      await handler(event);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(mockEditor.insertContent).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it('falls back to asset:// src when resolveAssetURL returns nothing', async () => {
+      const file = new File([new Blob(['x'])], 'x.png', { type: 'image/png' });
+      const assetManager = {
+        reverseBlobCache: new Map(),
+        insertImage: vi.fn().mockResolvedValue('asset://asset-fallback/x.png'),
+        extractAssetId: vi.fn().mockReturnValue('asset-fallback'),
+        resolveAssetURL: vi.fn().mockResolvedValue(null),
+      };
+      window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        insertContent: vi.fn(),
+      };
+      const handler = getPasteHandler(mockEditor);
+
+      const event = buildClipboardPasteEvent([
+        { kind: 'file', type: 'image/png', getAsFile: () => file },
+      ]);
+
+      await handler(event);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(mockEditor.insertContent).toHaveBeenCalledWith(
+        expect.stringContaining('src="asset://asset-fallback/x.png"'),
+      );
+    });
+  });
 });
