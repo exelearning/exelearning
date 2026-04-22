@@ -57,7 +57,7 @@ services:
       DB_USER: "${DB_USER:-postgres}"
       DB_PASSWORD: "${DB_PASSWORD:-postgres}"
       DB_CHARSET: "${DB_CHARSET:-utf8}"
-      DB_SERVER_VERSION: 17
+      DB_SERVER_VERSION: 18
 
       # Files directory (shared volume)
       FILES_DIR: "/mnt/data/"
@@ -112,7 +112,7 @@ services:
       DB_USER: "${DB_USER:-postgres}"
       DB_PASSWORD: "${DB_PASSWORD:-postgres}"
       DB_CHARSET: "${DB_CHARSET:-utf8}"
-      DB_SERVER_VERSION: 17
+      DB_SERVER_VERSION: 18
 
       # Files directory (shared volume)
       FILES_DIR: "/mnt/data/"
@@ -153,7 +153,7 @@ services:
       POSTGRES_USER: "${DB_USER:-postgres}"
       POSTGRES_DB: "${DB_NAME:-exelearning}"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-exelearning}"]
       interval: 10s

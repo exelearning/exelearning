@@ -27,7 +27,7 @@ services:
       DB_USER: "${DB_USER:-postgres}"
       DB_PASSWORD: "${DB_PASSWORD:-postgres}"
       DB_CHARSET: "${DB_CHARSET:-utf8}"
-      DB_SERVER_VERSION: 17
+      DB_SERVER_VERSION: 18
       
       # Files directory
       FILES_DIR: "/mnt/data/"
@@ -54,7 +54,7 @@ services:
     # ports:
     #   - "${DB_PORT:-5432}:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
 
 volumes:
   exelearning-data:
