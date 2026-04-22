@@ -278,8 +278,7 @@ test.describe('Paste images in TinyMCE (#1712)', () => {
             editor.selection = {
                 ...realSelection,
                 isCollapsed: () => false,
-                getContent: ({ format }: { format?: string } = {}) =>
-                    format === 'text' ? '' : img.outerHTML,
+                getContent: ({ format }: { format?: string } = {}) => (format === 'text' ? '' : img.outerHTML),
             };
 
             // Capture what handleCopyCut writes to the clipboard.
