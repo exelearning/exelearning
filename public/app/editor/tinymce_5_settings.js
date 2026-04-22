@@ -951,6 +951,11 @@ var $exeTinyMCE = {
         var text = ed.selection.getContent({ format: 'text' });
 
         if (typeof e.preventDefault === 'function') e.preventDefault();
+        // Stop TinyMCE's built-in paste plugin copy handler from running after
+        // ours — it writes its own HTML to the clipboard (racing our
+        // data:-URL payload) and, in Firefox under Playwright, crashes in
+        // setBaseAndExtent when the iframe isn't focused.
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
 
         var htmlPromise = $exeTinyMCE._buildCopyHtml(html).then(function (h) {
             return new Blob([h], { type: 'text/html' });

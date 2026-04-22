@@ -266,10 +266,21 @@ test.describe('Paste images in TinyMCE (#1712)', () => {
             }
             if (!firstAssetId) return { ok: false, reason: 'prime-timeout' };
 
-            // --- 2. Select the image and trigger copy ---
+            // --- 2. Build a selection that covers the image and trigger copy ---
+            // editor.selection.select(img) fails in Firefox under Playwright
+            // because contentWindow.getSelection() returns null when the iframe
+            // isn't focused. The handler we're testing only reads from
+            // selection.isCollapsed() / getContent() / ... so stub those
+            // directly — that matches what the handler sees in real use.
             const body = editor.getBody();
-            const img = body.querySelector('img[data-asset-id]');
-            editor.selection.select(img);
+            const img = body.querySelector('img[data-asset-id]') as HTMLElement;
+            const realSelection = editor.selection;
+            editor.selection = {
+                ...realSelection,
+                isCollapsed: () => false,
+                getContent: ({ format }: { format?: string } = {}) =>
+                    format === 'text' ? '' : img.outerHTML,
+            };
 
             // Capture what handleCopyCut writes to the clipboard.
             // navigator.clipboard is a read-only getter on the Navigator
@@ -301,6 +312,8 @@ test.describe('Paste images in TinyMCE (#1712)', () => {
             // Drain any pending microtasks (async clipboard.write).
             for (let i = 0; i < 50; i++) await new Promise(r => setTimeout(r, 50));
 
+            // Restore the real selection object before the paste step.
+            editor.selection = realSelection;
             if (originalWrite && (window as any).navigator.clipboard) {
                 (window as any).navigator.clipboard.write = originalWrite;
             }
@@ -325,9 +338,11 @@ test.describe('Paste images in TinyMCE (#1712)', () => {
                 files: [],
                 getData: (t: string) => (t === 'text/html' ? html : ''),
             };
-            // Move caret to end so the paste happens after the first image.
-            editor.selection.select(editor.getBody(), true);
-            editor.selection.collapse(false);
+            // The paste just needs somewhere to insert: TinyMCE falls back to
+            // the editor body when no selection exists. We don't move the
+            // caret on purpose — setting a selection via the iframe API is
+            // flaky under Playwright Firefox, and the position doesn't matter
+            // for the dedup assertion below.
             editor.fire('paste', pasteEvent);
 
             const t2 = Date.now();
