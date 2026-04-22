@@ -178,4 +178,179 @@ test.describe('Paste images in TinyMCE (#1712)', () => {
         expect(pasteResult.alt).toBe('doc');
         expect(pasteResult.dataMceSrc).toMatch(/^asset:\/\//);
     });
+
+    test('pasting an <img src="data:..."> data URL stores a new asset', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Paste Data URL TinyMCE');
+        await gotoWorkarea(page, projectUuid);
+
+        await selectFirstPage(page);
+        await addTextIdevice(page);
+        await waitForTinyMCEReady(page);
+
+        const pasteResult = await page.evaluate(async () => {
+            const editor = (window as any).tinymce?.activeEditor;
+            if (!editor) return { inserted: false };
+
+            const dataUrl =
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+            const html = `<img src="${dataUrl}" alt="fromData">`;
+
+            const event = new Event('paste', { bubbles: true, cancelable: true }) as any;
+            event.clipboardData = {
+                items: [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+                types: ['text/html'],
+                files: [],
+                getData: (type: string) => (type === 'text/html' ? html : ''),
+            };
+            editor.fire('paste', event);
+
+            const start = Date.now();
+            while (Date.now() - start < 3000) {
+                const img = editor.getBody()?.querySelector('img[data-asset-id]');
+                if (img) {
+                    return {
+                        inserted: true,
+                        alt: img.getAttribute('alt'),
+                        src: img.getAttribute('src'),
+                    };
+                }
+                await new Promise(r => setTimeout(r, 50));
+            }
+            return { inserted: false };
+        });
+
+        expect(pasteResult.inserted).toBe(true);
+        expect(pasteResult.alt).toBe('fromData');
+        expect(pasteResult.src || '').toMatch(/^(asset:\/\/|blob:)/);
+    });
+
+    test('round-trip: copy from TinyMCE puts a data: URL on the clipboard and pasting it back reuses the asset', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Copy Paste RoundTrip TinyMCE');
+        await gotoWorkarea(page, projectUuid);
+
+        await selectFirstPage(page);
+        await addTextIdevice(page);
+        await waitForTinyMCEReady(page);
+
+        // First, paste an image so there's something to copy back out.
+        const result = await page.evaluate(async () => {
+            const editor = (window as any).tinymce?.activeEditor;
+            if (!editor) return { ok: false, reason: 'no-editor' };
+
+            const dataUrl =
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+
+            // --- 1. Prime the editor with an image ---
+            const primeEvent = new Event('paste', { bubbles: true, cancelable: true }) as any;
+            primeEvent.clipboardData = {
+                items: [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+                types: ['text/html'],
+                files: [],
+                getData: (t: string) => (t === 'text/html' ? `<img src="${dataUrl}" alt="round">` : ''),
+            };
+            editor.fire('paste', primeEvent);
+            let firstAssetId = '';
+            const t1 = Date.now();
+            while (Date.now() - t1 < 3000 && !firstAssetId) {
+                const i = editor.getBody()?.querySelector('img[data-asset-id]');
+                if (i) firstAssetId = i.getAttribute('data-asset-id') || '';
+                if (!firstAssetId) await new Promise(r => setTimeout(r, 50));
+            }
+            if (!firstAssetId) return { ok: false, reason: 'prime-timeout' };
+
+            // --- 2. Select the image and trigger copy ---
+            const body = editor.getBody();
+            const img = body.querySelector('img[data-asset-id]');
+            editor.selection.select(img);
+
+            // Capture what handleCopyCut writes to the clipboard.
+            // navigator.clipboard is a read-only getter on the Navigator
+            // prototype, so we can't reassign the whole clipboard object —
+            // just replace the .write method in place.
+            const writes: any[] = [];
+            const originalWrite = (window as any).navigator.clipboard?.write;
+            const originalClipboardItem = (window as any).ClipboardItem;
+            if ((window as any).navigator.clipboard) {
+                (window as any).navigator.clipboard.write = async (items: any[]) => {
+                    writes.push(items);
+                    return Promise.resolve();
+                };
+            }
+            (window as any).ClipboardItem = function (parts: any) {
+                (this as any).parts = parts;
+            };
+
+            const copyEvent = new Event('copy', { bubbles: true, cancelable: true }) as any;
+            copyEvent.clipboardData = null;
+
+            const selectionState = {
+                collapsed: editor.selection.isCollapsed(),
+                html: editor.selection.getContent({ contextual: true }),
+            };
+
+            editor.fire('copy', copyEvent);
+
+            // Drain any pending microtasks (async clipboard.write).
+            for (let i = 0; i < 50; i++) await new Promise(r => setTimeout(r, 50));
+
+            if (originalWrite && (window as any).navigator.clipboard) {
+                (window as any).navigator.clipboard.write = originalWrite;
+            }
+            (window as any).ClipboardItem = originalClipboardItem;
+
+            if (!writes.length)
+                return {
+                    ok: false,
+                    reason: 'no-copy-write',
+                    selectionCollapsed: selectionState.collapsed,
+                    selectedHtml: selectionState.html,
+                };
+            const parts = writes[0][0].parts;
+            const htmlBlob = await parts['text/html'];
+            const html = await htmlBlob.text();
+
+            // --- 3. Paste that HTML back and check dedup ---
+            const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as any;
+            pasteEvent.clipboardData = {
+                items: [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+                types: ['text/html'],
+                files: [],
+                getData: (t: string) => (t === 'text/html' ? html : ''),
+            };
+            // Move caret to end so the paste happens after the first image.
+            editor.selection.select(editor.getBody(), true);
+            editor.selection.collapse(false);
+            editor.fire('paste', pasteEvent);
+
+            const t2 = Date.now();
+            while (Date.now() - t2 < 3000) {
+                const all = editor.getBody()?.querySelectorAll('img[data-asset-id]');
+                if (all && all.length >= 2) {
+                    return {
+                        ok: true,
+                        clipboardHtml: html.slice(0, 200),
+                        firstAssetId,
+                        secondAssetId: (all[1] as HTMLElement).getAttribute('data-asset-id'),
+                    };
+                }
+                await new Promise(r => setTimeout(r, 50));
+            }
+            return { ok: false, reason: 'paste-timeout', clipboardHtml: html.slice(0, 200) };
+        });
+
+        expect(result.ok, `round-trip failed: ${JSON.stringify(result)}`).toBe(true);
+        // Clipboard must hold self-contained data: (not asset://) for portability.
+        expect(result.clipboardHtml).toMatch(/data:image\//);
+        expect(result.clipboardHtml).not.toMatch(/asset:\/\//);
+        // Same bytes → SHA-256 dedup → both <img>s point at the same UUID.
+        expect(result.secondAssetId).toBe(result.firstAssetId);
+    });
 });

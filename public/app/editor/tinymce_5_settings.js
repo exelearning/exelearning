@@ -599,6 +599,16 @@ var $exeTinyMCE = {
                     $exeTinyMCE.handleImagePaste(ed, e);
                 });
 
+                // Issue #1712 round-trip: TinyMCE's GetContent serializer emits
+                // <img src="asset://…">, which no external app understands and our
+                // own paste handler would skip. On copy/cut we rewrite <img>
+                // src attributes to self-contained data:image/…;base64,… URLs
+                // so pasting into Word/Gmail/another browser/another TinyMCE
+                // instance works end-to-end.
+                ed.on('copy cut', function (e) {
+                    $exeTinyMCE.handleCopyCut(ed, e);
+                });
+
                 ed.on('BeforeSetContent', function(e) {
                     if (typeof e.content !== 'string') return;
 
@@ -799,25 +809,39 @@ var $exeTinyMCE = {
             }
         }
 
-        // 2. Remote <img src="https://..."> URLs in text/html
+        // 2. <img> URLs in text/html. We split them into three buckets:
+        //    - remote (https?://…): fetch + store via AssetManager
+        //    - data: URL (our own copy handler, or other editors): decode + store
+        //    - asset://uuid (same-session round-trip): reinsert if the asset is local
         var remoteImages = [];
+        var dataImages = [];
+        var localAssets = [];
         if (html && /<img\b/i.test(html) && typeof DOMParser !== 'undefined') {
             try {
                 var doc = new DOMParser().parseFromString(html, 'text/html');
                 var imgs = doc.querySelectorAll('img[src]');
                 for (var j = 0; j < imgs.length; j++) {
-                    var src = imgs[j].getAttribute('src');
-                    if (src && /^https?:\/\//i.test(src)) {
-                        remoteImages.push({ src: src, alt: imgs[j].getAttribute('alt') || '' });
+                    var imgNode = imgs[j];
+                    var src = imgNode.getAttribute('src') || '';
+                    var alt = imgNode.getAttribute('alt') || '';
+                    var assetHint = imgNode.getAttribute('data-asset-id') || '';
+                    if (/^https?:\/\//i.test(src)) {
+                        remoteImages.push({ src: src, alt: alt });
+                    } else if (/^data:image\//i.test(src)) {
+                        dataImages.push({ src: src, alt: alt, assetHint: assetHint });
+                    } else if (/^asset:\/\//i.test(src)) {
+                        localAssets.push({ src: src, alt: alt });
                     }
                 }
             } catch (err) { /* malformed HTML, skip */ }
         }
 
-        // Case (1) — pure image paste: let the built-in plugin handle it.
-        if (fileImages.length && !hasAccompanyingText && !remoteImages.length) return;
+        var totalImages = fileImages.length + remoteImages.length + dataImages.length + localAssets.length;
 
-        if (!fileImages.length && !remoteImages.length) return;
+        // Case (1) — pure image paste: let the built-in plugin handle it.
+        if (fileImages.length && !hasAccompanyingText && totalImages === fileImages.length) return;
+
+        if (totalImages === 0) return;
 
         // Only stop the paste plugin when we have no text to preserve; otherwise
         // let it keep processing the text and our async inserts will append the
@@ -838,12 +862,195 @@ var $exeTinyMCE = {
             for (var f = 0; f < fileImages.length; f++) {
                 await $exeTinyMCE._insertPastedFile(ed, assetManager, fileImages[f], '');
             }
+            for (var la = 0; la < localAssets.length; la++) {
+                $exeTinyMCE._insertLocalAsset(ed, assetManager, localAssets[la]);
+            }
+            for (var di = 0; di < dataImages.length; di++) {
+                await $exeTinyMCE._insertPastedDataURL(ed, assetManager, dataImages[di]);
+            }
             for (var r = 0; r < remoteImages.length; r++) {
                 await $exeTinyMCE._insertPastedURL(ed, assetManager, remoteImages[r]);
             }
         } finally {
             $exeTinyMCE.unlockScreen();
         }
+    },
+
+    /**
+     * Reinsert an <img src="asset://uuid"> when the asset already lives in
+     * the local AssetManager (same-project round-trip). resolveAssetUrlsInEditor
+     * converts asset:// → blob: for display via SetContent / MutationObserver,
+     * so we don't have to resolve ourselves here.
+     */
+    _insertLocalAsset: function (ed, assetManager, img) {
+        var assetId = typeof assetManager.extractAssetId === 'function'
+            ? assetManager.extractAssetId(img.src)
+            : null;
+        if (!assetId) return;
+        var hasAsset = typeof assetManager.getAssetMetadata === 'function'
+            ? !!assetManager.getAssetMetadata(assetId)
+            : false;
+        if (!hasAsset) {
+            console.warn('[TinyMCE] Pasted asset:// reference is not in the local AssetManager, skipping:', img.src);
+            return;
+        }
+        $exeTinyMCE._insertAssetImgTag(ed, assetId, img.alt);
+    },
+
+    /**
+     * Decode <img src="data:image/…;base64,…"> and store it via
+     * AssetManager.insertImage (which dedup-es by SHA-256). If the <img>
+     * carries a data-asset-id attribute pointing to a known local asset,
+     * reuse it directly — avoids re-hashing the same bytes we just got
+     * from our own copy handler.
+     */
+    _insertPastedDataURL: async function (ed, assetManager, img) {
+        // Fast path: trust the asset id the copy handler left behind.
+        if (img.assetHint && typeof assetManager.getAssetMetadata === 'function'
+            && assetManager.getAssetMetadata(img.assetHint)) {
+            $exeTinyMCE._insertAssetImgTag(ed, img.assetHint, img.alt);
+            return;
+        }
+        try {
+            var response = await fetch(img.src);
+            var blob = await response.blob();
+            var ext = (blob.type && blob.type.split('/')[1] || 'png').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'png';
+            var file = new File([blob], 'pasted-' + Date.now() + '.' + ext, { type: blob.type || 'image/png' });
+            var assetUrl = await assetManager.insertImage(file);
+            await $exeTinyMCE._insertStoredAssetImage(ed, assetManager, assetUrl, img.alt);
+        } catch (err) {
+            console.error('[TinyMCE] Failed to store pasted data: image:', err);
+        }
+    },
+
+    _insertAssetImgTag: function (ed, assetId, alt) {
+        var safeAlt = $exeTinyMCE._escapeAttr(alt || '');
+        ed.insertContent(
+            '<img src="asset://' + assetId + '" data-asset-id="' + assetId + '" alt="' + safeAlt + '">'
+        );
+    },
+
+    /**
+     * Handle `copy` / `cut` events. If the selection contains images, rewrite
+     * their src to self-contained data:image/…;base64,… URLs and push the
+     * resulting HTML onto the clipboard through the async Clipboard API. This
+     * makes the round-trip work for every paste target (external app, another
+     * TinyMCE, same editor) because the clipboard is no longer pointing at
+     * eXeLearning-internal asset:// URLs.
+     */
+    handleCopyCut: function (ed, e) {
+        if (!e || typeof navigator === 'undefined' || !navigator.clipboard || typeof navigator.clipboard.write !== 'function') {
+            return; // no-op on unsupported browsers — default copy still runs
+        }
+        if (typeof ClipboardItem === 'undefined') return;
+        if (!ed.selection || ed.selection.isCollapsed()) return;
+
+        var html = ed.selection.getContent({ contextual: true });
+        if (!html || !/<img\b/i.test(html)) return;
+
+        var text = ed.selection.getContent({ format: 'text' });
+
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+
+        var htmlPromise = $exeTinyMCE._buildCopyHtml(html).then(function (h) {
+            return new Blob([h], { type: 'text/html' });
+        });
+        var textBlob = new Blob([text || ''], { type: 'text/plain' });
+
+        navigator.clipboard.write([
+            new ClipboardItem({
+                'text/html': htmlPromise,
+                'text/plain': textBlob,
+            }),
+        ]).catch(function (err) {
+            console.warn('[TinyMCE] clipboard.write failed:', err);
+        });
+
+        if (e.type === 'cut' && typeof ed.execCommand === 'function') {
+            ed.execCommand('Delete');
+        }
+    },
+
+    /**
+     * Rewrite every <img> in the selected HTML so its src is a self-contained
+     * data:image/…;base64,… URL. Remote (https?://) URLs are left untouched
+     * — refetching them on copy is wasteful and fails under CORS. Editor-
+     * internal attributes (data-mce-src, data-asset-src) are stripped; the
+     * asset id is preserved as data-asset-id so a round-trip paste can take
+     * the fast path without re-hashing.
+     */
+    _buildCopyHtml: async function (html) {
+        if (typeof DOMParser === 'undefined') return html;
+        var doc;
+        try {
+            doc = new DOMParser().parseFromString('<!doctype html><html><body>' + html + '</body></html>', 'text/html');
+        } catch (err) {
+            return html;
+        }
+        var root = doc.body;
+        if (!root) return html;
+
+        var imgs = root.querySelectorAll('img[src]');
+        var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        for (var i = 0; i < imgs.length; i++) {
+            var img = imgs[i];
+            var src = img.getAttribute('src') || '';
+            if (/^https?:\/\//i.test(src) || /^data:/i.test(src)) {
+                img.removeAttribute('data-mce-src');
+                img.removeAttribute('data-asset-src');
+                continue;
+            }
+            var blob = await $exeTinyMCE._getBlobForSrc(src, assetManager);
+            if (!blob) continue;
+            try {
+                var dataUrl = await $exeTinyMCE._encodeBlobAsDataURL(blob);
+                img.setAttribute('src', dataUrl);
+                // Keep data-asset-id as a hint for the fast-path paste;
+                // drop TinyMCE-internal tracking attributes so the clipboard
+                // HTML is clean for external consumers.
+                img.removeAttribute('data-mce-src');
+                img.removeAttribute('data-asset-src');
+                // If we know the uuid, make it explicit even if the source
+                // <img> didn't carry data-asset-id (e.g. selected from DOM).
+                if (!img.hasAttribute('data-asset-id') && assetManager && typeof assetManager.extractAssetId === 'function') {
+                    var guess = assetManager.extractAssetId(src);
+                    if (guess) img.setAttribute('data-asset-id', guess);
+                }
+            } catch (err) {
+                console.warn('[TinyMCE] copy: failed to encode image as data URL:', err);
+            }
+        }
+        return root.innerHTML;
+    },
+
+    _getBlobForSrc: async function (src, assetManager) {
+        if (!src) return null;
+        try {
+            if (/^blob:/i.test(src)) {
+                var r = await fetch(src);
+                if (!r || !r.ok) return null;
+                return await r.blob();
+            }
+            if (/^asset:\/\//i.test(src) && assetManager) {
+                var id = typeof assetManager.extractAssetId === 'function' ? assetManager.extractAssetId(src) : null;
+                if (!id) return null;
+                if (typeof assetManager.getBlob === 'function') {
+                    return await assetManager.getBlob(id);
+                }
+            }
+        } catch (err) {
+            console.warn('[TinyMCE] copy: could not read blob for', src, err);
+        }
+        return null;
+    },
+
+    _encodeBlobAsDataURL: function (blob) {
+        return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function () { resolve(String(reader.result || '')); };
+            reader.onerror = function () { reject(reader.error || new Error('FileReader failed')); };
+            reader.readAsDataURL(blob);
+        });
     },
 
     _insertPastedFile: async function (ed, assetManager, file, alt) {

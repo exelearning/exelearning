@@ -190,7 +190,6 @@ describe('TinyMCE 5 Settings', () => {
     globalThis.$ = previousDollar;
     globalThis.tinymce = previousTinymce;
     delete globalThis.fetch;
-    delete globalThis.FileReader;
   });
 
   it('defines global $exeTinyMCE', () => {
@@ -3055,7 +3054,12 @@ describe('TinyMCE 5 Settings', () => {
         warnSpy.mockRestore();
       });
 
-      it('ignores data: URLs and relative paths (not remote images)', async () => {
+      it('ignores relative / file:// paths (not remote, data: or asset:// images)', async () => {
+        // With the round-trip work we now handle `data:` and `asset://` URLs
+        // separately. This spec only guards against the paths we still do
+        // NOT want to touch: relative paths from partial HTML, file:// refs,
+        // protocol-relative paths. They are neither remote nor embedded and
+        // should fall through to the paste plugin / be left to the user.
         globalThis.fetch = vi.fn();
         window.eXeLearning.app.project = {
           _yjsBridge: {
@@ -3063,6 +3067,7 @@ describe('TinyMCE 5 Settings', () => {
               reverseBlobCache: new Map(),
               insertImage: vi.fn(),
               extractAssetId: vi.fn(),
+              getAssetMetadata: vi.fn(),
               resolveAssetURL: vi.fn(),
             },
           },
@@ -3078,7 +3083,7 @@ describe('TinyMCE 5 Settings', () => {
         const event = buildClipboardPasteEvent(
           [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
           {
-            html: '<img src="data:image/png;base64,AAAA"><img src="/local/path.png"><img src="asset://already-local">',
+            html: '<img src="/local/path.png"><img src="file:///tmp/foo.png"><img src="//cdn/protocol-relative.png">',
           },
         );
 
@@ -3123,6 +3128,348 @@ describe('TinyMCE 5 Settings', () => {
         expect(assetManager.insertImage).not.toHaveBeenCalled();
         expect(mockEditor.insertContent).not.toHaveBeenCalled();
       });
+    });
+
+    // ─── paste asset:// and data: URLs (round-trip #1712) ────────────────────
+    //
+    // When copying from TinyMCE itself, the clipboard carries the editor's
+    // own <img src="asset://uuid"> (same session) or <img src="data:...">
+    // (our copy handler, for cross-session / external). The paste handler
+    // must:
+    //   • recognise asset://uuid and — if the asset exists locally — reinsert
+    //     it directly without re-hashing or decoding;
+    //   • decode data: URLs, run them through AssetManager.insertImage which
+    //     dedups by SHA-256 so the same content reuses an existing UUID;
+    //   • short-circuit when the <img> also carries a data-asset-id pointing
+    //     to a known local asset.
+    describe('paste asset:// and data: URLs', () => {
+      it('reuses an existing local asset when pasted HTML has <img src="asset://uuid">', async () => {
+        const assetManager = {
+          reverseBlobCache: new Map(),
+          extractAssetId: vi.fn((url) => /asset:\/\/([^/.]+)/.exec(url)?.[1] || null),
+          getAssetMetadata: vi.fn((id) => (id === 'known-uuid' ? { id, filename: 'k.png' } : null)),
+          insertImage: vi.fn(),
+          resolveAssetURL: vi.fn(),
+        };
+        window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          { html: '<img src="asset://known-uuid.png" alt="keep">' },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(assetManager.insertImage).not.toHaveBeenCalled();
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(
+          expect.stringContaining('src="asset://known-uuid"'),
+        );
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(expect.stringContaining('alt="keep"'));
+      });
+
+      it('skips pasted <img src="asset://uuid"> when the asset is not local (foreign session)', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const assetManager = {
+          reverseBlobCache: new Map(),
+          extractAssetId: vi.fn((url) => /asset:\/\/([^/.]+)/.exec(url)?.[1] || null),
+          getAssetMetadata: vi.fn(() => null),
+          insertImage: vi.fn(),
+          resolveAssetURL: vi.fn(),
+        };
+        window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          { html: '<img src="asset://foreign-uuid.png">' },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(assetManager.insertImage).not.toHaveBeenCalled();
+        expect(mockEditor.insertContent).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalled();
+        warnSpy.mockRestore();
+      });
+
+      it('decodes <img src="data:image/...;base64,..."> and stores via insertImage (SHA-256 dedup)', async () => {
+        globalThis.fetch = vi.fn().mockImplementation((url) => {
+          expect(url).toMatch(/^data:image\/png/);
+          const bin = atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==');
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return Promise.resolve({
+            ok: true,
+            blob: () => Promise.resolve(new Blob([bytes], { type: 'image/png' })),
+          });
+        });
+        const assetManager = {
+          reverseBlobCache: new Map(),
+          extractAssetId: vi.fn().mockReturnValue('dataurl-uuid'),
+          getAssetMetadata: vi.fn(() => null),
+          insertImage: vi.fn().mockResolvedValue('asset://dataurl-uuid.png'),
+          resolveAssetURL: vi.fn(),
+        };
+        window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          {
+            html:
+              '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==" alt="dataimg">',
+          },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(assetManager.insertImage).toHaveBeenCalledWith(expect.any(File));
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(
+          expect.stringContaining('src="asset://dataurl-uuid.png"'),
+        );
+      });
+
+      it('fast-path: <img data-asset-id="uuid"> short-circuits when the asset exists locally', async () => {
+        globalThis.fetch = vi.fn();
+        const assetManager = {
+          reverseBlobCache: new Map(),
+          extractAssetId: vi.fn(),
+          getAssetMetadata: vi.fn((id) => (id === 'fast-uuid' ? { id } : null)),
+          insertImage: vi.fn(),
+          resolveAssetURL: vi.fn(),
+        };
+        window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          {
+            html: '<img src="data:image/png;base64,AAA" data-asset-id="fast-uuid" alt="fast">',
+          },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+        expect(assetManager.insertImage).not.toHaveBeenCalled();
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(
+          expect.stringContaining('src="asset://fast-uuid"'),
+        );
+      });
+    });
+  });
+
+  // ─── copy/cut: rewrite images as base64 data: URLs (#1712 round-trip) ────
+  //
+  // TinyMCE's built-in GetContent serializer emits blob: → asset:// which no
+  // external app understands. Intercept 'copy' and 'cut' before the paste
+  // plugin, rewrite <img> src attributes to self-contained data:image/… URLs
+  // (read blobs from AssetManager) and push the result to the clipboard via
+  // the async Clipboard API. External apps render the image; our own paste
+  // path decodes it back into a local asset, dedup-ed by content hash.
+
+  describe('copy/cut rewrites images as data: URLs (#1712)', () => {
+    beforeEach(() => {
+      globalThis.$exeTinyMCE.init = realExeTinyMCEInit;
+    });
+
+    function getCopyHandler(mockEditor) {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      config.setup(mockEditor);
+      const call = mockEditor.on.mock.calls.find((c) => String(c[0]).split(/\s+/).includes('copy'));
+      return call ? call[1] : null;
+    }
+
+    it('_buildCopyHtml replaces <img src="blob:..."> with a data: URL via fetch', async () => {
+      const bin = atob(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
+      );
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob([bytes], { type: 'image/png' })),
+      });
+
+      const html = '<p>hi <img src="blob:http://x/abc" data-asset-id="id-1" alt="pic"></p>';
+      const result = await globalThis.$exeTinyMCE._buildCopyHtml(html);
+
+      expect(result).toMatch(/src="data:image\/png;base64,/);
+      expect(result).toContain('data-asset-id="id-1"');
+      expect(result).toContain('alt="pic"');
+    });
+
+    it('_buildCopyHtml replaces <img src="asset://..."> via AssetManager.getBlob', async () => {
+      const assetManager = {
+        extractAssetId: vi.fn().mockReturnValue('uuid-xyz'),
+        getBlob: vi.fn().mockResolvedValue(new Blob(['PNG'], { type: 'image/png' })),
+      };
+      window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+      const html = '<img src="asset://uuid-xyz.png" alt="a" data-asset-src="asset://uuid-xyz.png" data-mce-src="asset://uuid-xyz.png">';
+      const result = await globalThis.$exeTinyMCE._buildCopyHtml(html);
+
+      expect(assetManager.getBlob).toHaveBeenCalledWith('uuid-xyz');
+      expect(result).toMatch(/src="data:image\/png;base64,/);
+      expect(result).not.toContain('data-asset-src=');
+      expect(result).not.toContain('data-mce-src=');
+      // The asset id is preserved so the round-trip can take the fast path.
+      expect(result).toContain('data-asset-id="uuid-xyz"');
+    });
+
+    it('_buildCopyHtml leaves https:// images untouched', async () => {
+      globalThis.fetch = vi.fn();
+      const html = '<img src="https://example.com/remote.png" alt="r">';
+      const result = await globalThis.$exeTinyMCE._buildCopyHtml(html);
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(result).toContain('src="https://example.com/remote.png"');
+    });
+
+    it('copy handler writes text/html + text/plain to navigator.clipboard and preventDefaults', async () => {
+      const writeSpy = vi.fn().mockResolvedValue(undefined);
+      // happy-dom has no ClipboardItem — stub both.
+      globalThis.ClipboardItem = vi.fn(function (parts) {
+        this.parts = parts;
+      });
+      Object.defineProperty(globalThis, 'navigator', {
+        value: { ...globalThis.navigator, clipboard: { write: writeSpy } },
+        configurable: true,
+      });
+
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        selection: {
+          isCollapsed: () => false,
+          getContent: vi.fn((opts) => (opts && opts.format === 'text' ? 'plain' : '<img src="asset://u">')),
+        },
+        execCommand: vi.fn(),
+      };
+
+      // Stub _buildCopyHtml to avoid exercising the blob path here.
+      vi.spyOn(globalThis.$exeTinyMCE, '_buildCopyHtml').mockResolvedValue('<img src="data:image/png;base64,AAA">');
+
+      const handler = getCopyHandler(mockEditor);
+      const event = { type: 'copy', preventDefault: vi.fn() };
+
+      await handler(event);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(writeSpy).toHaveBeenCalledOnce();
+      expect(globalThis.ClipboardItem).toHaveBeenCalled();
+      const parts = globalThis.ClipboardItem.mock.calls[0][0];
+      expect(parts['text/html']).toBeDefined();
+      expect(parts['text/plain']).toBeDefined();
+    });
+
+    it('copy handler falls through when the selection has no images', async () => {
+      const writeSpy = vi.fn();
+      globalThis.ClipboardItem = vi.fn();
+      Object.defineProperty(globalThis, 'navigator', {
+        value: { ...globalThis.navigator, clipboard: { write: writeSpy } },
+        configurable: true,
+      });
+
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        selection: {
+          isCollapsed: () => false,
+          getContent: () => '<p>just text</p>',
+        },
+        execCommand: vi.fn(),
+      };
+      const handler = getCopyHandler(mockEditor);
+      const event = { type: 'copy', preventDefault: vi.fn() };
+
+      await handler(event);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(writeSpy).not.toHaveBeenCalled();
+    });
+
+    it('cut handler removes the selection after writing to the clipboard', async () => {
+      const writeSpy = vi.fn().mockResolvedValue(undefined);
+      globalThis.ClipboardItem = vi.fn();
+      Object.defineProperty(globalThis, 'navigator', {
+        value: { ...globalThis.navigator, clipboard: { write: writeSpy } },
+        configurable: true,
+      });
+
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        selection: {
+          isCollapsed: () => false,
+          getContent: vi.fn(() => '<img src="asset://u">'),
+        },
+        execCommand: vi.fn(),
+      };
+      vi.spyOn(globalThis.$exeTinyMCE, '_buildCopyHtml').mockResolvedValue('<img src="data:image/png;base64,A">');
+
+      const handler = getCopyHandler(mockEditor);
+      const event = { type: 'cut', preventDefault: vi.fn() };
+
+      await handler(event);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(mockEditor.execCommand).toHaveBeenCalledWith('Delete');
+    });
+
+    it('copy handler is a no-op when navigator.clipboard.write is unavailable', async () => {
+      Object.defineProperty(globalThis, 'navigator', {
+        value: { ...globalThis.navigator, clipboard: undefined },
+        configurable: true,
+      });
+
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+        selection: {
+          isCollapsed: () => false,
+          getContent: () => '<img src="asset://u">',
+        },
+        execCommand: vi.fn(),
+      };
+      const handler = getCopyHandler(mockEditor);
+      const event = { type: 'copy', preventDefault: vi.fn() };
+
+      await handler(event);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
     });
   });
 });
