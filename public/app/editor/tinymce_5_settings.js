@@ -761,32 +761,71 @@ var $exeTinyMCE = {
     },
 
     /**
-     * Extract image files from a paste event and insert them via AssetManager
-     * (issue #1712). Non-image pastes fall through untouched so the default
-     * paste plugin still handles text.
+     * Extract image files and remote <img> URLs from a paste event and insert
+     * them via AssetManager (issue #1712).
+     *
+     * Handles three paste shapes:
+     *   1. OS screenshot / drag-drop (only image file, no text on clipboard)
+     *      — nothing to do here: TinyMCE's built-in `paste_data_images` flow
+     *      already handles it. We stay out to avoid double-inserting.
+     *   2. App copy with image file + accompanying text (HTML fragment in the
+     *      clipboard) — the built-in plugin skips the file in this case and
+     *      paste_as_text:true strips the <img>, so we store the file ourselves.
+     *   3. Web page / Google Docs copy — image is a remote URL inside
+     *      text/html. We scan the HTML, fetch each URL and store the response
+     *      as a local asset. On fetch failure (CORS, 404) we fall back to the
+     *      external URL so the user at least sees the image.
      *
      * @param {Object} ed - TinyMCE editor instance
      * @param {ClipboardEvent} e - paste event
      */
     handleImagePaste: async function (ed, e) {
         if (!e || !e.clipboardData) return;
-        var items = e.clipboardData.items;
-        if (!items || !items.length) return;
+        var cd = e.clipboardData;
 
-        var files = [];
-        for (var i = 0; i < items.length; i++) {
-            var item = items[i];
-            if (item && item.kind === 'file' && typeof item.type === 'string' && item.type.indexOf('image/') === 0) {
-                var file = typeof item.getAsFile === 'function' ? item.getAsFile() : null;
-                if (file) files.push(file);
+        var html = typeof cd.getData === 'function' ? cd.getData('text/html') : '';
+        var text = typeof cd.getData === 'function' ? cd.getData('text/plain') : '';
+        var hasAccompanyingText = !!(html || text);
+
+        // 1. File items (screenshot / drag-drop / app copy)
+        var fileImages = [];
+        if (cd.items) {
+            for (var i = 0; i < cd.items.length; i++) {
+                var item = cd.items[i];
+                if (item && item.kind === 'file' && typeof item.type === 'string' && item.type.indexOf('image/') === 0) {
+                    var file = typeof item.getAsFile === 'function' ? item.getAsFile() : null;
+                    if (file) fileImages.push(file);
+                }
             }
         }
-        if (!files.length) return;
 
-        // Prevent the paste plugin from running: with paste_as_text:true it
-        // would call pasteText() and HTML-encode everything, dropping the <img>.
-        if (typeof e.preventDefault === 'function') e.preventDefault();
-        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        // 2. Remote <img src="https://..."> URLs in text/html
+        var remoteImages = [];
+        if (html && /<img\b/i.test(html) && typeof DOMParser !== 'undefined') {
+            try {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var imgs = doc.querySelectorAll('img[src]');
+                for (var j = 0; j < imgs.length; j++) {
+                    var src = imgs[j].getAttribute('src');
+                    if (src && /^https?:\/\//i.test(src)) {
+                        remoteImages.push({ src: src, alt: imgs[j].getAttribute('alt') || '' });
+                    }
+                }
+            } catch (err) { /* malformed HTML, skip */ }
+        }
+
+        // Case (1) — pure image paste: let the built-in plugin handle it.
+        if (fileImages.length && !hasAccompanyingText && !remoteImages.length) return;
+
+        if (!fileImages.length && !remoteImages.length) return;
+
+        // Only stop the paste plugin when we have no text to preserve; otherwise
+        // let it keep processing the text and our async inserts will append the
+        // images after it.
+        if (!hasAccompanyingText) {
+            if (typeof e.preventDefault === 'function') e.preventDefault();
+            if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        }
 
         var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
         if (!assetManager || typeof assetManager.insertImage !== 'function') {
@@ -796,41 +835,77 @@ var $exeTinyMCE = {
 
         $exeTinyMCE.lockScreen();
         try {
-            for (var f = 0; f < files.length; f++) {
-                var pasted = files[f];
-                try {
-                    var assetUrl = await assetManager.insertImage(pasted);
-                    var assetId = typeof assetManager.extractAssetId === 'function'
-                        ? assetManager.extractAssetId(assetUrl)
-                        : null;
-
-                    // Resolve to a blob URL so the editor can render the image
-                    // immediately. prepareHtmlForSync converts blob → asset:// on save.
-                    var displayUrl = assetUrl;
-                    if (typeof assetManager.resolveAssetURL === 'function') {
-                        var resolved = await assetManager.resolveAssetURL(assetUrl);
-                        if (resolved) {
-                            displayUrl = resolved;
-                            if (assetId && assetManager.reverseBlobCache) {
-                                assetManager.reverseBlobCache.set(resolved, assetId);
-                            }
-                        }
-                    }
-
-                    var attrs = [
-                        'src="' + displayUrl + '"',
-                        'data-mce-src="' + assetUrl + '"',
-                        'alt=""',
-                    ];
-                    if (assetId) attrs.push('data-asset-id="' + assetId + '"');
-                    ed.insertContent('<img ' + attrs.join(' ') + '>');
-                } catch (err) {
-                    console.error('[TinyMCE] Failed to store pasted image:', err);
-                }
+            for (var f = 0; f < fileImages.length; f++) {
+                await $exeTinyMCE._insertPastedFile(ed, assetManager, fileImages[f], '');
+            }
+            for (var r = 0; r < remoteImages.length; r++) {
+                await $exeTinyMCE._insertPastedURL(ed, assetManager, remoteImages[r]);
             }
         } finally {
             $exeTinyMCE.unlockScreen();
         }
+    },
+
+    _insertPastedFile: async function (ed, assetManager, file, alt) {
+        try {
+            var assetUrl = await assetManager.insertImage(file);
+            await $exeTinyMCE._insertStoredAssetImage(ed, assetManager, assetUrl, alt || '');
+        } catch (err) {
+            console.error('[TinyMCE] Failed to store pasted image:', err);
+        }
+    },
+
+    _insertPastedURL: async function (ed, assetManager, img) {
+        try {
+            var response = await fetch(img.src, { mode: 'cors', credentials: 'omit' });
+            if (!response || !response.ok) throw new Error('HTTP ' + (response && response.status));
+            var blob = await response.blob();
+            if (!blob.type || blob.type.indexOf('image/') !== 0) {
+                throw new Error('response is not an image (' + blob.type + ')');
+            }
+            var ext = (blob.type.split('/')[1] || 'png').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'png';
+            var filename = 'pasted-' + Date.now() + '.' + ext;
+            var file = new File([blob], filename, { type: blob.type });
+            var assetUrl = await assetManager.insertImage(file);
+            await $exeTinyMCE._insertStoredAssetImage(ed, assetManager, assetUrl, img.alt);
+        } catch (err) {
+            // CORS, 404, network, non-image — keep the external URL so the
+            // user at least sees the image (it would otherwise be silently lost).
+            console.warn('[TinyMCE] Could not fetch pasted image URL, using external src:', img.src, err);
+            var safeAlt = $exeTinyMCE._escapeAttr(img.alt || '');
+            var safeSrc = $exeTinyMCE._escapeAttr(img.src);
+            ed.insertContent('<img src="' + safeSrc + '" alt="' + safeAlt + '">');
+        }
+    },
+
+    _insertStoredAssetImage: async function (ed, assetManager, assetUrl, alt) {
+        var assetId = typeof assetManager.extractAssetId === 'function'
+            ? assetManager.extractAssetId(assetUrl)
+            : null;
+        var displayUrl = assetUrl;
+        if (typeof assetManager.resolveAssetURL === 'function') {
+            try {
+                var resolved = await assetManager.resolveAssetURL(assetUrl);
+                if (resolved) {
+                    displayUrl = resolved;
+                    if (assetId && assetManager.reverseBlobCache) {
+                        assetManager.reverseBlobCache.set(resolved, assetId);
+                    }
+                }
+            } catch (err) { /* keep asset:// as display URL */ }
+        }
+        var safeAlt = $exeTinyMCE._escapeAttr(alt || '');
+        var attrs = [
+            'src="' + displayUrl + '"',
+            'data-mce-src="' + assetUrl + '"',
+            'alt="' + safeAlt + '"',
+        ];
+        if (assetId) attrs.push('data-asset-id="' + assetId + '"');
+        ed.insertContent('<img ' + attrs.join(' ') + '>');
+    },
+
+    _escapeAttr: function (value) {
+        return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     },
 
     prepareContentForEditorLoad: function (content) {

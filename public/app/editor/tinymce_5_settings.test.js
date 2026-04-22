@@ -2637,7 +2637,7 @@ describe('TinyMCE 5 Settings', () => {
       globalThis.$exeTinyMCE.init = realExeTinyMCEInit;
     });
 
-    function buildClipboardPasteEvent(items) {
+    function buildClipboardPasteEvent(items, { html = '', text = '' } = {}) {
       const preventDefault = vi.fn();
       const stopPropagation = vi.fn();
       return {
@@ -2647,6 +2647,11 @@ describe('TinyMCE 5 Settings', () => {
         clipboardData: {
           items,
           types: items.map((i) => i.type),
+          getData: vi.fn((type) => {
+            if (type === 'text/html') return html;
+            if (type === 'text/plain') return text;
+            return '';
+          }),
         },
       };
     }
@@ -2665,7 +2670,10 @@ describe('TinyMCE 5 Settings', () => {
       expect(handler).toBeTypeOf('function');
     });
 
-    it('extracts image files from clipboardData.items and stores them via AssetManager', async () => {
+    it('extracts image files from clipboardData.items and stores them via AssetManager (mixed paste with text)', async () => {
+      // When the clipboard also carries text/html (as when an app copies image+text
+      // together), the built-in paste plugin skips the file, so our handler must
+      // pick it up and store it as an asset.
       const blob = new Blob(['png'], { type: 'image/png' });
       const file = new File([blob], 'pasted.png', { type: 'image/png' });
       const assetManager = {
@@ -2683,14 +2691,16 @@ describe('TinyMCE 5 Settings', () => {
       };
       const handler = getPasteHandler(mockEditor);
 
-      const event = buildClipboardPasteEvent([
-        { kind: 'file', type: 'image/png', getAsFile: () => file },
-      ]);
+      const event = buildClipboardPasteEvent(
+        [{ kind: 'file', type: 'image/png', getAsFile: () => file }],
+        { html: '<p>caption</p>', text: 'caption' },
+      );
 
       await handler(event);
       await new Promise((r) => setTimeout(r, 0));
 
-      expect(event.preventDefault).toHaveBeenCalled();
+      // Mixed paste: preventDefault must NOT be called (text still goes through paste plugin)
+      expect(event.preventDefault).not.toHaveBeenCalled();
       expect(assetManager.insertImage).toHaveBeenCalledWith(expect.any(File));
       expect(mockEditor.insertContent).toHaveBeenCalledWith(
         expect.stringContaining('blob:http://localhost/resolved-paste'),
@@ -2747,14 +2757,15 @@ describe('TinyMCE 5 Settings', () => {
       const handler = getPasteHandler(mockEditor);
 
       const file = new File([new Blob(['x'])], 'x.png', { type: 'image/png' });
-      const event = buildClipboardPasteEvent([
-        { kind: 'file', type: 'image/png', getAsFile: () => file },
-      ]);
+      // Image + text → our handler path (not the built-in pure-image path).
+      const event = buildClipboardPasteEvent(
+        [{ kind: 'file', type: 'image/png', getAsFile: () => file }],
+        { text: 'caption' },
+      );
 
       await handler(event);
       await new Promise((r) => setTimeout(r, 0));
 
-      expect(event.preventDefault).toHaveBeenCalled();
       expect(mockEditor.insertContent).not.toHaveBeenCalled();
       errorSpy.mockRestore();
     });
@@ -2789,14 +2800,14 @@ describe('TinyMCE 5 Settings', () => {
       const handler = getPasteHandler(mockEditor);
 
       const file = new File([new Blob(['x'])], 'x.png', { type: 'image/png' });
-      const event = buildClipboardPasteEvent([
-        { kind: 'file', type: 'image/png', getAsFile: () => file },
-      ]);
+      const event = buildClipboardPasteEvent(
+        [{ kind: 'file', type: 'image/png', getAsFile: () => file }],
+        { text: 'caption' },
+      );
 
       await handler(event);
       await new Promise((r) => setTimeout(r, 0));
 
-      expect(event.preventDefault).toHaveBeenCalled();
       expect(mockEditor.insertContent).not.toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalled();
       errorSpy.mockRestore();
@@ -2819,9 +2830,10 @@ describe('TinyMCE 5 Settings', () => {
       };
       const handler = getPasteHandler(mockEditor);
 
-      const event = buildClipboardPasteEvent([
-        { kind: 'file', type: 'image/png', getAsFile: () => file },
-      ]);
+      const event = buildClipboardPasteEvent(
+        [{ kind: 'file', type: 'image/png', getAsFile: () => file }],
+        { text: 'caption' },
+      );
 
       await handler(event);
       await new Promise((r) => setTimeout(r, 0));
@@ -2829,6 +2841,288 @@ describe('TinyMCE 5 Settings', () => {
       expect(mockEditor.insertContent).toHaveBeenCalledWith(
         expect.stringContaining('src="asset://asset-fallback/x.png"'),
       );
+    });
+
+    // ─── remote image URLs in clipboard HTML (Google Docs, web pages) ─────
+    //
+    // Google Docs and Chrome web-page pastes carry the image as a remote URL
+    // inside text/html, not as a kind:'file' clipboard item. When
+    // paste_as_text:true strips the HTML, the image reference is lost. The
+    // handler must scan text/html for <img src="https://..."> and fetch each
+    // URL to store it as a local asset (with a graceful fallback to the
+    // external URL if fetching fails due to CORS or network errors).
+
+    describe('remote image URLs in clipboard HTML', () => {
+      let originalFetch;
+
+      beforeEach(() => {
+        originalFetch = globalThis.fetch;
+      });
+
+      afterEach(() => {
+        globalThis.fetch = originalFetch;
+      });
+
+      it('extracts <img src="https://..."> from pasted HTML and stores the image as an asset', async () => {
+        const pngBlob = new Blob(['png'], { type: 'image/png' });
+        globalThis.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          blob: () => Promise.resolve(pngBlob),
+        });
+
+        const assetManager = {
+          reverseBlobCache: new Map(),
+          insertImage: vi.fn().mockResolvedValue('asset://remote-asset/pasted.png'),
+          extractAssetId: vi.fn().mockReturnValue('remote-asset'),
+          resolveAssetURL: vi.fn().mockResolvedValue('blob:http://localhost/remote-blob'),
+        };
+        window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const html = '<p>Look at this photo:</p><img src="https://example.com/cat.png" alt="cat">';
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          { html, text: 'Look at this photo:' },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+          'https://example.com/cat.png',
+          expect.objectContaining({ mode: 'cors' }),
+        );
+        expect(assetManager.insertImage).toHaveBeenCalledWith(expect.any(File));
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(
+          expect.stringContaining('data-mce-src="asset://remote-asset/pasted.png"'),
+        );
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(expect.stringContaining('alt="cat"'));
+      });
+
+      it('does NOT preventDefault on mixed paste (text + image) so accompanying text is preserved', async () => {
+        globalThis.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+        });
+        window.eXeLearning.app.project = {
+          _yjsBridge: {
+            assetManager: {
+              reverseBlobCache: new Map(),
+              insertImage: vi.fn().mockResolvedValue('asset://x/x.png'),
+              extractAssetId: vi.fn().mockReturnValue('x'),
+              resolveAssetURL: vi.fn().mockResolvedValue(null),
+            },
+          },
+        };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          {
+            html: '<p>Hello</p><img src="https://example.com/a.png" alt="">',
+            text: 'Hello',
+          },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('falls back to the external URL when fetch fails (CORS / network)', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        globalThis.fetch = vi.fn().mockRejectedValue(new Error('CORS blocked'));
+        window.eXeLearning.app.project = {
+          _yjsBridge: {
+            assetManager: {
+              reverseBlobCache: new Map(),
+              insertImage: vi.fn(),
+              extractAssetId: vi.fn(),
+              resolveAssetURL: vi.fn(),
+            },
+          },
+        };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          { html: '<img src="https://lh3.googleusercontent.com/private.png" alt="doc">' },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(
+          expect.stringContaining('src="https://lh3.googleusercontent.com/private.png"'),
+        );
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(expect.stringContaining('alt="doc"'));
+        warnSpy.mockRestore();
+      });
+
+      it('falls back to the external URL when fetch returns non-ok response', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        globalThis.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 404,
+          blob: () => Promise.resolve(new Blob([])),
+        });
+        window.eXeLearning.app.project = {
+          _yjsBridge: {
+            assetManager: {
+              reverseBlobCache: new Map(),
+              insertImage: vi.fn(),
+              extractAssetId: vi.fn(),
+              resolveAssetURL: vi.fn(),
+            },
+          },
+        };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          { html: '<img src="https://example.com/404.png">' },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(
+          expect.stringContaining('src="https://example.com/404.png"'),
+        );
+        warnSpy.mockRestore();
+      });
+
+      it('falls back to the external URL when response is not an image', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        globalThis.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(['<html>'], { type: 'text/html' })),
+        });
+        window.eXeLearning.app.project = {
+          _yjsBridge: {
+            assetManager: {
+              reverseBlobCache: new Map(),
+              insertImage: vi.fn(),
+              extractAssetId: vi.fn(),
+              resolveAssetURL: vi.fn(),
+            },
+          },
+        };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          { html: '<img src="https://example.com/not-an-image">' },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(mockEditor.insertContent).toHaveBeenCalledWith(
+          expect.stringContaining('src="https://example.com/not-an-image"'),
+        );
+        warnSpy.mockRestore();
+      });
+
+      it('ignores data: URLs and relative paths (not remote images)', async () => {
+        globalThis.fetch = vi.fn();
+        window.eXeLearning.app.project = {
+          _yjsBridge: {
+            assetManager: {
+              reverseBlobCache: new Map(),
+              insertImage: vi.fn(),
+              extractAssetId: vi.fn(),
+              resolveAssetURL: vi.fn(),
+            },
+          },
+        };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+          {
+            html: '<img src="data:image/png;base64,AAAA"><img src="/local/path.png"><img src="asset://already-local">',
+          },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+        expect(mockEditor.insertContent).not.toHaveBeenCalled();
+      });
+
+      it('skips file-item processing when the clipboard has no accompanying text (built-in plugin handles it)', async () => {
+        // Pure-image paste (OS screenshot): clipboardData has only the image
+        // file, no text/html or text/plain. TinyMCE's built-in paste_data_images
+        // flow handles this case, so our handler should stay out to avoid
+        // double-inserting the image.
+        globalThis.fetch = vi.fn();
+        const assetManager = {
+          reverseBlobCache: new Map(),
+          insertImage: vi.fn(),
+          extractAssetId: vi.fn(),
+          resolveAssetURL: vi.fn(),
+        };
+        window.eXeLearning.app.project = { _yjsBridge: { assetManager } };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+          insertContent: vi.fn(),
+        };
+        const handler = getPasteHandler(mockEditor);
+
+        const file = new File([new Blob(['x'])], 'x.png', { type: 'image/png' });
+        const event = buildClipboardPasteEvent(
+          [{ kind: 'file', type: 'image/png', getAsFile: () => file }],
+          { html: '', text: '' },
+        );
+
+        await handler(event);
+        await new Promise((r) => setTimeout(r, 0));
+
+        // With no text on the clipboard, the plugin will handle the file itself.
+        expect(assetManager.insertImage).not.toHaveBeenCalled();
+        expect(mockEditor.insertContent).not.toHaveBeenCalled();
+      });
     });
   });
 });

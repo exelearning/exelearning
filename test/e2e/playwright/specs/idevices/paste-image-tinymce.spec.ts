@@ -59,9 +59,17 @@ test.describe('Paste images in TinyMCE (#1712)', () => {
                 const event = new Event('paste', { bubbles: true, cancelable: true }) as any;
                 event.clipboardData = {
                     items,
-                    types: ['Files'],
+                    types: ['Files', 'text/html', 'text/plain'],
                     files: [file],
-                    getData: () => '',
+                    // The real clipboard from a web-page copy contains both the
+                    // image file AND a text/html fragment. That is the case the
+                    // built-in paste plugin strips — exercise it explicitly so
+                    // the test matches real Google-Docs/Chrome-copy behaviour.
+                    getData: (type: string) => {
+                        if (type === 'text/html') return '<p>caption</p>';
+                        if (type === 'text/plain') return 'caption';
+                        return '';
+                    },
                 };
 
                 editor.fire('paste', event);
@@ -99,5 +107,75 @@ test.describe('Paste images in TinyMCE (#1712)', () => {
         });
         expect(serialised).toContain('<img');
         expect(serialised).toMatch(/asset:\/\//);
+    });
+
+    test('remote <img src> in pasted HTML (Google Docs/web page) is downloaded and stored', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'Paste Remote Image TinyMCE');
+        await gotoWorkarea(page, projectUuid);
+
+        await selectFirstPage(page);
+        await addTextIdevice(page);
+        await waitForTinyMCEReady(page);
+
+        // Stub fetch to return a tiny valid PNG so we don't depend on network.
+        const pasteResult = await page.evaluate(async () => {
+            const editor = (window as any).tinymce?.activeEditor;
+            if (!editor) return { inserted: false, reason: 'no-editor' };
+
+            const pngBase64 =
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+            const bin = atob(pngBase64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            const imgBlob = new Blob([bytes], { type: 'image/png' });
+
+            const originalFetch = window.fetch;
+            (window as any).fetch = async (url: string) => {
+                if (String(url).includes('stub-remote.png')) {
+                    return { ok: true, status: 200, blob: () => Promise.resolve(imgBlob) } as unknown as Response;
+                }
+                return originalFetch(url);
+            };
+
+            const html = '<p>From Google Docs:</p><img src="https://example.com/stub-remote.png" alt="doc">';
+            const event = new Event('paste', { bubbles: true, cancelable: true }) as any;
+            event.clipboardData = {
+                items: [{ kind: 'string', type: 'text/html', getAsFile: () => null }],
+                types: ['text/html', 'text/plain'],
+                files: [],
+                getData: (type: string) => {
+                    if (type === 'text/html') return html;
+                    if (type === 'text/plain') return 'From Google Docs:';
+                    return '';
+                },
+            };
+
+            editor.fire('paste', event);
+
+            const start = Date.now();
+            while (Date.now() - start < 3000) {
+                const img = editor.getBody()?.querySelector('img[data-asset-id]');
+                if (img) {
+                    (window as any).fetch = originalFetch;
+                    return {
+                        inserted: true,
+                        alt: img.getAttribute('alt'),
+                        dataMceSrc: img.getAttribute('data-mce-src'),
+                    };
+                }
+                await new Promise(r => setTimeout(r, 50));
+            }
+            (window as any).fetch = originalFetch;
+            return { inserted: false, reason: 'timeout' };
+        });
+
+        expect(pasteResult.inserted).toBe(true);
+        expect(pasteResult.alt).toBe('doc');
+        expect(pasteResult.dataMceSrc).toMatch(/^asset:\/\//);
     });
 });
