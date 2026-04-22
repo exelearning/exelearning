@@ -151,6 +151,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "save-utils.js",
       "update-manager.js",
       "package.json",
       "node_modules/**/*",
