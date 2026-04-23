@@ -33,6 +33,56 @@ export default class NavbarFile {
                 this.buildUserListThemes();
             });
         }
+
+        // When the host integration has blocked imported styles (via
+        // themeRegistryOverride.blockImportInstall or the legacy
+        // ONLINE_THEMES_INSTALL=false flag), hide the "Imported" tab
+        // entirely so users don't see or use it.
+        if (this._isImportBlocked()) {
+            this._hideImportedStylesTab();
+        }
+    }
+
+    /**
+     * @returns {boolean} Whether theme import is disabled by the host.
+     * @private
+     */
+    _isImportBlocked() {
+        const override = window.eXeLearning?.config?.themeRegistryOverride;
+        if (override && override.blockImportInstall) {
+            return true;
+        }
+        const userStyles = window.eXeLearning?.config?.userStyles;
+        const isOffline = window.eXeLearning?.config?.isOfflineInstallation;
+        // userStyles can be 0/1 or true/false; coerce carefully.
+        const userStylesEnabled = userStyles === 1 || userStyles === true;
+        return !isOffline && !userStylesEnabled && userStyles !== undefined;
+    }
+
+    /**
+     * Hide the "Imported" tab and its pane, and force-activate the
+     * "System" tab if the "Imported" one was the default in the HTML.
+     * @private
+     */
+    _hideImportedStylesTab() {
+        const tab = document.querySelector('#importedstylescontent-tab');
+        if (tab) {
+            const navItem = tab.closest('li, .nav-item') || tab;
+            navItem.style.setProperty('display', 'none', 'important');
+        }
+        const pane = document.getElementById('importedstylescontent');
+        if (pane) {
+            pane.style.setProperty('display', 'none', 'important');
+            pane.classList.remove('show', 'active');
+        }
+        const systemTab = document.querySelector('#exestylescontent-tab');
+        const systemPane = document.getElementById('exestylescontent');
+        if (systemTab && !systemTab.classList.contains('active')) {
+            systemTab.classList.add('active');
+        }
+        if (systemPane && !systemPane.classList.contains('show')) {
+            systemPane.classList.add('show', 'active');
+        }
     }
 
     /**
