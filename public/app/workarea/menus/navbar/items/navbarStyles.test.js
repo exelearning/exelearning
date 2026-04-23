@@ -1050,5 +1050,24 @@ describe('NavbarStyles', () => {
             const systemPane = document.getElementById('exestylescontent');
             expect(systemPane.classList.contains('show')).toBe(true);
         });
+
+        it('_hideImportedStylesTab falls back to the tab element when no nav-item wrapper exists', () => {
+            // Deliberate: button NOT wrapped in a <li> / .nav-item.
+            document.body.innerHTML = `
+                <button id="importedstylescontent-tab" class="active">Imported</button>
+                <div id="importedstylescontent" class="show active"></div>
+            `;
+            const ns = Object.create(NavbarStyles.prototype);
+            ns._hideImportedStylesTab();
+            const tab = document.getElementById('importedstylescontent-tab');
+            expect(tab.style.display).toBe('none');
+        });
+
+        it('_hideImportedStylesTab is a no-op when the tab and pane are absent', () => {
+            document.body.innerHTML = '<div></div>';
+            const ns = Object.create(NavbarStyles.prototype);
+            // Should not throw.
+            expect(() => ns._hideImportedStylesTab()).not.toThrow();
+        });
     });
 });

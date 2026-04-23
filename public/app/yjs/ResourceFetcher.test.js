@@ -2053,6 +2053,228 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
         expect(result).toBeInstanceOf(Map);
         expect(result.size).toBe(0);
       });
+
+      describe('admin-uploaded themes (themeRegistryOverride)', () => {
+        afterEach(() => {
+          delete window.eXeLearning?.config?.themeRegistryOverride;
+        });
+
+        function blobResponse(body = 'body{}') {
+          return {
+            ok: true,
+            headers: { get: () => String(body.length) },
+            blob: () => Promise.resolve(new Blob([body], { type: 'text/css' })),
+          };
+        }
+
+        function notFoundResponse() {
+          return { ok: false, status: 404 };
+        }
+
+        it('fetches each file declared by an admin theme instead of the bundle', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['style.css', 'icons/a.svg'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(blobResponse('css'))
+            .mockResolvedValueOnce(blobResponse('<svg/>'));
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(mockFetch).toHaveBeenCalledWith('https://host.test/files/acme/style.css');
+          expect(mockFetch).toHaveBeenCalledWith('https://host.test/files/acme/icons/a.svg');
+          expect(result.size).toBe(2);
+          expect(result.has('style.css')).toBe(true);
+          expect(result.has('icons/a.svg')).toBe(true);
+        });
+
+        it('falls back to cssFiles manifest when files is absent', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              cssFiles: ['style.css', 'extra.css'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(blobResponse('css1'))
+            .mockResolvedValueOnce(blobResponse('css2'));
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(result.size).toBe(2);
+        });
+
+        it('defaults to style.css when no manifest is provided', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{ name: 'acme', url: 'https://host.test/files/acme' }],
+          };
+          mockFetch.mockResolvedValueOnce(blobResponse('x{}'));
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(mockFetch).toHaveBeenCalledWith('https://host.test/files/acme/style.css');
+          expect(result.size).toBe(1);
+        });
+
+        it('matches entries by id, name, or dirName', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              id: 'acme',
+              dirName: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['style.css'],
+            }],
+          };
+          mockFetch.mockResolvedValueOnce(blobResponse());
+          const byName = await fetcher.fetchThemeStatic('acme');
+          expect(byName.size).toBe(1);
+        });
+
+        it('encodes path segments containing spaces or unicode', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['icons/sub dir/â.png'],
+            }],
+          };
+          mockFetch.mockResolvedValueOnce(blobResponse('png'));
+
+          await fetcher.fetchThemeStatic('acme');
+
+          const [url] = mockFetch.mock.calls[0];
+          expect(url).toBe('https://host.test/files/acme/icons/sub%20dir/' + encodeURIComponent('â') + '.png');
+        });
+
+        it('skips missing per-file assets without aborting', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['style.css', 'optional.svg'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(blobResponse('css'))
+            .mockResolvedValueOnce(notFoundResponse());
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(result.size).toBe(1);
+          expect(result.has('style.css')).toBe(true);
+          expect(result.has('optional.svg')).toBe(false);
+        });
+
+        it('swallows fetch errors silently for per-file assets', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['style.css', 'broken.js'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(blobResponse('css'))
+            .mockRejectedValueOnce(new TypeError('net'));
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(result.size).toBe(1);
+        });
+
+        it('falls back to the bundle when the admin fetch produces no files', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: 'https://host.test/files/acme',
+              files: ['gone.css'],
+            }],
+          };
+          mockFetch
+            .mockResolvedValueOnce(notFoundResponse())   // admin file 404
+            .mockResolvedValueOnce({                      // bundle zip
+              ok: true,
+              headers: { get: () => '100' },
+              arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+            });
+          window.fflate = {
+            unzipSync: vi.fn().mockReturnValue({ 'style.css': new Uint8Array([1]) }),
+          };
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(mockFetch).toHaveBeenNthCalledWith(2, '/bundles/themes/acme.zip');
+          expect(result.size).toBe(1);
+          delete window.fflate;
+        });
+
+        it('ignores admin entries with a non-absolute URL', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = {
+            uploaded: [{
+              name: 'acme',
+              url: '/relative/path',
+              files: ['style.css'],
+            }],
+          };
+          mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+          const result = await fetcher.fetchThemeStatic('acme');
+
+          expect(mockFetch).toHaveBeenCalledWith('/bundles/themes/acme.zip');
+          expect(result.size).toBe(0);
+        });
+
+        it('returns empty Map when the override is malformed', async () => {
+          const fetcher = new ResourceFetcher();
+          fetcher.isStaticMode = true;
+          fetcher.basePath = '';
+          window.eXeLearning.config.themeRegistryOverride = { uploaded: 'nope' };
+          mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+          const result = await fetcher.fetchThemeStatic('missing');
+
+          expect(result.size).toBe(0);
+        });
+
+        it('_findAdminUploadedTheme returns null when window is undefined-shaped', () => {
+          const fetcher = new ResourceFetcher();
+          // Simulate a missing config tree.
+          delete window.eXeLearning.config.themeRegistryOverride;
+          expect(fetcher._findAdminUploadedTheme('whatever')).toBeNull();
+        });
+      });
     });
 
     describe('fetchIdeviceStatic', () => {
