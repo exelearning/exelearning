@@ -96,15 +96,35 @@ export default class AulaSecreta3D {
 
         this._zBuffer = [];
 
+        this._touchKeys = new Set();
+        this._activePointerId = null;
+
         this._onResize = this.resize.bind(this);
         this._onKeyDown = this.onKeyDown.bind(this);
         this._onKeyUp = this.onKeyUp.bind(this);
         this._onStartClick = () => this._action?.();
         this._onCloseClick = () => this.onClose?.();
-        this._onCanvasPointerDown = () => {
+        this._onCanvasPointerDown = (event) => {
             if (this.overlayEl && !this.overlayEl.classList.contains('hidden')) {
                 this._action?.();
+                return;
             }
+            if (!this.canvas) return;
+            event.preventDefault?.();
+            this._activePointerId = event.pointerId;
+            this.canvas.setPointerCapture?.(event.pointerId);
+            this.applyPointerZone(event);
+        };
+        this._onCanvasPointerMove = (event) => {
+            if (this._activePointerId !== event.pointerId) return;
+            event.preventDefault?.();
+            this.applyPointerZone(event);
+        };
+        this._onCanvasPointerEnd = (event) => {
+            if (this._activePointerId !== event.pointerId) return;
+            event.preventDefault?.();
+            this._activePointerId = null;
+            this.clearTouchKeys();
         };
     }
 
@@ -140,6 +160,10 @@ export default class AulaSecreta3D {
         this.startButton?.addEventListener('click', this._onStartClick);
         this.closeButton?.addEventListener('click', this._onCloseClick);
         this.canvas?.addEventListener('pointerdown', this._onCanvasPointerDown);
+        this.canvas?.addEventListener('pointermove', this._onCanvasPointerMove);
+        this.canvas?.addEventListener('pointerup', this._onCanvasPointerEnd);
+        this.canvas?.addEventListener('pointercancel', this._onCanvasPointerEnd);
+        this.canvas?.addEventListener('pointerleave', this._onCanvasPointerEnd);
     }
 
     detach() {
@@ -149,7 +173,39 @@ export default class AulaSecreta3D {
         this.startButton?.removeEventListener('click', this._onStartClick);
         this.closeButton?.removeEventListener('click', this._onCloseClick);
         this.canvas?.removeEventListener('pointerdown', this._onCanvasPointerDown);
+        this.canvas?.removeEventListener('pointermove', this._onCanvasPointerMove);
+        this.canvas?.removeEventListener('pointerup', this._onCanvasPointerEnd);
+        this.canvas?.removeEventListener('pointercancel', this._onCanvasPointerEnd);
+        this.canvas?.removeEventListener('pointerleave', this._onCanvasPointerEnd);
+        this.clearTouchKeys();
+        this._activePointerId = null;
         this.keysDown.clear();
+    }
+
+    applyPointerZone(event) {
+        if (!this.canvas) return;
+        const rect = this.canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const relX = (event.clientX - rect.left) / rect.width;
+        const relY = (event.clientY - rect.top) / rect.height;
+        this.clearTouchKeys();
+        if (relY > 0.72) {
+            this.addTouchKey('s');
+            return;
+        }
+        this.addTouchKey('w');
+        if (relX < 0.34) this.addTouchKey('arrowleft');
+        else if (relX > 0.66) this.addTouchKey('arrowright');
+    }
+
+    addTouchKey(key) {
+        this.keysDown.add(key);
+        this._touchKeys.add(key);
+    }
+
+    clearTouchKeys() {
+        this._touchKeys.forEach((key) => this.keysDown.delete(key));
+        this._touchKeys.clear();
     }
 
     reset() {

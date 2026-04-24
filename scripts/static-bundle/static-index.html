@@ -29,10 +29,10 @@
     <style>
         /* Show exe-online menu items in static mode (they contain Open and Recent Projects) */
         li.exe-online { display: list-item !important; }
-        /* Hide exe-online items that don't make sense in static mode (Save, Share, Logout) */
+        /* Hide exe-online items that don't make sense in static mode (Save, Share, Logout, mobile online-only Open) */
         li.exe-online:has(#navbar-button-save),
         li.exe-online:has(#navbar-button-share),
-        li.exe-online:has(#mobile-navbar-button-save),
+        li.exe-online:has(#mobile-navbar-button-openuserodefiles),
         li.exe-online:has(#head-bottom-logout-button) { display: none !important; }
         /* Hide Exit button (for Electron only) and its divider in static mode */
         li.exe-electron { display: none !important; }

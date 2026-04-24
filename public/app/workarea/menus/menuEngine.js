@@ -75,19 +75,9 @@ export default class MenuEngine {
         const buttonMappings = {
             'mobile-navbar-button-new': 'navbar-button-new',
             'mobile-navbar-button-openuserodefiles': 'navbar-button-openuserodefiles',
-            'mobile-navbar-button-save': 'navbar-button-save',
-            'mobile-navbar-button-import-elp': 'navbar-button-import-elp',
-            'mobile-navbar-button-settings': 'navbar-button-settings',
-            'mobile-navbar-button-share': 'navbar-button-share',
-            'mobile-navbar-button-export-html5': 'navbar-button-export-html5',
-            'mobile-navbar-button-export-scorm12': 'navbar-button-export-scorm12',
-            'mobile-navbar-button-export-epub3': 'navbar-button-export-epub3',
-            'mobile-navbar-button-styles': 'navbar-button-styles',
-            'mobile-navbar-button-preview': 'navbar-button-preview',
+            'mobile-navbar-button-open-offline': 'navbar-button-open-offline',
             'mobile-navbar-button-filemanager': 'navbar-button-filemanager',
-            'mobile-navbar-button-exe-tutorial': 'navbar-button-exe-tutorial',
-            'mobile-navbar-button-about-exe': 'navbar-button-about-exe',
-            'mobile-navbar-button-exe-web': 'navbar-button-exe-web'
+            'mobile-navbar-button-about-exe': 'navbar-button-about-exe'
         };
 
         // Add click handlers for each mobile button
