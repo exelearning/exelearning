@@ -40,6 +40,13 @@
         li.exe-online:has(#navbar-button-share),
         li.exe-online:has(#mobile-navbar-button-openuserodefiles),
         li.exe-online:has(#head-bottom-logout-button) { display: none !important; }
+        /* Hide offline-installation-only items in static mode (Electron-only Open/Save/Export).
+           The static bundler keeps `{% if config.isOfflineInstallation %}` blocks, so these render
+           even though the static web build can't use them. */
+        li:has(> #navbar-button-open-offline),
+        li:has(> #navbar-button-save-offline),
+        li:has(> #dropdownExportAsOffline),
+        li.dropdown-divider:has(+ li:has(> #navbar-button-save-offline)) { display: none !important; }
         /* Hide Exit button (for Electron only) and its divider in static mode */
         li.exe-electron { display: none !important; }
         li.dropdown-divider.exe-online.exe-electron { display: none !important; }
