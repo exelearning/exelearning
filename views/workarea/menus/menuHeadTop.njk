@@ -60,6 +60,11 @@
                     {% if config.isOfflineInstallation %}
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-open-offline" href="#">{{ t.open or 'Open' }}</a></li>
                     {% endif %}
+                    <li class="dropdown-divider d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><h6 class="dropdown-header">{{ t.download_as or 'Download as...' }}</h6></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-download-project" href="#">{{ t.exelearning_content or 'eXeLearning content (.elpx)' }}</a></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-export-web" href="#">{{ t.website or 'Website' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-filemanager" href="#">{{ t.file_manager or 'File manager' }}</a></li>
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-about-exe" href="#">{{ t.about_exelearning or 'About eXeLearning' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>

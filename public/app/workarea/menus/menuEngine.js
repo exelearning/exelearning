@@ -76,6 +76,8 @@ export default class MenuEngine {
             'mobile-navbar-button-new': 'navbar-button-new',
             'mobile-navbar-button-openuserodefiles': 'navbar-button-openuserodefiles',
             'mobile-navbar-button-open-offline': 'navbar-button-open-offline',
+            'mobile-navbar-button-download-project': 'navbar-button-download-project',
+            'mobile-navbar-button-export-web': 'navbar-button-export-html5',
             'mobile-navbar-button-filemanager': 'navbar-button-filemanager',
             'mobile-navbar-button-about-exe': 'navbar-button-about-exe'
         };

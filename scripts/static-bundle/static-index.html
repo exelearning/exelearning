@@ -27,8 +27,14 @@
 
     <!-- Static mode overrides -->
     <style>
-        /* Show exe-online menu items in static mode (they contain Open and Recent Projects) */
-        li.exe-online { display: list-item !important; }
+        /* Show exe-online menu items in static mode (they contain Open and Recent Projects).
+           Exclude items that opt out via d-md-none / d-none so Bootstrap responsive utilities still work. */
+        li.exe-online:not(.d-md-none):not(.d-none) { display: list-item !important; }
+        /* d-md-none items: visible on mobile only (Bootstrap handles the md+ hide). */
+        li.exe-online.d-md-none { display: list-item !important; }
+        @media (min-width: 768px) {
+            li.exe-online.d-md-none { display: none !important; }
+        }
         /* Hide exe-online items that don't make sense in static mode (Save, Share, Logout, mobile online-only Open) */
         li.exe-online:has(#navbar-button-save),
         li.exe-online:has(#navbar-button-share),

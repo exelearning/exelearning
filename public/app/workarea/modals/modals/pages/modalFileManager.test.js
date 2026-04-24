@@ -4184,9 +4184,30 @@ describe('ModalFilemanager', () => {
     it('does not forward a click to a hidden extract-zip target', () => {
       modal.extractBtn.classList.add('d-none');
       modal.extractBtn.disabled = false;
+      // syncMobileActions propagates the hidden state onto the mobile item
+      modal.syncMobileActions();
       const clickSpy = vi.spyOn(modal.extractBtn, 'click');
       mobileItem('extract-zip').click();
       expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not forward a click when the mobile item is marked disabled', () => {
+      modal.renameBtn.disabled = true;
+      modal.syncMobileActions();
+      const clickSpy = vi.spyOn(modal.renameBtn, 'click');
+      mobileItem('rename').click();
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('forwards a click when desktop target has d-none (its mobile-only class)', () => {
+      // Desktop buttons have `d-none d-md-inline-block`, so d-none is always present on
+      // mobile viewports. The click handler must not treat that as "hide the item".
+      modal.deleteBtn.classList.add('d-none');
+      modal.deleteBtn.disabled = false;
+      modal.syncMobileActions();
+      const clickSpy = vi.spyOn(modal.deleteBtn, 'click');
+      mobileItem('delete').click();
+      expect(clickSpy).toHaveBeenCalled();
     });
 
     it('syncMobileActions mirrors disabled state onto the items', () => {

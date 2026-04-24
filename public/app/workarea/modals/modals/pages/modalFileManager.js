@@ -116,8 +116,9 @@ export default class ModalFilemanager extends Modal {
                 const item = event.target.closest('[data-mobile-action]');
                 if (!item) return;
                 event.preventDefault();
+                if (item.classList.contains('disabled') || item.classList.contains('d-none')) return;
                 const target = this.mobileActionTargets[item.dataset.mobileAction];
-                if (target && !target.disabled && !target.classList.contains('d-none')) {
+                if (target && !target.disabled) {
                     target.click();
                 }
             });
