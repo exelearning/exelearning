@@ -122,7 +122,7 @@ var $exeDevice = {
             <div id="beforeAfterQIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create before-and-after comparisons with side-by-side images of similar or proportional size.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/beforeafter-.html',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Slide to reveal the differences between the images.'))}

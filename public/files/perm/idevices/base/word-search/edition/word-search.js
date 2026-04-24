@@ -350,7 +350,7 @@ var $exeDevice = {
         <div id="sopaQEIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('Create word search games with additional text, images or sound.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/sopa_de_letras.html',
+                null,
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Find the hidden words.'))}
@@ -1449,21 +1449,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('words')}-sopa.txt`;
-
-        document.getElementById('sopaQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('sopaQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('words')}-sopa.txt`,
+            'sopaQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (words) {

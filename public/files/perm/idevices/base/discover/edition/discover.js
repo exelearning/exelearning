@@ -170,7 +170,7 @@ var $exeDevice = {
             <div id="descubreQEIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create interactive activities in which players will have to discover pairs, trios or card quartets with images, texts and/or sounds.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/descubre.html',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Birds of a feather flock together.'))}
@@ -1351,8 +1351,8 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
-                $exeDevice.exportGame();
+            $('#eXeGameExportQuestions').on('click', function () {
+                $exeDevice.exportQuestions();
             });
         } else {
             $('#eXeGameExportImport').hide();
@@ -2108,27 +2108,14 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
-        const blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], {
-                type: 'text/plain',
-            });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(newBlob);
-
-        let link = document.createElement('a');
-        link.href = data;
-        link.download = _('Activity') + '-Descubre.json';
-        document.getElementById('descubreQEIdeviceForm').appendChild(link);
-        link.click();
-
-        setTimeout(function () {
-            document.getElementById('descubreQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], {
+            type: 'text/plain',
+        });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            _('Activity') + '-Descubre.json',
+            'descubreQEIdeviceForm'
+        );
     },
 
     exportQuestions: function () {
@@ -2138,21 +2125,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('words')}-crucigrama.txt`;
-
-        document.getElementById('ccgmQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('ccgmQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('words')}-descubre.txt`,
+            'descubreQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (words) {

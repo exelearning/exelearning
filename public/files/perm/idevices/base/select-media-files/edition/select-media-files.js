@@ -145,7 +145,7 @@ var $exeDevice = {
             <div id="gameQEIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create interactive activities in which players will have to select the correct multimedia cards.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/selecciona_multimedia.html',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Select the right cards'))}
@@ -1399,11 +1399,12 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
-                $exeDevices.iDevice.gamification.share.exportGame(
+            $('#eXeGameExportQuestions').on('click', function () {
+                const dataGame = $exeDevice.validateData();
+                $exeDevicesEdition.iDevice.gamification.share.exportGame(
                     dataGame,
-                    _('Select media files'),
-                    'gameQEIdeviceForm'
+                    'gameQEIdeviceForm',
+                    _('Select media files')
                 );
             });
         } else {

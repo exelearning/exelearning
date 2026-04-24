@@ -162,7 +162,7 @@ var $exeDevice = {
         <div id="ccgmQEIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('Create crossword-type activities'),
-                'https://youtu.be/br6S9kcuJI8',
+                null,
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following crossword puzzle.'))}
@@ -1420,21 +1420,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('words')}-crucigrama.txt`;
-
-        document.getElementById('ccgmQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('ccgmQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('words')}-crucigrama.txt`,
+            'ccgmQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (words) {

@@ -181,7 +181,7 @@ var $exeDevice = {
             <div id="roscoIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/rosco.html',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}
@@ -1699,21 +1699,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('A-Z quiz')}.txt`;
-
-        document.getElementById('roscoIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('roscoIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('A-Z quiz')}.txt`,
+            'roscoIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (words) {
@@ -1943,21 +1933,9 @@ var $exeDevice = {
         const blob = new Blob([JSON.stringify(dataGame)], {
             type: 'text/plain',
         });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(blob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(blob),
-            link = document.createElement('a');
-        link.href = data;
-        link.download = _('Activity') + '-Rosco.json';
-        document.body.appendChild(link);
-        link.click();
-
-        setTimeout(() => {
-            link.remove();
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            blob,
+            _('Activity') + '-Rosco.json'
+        );
     },
 };

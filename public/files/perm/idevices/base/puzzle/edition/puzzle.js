@@ -157,7 +157,7 @@ var $exeDevice = {
             <div id="puzzleIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create interactive activities where players must solve various puzzles.'),
-                    'https://www.youtube.com/watch?v=th78R1PAiJQ',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following puzzles.'))}
@@ -955,7 +955,7 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
+            $('#eXeGameExportQuestions').on('click', function () {
                 $exeDevice.exportGame();
             });
         } else {
@@ -1297,24 +1297,12 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
-        const blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], { type: 'text/plain' });
-
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(newBlob),
-            link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('Activity')}-Puzzle.json`;
-        document.getElementById('puzzleIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('puzzleIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Activity')}-Puzzle.json`,
+            'puzzleIdeviceForm'
+        );
     },
 
     importGame: function (content) {

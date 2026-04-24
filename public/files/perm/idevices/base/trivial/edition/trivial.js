@@ -992,7 +992,7 @@ var $exeDevice = {
             <div id="gameQEIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/triviext.html',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset($exeDevice.msgs.msgGameIntrunctions)}
@@ -2119,25 +2119,14 @@ var $exeDevice = {
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
-        const blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], {
-                type: 'text/plain',
-            });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-
-        let link = document.createElement('a');
-        link.href = data;
-        link.download = _('Activity') + '-TriviEx.json';
-        document.getElementById('gameQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(function () {
-            document.getElementById('gameQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], {
+            type: 'text/plain',
+        });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Activity')}-TriviEx.json`,
+            'gameQEIdeviceForm'
+        );
     },
     importQuExt: function (data) {
         for (let i = 0; i < data.questionsGame.length; i++) {
@@ -2820,7 +2809,7 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
+            $('#eXeGameExportQuestions').on('click', function () {
                 $exeDevice.exportGame();
             });
         } else {

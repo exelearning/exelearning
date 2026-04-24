@@ -134,7 +134,7 @@ describe('common_edition.js', () => {
       expect(result).toContain('target="_blank"');
       expect(result).toContain('hreflang="es"');
       expect(result).toContain('>Usage Instructions<');
-      expect(result).toContain('class="btn-close"');
+      expect(result).toContain('btn-close');
       expect(result).toContain('data-bs-dismiss="alert"');
       expect(result).not.toContain('exe-block-info');
       expect(result).not.toContain('exe-block-dismissible');
@@ -790,6 +790,12 @@ describe('common_edition.js', () => {
       const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true);
       expect(result).toContain('exe-form-tab');
       expect(result).toContain('eXeGameImportGame');
+    });
+
+    it('getTab hides the native file input so only the btn-primary trigger is shown', () => {
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true);
+      expect(result).toMatch(/<input[^>]*id="eXeGameImportGame"[^>]*class="[^"]*\bd-none\b[^"]*"/);
+      expect(result).toMatch(/<button[^>]*class="[^"]*\bbtn-primary\b[^"]*\bexe-file-btn\b[^"]*"[^>]*data-exe-file-trigger/);
     });
 
     it('getTabIA returns AI tab HTML', () => {

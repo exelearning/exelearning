@@ -1231,7 +1231,7 @@ var $exeDevice = {
             <div id="quickMultipleQEIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create activities with multiple choice questions or questions in which you have to put the answers in the right order.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/selecciona.html',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answers and click on the Check button.'))}
@@ -2354,23 +2354,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.selectsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('test')}.txt`;
-
-        document.getElementById('quickMultipleQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document
-                .getElementById('quickMultipleQEIdeviceForm')
-                .removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('test')}.txt`,
+            'quickMultipleQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (questions) {

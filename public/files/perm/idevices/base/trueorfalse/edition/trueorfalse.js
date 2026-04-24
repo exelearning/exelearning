@@ -340,7 +340,7 @@ var $exeDevice = {
             <div id="trueorfalseIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create interactive True or False quizzes.'),
-                    'https://youtu.be/xHhrBZ_66To',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Answer all the questions in this quiz.'))}
@@ -959,21 +959,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.questionsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('True or false')}.txt`;
-
-        document.getElementById('trueorfalseIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('trueorfalseIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('True or false')}.txt`,
+            'trueorfalseIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (questionsGame) {

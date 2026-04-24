@@ -316,7 +316,7 @@ var $exeDevice = {
         <div id="ptQEIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('Create interactive activities for the periodic table'),
-                'https://youtu.be/br6S9kcuJI8',
+                null,
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following questions about the periodic table.'))}

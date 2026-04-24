@@ -262,7 +262,7 @@ var $exeDevice = {
             <div id="scrambledlistIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create interactive text ordering activities.'),
-                    'https://youtu.be/xHhrBZ_66To',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}

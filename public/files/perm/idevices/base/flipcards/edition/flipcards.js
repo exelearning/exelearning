@@ -152,7 +152,7 @@ var $exeDevice = {
             <div id="flipcardsQEIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create card memory games with images, sounds or rich text.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/tarjetas_de_memoria.html',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Click on the cards to see what they hide.'))}
@@ -1485,21 +1485,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.cardsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('Memory cards')}.txt`;
-
-        document.getElementById('flipcardsQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('flipcardsQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Memory cards')}.txt`,
+            'flipcardsQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (cards) {

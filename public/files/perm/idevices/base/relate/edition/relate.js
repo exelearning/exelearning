@@ -138,7 +138,7 @@ var $exeDevice = {
         <div id="relateQIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('Create matching games with images, sounds and enriched texts.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html',
+                null,
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
@@ -1381,21 +1381,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.cardsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('Relate')}.txt`;
-
-        document.getElementById('').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('relateQIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Relate')}.txt`,
+            'relateQIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (cards) {
@@ -1541,24 +1531,12 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
-        const blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], { type: 'text/plain' });
-
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(newBlob),
-            link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('Activity')}-Relaciona.json`;
-        document.getElementById('relateQIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('relateQIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Activity')}-Relaciona.json`,
+            'relateQIdeviceForm'
+        );
     },
 
     importMoodle: function (xmlString) {

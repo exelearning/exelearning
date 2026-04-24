@@ -177,7 +177,7 @@ var $exeDevice = {
             <div id="gameQEIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create basic math operation games (addition, subtraction, multiplication, division). The student will have to guess the result, operator or an operand.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/operaciones_matemticas.html',
+                    null,
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following operations.'))}
@@ -688,7 +688,7 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
+            $('#eXeGameExportQuestions').on('click', function () {
                 $exeDevice.exportGame();
             });
         } else {
@@ -891,26 +891,14 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
-        let blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], {
-                type: 'text/plain',
-            });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(newBlob);
-        let link = document.createElement('a');
-        link.href = data;
-        link.download = _('Activity') + '-MathOperations.json';
-        document.getElementById('gameQEIdeviceForm').appendChild(link);
-        link.click();
-
-        setTimeout(function () {
-            document.getElementById('gameQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], {
+            type: 'text/plain',
+        });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            _('Activity') + '-MathOperations.json',
+            'gameQEIdeviceForm'
+        );
     },
 
     importGame: function (content) {

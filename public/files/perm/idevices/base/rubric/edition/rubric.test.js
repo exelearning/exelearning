@@ -270,6 +270,44 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect($exeDevice.isCSVFile({ name: 'rubrica.json', type: 'application/json' })).toBe(false);
   });
 
+  it('exportCSV delegates the CSV file to downloadBlob', () => {
+    const downloadBlobSpy = vi.spyOn($exeDevice, 'downloadBlob').mockReturnValue(true);
+    vi.spyOn($exeDevice, 'tableEditorToJSON').mockReturnValue({
+      categories: ['Criterion'],
+      scores: ['Level'],
+      descriptions: [[{ text: 'Descriptor', weight: '1' }]],
+    });
+    vi.spyOn($exeDevice, 'rubricDataToCSV').mockReturnValue('Criterion,Level');
+
+    $exeDevice.exportCSV();
+
+    expect(downloadBlobSpy).toHaveBeenCalledTimes(1);
+    expect(downloadBlobSpy.mock.calls[0][0]).toBeInstanceOf(Blob);
+    expect(downloadBlobSpy.mock.calls[0][1]).toBe('rubric.csv');
+    expect(downloadBlobSpy.mock.calls[0][2]).toBe('rubric-csv');
+  });
+
+  it('downloadBlob uses Electron saveBufferAs without creating a blob URL', async () => {
+    const originalElectronAPI = window.electronAPI;
+    const originalCreateObjectURL = URL.createObjectURL;
+    const saveBufferAs = vi.fn().mockResolvedValue(undefined);
+    URL.createObjectURL = vi.fn(() => 'blob:rubric');
+    window.electronAPI = { saveBufferAs };
+
+    expect($exeDevice.downloadBlob(new Blob(['csv']), 'rubric.csv', 'rubric-csv')).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(saveBufferAs).toHaveBeenCalledTimes(1);
+    });
+    expect(saveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
+    expect(saveBufferAs.mock.calls[0][1]).toBe('rubric-csv');
+    expect(saveBufferAs.mock.calls[0][2]).toBe('rubric.csv');
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+
+    window.electronAPI = originalElectronAPI;
+    URL.createObjectURL = originalCreateObjectURL;
+  });
+
   it('removeLegacyRenderedArtifacts removes residual export blocks from idevice root', () => {
     document.body.innerHTML = `
       <div class="idevice_node rubric" id="rubric_1">
@@ -309,10 +347,16 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     expect(getIdeviceDescriptionSpy).toHaveBeenCalledWith(
       'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
-      'https://youtu.be/T_QtGkH68EY?t=92'
+      null
     );
     expect($exeDevice.ideviceBody.innerHTML).toContain('alert alert-info alert-dismissible');
     expect($exeDevice.ideviceBody.innerHTML).not.toContain('exe-block-dismissible');
+
+    const csvInput = $exeDevice.ideviceBody.querySelector('#ri_CsvFile');
+    expect(csvInput).not.toBeNull();
+    expect(csvInput.classList.contains('d-none')).toBe(true);
+    const csvTriggerBtn = $exeDevice.ideviceBody.querySelector('button.btn-primary.exe-file-btn[data-exe-file-trigger]');
+    expect(csvTriggerBtn).not.toBeNull();
   });
 
   it('openCellEditModal shows assessment criteria title and performance level from selected cell', () => {

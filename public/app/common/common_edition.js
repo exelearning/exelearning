@@ -114,7 +114,7 @@ var $exeDevicesEdition = {
                     linkHtml = ` <a href="${url}" target="_blank" hreflang="es">${_('Usage Instructions')}</a>`;
                 }
 
-                var closeBtnHtml = ` <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="${_('Hide')}"></button>`;
+                var closeBtnHtml = ` <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="${_('Hide')}"></button>`;
 
                 return `<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">${textHtml}${linkHtml}${closeBtnHtml}</p>`;
             },
@@ -453,7 +453,7 @@ var $exeDevicesEdition = {
                                         <form method="POST">
                                             <div class="exe-file-upload" data-exe-upload>
                                                 <label for="eXeGameImportGame" class="form-label mb-1">${_("Import")}: </label>
-                                                <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${txt}" class="exe-file-input" />
+                                                <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${txt}" class="exe-file-input d-none" />
                                                 <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_("Choose")}</button>
                                                 <span class="exe-file-name" data-exe-file-name>${_("No file selected")}</span>
                                                 <span class="exe-field-instructions d-block mt-1">${_("Supported formats")}:${formtxt}</span>
@@ -462,7 +462,7 @@ var $exeDevicesEdition = {
                                     </div>
                                     <p class="exe-block-info" style="display:${displayEQ}" >${_('You can export its questions in txt format to integrate them into other compatible activities.')}</p>
                                     <p class ="d-flex align-items-center justify-content-start gap-1">
-                                        <input type="button" class="btn btn-primary ms-2"  name="eXeGameExportGame" id="eXeGameExportQuestions" value="${_("Export questions")}" style="display:${displayEQ}" />
+                                        <input type="button" class="btn btn-primary ms-2"  name="eXeGameExportQuestions" id="eXeGameExportQuestions" value="${_("Export questions")}" style="display:${displayEQ}" />
                                     </p>
                                 </div>
                             </div>`;
@@ -1048,33 +1048,109 @@ var $exeDevicesEdition = {
                     return validLines;
                 },
 
-                exportGame: function (dataGame, idevice, name) {
+                /**
+                 * Get Electron API from current window or parent (for iframe contexts).
+                 * Returns null when not running inside Electron.
+                 */
+                getElectronAPI: function () {
+                    if (typeof window === 'undefined') return null;
+                    try {
+                        if (window.electronAPI) return window.electronAPI;
+                        if (window.parent && window.parent !== window && window.parent.electronAPI) {
+                            return window.parent.electronAPI;
+                        }
+                    } catch (_e) {
+                        // Cross-origin access blocked
+                    }
+                    return null;
+                },
 
-                    if (!dataGame) return false;
-
-                    var blob = JSON.stringify(dataGame),
-                        newBlob = new Blob([blob], {
-                            type: "text/plain"
-                        });
+                /**
+                 * Download a Blob as a file from the editor UI.
+                 *
+                 * Centralizes the "anchor + click + revoke" pattern used by
+                 * every gamification iDevice to export game data and/or
+                 * questions. When running inside Electron (see PR #1595 and
+                 * the double-dialog regression on `#eXeGameExportQuestions`),
+                 * invoking `link.click()` on an `<a download>` with a
+                 * `blob:` URL triggers Electron's `will-download` event. The
+                 * main-process handler in `app/main.js` is async and shows
+                 * a custom `promptSave()` dialog before calling
+                 * `item.setSavePath()`. Because Electron does not await the
+                 * handler's Promise, it also shows its own default Save
+                 * dialog, resulting in two dialogs appearing at the same
+                 * time. Routing the save through `window.electronAPI.saveBufferAs`
+                 * bypasses the `will-download` path entirely and keeps a
+                 * single native dialog per user action.
+                 *
+                 * @param {Blob} blob - The file contents.
+                 * @param {string} fileName - Suggested file name.
+                 * @param {string} [containerId] - DOM id used as the anchor
+                 *   parent in the browser fallback. Falls back to `document.body`.
+                 * @returns {boolean} `true` if a save was initiated.
+                 */
+                downloadBlob: function (blob, fileName, containerId) {
+                    if (!(blob instanceof Blob)) return false;
 
                     if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-                        window.navigator.msSaveOrOpenBlob(newBlob);
-                        return;
+                        window.navigator.msSaveOrOpenBlob(blob);
+                        return true;
                     }
 
-                    const data = window.URL.createObjectURL(newBlob);
+                    // Electron bypass: use the IPC channel so `will-download`
+                    // never fires and only our custom promptSave() shows up.
+                    const electronAPI =
+                        $exeDevicesEdition.iDevice.gamification.share.getElectronAPI();
+                    if (electronAPI && typeof electronAPI.saveBufferAs === 'function') {
+                        const projectKey =
+                            (typeof window !== 'undefined' && window.__currentProjectId) ||
+                            'idevice-gamification-export';
+                        Promise.resolve()
+                            .then(() => blob.arrayBuffer())
+                            .then((buf) =>
+                                electronAPI.saveBufferAs(
+                                    new Uint8Array(buf),
+                                    projectKey,
+                                    fileName
+                                )
+                            )
+                            .catch((err) => {
+                                // eslint-disable-next-line no-console
+                                console.error(
+                                    '[gamification.share.downloadBlob] Electron saveBufferAs failed:',
+                                    err
+                                );
+                            });
+                        return true;
+                    }
 
-                    var link = document.createElement('a');
+                    // Browser fallback.
+                    const data = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
                     link.href = data;
-
-                    link.download = `${_("Activity")}-${name}.json`;
-                    document.getElementById(idevice).appendChild(link);
+                    link.download = fileName;
+                    const container =
+                        (containerId && document.getElementById(containerId)) ||
+                        document.body;
+                    container.appendChild(link);
                     link.click();
-
                     setTimeout(function () {
-                        document.getElementById(idevice).removeChild(link);
+                        if (link.parentNode) link.parentNode.removeChild(link);
                         window.URL.revokeObjectURL(data);
                     }, 100);
+                    return true;
+                },
+
+                exportGame: function (dataGame, idevice, name) {
+                    if (!dataGame) return false;
+                    const blob = new Blob([JSON.stringify(dataGame)], {
+                        type: 'text/plain',
+                    });
+                    return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+                        blob,
+                        `${_('Activity')}-${name}.json`,
+                        idevice
+                    );
                 },
                 import: {
 

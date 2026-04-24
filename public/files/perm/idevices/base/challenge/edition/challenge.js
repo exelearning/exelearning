@@ -361,7 +361,7 @@ var $exeDevice = {
         <div id="desafioIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('Create escape room type activities in which players will have to complete trials before solving the final challenge.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/desafo.html',
+                null,
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve all the trials and complete the final challenge.'))}
@@ -637,7 +637,7 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
+            $('#eXeGameExportQuestions').on('click', function () {
                 $exeDevice.exportGame();
             });
         } else {
@@ -980,25 +980,12 @@ var $exeDevice = {
             return false;
         }
 
-        const blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(newBlob),
-            link = document.createElement('a');
-
-        link.href = data;
-        link.download = `${_('Game')}desafio.json`;
-        document.getElementById('desafioIdeviceForm').appendChild(link);
-        link.click();
-
-        setTimeout(() => {
-            document.getElementById('desafioIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Game')}desafio.json`,
+            'desafioIdeviceForm'
+        );
     },
 
     importGame: function (content) {
