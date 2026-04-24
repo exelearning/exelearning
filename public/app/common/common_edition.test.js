@@ -804,6 +804,18 @@ describe('common_edition.js', () => {
       expect(result).toContain('eXeEPromptArea');
     });
 
+    it('getTabIA renders prompt examples on real newlines, not literal "\\n"', () => {
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.getTabIA(0);
+      // The prompt textarea must NOT contain literal backslash-n sequences
+      // between examples — those would render verbatim instead of as line breaks.
+      const textareaMatch = result.match(
+        /<textarea[^>]*id="eXeEPromptArea"[^>]*>([\s\S]*?)<\/textarea>/
+      );
+      expect(textareaMatch).not.toBeNull();
+      expect(textareaMatch[1]).not.toContain('\\n');
+      expect(textareaMatch[1]).toContain('\n');
+    });
+
     it('createIAButtonsHtml returns buttons HTML', () => {
       const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml();
       expect(result).toContain('eXeFormIAContainer');

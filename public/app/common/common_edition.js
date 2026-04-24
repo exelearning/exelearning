@@ -499,10 +499,10 @@ var $exeDevicesEdition = {
                                         ${c_('Act as a highly experienced teacher.')}
                                         ${fprompt.prompt}
                                         ${c_('Formats')}:
-                                        ${fprompt.format.join('\\n')} 
+                                        ${fprompt.format.join('\n')}
                                         ${fprompt.explanation}
                                         ${c_('Examples')}:
-                                        ${fprompt.examples.join('\\n')}
+                                        ${fprompt.examples.join('\n')}
                                         ${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')}, 
                                     </textarea>
                                     <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
