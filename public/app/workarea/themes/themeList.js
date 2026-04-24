@@ -1,5 +1,19 @@
 import Theme from './theme.js';
 
+/**
+ * Read the host-supplied "block theme install from content" flag.
+ *
+ * When a host integration (WordPress/Moodle/Omeka-S) publishes a
+ * `window.eXeLearning.config.themeRegistryOverride.blockImportInstall`
+ * flag, any theme install path that originates from project content,
+ * .elpx imports, or in-editor upload UIs is silently refused and logged.
+ *
+ * @returns {boolean}
+ */
+function isThemeImportBlocked() {
+    return !!window.eXeLearning?.config?.themeRegistryOverride?.blockImportInstall;
+}
+
 export default class ThemeList {
     constructor(manager) {
         this.manager = manager;
@@ -90,6 +104,11 @@ export default class ThemeList {
      * @param {ResourceCache} [providedCache] - Optional ResourceCache to use (passed from YjsProjectBridge during init)
      */
     async loadUserThemesFromIndexedDB(providedCache = null) {
+        // Embedded integrations may forbid loading user-installed themes so the
+        // editor only exposes admin-approved styles (see themeRegistryOverride).
+        if (isThemeImportBlocked()) {
+            return;
+        }
         try {
             // Use provided cache, or try to get from YjsProjectBridge
             let resourceCache = providedCache;
@@ -140,6 +159,15 @@ export default class ThemeList {
      * @returns {Theme} The created Theme instance
      */
     addUserTheme(themeConfig) {
+        // Embedded integrations may forbid user-installed themes so the editor
+        // only exposes the admin-approved registry (see themeRegistryOverride).
+        if (isThemeImportBlocked()) {
+            console.warn(
+                `[ThemeList] Refusing to install theme '${themeConfig?.name}': `
+                + 'theme imports are disabled by the host integration.'
+            );
+            return null;
+        }
         // User themes need special URL handling since they're served from IndexedDB/Yjs
         // Use a special prefix that the Theme class will recognize
         const userThemeUrl = `user-theme://${themeConfig.dirName}`;
