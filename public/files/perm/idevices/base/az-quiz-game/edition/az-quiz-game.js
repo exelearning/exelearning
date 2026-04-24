@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-undef */
+/* eslint-disable no-undef */
 /**
  * Rosco Activity iDevice (edition code)
  *
@@ -179,11 +179,10 @@ var $exeDevice = {
         );
         const html = `
             <div id="roscoIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/rosco.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/rosco.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

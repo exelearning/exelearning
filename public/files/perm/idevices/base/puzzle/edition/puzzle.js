@@ -155,11 +155,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="puzzleIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative;">
-                    ${_('Create interactive activities where players must solve various puzzles.')}
-                    <a style="display:none" href="https://www.youtube.com/watch?v=th78R1PAiJQ" hreflang="en" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create interactive activities where players must solve various puzzles.'),
+                    'https://www.youtube.com/watch?v=th78R1PAiJQ',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following puzzles.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

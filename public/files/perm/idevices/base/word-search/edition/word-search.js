@@ -348,11 +348,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="sopaQEIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${_('Create word search games with additional text, images or sound.')}
-                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/sopa_de_letras.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create word search games with additional text, images or sound.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/sopa_de_letras.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Find the hidden words.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">

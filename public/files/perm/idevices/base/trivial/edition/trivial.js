@@ -990,11 +990,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="gameQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/triviext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/triviext.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset($exeDevice.msgs.msgGameIntrunctions)}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

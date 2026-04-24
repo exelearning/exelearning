@@ -150,11 +150,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="flipcardsQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create card memory games with images, sounds or rich text.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/tarjetas_de_memoria.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create card memory games with images, sounds or rich text.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/tarjetas_de_memoria.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Click on the cards to see what they hide.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -253,9 +252,10 @@ var $exeDevice = {
                                     </a>
                                 </strong>
                             </div>
-                            <p id="flipcardsEEvaluationHelp" class="FLCRDS-TypeGameHelp exe-block-info exe-block-dismissible">
+                            <div id="flipcardsEEvaluationHelp" class="FLCRDS-TypeGameHelp alert alert-info alert-dismissible fade show d-none" role="alert">
                                 ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="${_('Hide')}"></button>
+                            </div>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1463,7 +1463,7 @@ var $exeDevice = {
 
         $('#flipcardsEEvaluationHelpLnk').click(function (e) {
             e.preventDefault();
-            $('#flipcardsEEvaluationHelp').toggle();
+            $('#flipcardsEEvaluationHelp').toggleClass('d-none d-block');
             return false;
         });
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();

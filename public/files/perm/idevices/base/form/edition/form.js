@@ -847,7 +847,10 @@ var $exeDevice = {
 
     createForm(ideviceBody) {
         const html = `<div id="formIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">${_('Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.')}</p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.'),
+                    null,
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the questions in the following quiz'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

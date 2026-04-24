@@ -396,10 +396,10 @@ var $exeDevice = {
         let path = $exeDevice.idevicePath,
             html = `
             <div id="hiQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.')} <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/quext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/quext.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Reveal the hidden image and choose the right answer.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

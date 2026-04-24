@@ -428,11 +428,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="identifyQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which the players, with some clues, will have to guess a character, an object or the solution to a problem.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/identifica.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities in which the players, with some clues, will have to guess a character, an object or the solution to a problem.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/identifica.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Use the clues to guess the hidden answer for each question.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

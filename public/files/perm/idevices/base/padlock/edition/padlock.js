@@ -114,11 +114,10 @@ var $exeDevice = {
             path = $exeDevice.idevicePath,
             html = `
             <div id="candadoIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities with a password protected feedback.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/candado.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities with a password protected feedback.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/candado.html',
+                )}
                 <div class="exe-form-tab" title="${msgs.msgEGeneralSettings}">
                     <div class="candado-EPanel" id="candadoEPanel">
                         <p class="candadoToggle">

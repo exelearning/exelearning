@@ -359,7 +359,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="desafioIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible">${_('Create escape room type activities in which players will have to complete trials before solving the final challenge.')} <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/desafo.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create escape room type activities in which players will have to complete trials before solving the final challenge.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/desafo.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve all the trials and complete the final challenge.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -388,9 +391,10 @@ var $exeDevice = {
                             </span>
                             <strong class="GameModeLabel"><a href="#desafioEEvaluationHelp" id="desafioEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
                         </div>
-                        <p id="desafioEEvaluationHelp" class="desafioTypeGameHelp exe-block-info">
+                        <div id="desafioEEvaluationHelp" class="desafioTypeGameHelp alert alert-info alert-dismissible fade show d-none" role="alert">
                             ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="${_('Hide')}"></button>
+                        </div>
                     </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
@@ -609,8 +613,9 @@ var $exeDevice = {
             $('#desafioEEvaluationID').prop('disabled', !marcado);
         });
 
-        $('#desafioEEvaluationHelpLnk').on('click', function () {
-            $('#desafioEEvaluationHelp').toggle();
+        $('#desafioEEvaluationHelpLnk').on('click', function (e) {
+            e.preventDefault();
+            $('#desafioEEvaluationHelp').toggleClass('d-none d-block');
             return false;
         });
 

@@ -55,10 +55,10 @@ var $exeDevice = {
         );
         const html = `
         <div id="eXeAutoGeogebraForm">
-            <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${instructions}
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                instructions,
+                null,
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 <fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${_('Instructions')}</a></legend>

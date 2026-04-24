@@ -834,11 +834,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
                 <div id="vquextQEIdeviceForm">
-                    <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                        ${_('Create activities consisting on a video with interactive questions.')} 
-                        <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/vdeoquext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                        <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                    </p>
+                    ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                        _('Create activities consisting on a video with interactive questions.'),
+                        'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/vdeoquext.html',
+                    )}
                     <div class="exe-form-tab" title="${_('General settings')}">
                         ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
                         <fieldset class="exe-fieldset exe-fieldset-closed">

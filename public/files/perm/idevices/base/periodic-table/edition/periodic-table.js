@@ -314,11 +314,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="ptQEIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible">
-                ${_('Create interactive activities for the periodic table')} 
-                <a style="display:none;" href="https://youtu.be/br6S9kcuJI8" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create interactive activities for the periodic table'),
+                'https://youtu.be/br6S9kcuJI8',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following questions about the periodic table.'))}
                 <fieldset class="exe-fieldset">

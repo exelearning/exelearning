@@ -160,11 +160,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="ccgmQEIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible">
-                ${_('Create crossword-type activities')} 
-                <a style="display:none;" href="https://youtu.be/br6S9kcuJI8" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create crossword-type activities'),
+                'https://youtu.be/br6S9kcuJI8',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following crossword puzzle.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">

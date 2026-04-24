@@ -1229,11 +1229,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="quickMultipleQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities with multiple choice questions or questions in which you have to put the answers in the right order.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/selecciona.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities with multiple choice questions or questions in which you have to put the answers in the right order.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/selecciona.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answers and click on the Check button.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

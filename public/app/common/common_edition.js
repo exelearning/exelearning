@@ -76,10 +76,16 @@ var $exeDevicesEdition = {
             // Enable the iDevice instructions
             $(".exe-info").each(function () {
                 var e = $(this);
-                e.html('<p class="exe-block-info exe-block-dismissible">' + e.html() + ' <a href="#" class="exe-block-close" title="' + _("Hide") + '"><span class="sr-av">' + _("Hide") + ' </span>×</a></p>');
+                e.html(
+                    '<div class="alert alert-info alert-dismissible fade show mb-3" role="alert">' +
+                    e.html() +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="' +
+                    _("Hide") +
+                    '"></button></div>'
+                );
             });
 
-            // Dismissible messages
+            // Legacy dismissible messages (custom pre-Bootstrap markup still used by many iDevices)
             $(".exe-block-dismissible .exe-block-close").click(function () {
                 $(this).parent().fadeOut();
                 return false;
@@ -99,6 +105,19 @@ var $exeDevicesEdition = {
         },
         // Common
         common: {
+            getIdeviceDescription: function (text, url) {
+                if (typeof text != "string") return "";
+
+                var textHtml = _(text);
+                var linkHtml = "";
+                if (typeof url === "string" && url.length > 0) {
+                    linkHtml = ` <a href="${url}" target="_blank" hreflang="es">${_('Usage Instructions')}</a>`;
+                }
+
+                var closeBtnHtml = ` <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="${_('Hide')}"></button>`;
+
+                return `<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">${textHtml}${linkHtml}${closeBtnHtml}</p>`;
+            },
             // Get the "Content after" or the "Content before" fieldset
             getTextFieldset: function (position) {
                 if (typeof (position) != "string" || (position != "after" && position != "before")) return "";

@@ -120,11 +120,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="beforeAfterQIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create before-and-after comparisons with side-by-side images of similar or proportional size.')} 
-                    <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/beforeafter-.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create before-and-after comparisons with side-by-side images of similar or proportional size.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/beforeafter-.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Slide to reveal the differences between the images.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

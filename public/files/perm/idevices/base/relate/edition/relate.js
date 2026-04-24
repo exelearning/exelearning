@@ -136,11 +136,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="relateQIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${_('Create matching games with images, sounds and enriched texts.')} 
-                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create matching games with images, sounds and enriched texts.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">

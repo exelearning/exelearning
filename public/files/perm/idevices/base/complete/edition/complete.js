@@ -134,11 +134,10 @@ var $exeDevice = {
     createForm: function () {
         const html = `
             <div id="completeQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/completa.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/completa.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Read the text and complete the missing words.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

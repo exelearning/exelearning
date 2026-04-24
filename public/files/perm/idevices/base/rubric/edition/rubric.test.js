@@ -286,6 +286,35 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect(document.querySelector('#rubric_1 .exe-rubrics-content')).toBeNull();
   });
 
+  it('createForm uses common Bootstrap description helper in edition header', () => {
+    document.body.innerHTML = '<div id="rubric_body_create_form"></div>';
+    $exeDevice.ideviceBody = document.getElementById('rubric_body_create_form');
+
+    const getIdeviceDescriptionSpy = vi.fn(() => '<div class="alert alert-info alert-dismissible"></div>');
+    const getTextFieldsetSpy = vi.fn(() => '<fieldset class="text-after-fieldset"></fieldset>');
+    globalThis.$exeDevicesEdition.iDevice.common = {
+      getIdeviceDescription: getIdeviceDescriptionSpy,
+      getTextFieldset: getTextFieldsetSpy,
+    };
+    globalThis.$exeDevicesEdition.iDevice.tabs = { init: vi.fn() };
+    globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab = vi.fn(() => '<div class="scorm-tab"></div>');
+    globalThis.$exeDevicesEdition.iDevice.gamification.scorm.init = vi.fn();
+    globalThis.$exeDevicesEdition.iDevice.gamification.common.getLanguageTab = vi.fn(() => '<div class="lang-tab"></div>');
+
+    vi.spyOn($exeDevice, 'renderRubricTemplateControls').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'loadPreviousValues').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'initCSVTabControls').mockImplementation(() => {});
+
+    $exeDevice.createForm();
+
+    expect(getIdeviceDescriptionSpy).toHaveBeenCalledWith(
+      'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
+      'https://youtu.be/T_QtGkH68EY?t=92'
+    );
+    expect($exeDevice.ideviceBody.innerHTML).toContain('alert alert-info alert-dismissible');
+    expect($exeDevice.ideviceBody.innerHTML).not.toContain('exe-block-dismissible');
+  });
+
   it('openCellEditModal shows assessment criteria title and performance level from selected cell', () => {
     document.body.innerHTML = `
       <div id="ri_TableEditor"></div>

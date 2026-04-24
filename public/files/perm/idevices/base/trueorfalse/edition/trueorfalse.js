@@ -338,10 +338,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="trueorfalseIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">
-                    ${_('Create interactive True or False quizzes.')} 
-                    <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create interactive True or False quizzes.'),
+                    'https://youtu.be/xHhrBZ_66To',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Answer all the questions in this quiz.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">

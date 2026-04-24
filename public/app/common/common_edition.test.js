@@ -121,6 +121,40 @@ describe('common_edition.js', () => {
       expect(result).toContain('fieldset');
       expect(result).toContain('eXeIdeviceTextAfter');
     });
+
+    it('getIdeviceDescription returns Bootstrap dismissible alert markup', () => {
+      const result = globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+        'Description text',
+        'https://example.com/help'
+      );
+
+      expect(result).toContain('class="alert alert-info alert-dismissible fade show mb-3"');
+      expect(result).toContain('role="alert"');
+      expect(result).toContain('href="https://example.com/help"');
+      expect(result).toContain('target="_blank"');
+      expect(result).toContain('hreflang="es"');
+      expect(result).toContain('>Usage Instructions<');
+      expect(result).toContain('class="btn-close"');
+      expect(result).toContain('data-bs-dismiss="alert"');
+      expect(result).not.toContain('exe-block-info');
+      expect(result).not.toContain('exe-block-dismissible');
+      expect(result).not.toContain('exe-block-close');
+    });
+
+    it('getIdeviceDescription does not render usage link when url is not present', () => {
+      const result = globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+        'Description text',
+        null
+      );
+
+      expect(result).toContain('<p class="alert alert-info alert-dismissible fade show mb-3"');
+      expect(result).not.toContain('<a ');
+    });
+
+    it('getIdeviceDescription returns empty string when text is not a string', () => {
+      expect(globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(null, 'https://example.com')).toBe('');
+      expect(globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(42, 'https://example.com')).toBe('');
+    });
   });
 
   describe('gamification', () => {
@@ -315,7 +349,7 @@ describe('common_edition.js', () => {
       expect(fieldset.classList.contains('exe-fieldset-closed')).toBe(true);
     });
 
-    it('sets up exe-info elements with dismissible messages', () => {
+    it('sets up exe-info elements as Bootstrap dismissible alerts', () => {
       const infoDiv = document.createElement('div');
       infoDiv.className = 'exe-info';
       infoDiv.innerHTML = 'Test info message';
@@ -323,11 +357,11 @@ describe('common_edition.js', () => {
 
       globalThis.$exeDevicesEdition.iDevice.init();
 
-      expect(infoDiv.querySelector('.exe-block-info')).toBeTruthy();
-      expect(infoDiv.querySelector('.exe-block-close')).toBeTruthy();
+      expect(infoDiv.querySelector('.alert.alert-info')).toBeTruthy();
+      expect(infoDiv.querySelector('.btn-close[data-bs-dismiss="alert"]')).toBeTruthy();
     });
 
-    it('dismissible close button fades out parent', () => {
+    it('sets aria-label in Bootstrap close button for exe-info alerts', () => {
       vi.useFakeTimers();
       // Mock colorPicker which is called after a timeout
       globalThis.$exeDevicesEdition.iDevice.colorPicker = { init: vi.fn() };
@@ -338,8 +372,8 @@ describe('common_edition.js', () => {
       document.body.appendChild(infoDiv);
 
       globalThis.$exeDevicesEdition.iDevice.init();
-      const closeBtn = infoDiv.querySelector('.exe-block-close');
-      closeBtn.click();
+      const closeBtn = infoDiv.querySelector('.btn-close');
+      expect(closeBtn.getAttribute('aria-label')).toBe('Hide');
 
       vi.runAllTimers();
       vi.useRealTimers();

@@ -287,4 +287,108 @@ describe('flipcards iDevice', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
     });
   });
+
+  describe('createForm', () => {
+    let originalExeLearning;
+    let originalExeDevicesEdition;
+    let container;
+
+    beforeEach(() => {
+      container = document.createElement('div');
+      $exeDevice.ideviceBody = container;
+      $exeDevice.idevicePath = '/test/';
+      $exeDevice.ci18n = {};
+
+      originalExeLearning = global.eXeLearning;
+      originalExeDevicesEdition = global.$exeDevicesEdition;
+
+      global.eXeLearning = {
+        app: {
+          project: { odeId: 'ode-id' },
+        },
+      };
+      global.$exeDevicesEdition = {
+        iDevice: {
+          tabs: { init: vi.fn() },
+          common: {
+            getTextFieldset: vi.fn(() => '<div class="mock-after"></div>'),
+            getIdeviceDescription: vi.fn(
+              () =>
+                '<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">mock description<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Hide"></button></p>',
+            ),
+          },
+          gamification: {
+            instructions: { getFieldset: vi.fn(() => '<div class="mock-instructions"></div>') },
+            itinerary: {
+              getTab: vi.fn(() => '<div class="mock-itinerary"></div>'),
+              addEvents: vi.fn(),
+            },
+            scorm: {
+              getTab: vi.fn(() => '<div class="mock-scorm"></div>'),
+              init: vi.fn(),
+            },
+            common: { getLanguageTab: vi.fn(() => '<div class="mock-language"></div>') },
+            share: {
+              getTab: vi.fn(() => '<div class="mock-share"></div>'),
+              getTabIA: vi.fn(() => '<div class="mock-share-ia"></div>'),
+              addEvents: vi.fn(),
+            },
+          },
+        },
+      };
+      $exeDevice.enableForm = vi.fn();
+    });
+
+    afterEach(() => {
+      global.eXeLearning = originalExeLearning;
+      global.$exeDevicesEdition = originalExeDevicesEdition;
+    });
+
+    it('renders evaluation help as dismissible Bootstrap alert hidden by default', () => {
+      $exeDevice.createForm();
+      const helpAlert = container.querySelector('#flipcardsEEvaluationHelp');
+      const closeButton = helpAlert?.querySelector(
+        'button.btn-close[data-bs-dismiss="alert"]',
+      );
+      expect(helpAlert).not.toBeNull();
+      expect(helpAlert.classList.contains('alert-dismissible')).toBe(true);
+      expect(helpAlert.classList.contains('d-none')).toBe(true);
+      expect(closeButton).not.toBeNull();
+    });
+  });
+
+  describe('addEvents', () => {
+    let originalExeDevicesEdition;
+
+    beforeEach(() => {
+      originalExeDevicesEdition = global.$exeDevicesEdition;
+      global.$exeDevicesEdition = {
+        iDevice: {
+          gamification: {
+            itinerary: { addEvents: vi.fn() },
+            share: { addEvents: vi.fn() },
+          },
+        },
+      };
+      document.body.innerHTML = `
+        <a id="flipcardsEEvaluationHelpLnk" href="#flipcardsEEvaluationHelp"></a>
+        <div id="flipcardsEEvaluationHelp" class="d-none"></div>
+      `;
+    });
+
+    afterEach(() => {
+      global.$exeDevicesEdition = originalExeDevicesEdition;
+    });
+
+    it('toggles evaluation help classes when clicking help link', () => {
+      $exeDevice.addEvents();
+      $('#flipcardsEEvaluationHelpLnk').trigger('click');
+      expect($('#flipcardsEEvaluationHelp').hasClass('d-none')).toBe(false);
+      expect($('#flipcardsEEvaluationHelp').hasClass('d-block')).toBe(true);
+
+      $('#flipcardsEEvaluationHelpLnk').trigger('click');
+      expect($('#flipcardsEEvaluationHelp').hasClass('d-none')).toBe(true);
+      expect($('#flipcardsEEvaluationHelp').hasClass('d-block')).toBe(false);
+    });
+  });
 });

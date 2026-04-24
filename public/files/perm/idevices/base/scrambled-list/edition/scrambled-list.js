@@ -260,10 +260,10 @@ var $exeDevice = {
         const hiddenClass = '';
         const html = `
             <div id="scrambledlistIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">
-                    ${_('Create interactive text ordering activities.')}
-                    <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create interactive text ordering activities.'),
+                    'https://youtu.be/xHhrBZ_66To',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
                     <fieldset class="exe-fieldset">

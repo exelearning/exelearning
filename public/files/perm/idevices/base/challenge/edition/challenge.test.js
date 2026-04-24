@@ -210,6 +210,99 @@ describe('challenge iDevice', () => {
     });
   });
 
+  describe('createForm', () => {
+    let originalExeLearning;
+    let originalExeDevicesEdition;
+    let container;
+
+    beforeEach(() => {
+      container = document.createElement('div');
+      $exeDevice.ideviceBody = container;
+      $exeDevice.idevicePath = '/test/';
+      $exeDevice.ci18n = {};
+      $exeDevice.challengesGame = [];
+
+      originalExeLearning = global.eXeLearning;
+      originalExeDevicesEdition = global.$exeDevicesEdition;
+
+      global.eXeLearning = {
+        app: {
+          project: { odeId: 'ode-id' },
+        },
+      };
+      global.$exeDevicesEdition = {
+        iDevice: {
+          common: {
+            getIdeviceDescription: vi.fn(
+              () =>
+                '<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">mock description<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Hide"></button></p>',
+            ),
+          },
+          gamification: {
+            instructions: { getFieldset: vi.fn(() => '<div class="mock-fieldset"></div>') },
+            common: { getLanguageTab: vi.fn(() => '<div class="mock-language-tab"></div>') },
+            scorm: {
+              getTab: vi.fn(() => '<div class="mock-scorm-tab"></div>'),
+              init: vi.fn(),
+            },
+          },
+          tabs: { init: vi.fn() },
+        },
+      };
+
+      $exeDevice.loadPreviousValues = vi.fn();
+      $exeDevice.addEvents = vi.fn();
+      $exeDevice.showDesafio = vi.fn();
+    });
+
+    afterEach(() => {
+      global.eXeLearning = originalExeLearning;
+      global.$exeDevicesEdition = originalExeDevicesEdition;
+    });
+
+    it('renders top info as dismissible Bootstrap alert', () => {
+      $exeDevice.createForm();
+      const topAlert = container.querySelector(
+        '#desafioIdeviceForm > .alert.alert-info.alert-dismissible',
+      );
+      const closeButton = topAlert?.querySelector(
+        'button.btn-close[data-bs-dismiss="alert"]',
+      );
+      expect(topAlert).not.toBeNull();
+      expect(closeButton).not.toBeNull();
+    });
+
+    it('renders evaluation help as dismissible Bootstrap alert hidden by default', () => {
+      $exeDevice.createForm();
+      const helpAlert = container.querySelector('#desafioEEvaluationHelp');
+      expect(helpAlert).not.toBeNull();
+      expect(helpAlert.classList.contains('alert-dismissible')).toBe(true);
+      expect(helpAlert.classList.contains('d-none')).toBe(true);
+    });
+  });
+
+  describe('addEvents', () => {
+    beforeEach(() => {
+      document.body.innerHTML = `
+        <div id="desafioIdeviceForm"></div>
+        <a id="desafioEEvaluationHelpLnk" href="#desafioEEvaluationHelp"></a>
+        <div id="desafioEEvaluationHelp" class="d-none"></div>
+      `;
+      $exeDevice.challengesGame = [{ title: 'Test', solution: 'Sol', description: '' }];
+    });
+
+    it('toggles evaluation help classes when clicking the help link', () => {
+      $exeDevice.addEvents();
+      $('#desafioEEvaluationHelpLnk').trigger('click');
+      expect($('#desafioEEvaluationHelp').hasClass('d-none')).toBe(false);
+      expect($('#desafioEEvaluationHelp').hasClass('d-block')).toBe(true);
+
+      $('#desafioEEvaluationHelpLnk').trigger('click');
+      expect($('#desafioEEvaluationHelp').hasClass('d-none')).toBe(true);
+      expect($('#desafioEEvaluationHelp').hasClass('d-block')).toBe(false);
+    });
+  });
+
   // ============================================
   // DOM Manipulation Tests
   // ============================================

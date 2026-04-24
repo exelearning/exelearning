@@ -195,11 +195,10 @@ var $exeDevice = {
         const path = this.idevicePath,
             html = `
         <div id="clasificaQEIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${_('Create interactive activities in which players have to classify cards with images, texts and/or sounds.')}
-                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/clasifica.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create interactive activities in which players have to classify cards with images, texts and/or sounds.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/clasifica.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each card to its container.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">

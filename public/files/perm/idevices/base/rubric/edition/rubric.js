@@ -173,11 +173,10 @@ var $exeDevice = {
 
         const html = `
             <div id="ri_IdeviceForm">
-                <p class="exe-block-info exe-block-dismissible position-relative">
-                    ${_('Complete the table to define a scoring guide. Define the score or value of each descriptor.')}
-                    <a href="https://youtu.be/T_QtGkH68EY?t=92" target="_blank" hreflang="es" rel="lightbox">${_('Learn how to apply a rubric')}</a>.
-                    <button type="button" class="btn-close exe-block-close" aria-label="${_('Hide')}"></button>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
+                    'https://youtu.be/T_QtGkH68EY?t=92',
+                )}
 
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following rubric'))}
@@ -225,12 +224,6 @@ var $exeDevice = {
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
-
-        // Dismiss info block
-        $('.exe-block-dismissible .exe-block-close').on('click', function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
 
         this.renderRubricTemplateControls();
         this.loadPreviousValues();

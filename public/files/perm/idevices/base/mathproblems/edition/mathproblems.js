@@ -145,10 +145,10 @@ var $exeDevice = {
     createForm: function () {
         const html = `
             <div id="gameQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">${_('Create random basic math problems.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/problemas_de_matemticas.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create random basic math problems.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/problemas_de_matemticas.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following math problems.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
