@@ -207,6 +207,22 @@ export default class ThemesManager {
         if (!themeSelected) {
             themeSelected = this.getTheme(eXeLearning.config.defaultTheme);
         }
+        // Host integrations may supply a fallback via themeRegistryOverride
+        // so projects referencing a style that the admin has disabled or
+        // never installed still open instead of silently failing.
+        if (!themeSelected) {
+            const fallbackId =
+                window.eXeLearning?.config?.themeRegistryOverride?.fallbackTheme;
+            if (fallbackId && fallbackId !== id) {
+                themeSelected = this.getTheme(fallbackId);
+                if (themeSelected) {
+                    console.warn(
+                        `[ThemesManager] Theme '${id}' unavailable; `
+                        + `falling back to '${fallbackId}'.`
+                    );
+                }
+            }
+        }
         // Select the theme and apply it
         if (themeSelected) {
             let prevThemeSelected = this.selected;
