@@ -464,11 +464,6 @@ label[for=gameQEActivitySCORM] {
     font-weight: normal
 }
 
-.SLCME-TypeGameHelp {
-    display: none;
-    font-size: .95em
-}
-
 .Games-Reportdiv {
     display: flex;
     justify-content: flex-start;

@@ -208,11 +208,6 @@
     font-weight: normal;
 }
 
-#puzzleIdeviceForm .PZLE-TypeGameHelp {
-    display: none;
-    font-size: 0.95em;
-}
-
 .Games-Reportdiv {
     display: flex;
     justify-content: flex-start;

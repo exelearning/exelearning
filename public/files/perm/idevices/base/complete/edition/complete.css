@@ -4,7 +4,7 @@
     cursor: pointer;
 }
 
-#completeQEIdeviceForm #cmptEPercentajeFB {
+#completeQEIdeviceForm #cmptEPercentajeFB, #completeQEIdeviceForm #cmptEPercentajeError {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
 }
@@ -225,11 +225,6 @@ label[for=gameQEActivitySCORM] {
     list-style: none;
     margin: 1.5em 0 .7em 0;
     padding: 0;
-}
-
-.CMPT-TypeGameHelp {
-    display: none;
-    font-size: .95em
 }
 
 .Games-Reportdiv {

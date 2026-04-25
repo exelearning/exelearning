@@ -261,9 +261,6 @@ var $exeDevice = {
             'There must be at least one slide in the presentation.'
         );
         msgs.msgWriteLink = _('Please type or paste a valid URL.');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgSolutionOrder = _(
             'Indicate, using commas, the correct order in which points must be clicked'
         );
@@ -382,22 +379,8 @@ var $exeDevice = {
                                 <label class="toggle-label" for="mapaEAutoAudio">${_('Play the sound when scrolling the mouse over the points.')}.</label>
                             </div>
                             <div class="d-flex flex-nowrap align-items-center gap-2">
-                                <div class="toggle-item m-0" data-target="mapaEEvaluation">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="mapaEEvaluation" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="mapaEEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <label for="mapaEEvaluationID">${_('Identifier')}:</label>
-                                <input type="text" id="mapaEEvaluationID" disabled class="form-control" style="max-width:200px" value="${eXeLearning.app.project.odeId || ''}" />
-                                <a href="#mapaEEvaluationHelp" id="mapaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                </a>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="mapaEEvaluationHelp" class="MQE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     
@@ -2495,12 +2478,13 @@ var $exeDevice = {
             ),
             autoShow = $('#mapaEAutoShow').is(':checked') || false,
             optionsNumber = parseInt(clear($('#mapaNumOptions').val())),
-            evaluation = $('#mapaEEvaluation').is(':checked'),
-            evaluationID = $('#mapaEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             order = $('#mapaSolutionOrder').val();
 
         if (!itinerary) return;
+        if (!progressBar) return false;
 
         let points = $exeDevice.activeMap.pts,
             autoAudio = $('#mapaEAutoAudio').is(':checked') || false;
@@ -2512,11 +2496,6 @@ var $exeDevice = {
 
         if (url.length < 4) {
             $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
-            return false;
-        }
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
 
@@ -2622,8 +2601,8 @@ var $exeDevice = {
             autoShow: autoShow,
             autoAudio: autoAudio,
             optionsNumber: optionsNumber,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
             order: order,
             hideScoreBar: hideScoreBar,
@@ -3763,15 +3742,7 @@ var $exeDevice = {
             $exeDevice.closePointTest();
         });
 
-        $('#mapaEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#mapaEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#mapaEEvaluationHelpLnk').click(function () {
-            $('#mapaEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#mapaTitle').on('input', function () {
             $('#mapaTextLink').text($(this).val());
@@ -5289,9 +5260,10 @@ var $exeDevice = {
         $('#mapaPercentajeIdentify').val(game.percentajeIdentify || 100);
         $('#mapaPercentajeShowQ').val(game.percentajeShowQ || 100);
         $('#mapaPercentajeQuestions').val(game.percentajeQuestions || 100);
-        $('#mapaEEvaluation').prop('checked', game.evaluation);
-        $('#mapaEEvaluationID').val(game.evaluationID);
-        $('#mapaEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
 
         $exeDevice.showImageMap(
             game.url,

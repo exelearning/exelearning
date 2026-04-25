@@ -197,6 +197,62 @@ var $exeDevicesEdition = {
                     </fieldset>';
                 }
             },
+            progressBar: {
+                getContents: function (path) {
+                    return `<div class="exe-progress-report-wrapper" style="flex-basis:100%;width:100%">
+                                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                                    <div class="toggle-item m-0" idevice-id="eXeProgressReport">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="eXeProgressReport" class="toggle-input" aria-label="${_('Progress report')}">
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="eXeProgressReport">${_('Progress report')}.</label>
+                                    </div>
+                                    <div class="d-flex align-items-center flex-nowrap gap-2">
+                                        <label for="eXeProgressReportID" class="mb-0">${_('Identifier')}:</label>
+                                        <input type="text" class="form-control form-control-sm" id="eXeProgressReportID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                                        <a href="#eXeProgressReportHelp" id="eXeProgressReportHelpLnk" title="${_('Help')}">
+                                            <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" style="width:18px;height:18px;min-width:18px;min-height:18px;max-width:18px;max-height:18px"/>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div id="eXeProgressReportHelp" class="alert alert-info d-none">
+                                    ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                                </div>
+                            </div>`;
+                },
+                setValues: function (data) {
+                    var evaluation = !!(data && data.evaluation);
+                    var evaluationID = data && typeof data.evaluationID !== 'undefined' ? data.evaluationID : '';
+                    $('#eXeProgressReport').prop('checked', evaluation);
+                    $('#eXeProgressReportID').val(evaluationID);
+                    $('#eXeProgressReportID').prop('disabled', !evaluation);
+                },
+                getValues: function () {
+                    var evaluation = $('#eXeProgressReport').is(':checked');
+                    var evaluationID = $.trim($('#eXeProgressReportID').val());
+                    if (evaluation && evaluationID.length < 5) {
+                        eXe.app.alert(_('The report identifier must have at least 5 characters'));
+                        return false;
+                    }
+                    return {
+                        evaluation: evaluation,
+                        evaluationID: evaluationID
+                    };
+                },
+                addEvents: function () {
+                    $('#eXeProgressReport').on('change', function () {
+                        var checked = $(this).is(':checked');
+                        $('#eXeProgressReportID').prop('disabled', !checked);
+                    });
+                    $(document)
+                        .off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk')
+                        .on('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', function (e) {
+                            e.preventDefault();
+                            $('#eXeProgressReportHelp').toggleClass('d-none');
+                        });
+                }
+            },
             itinerary: {
                 getContents: function () {
                     return `
@@ -232,7 +288,7 @@ var $exeDevicesEdition = {
                             </div>
                             <div class="d-flex gap-1 align-items-center mb-3">
                                 <label for="eXeGamePercentajeClue" id="labelPercentajeClue" class="mb-1">${_("Percentage of correct answers required to display the message")}:</label>
-                                <select id="eXeGamePercentajeClue" class="form-select" disabled style="max-width:8ch;width:8ch;">
+                                <select id="eXeGamePercentajeClue" class="form-select" disabled style="max-width:10ch;width:10ch;">
                                     <option value="10">10%</option>
                                     <option value="20">20%</option>
                                     <option value="30">30%</option>
@@ -1231,7 +1287,6 @@ var $exeDevicesEdition = {
                         });
                         addWords(words)
                     },
-
                     glosary: function (xmlText, addWords) {
                         const parser = new DOMParser(),
                             xmlDoc = parser.parseFromString(xmlText, "text/xml"),

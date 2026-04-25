@@ -111,9 +111,6 @@ var $exeDevice = {
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
     },
 
     createForm: function () {
@@ -133,23 +130,7 @@ var $exeDevice = {
                                 <label for="bfafEAuthory">${_('Authorship')}: </label>
                                 <input id="bfafEAuthory" type="text" class="form-control" />
                             </div>
-                            <div class="Games-Reportdiv d-flex align-items-center gap-2 mb-3 flex-wrap">
-                                <span class="toggle-item mb-0" data-target="bfafEEvaluationIDWrapper" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="bfafEEvaluation" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="bfafEEvaluation">${_('Progress report')}.</label>
-                                </span>
-                                <span id="bfafEEvaluationIDWrapper" class="d-flex align-items-center gap-1">
-                                    <label for="bfafEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="bfafEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}" />
-                                </span>
-                                <strong class="GameModeLabel"><a href="#bfafEEvaluationHelp" id="bfafEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
-                            </div>
-                            <p id="bfafEEvaluationHelp" class="BFAFE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -733,13 +714,10 @@ var $exeDevice = {
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
-            evaluation = $('#bfafEEvaluation').is(':checked'),
-            evaluationID = $('#bfafEEvaluationID').val();
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
 
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
+        if (!progressBar) return false;
         if (!itinerary) return;
         return {
             typeGame: 'BeforeAfter',
@@ -753,8 +731,8 @@ var $exeDevice = {
             cardsGame,
             textAfter: escape(textAfter),
             version: $exeDevice.version,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id,
         };
     },
@@ -855,11 +833,7 @@ var $exeDevice = {
             $exeDevice.reverseCard();
         });
 
-        // Ayuda evaluación
-        $('#bfafEEvaluationHelpLnk').on('click', function () {
-            $('#bfafEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#beforeAfterQIdeviceForm').on(
             'change',
@@ -876,9 +850,7 @@ var $exeDevice = {
                         $targetEl.toggle(checked);
                     }
                 }
-                if (this.id === 'bfafEEvaluation') {
-                    $('#bfafEEvaluationID').prop('disabled', !checked);
-                } else if (this.id === 'bfafEVertical') {
+                if (this.id === 'bfafEVertical') {
                     if ($exeDevice.cardsGame[$exeDevice.active]) {
                         $exeDevice.cardsGame[$exeDevice.active].vertical =
                             checked;
@@ -888,11 +860,6 @@ var $exeDevice = {
         );
 
         (function initToggleStates() {
-            const evalChecked = $('#bfafEEvaluation').is(':checked');
-            $('#bfafEEvaluation')
-                .closest('.toggle-item')
-                .attr('aria-checked', evalChecked);
-            $('#bfafEEvaluationIDWrapper').toggle(evalChecked);
             const vertChecked = $('#bfafEVertical').is(':checked');
             $('#bfafEVertical')
                 .closest('.toggle-item')
@@ -973,9 +940,10 @@ var $exeDevice = {
             game.repeatActivity,
             game.weighted
         );
-        $('#bfafEEvaluation').prop('checked', game.evaluation);
-        $('#bfafEEvaluationID').val(game.evaluationID);
-        $('#bfafEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#bfafEPosition').val(game.position);
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary

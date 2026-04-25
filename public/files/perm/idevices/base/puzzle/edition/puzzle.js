@@ -137,9 +137,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -206,21 +203,8 @@ var $exeDevice = {
                                 <input id="puzzleEAuthor" type="text" class="form-control" />
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="puzzleEEvaluation" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="puzzleEEvaluation">${_('Progress report')}.</label>
-                                </span>
-                                <label for="puzzleEEvaluationID">${_('Identifier')}:</label>
-                                <input type="text" id="puzzleEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" style="max-width:16ch" />
-                                <strong class="GameModeLabel"><a href="#puzzleEEvaluationHelp" id="puzzleEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
-
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="puzzleEEvaluationHelp" class="PZLE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -764,11 +748,12 @@ var $exeDevice = {
             ),
             author = $('#puzzleEAuthor').val(),
             puzzlesGame = $exeDevice.puzzlesGame,
-            evaluation = $('#puzzleEEvaluation').is(':checked'),
-            evaluationID = $('#puzzleEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (puzzlesGame.length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
@@ -795,8 +780,8 @@ var $exeDevice = {
             percentajeFB,
             percentajeQuestions,
             version: $exeDevice.version,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id,
         };
         return data;
@@ -1038,15 +1023,7 @@ var $exeDevice = {
             $exeDevice.loadAudio(audio);
         });
 
-        $('#puzzleEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#puzzleEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#puzzleEEvaluationHelpLnk').click(function () {
-            $('#puzzleEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#puzzleEShowMoreDefinition').on('click', function (e) {
             e.preventDefault();
@@ -1287,9 +1264,10 @@ var $exeDevice = {
         $('#puzzleEPercentajeFB').prop('disabled', !game.feedBack);
         $exeDevice.updateQuestionsNumber();
 
-        $('#puzzleEEvaluation').prop('checked', game.evaluation);
-        $('#puzzleEEvaluationID').val(game.evaluationID);
-        $('#puzzleEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
     },
 
     exportGame: function () {

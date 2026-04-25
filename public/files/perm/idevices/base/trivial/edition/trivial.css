@@ -110,10 +110,6 @@
     margin-right: 2px;
 }
 /* Ayuda */
-.TRVLE-TypeGameHelp {
-    display: none;
-    font-size: .95em
-}
 .Games-Reportdiv {
     display: flex;
     justify-content: flex-start;

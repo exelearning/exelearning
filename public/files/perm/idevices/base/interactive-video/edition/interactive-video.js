@@ -188,18 +188,8 @@ var $exeDevice = {
                     </span>
                     <label class="toggle-label mb-0" for="interactiveVideoScoreNIA">${_('Score non-interactive activities')}</label>
                 </div>
-                <div class="d-flex flex-nowrap align-items-center gap-2 mb-4">
-                    <div class="toggle-item mb-0">
-                        <span class="toggle-control">
-                            <input class="toggle-input" type="checkbox" id="interactiveVideoEvaluation">
-                            <span class="toggle-visual"></span>
-                        </span>
-                        <label class="toggle-label mb-0" for="interactiveVideoEvaluation">${_('Progress report')}.</label>
-                    </div>
-                     <div class="d-flex flex-nowrap align-items-center gap-2">
-                        <label for="interactiveVideoEvaluationID" class="form-label mb-0">${_('Identifier')}</label>
-                        <input type="text" id="interactiveVideoEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}">
-                    </div>
+                <div class="mb-4">
+                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                 </div>
                 <p class="exe-block-success d-flex align-items-center justify-content-between gap-3">
                     <span class="me-auto">${_('Open the editor and start adding interaction...')}</span>
@@ -221,10 +211,7 @@ var $exeDevice = {
             $exeDevice.toggleType(this.value);
         });
 
-        $('#interactiveVideoEvaluation').on('change', function () {
-            var marcado = $(this).is(':checked');
-            $('#interactiveVideoEvaluationID').prop('disabled', !marcado);
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#interactiveVideoFile')
             .change(function () {
@@ -485,7 +472,6 @@ var $exeDevice = {
                         ? false
                         : InteractiveVideo.evaluation;
                 const defaultEvalID =
-                    $('#interactiveVideoEvaluationID').val() ||
                     (typeof eXeLearning !== 'undefined' &&
                     eXeLearning.app &&
                     eXeLearning.app.project
@@ -501,17 +487,10 @@ var $exeDevice = {
                         ? InteractiveVideo.ideviceID
                         : false;
                 $exeDevice.ideviceID = $exeDevice.getIdeviceID();
-                $('#interactiveVideoEvaluation').prop(
-                    'checked',
-                    InteractiveVideo.evaluation
-                );
-                $('#interactiveVideoEvaluationID').val(
-                    InteractiveVideo.evaluationID
-                );
-                $('#interactiveVideoEvaluationID').prop(
-                    'disabled',
-                    !InteractiveVideo.evaluation
-                );
+                $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+                    evaluation: InteractiveVideo.evaluation,
+                    evaluationID: InteractiveVideo.evaluationID,
+                });
             }
             // Save the list of images and remove the wrapper
             top.interactiveVideoEditor.imageList = $(
@@ -709,14 +688,11 @@ var $exeDevice = {
             }
         }
 
-        var seval = $('#interactiveVideoEvaluation').is(':checked'),
-            sevalid = seval ? $('#interactiveVideoEvaluationID').val() : '';
-        if (seval && sevalid.length < 5) {
-            eXe.app.alert(
-                _('The report identifier must have at least 5 characters')
-            );
-            return false;
-        }
+        var progressBarValues =
+            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBarValues) return false;
+        var seval = progressBarValues.evaluation,
+            sevalid = progressBarValues.evaluationID;
 
         var ideviceID = $exeDevice.getIdeviceID();
 

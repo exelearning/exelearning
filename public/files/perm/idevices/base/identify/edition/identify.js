@@ -509,26 +509,8 @@ var $exeDevice = {
                                 <span id="idfENumeroPercentaje">1/1</span>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="idfEEvaluation" class="toggle-input" data-target="#idfEEvaluationIDWrapper" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="idfEEvaluation">${_('Progress report')}.</label>
-                                </span>
-                                <span id="idfEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap" style="display:none;">
-                                    <label for="idfEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="idfEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </span>
-                                <strong class="GameModeLabel">
-                                    <a href="#idfEEvaluationHelp" id="idfEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </strong>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="idfEEvaluationHelp" class="IDFE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -830,9 +812,10 @@ var $exeDevice = {
         $('#idfEPercentajeFB').val(game.percentajeFB);
         $('#idfECustomMessages').prop('checked', game.customMessages);
         $('#idfEPercentajeQuestions').val(game.percentajeQuestions);
-        $('#idfEEvaluation').prop('checked', game.evaluation);
-        $('#idfEEvaluationID').val(game.evaluationID);
-        $('#idfEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
 
         $exeDevice.updateGameMode(game.feedBack);
         $exeDevice.showSelectOrder(game.customMessages);
@@ -1238,11 +1221,12 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 $exeDevice.removeTags($('#idfEPercentajeQuestions').val())
             ),
-            evaluation = $('#idfEEvaluation').is(':checked'),
-            evaluationID = $('#idfEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (feedBack && textFeedBack.trim().length === 0) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
@@ -1250,10 +1234,6 @@ var $exeDevice = {
         }
         if (showSolution && timeShowSolution.length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
 
@@ -1300,8 +1280,8 @@ var $exeDevice = {
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
             avancedMode: avancedMode,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
         };
     },
@@ -1547,14 +1527,7 @@ var $exeDevice = {
             }
         });
 
-        $('#idfEEvaluation').on('change', function () {
-            $('#idfEEvaluationID').prop('disabled', !$(this).is(':checked'));
-        });
-
-        $('#idfEEvaluationHelpLnk').click(() => {
-            $('#idfEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(

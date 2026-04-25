@@ -140,4 +140,104 @@ describe('geogebra-activity iDevice (export)', () => {
     expect(document.querySelector('.auto-geogebra-author')).toBeNull();
     expect(document.querySelector('.auto-geogebra-title')).not.toBeNull();
   });
+
+  it('targets the GeoGebra iDevice body for report icons', () => {
+    document.body.innerHTML = `
+      <div class="idevice_body geogebra-activityIdevice">
+        <div id="geogebra-1" class="idevice_node geogebra-activity">
+          <div id="auto-geogebra-VgHhQXCC0"></div>
+        </div>
+      </div>
+    `;
+
+    const options = $geogebraactivity.getOptions(
+      'VgHhQXCC0',
+      100,
+      [],
+      'evaluation-1',
+    );
+
+    expect(options.id).toBe('geogebra-1');
+    expect(options.main).toBe('auto-geogebra-VgHhQXCC0');
+    expect(options.idevice).toBe('geogebra-activityIdevice');
+  });
+
+  it('does not enable report icons when the saved evaluation id is disabled', () => {
+    document.body.innerHTML = `
+      <div class="idevice_body geogebra-activityIdevice">
+        <div id="geogebra-1" class="idevice_node geogebra-activity">
+          <div id="auto-geogebra-VgHhQXCC0"></div>
+        </div>
+      </div>
+    `;
+
+    const options = $geogebraactivity.getOptions('VgHhQXCC0', 100, [], '0');
+
+    expect(options.evaluation).toBe(false);
+    expect(options.evaluationID).toBe('');
+  });
+
+  it('removes stale report icons when report tracking is disabled', () => {
+    document.body.innerHTML = `
+      <div class="idevice_body geogebra-activityIdevice">
+        <div id="ac-geogebra-1"></div>
+        <div class="Games-ReportIconDiv"></div>
+        <div id="geogebra-1" class="idevice_node geogebra-activity">
+          <div id="auto-geogebra-VgHhQXCC0"></div>
+        </div>
+      </div>
+    `;
+
+    $geogebraactivity.removeEvaluationIcon({
+      id: 'geogebra-1',
+      main: 'auto-geogebra-VgHhQXCC0',
+      idevice: 'geogebra-activityIdevice',
+    });
+
+    expect(document.querySelector('.Games-ReportIconDiv')).toBeNull();
+    expect(document.getElementById('ac-geogebra-1')).toBeNull();
+  });
+
+  it('cleans stale report icons when the exported activity has evaluation id 0', () => {
+    const previousGGBApplet = global.GGBApplet;
+    const previousReport = $exeDevices.iDevice.gamification.report;
+    const updateEvaluationIcon = vi.fn();
+
+    vi.useFakeTimers();
+    global.GGBApplet = vi.fn(function () {
+      this.inject = vi.fn();
+    });
+    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon };
+
+    document.body.innerHTML = `
+      <div class="idevice_body geogebra-activityIdevice">
+        <div id="ac-geogebra-1"></div>
+        <div class="Games-ReportIconDiv"></div>
+        <div id="geogebra-1" class="idevice_node geogebra-activity">
+          <div
+            class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-evaluation-id-0 auto-geogebra-ideviceid-geogebra-1"
+          ></div>
+        </div>
+      </div>
+    `;
+
+    try {
+      const activity = document.querySelector('.auto-geogebra');
+      $geogebraactivity.addActivity(
+        activity,
+        'VgHhQXCC',
+        activity.className.split(' '),
+        0,
+      );
+      vi.runAllTimers();
+
+      expect(updateEvaluationIcon).not.toHaveBeenCalled();
+      expect(document.querySelector('.Games-ReportIconDiv')).toBeNull();
+      expect(document.getElementById('ac-geogebra-1')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      global.GGBApplet = previousGGBApplet;
+      $exeDevices.iDevice.gamification.report = previousReport;
+    }
+  });
 });

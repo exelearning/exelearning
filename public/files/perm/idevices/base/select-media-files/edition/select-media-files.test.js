@@ -549,6 +549,12 @@ describe('select-media-files iDevice', () => {
             global.$exeDevicesEdition.iDevice.gamification.itinerary = {
                 addEvents: vi.fn(),
             };
+            global.$exeDevicesEdition.iDevice.gamification.progressBar = {
+                getContents: vi.fn(() => '<div></div>'),
+                setValues: vi.fn(),
+                getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
+                addEvents: vi.fn(),
+            };
             vi.spyOn($exeDevice, 'validateData').mockReturnValue(dataGame);
 
             $exeDevice.addEvents();

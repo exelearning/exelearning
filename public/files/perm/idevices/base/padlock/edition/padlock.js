@@ -100,9 +100,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
     },
 
     showMessage: function (msg) {
@@ -187,26 +184,8 @@ var $exeDevice = {
                             </div>
                         </div>
                         <div class="Games-Reportdiv d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="candadoEEvaluation" class="toggle-input" />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
-                                </span>
-                                <label for="candadoEEvaluation" class="toggle-label mb-0">${_('Progress report')}.</label>
-                            </span>
-                            <span class="d-flex align-items-center gap-1 flex-nowrap">
-                                <label for="candadoEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                <input type="text" id="candadoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                            </span>
-                            <strong class="GameModeLabel">
-                                <a href="#candadoEEvaluationHelp" id="candadoEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                </a>
-                            </strong>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
-                        <p id="candadoEEvaluationHelp" class="candado-TypeGameHelp exe-block-info">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
                     </div>
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
@@ -287,9 +266,10 @@ var $exeDevice = {
                 'disabled',
                 dataGame.candadoAttemps === 0
             );
-            $('#candadoEEvaluation').prop('checked', dataGame.evaluation);
-            $('#candadoEEvaluationID').val(dataGame.evaluationID);
-            $('#candadoEEvaluationID').prop('disabled', !dataGame.evaluation);
+            $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+                evaluation: dataGame.evaluation,
+                evaluationID: dataGame.evaluationID,
+            });
 
             if (candadoInstructions.length > 0) {
                 $('#candadoEDescription').val(candadoInstructions);
@@ -370,8 +350,11 @@ var $exeDevice = {
         $exeDevice.candadoReboot = $('#candadoEReboot').is(':checked');
         $exeDevice.candadoAttemps = $('#candadoEAttemps').val();
         $exeDevice.candadoErrorMessage = $('#candadoEErrorMessage').val();
-        $exeDevice.evaluation = $('#candadoEEvaluation').is(':checked');
-        $exeDevice.evaluationID = $('#candadoEEvaluationID').val();
+        const progressBar =
+            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBar) return false;
+        $exeDevice.evaluation = progressBar.evaluation;
+        $exeDevice.evaluationID = progressBar.evaluationID;
         $exeDevice.id = $exeDevice.id
             ? $exeDevice.id
             : $exeDevice.getIdeviceID();
@@ -387,11 +370,6 @@ var $exeDevice = {
             $exeDevice.candadoErrorMessage.length === 0
         ) {
             message = $exeDevice.msgs.msgEnterCustomMessage;
-        } else if (
-            $exeDevice.evaluation &&
-            $exeDevice.evaluationID.length < 5
-        ) {
-            message = $exeDevice.msgs.msgIDLenght;
         }
 
         if (message.length !== 0) {
@@ -463,14 +441,6 @@ var $exeDevice = {
             $('#candadoEErrorMessage').prop('disabled', d);
         });
 
-        $('#candadoEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#candadoEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#candadoEEvaluationHelpLnk').on('click', function () {
-            $('#candadoEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
     },
 };

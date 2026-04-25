@@ -233,12 +233,6 @@ label[for=gameQEActivitySCORM] {
     width: 2em;
 }
 
-.MTOE-TypeGameHelp {
-    display: none;
-    margin-bottom: 2em;
-    font-size: .95em
-}
-
 .GameModeHelpLink {
     margin: 0 2px;
     vertical-align: middle;

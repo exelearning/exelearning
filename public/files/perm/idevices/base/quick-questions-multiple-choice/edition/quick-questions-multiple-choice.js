@@ -213,9 +213,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -1411,24 +1408,8 @@ var $exeDevice = {
                                 <button id="seleccionaGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item" data-target="seleccionaEEvaluation">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="seleccionaEEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="seleccionaEEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center flex-nowrap gap-2 ms-2 SLCNE-EEvaluationFields">
-                                    <label for="seleccionaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" class="form-control" id="seleccionaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                                    <a href="#seleccionaEEvaluationHelp" id="seleccionaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </div>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="seleccionaEEvaluationHelp" class="exe-block-info SLCNE-TypeGameHelp">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1992,11 +1973,12 @@ var $exeDevice = {
             game.gameMode == 0 && game.useLives
         );
         $('#seleccionaEPercentajeQuestionsValue').val(game.percentajeQuestions);
-        $('#seleccionaEEvaluation').prop('checked', game.evaluation);
-        $('#seleccionaEEvaluationID').val(game.evaluationID);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#seleccionaEGlobalTimes').val(game.globalTime);
 
-        $('#seleccionaEEvaluationID').prop('disabled', !game.evaluation);
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
         $exeDevice.showSelectOrder(
             game.order,
@@ -2421,12 +2403,13 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 clear($('#seleccionaEPercentajeQuestionsValue').val())
             ),
-            evaluation = $('#seleccionaEEvaluation').is(':checked'),
-            evaluationID = $('#seleccionaEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#seleccionaEGlobalTimes').val(), 10);
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if ((gameMode == 2 || feedBack) && textFeedBack.trim().length == 0) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
@@ -2434,10 +2417,6 @@ var $exeDevice = {
         }
         if (showSolution && timeShowSolution.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
         const selectsGame = $exeDevice.selectsGame;
@@ -2538,8 +2517,8 @@ var $exeDevice = {
             percentajeQuestions: percentajeQuestions,
             audioFeedBach: audioFeedBach,
             modeBoard: modeBoard,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
             globalTime: globalTime,
         };
@@ -2616,33 +2595,11 @@ var $exeDevice = {
                     )
                 )
                     return;
-                // No alternar si el clic proviene del campo identificador de evaluación o su enlace de ayuda
-                if (
-                    $(e.target).is('#seleccionaEEvaluationID') ||
-                    $(e.target).closest('#seleccionaEEvaluationHelpLnk').length
-                )
-                    return;
                 const $input = $(this).find('input.toggle-input').first();
                 if ($input.length) {
                     const newVal = !$input.prop('checked');
                     $input.prop('checked', newVal).trigger('change');
                 }
-            }
-        );
-
-        // Evitar que el clic dentro del campo de evaluación dispare el toggle del contenedor
-        $quickMultipleQEIdeviceForm.on(
-            'click',
-            '#seleccionaEEvaluationID',
-            function (e) {
-                e.stopPropagation();
-            }
-        );
-        $quickMultipleQEIdeviceForm.on(
-            'click',
-            '#seleccionaEEvaluationHelpLnk, #seleccionaEEvaluationHelpLnk *',
-            function (e) {
-                e.stopPropagation();
             }
         );
 
@@ -3116,15 +3073,7 @@ var $exeDevice = {
             }
         });
 
-        $('#seleccionaEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#seleccionaEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#seleccionaEEvaluationHelpLnk').on('click', function () {
-            $('#seleccionaEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(

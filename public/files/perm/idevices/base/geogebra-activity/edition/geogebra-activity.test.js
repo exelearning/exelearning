@@ -99,4 +99,61 @@ describe('geogebra-activity iDevice (edition)', () => {
 
     expect($('#geogebraActivityShowAuthor').prop('checked')).toBe(false);
   });
+
+  it('populates shared progressBar fields when auto-geogebra-evaluation-id is set', () => {
+    document.body.innerHTML = `
+      <input id="geogebraActivityLang" value="en" />
+      <input id="geogebraActivityURL" value="" />
+      <input id="geogebraActivitySCORM" type="checkbox" />
+      <div id="geogebraActivitySCORMoptions" class="d-none"></div>
+      <div id="geogebraActivitySCORMinstructions" class="d-none"></div>
+      <div id="geogebraActivityWeightDiv" class="d-none"></div>
+      <textarea id="geogebraActivityInstructions"></textarea>
+      <textarea id="eXeIdeviceTextAfter"></textarea>
+      <span id="geogebraActivityAuthorURL"></span>
+      <span id="geogebraActivityTitle"></span>
+      <input id="geogebraActivityShowTitle" type="checkbox" />
+      <input id="geogebraActivityShowAuthor" type="checkbox" />
+      <input id="eXeProgressReport" type="checkbox" />
+      <input id="eXeProgressReportID" disabled value="" />
+    `;
+
+    $exeDevice.idevicePreviousData = `
+      <div class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-evaluation-id-myReport123 auto-geogebra-ideviceid-id1"></div>
+    `;
+
+    $exeDevice.loadPreviousValues();
+
+    expect($('#eXeProgressReport').prop('checked')).toBe(true);
+    expect($('#eXeProgressReportID').val()).toBe('myReport123');
+    expect($('#eXeProgressReportID').prop('disabled')).toBe(false);
+  });
+
+  it('does not enable progressBar when evaluation id is 0', () => {
+    document.body.innerHTML = `
+      <input id="geogebraActivityLang" value="en" />
+      <input id="geogebraActivityURL" value="" />
+      <input id="geogebraActivitySCORM" type="checkbox" />
+      <div id="geogebraActivitySCORMoptions" class="d-none"></div>
+      <div id="geogebraActivitySCORMinstructions" class="d-none"></div>
+      <div id="geogebraActivityWeightDiv" class="d-none"></div>
+      <textarea id="geogebraActivityInstructions"></textarea>
+      <textarea id="eXeIdeviceTextAfter"></textarea>
+      <span id="geogebraActivityAuthorURL"></span>
+      <span id="geogebraActivityTitle"></span>
+      <input id="geogebraActivityShowTitle" type="checkbox" />
+      <input id="geogebraActivityShowAuthor" type="checkbox" />
+      <input id="eXeProgressReport" type="checkbox" />
+      <input id="eXeProgressReportID" disabled value="" />
+    `;
+
+    $exeDevice.idevicePreviousData = `
+      <div class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-evaluation-id-0"></div>
+    `;
+
+    $exeDevice.loadPreviousValues();
+
+    expect($('#eXeProgressReport').prop('checked')).toBe(false);
+    expect($('#eXeProgressReportID').val()).toBe('');
+  });
 });

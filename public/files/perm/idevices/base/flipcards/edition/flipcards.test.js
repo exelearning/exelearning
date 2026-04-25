@@ -333,6 +333,12 @@ describe('flipcards iDevice', () => {
               getTabIA: vi.fn(() => '<div class="mock-share-ia"></div>'),
               addEvents: vi.fn(),
             },
+            progressBar: {
+              getContents: vi.fn(() => '<div class="mock-progress-bar"></div>'),
+              setValues: vi.fn(),
+              getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
+              addEvents: vi.fn(),
+            },
           },
         },
       };
@@ -344,16 +350,11 @@ describe('flipcards iDevice', () => {
       global.$exeDevicesEdition = originalExeDevicesEdition;
     });
 
-    it('renders evaluation help as dismissible Bootstrap alert hidden by default', () => {
+    it('renders shared progress bar contents through the helper', () => {
       $exeDevice.createForm();
-      const helpAlert = container.querySelector('#flipcardsEEvaluationHelp');
-      const closeButton = helpAlert?.querySelector(
-        'button.btn-close[data-bs-dismiss="alert"]',
-      );
-      expect(helpAlert).not.toBeNull();
-      expect(helpAlert.classList.contains('alert-dismissible')).toBe(true);
-      expect(helpAlert.classList.contains('d-none')).toBe(true);
-      expect(closeButton).not.toBeNull();
+      const progressBar = global.$exeDevicesEdition.iDevice.gamification.progressBar;
+      expect(progressBar.getContents).toHaveBeenCalledWith('/test/');
+      expect(container.querySelector('.mock-progress-bar')).not.toBeNull();
     });
   });
 
@@ -367,28 +368,21 @@ describe('flipcards iDevice', () => {
           gamification: {
             itinerary: { addEvents: vi.fn() },
             share: { addEvents: vi.fn() },
+            progressBar: { addEvents: vi.fn() },
           },
         },
       };
-      document.body.innerHTML = `
-        <a id="flipcardsEEvaluationHelpLnk" href="#flipcardsEEvaluationHelp"></a>
-        <div id="flipcardsEEvaluationHelp" class="d-none"></div>
-      `;
     });
 
     afterEach(() => {
       global.$exeDevicesEdition = originalExeDevicesEdition;
     });
 
-    it('toggles evaluation help classes when clicking help link', () => {
+    it('registers shared progress bar events', () => {
       $exeDevice.addEvents();
-      $('#flipcardsEEvaluationHelpLnk').trigger('click');
-      expect($('#flipcardsEEvaluationHelp').hasClass('d-none')).toBe(false);
-      expect($('#flipcardsEEvaluationHelp').hasClass('d-block')).toBe(true);
-
-      $('#flipcardsEEvaluationHelpLnk').trigger('click');
-      expect($('#flipcardsEEvaluationHelp').hasClass('d-none')).toBe(true);
-      expect($('#flipcardsEEvaluationHelp').hasClass('d-block')).toBe(false);
+      expect(
+        global.$exeDevicesEdition.iDevice.gamification.progressBar.addEvents,
+      ).toHaveBeenCalledTimes(1);
     });
   });
 });

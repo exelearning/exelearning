@@ -194,9 +194,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -1060,26 +1057,8 @@ var $exeDevice = {
                                 <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center flex-nowrap gap-2 mb-3 flex-wrap">
-                                <div class="toggle-item mb-0">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="trivialEEvaluation" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="trivialEEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center flex-nowrap gap-2" id="trivialEEvaluationIDWrapper">
-                                    <label for="trivialEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="trivialEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </div>
-                                <strong class="GameModeLabel">
-                                    <a href="#trivialEEvaluationHelp" id="trivialEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </strong>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="trivialEEvaluationHelp" class="TRVLE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1698,9 +1677,10 @@ var $exeDevice = {
         $('#trivialNumberTema').val(1);
         $('#trivialLoadGame').val('');
         $('#trivialNameTema').val(game.nombresTemas[0]);
-        $('#trivialEEvaluation').prop('checked', game.evaluation);
-        $('#trivialEEvaluationID').val(game.evaluationID);
-        $('#trivialEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#trivialEGlobalTimes').val(game.globalTime);
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
@@ -2425,19 +2405,16 @@ var $exeDevice = {
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = false,
             temas = [],
-            evaluation = $('#trivialEEvaluation').is(':checked'),
-            evaluationID = $('#trivialEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             globalTime = parseInt($('#trivialEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (showSolution && timeShowSolution.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
 
@@ -2551,8 +2528,8 @@ var $exeDevice = {
             trivialID: $exeDevice.trivialID,
             version: 3,
             modeBoard: modeBoard,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             globalTime: globalTime,
             id: id,
         };
@@ -2965,14 +2942,7 @@ var $exeDevice = {
             }
         });
 
-        $('#trivialEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#trivialEEvaluationID').prop('disabled', !marcado);
-        });
-        $('#trivialEEvaluationHelpLnk').click(function () {
-            $exeDevice.toggleFlex($('#trivialEEvaluationHelp'));
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#trivialGlobalTimeButton').on('click', function (e) {
             e.preventDefault();

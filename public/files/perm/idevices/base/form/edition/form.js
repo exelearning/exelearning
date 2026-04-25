@@ -240,12 +240,10 @@ var $exeDevice = {
 
         this.ideviceBody.querySelector('#checkAddBtnAnswers').checked =
             previousData.addBtnAnswers ?? true;
-        this.ideviceBody.querySelector('#evaluationCheckBox').checked =
-            previousData.evaluation ?? false;
-        this.ideviceBody.querySelector('#evaluationIDInput').value =
-            previousData.evaluationID ?? '';
-        this.ideviceBody.querySelector('#evaluationIDInput').disabled =
-            !previousData.evaluation;
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: previousData.evaluation ?? false,
+            evaluationID: previousData.evaluationID ?? '',
+        });
         this.ideviceBody.querySelector('#frmEQuestionsRandom').checked =
             previousData.questionsRandom || false;
         this.ideviceBody.querySelector('#frmEPercentageQuestions').value =
@@ -290,11 +288,11 @@ var $exeDevice = {
         this.textButtonScorm = scorm.textButtonScorm;
         this.repeatActivity = scorm.repeatActivity;
         this.weighted = scorm.weighted;
-        this.evaluation = this.ideviceBody.querySelector(
-            '#evaluationCheckBox'
-        ).checked;
-        this.evaluationID =
-            this.ideviceBody.querySelector('#evaluationIDInput').value;
+        const progressBar =
+            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBar) return false;
+        this.evaluation = progressBar.evaluation;
+        this.evaluationID = progressBar.evaluationID;
         this.eXeFormInstructions = this.getEditorTinyMCEValue(
             'eXeGameInstructions'
         );
@@ -657,13 +655,6 @@ var $exeDevice = {
         }
     },
     checkFormValues: function () {
-        if (this.evaluation && this.evaluationID.length < 5) {
-            eXe.app.alert(
-                _('The report identifier must have at least 5 characters')
-            );
-            return false;
-        }
-
         if (this.questionsData.length < 1) {
             eXe.app.alert(_('Please add at least one question'));
             return false;
@@ -899,23 +890,7 @@ var $exeDevice = {
                                 </span>
                             </div>
                             <!-- Evaluation -->
-                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="evaluationCheckBox" class="toggle-input" data-target="#formEvaluationIDWrapper" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="evaluationCheckBox">${_('Progress report')}. </label>
-                                </span>
-                                <span id="formEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap" style="display:none;">
-                                    <label for="evaluationIDInput" class="mb-0">${_('Identifier')}: </label>
-                                    <input type="text" id="evaluationIDInput" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </span>
-                                <strong class="GameModeLabel"><a href="" id="helpLinkButton" class="GameModeHelpLink" title="${_('Help')}"><img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
-                            </div>
-                            <div id="evaluationHelp" style="display:none">
-                                <p class="exe-block-info exe-block-dismissible">${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
-                            </div>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -2227,32 +2202,12 @@ var $exeDevice = {
 
     behaviourEvaluation() {
         const { ideviceBody } = $exeDevice;
-        const evaluation = ideviceBody.querySelector('#evaluationCheckBox');
-        const evaluationHelpLink = ideviceBody.querySelector('#helpLinkButton');
-        const evaluationInput = ideviceBody.querySelector('#evaluationIDInput');
-        const evaluationHelp = ideviceBody.querySelector('#evaluationHelp');
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
         const divTime = ideviceBody.querySelector('#frmETimeDiv');
         const percentageQuestions = ideviceBody.querySelector(
             '#frmEPercentageQuestions'
         );
         const time = ideviceBody.querySelector('#frmETime');
-        if (evaluation) {
-            evaluation.addEventListener('change', function () {
-                evaluationInput.disabled = !this.checked;
-            });
-        }
-
-        if (evaluationHelpLink) {
-            evaluationHelpLink.addEventListener('click', (event) => {
-                event.preventDefault();
-                if (evaluationHelp) {
-                    evaluationHelp.style.display =
-                        evaluationHelp.style.display === 'none'
-                            ? 'block'
-                            : 'none';
-                }
-            });
-        }
 
         if (percentageQuestions) {
             percentageQuestions.addEventListener('keyup', updateValue);

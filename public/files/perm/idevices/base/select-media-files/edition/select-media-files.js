@@ -134,9 +134,6 @@ var $exeDevice = {
             'You must indicate an image, a text or/and an audio for each card'
         );
         msgs.msgPairsMax = _('Maximum number of activities: 30');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
     },
 
     createForm: function () {
@@ -222,24 +219,8 @@ var $exeDevice = {
                                 <input id="slcmEAuthor" type="text" class="form-control" />
                             </div>
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-3 Games-Reportdiv">
-                                <div class="toggle-item mb-0">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="slcmEEvaluation" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="slcmEEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex flex-nowrap align-items-center gap-2">
-                                    <label for="slcmEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="slcmEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </div>
-                                <a href="#slcmEEvaluationHelp" id="slcmEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                </a>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="slcmEEvaluationHelp" class="SLCME-TypeGameHelp exe-block-info d-none">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1195,14 +1176,15 @@ var $exeDevice = {
             ),
             author = $('#slcmEAuthor').val(),
             phrasesGame = $exeDevice.phrasesGame,
-            evaluation = $('#slcmEEvaluation').is(':checked'),
-            evaluationID = $('#slcmEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             modeTable = $('#slcmEModeTable').is(':checked'),
             numberMaxCards = $('#slcmEANumberMaxCard').val(),
             attempsNumber = parseInt($('#slcmEAttemptsNumber').val());
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (showSolution && timeShowSolution.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEProvideTimeSolution);
@@ -1234,8 +1216,8 @@ var $exeDevice = {
             timeShowSolution: timeShowSolution,
             time: time,
             version: $exeDevice.version,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             attempsNumber: attempsNumber,
             numberMaxCards: numberMaxCards,
             modeTable: modeTable,
@@ -1530,23 +1512,7 @@ var $exeDevice = {
             $exeDevice.loadAudio(audio);
         });
 
-        $('#slcmEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#slcmEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#slcmEEvaluationHelpLnk').on('click', function (e) {
-            e.preventDefault();
-            if ($('#slcmEEvaluationHelp').hasClass('d-none')) {
-                $('#slcmEEvaluationHelp')
-                    .removeClass('d-none')
-                    .addClass('d-flex');
-            } else {
-                $('#slcmEEvaluationHelp')
-                    .removeClass('d-flex')
-                    .addClass('d-none');
-            }
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#slcmEShowMoreDefinition').on('click', function (e) {
             e.preventDefault();
@@ -1789,9 +1755,10 @@ var $exeDevice = {
         $('#slcmECustomMessages').prop('checked', game.customMessages);
 
         $exeDevice.updateQuestionsNumber();
-        $('#slcmEEvaluation').prop('checked', game.evaluation);
-        $('#slcmEEvaluationID').val(game.evaluationID);
-        $('#slcmEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#slcmEAttemptsNumber').val(game.attempsNumber);
         $('#slcmEModeTable').prop('checked', game.modeTable);
         $('#slcmEANumberMaxCard').val(game.numberMaxCards);

@@ -136,9 +136,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgMaximeSize = _(
             'The word cannot contain more than fourteen characters or white spaces'
         );
@@ -415,24 +412,8 @@ var $exeDevice = {
                             <span id="sopaENumeroPercentaje">1/1</span>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <div class="toggle-item mb-0">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="sopaEEvaluation" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="sopaEEvaluation">${_('Progress report')}.</label>
-                            </div>
-                            <div class="d-flex flex-nowrap align-items-center gap-2">
-                                <label for="sopaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                <input type="text" class="form-control" id="sopaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                            </div>
-                            <a href="#sopaEEvaluationHelp" id="sopaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                            </a>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
-                        <p id="sopaEEvaluationHelp" class="SPE-TypeGameHelp exe-block-info">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
                     </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
@@ -860,13 +841,14 @@ var $exeDevice = {
             time = parseInt(clear($('#sopaETime').val())),
             diagonals = $('#sopaEDiagonals').is(':checked'),
             reverses = $('#sopaEReverses').is(':checked'),
-            evaluation = $('#sopaEEvaluation').is(':checked'),
-            evaluationID = $('#sopaEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             wordsGame = $exeDevice.wordsGame,
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (feedBack && textFeedBack.trim().length == 0) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
@@ -875,11 +857,6 @@ var $exeDevice = {
 
         if (wordsGame.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
 
@@ -919,8 +896,8 @@ var $exeDevice = {
             diagonals,
             reverses,
             showResolve,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id,
         };
     },
@@ -1249,14 +1226,7 @@ var $exeDevice = {
             this.value = this.value < 0 ? 0 : this.value;
         });
 
-        $('#sopaEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#sopaEEvaluationID').prop('disabled', !marcado);
-        });
-        $('#sopaEEvaluationHelpLnk').click(function () {
-            $('#sopaEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
@@ -1419,9 +1389,10 @@ var $exeDevice = {
         $('#sopaETime').val(game.time);
         $('#sopaEPercentajeFB').val(game.percentajeFB);
         $('#sopaEPercentajeQuestions').val(game.percentajeQuestions);
-        $('#sopaEEvaluation').prop('checked', game.evaluation);
-        $('#sopaEEvaluationID').val(game.evaluationID);
-        $('#sopaEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,

@@ -54,9 +54,6 @@ var $exeDevice = {
             'Your browser is not compatible with this tool.'
         );
         msgs.msgProvideFB = _('Message to display when passing the game');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
     },
 
     refreshTranslations: function () {
@@ -237,25 +234,8 @@ var $exeDevice = {
                                 </span>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="eCQEEvaluation" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQEEvaluation" class="toggle-label">${_('Progress report')}.</label>
-                                </span>
-                                <span class="d-flex align-items-center gap-1 flex-nowrap">
-                                    <label for="eCQEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="eCQEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </span>
-                                <a href="#eCQEEvaluationHelp" id="eCQEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                </a>
-
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                             </div>
-                            <p id="eCQEEvaluationHelp" class="MTOE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset" style="position:relative">
@@ -764,13 +744,14 @@ var $exeDevice = {
             errorRelative = parseFloat(
                 clear($('#eCQPercentajeRelative').val())
             ),
-            evaluation = $('#eCQEEvaluation').is(':checked'),
-            evaluationID = $('#eCQEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         let errorType = 0;
 
         if (!itinerary) return;
+        if (!progressBar) return false;
 
         if ($('#eCQRelative').is(':checked')) {
             errorType = 1;
@@ -809,11 +790,6 @@ var $exeDevice = {
             return false;
         }
 
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
-
         const questions = $exeDevice.questions;
         if (questions.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
@@ -844,8 +820,8 @@ var $exeDevice = {
             errorAbsolute: errorAbsolute,
             errorRelative: errorRelative,
             errorType: errorType,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
         };
     },
@@ -1218,15 +1194,7 @@ var $exeDevice = {
             this.value = this.value < 0 ? 0 : this.value;
         });
 
-        $('#eCQEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#eCQEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#eCQEEvaluationHelpLnk').click(function () {
-            $('#eCQEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#eQCVariablesContainer').on(
             'input',
@@ -1331,9 +1299,10 @@ var $exeDevice = {
         $('#eCQModeBoard').prop('checked', game.modeBoard);
         $('#eCQPercentajeFB').prop('disabled', !game.feedBack);
         $('#eCQHasFeedBack').prop('checked', game.feedBack);
-        $('#eCQEEvaluation').prop('checked', game.evaluation);
-        $('#eCQEEvaluationID').val(game.evaluationID);
-        $('#eCQEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
 
         $exeDevice.setErrorType(game.errorType);
         if (game.feedBack) {

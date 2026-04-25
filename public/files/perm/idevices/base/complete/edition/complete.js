@@ -270,22 +270,8 @@ var $exeDevice = {
                                 <input type="text" class="CMPT-EURLImage form-control" id="cmptAuthorBack"/>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap">
-                                <span class="toggle-item">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptEEvaluation" class="toggle-input" data-target="#cmptEEvaluationIDWrapper" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="cmptEEvaluation" class="toggle-label">${_('Progress report')}.</label>
-                                </span>
-                                <span id="cmptEEvaluationIDWrapper" class="d-flex align-items-center flex-nowrap gap-2">
-                                    <label for="cmptEEvaluationID">${_('Identifier')}:</label> <input type="text" id="cmptEEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                                </span>
-                                <strong class="GameModeLabel"><a href="#cmptEEvaluationHelp" id="cmptEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" /></a></strong>
-
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                             </div>
-                            <p id="cmptEEvaluationHelp" class="CMPT-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -390,9 +376,10 @@ var $exeDevice = {
             'checked',
             true
         );
-        $('#cmptEEvaluation').prop('checked', game.evaluation);
-        $('#cmptEEvaluationID').val(game.evaluationID);
-        $('#cmptEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#cmptBack0').prop('checked', game.hasBack);
         $('#cmptEURLBack').val(game.urlBack);
         $('#cmptAuthorBack').val(game.authorBackImage);
@@ -577,14 +564,15 @@ var $exeDevice = {
             wordsErrors = $('#cmptEWordsErrors').val(),
             wordsLimit = $('#cmptEWordsLimit').is(':checked'),
             attempsNumber = parseInt($('#cmptAttemptsNumber').val(), 10),
-            evaluation = $('#cmptEEvaluation').is(':checked'),
-            evaluationID = $('#cmptEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             hasBack = $('#cmptBack0').is(':checked'),
             urlBack = $('#cmptEURLBack').val().trim(),
             authorBackImage = $('#cmptAuthorBack').val(),
             fontColor = $('#cmptEFontColor').val(),
             id = $exeDevice.getIdeviceID();
         if (!itinerary) return;
+        if (!progressBar) return false;
 
         if (textText.trim().length === 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
@@ -628,8 +616,8 @@ var $exeDevice = {
             percentajeError: percentajeError,
             showSolution: showSolution,
             wordsLimit: wordsLimit,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             hasBack: hasBack,
             urlBack: urlBack,
             authorBackImage: authorBackImage,
@@ -726,15 +714,7 @@ var $exeDevice = {
                 this.value = val;
             });
 
-        $('#cmptEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#cmptEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#cmptEEvaluationHelpLnk').on('click', function () {
-            $('#cmptEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#cmptBack0').on('change', function () {
             if ($(this).is(':checked')) {

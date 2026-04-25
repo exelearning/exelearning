@@ -149,9 +149,6 @@ var $exeDevice = {
             'Your browser is not compatible with this tool.'
         );
         msgs.msgClue = _('Help');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -378,22 +375,7 @@ var $exeDevice = {
                             </span>
                         </div>
                         <div class="Games-Reportdiv  d-flex align-items-center gap-2 flex-nowrap">
-                            <span class="toggle-item mb-0" data-target="desafioEEvaluationIDWrapper" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="desafioEEvaluation" class="toggle-input" aria-label="${_('Progress report')}" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="desafioEEvaluation">${_('Progress report')}.</label>
-                            </span>
-                            <span id="desafioEEvaluationIDWrapper" class="d-inline-flex align-items-center gap-1">
-                                <label for="desafioEEvaluationID" class="mb-0">${_('Identifier')}: </label>
-                                <input type="text" id="desafioEEvaluationID" class="form-control form-control-sm" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </span>
-                            <strong class="GameModeLabel"><a href="#desafioEEvaluationHelp" id="desafioEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
-                        </div>
-                        <div id="desafioEEvaluationHelp" class="desafioTypeGameHelp alert alert-info alert-dismissible fade show d-none" role="alert">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="${_('Hide')}"></button>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </div>
                 </fieldset>
@@ -527,7 +509,6 @@ var $exeDevice = {
             }
         };
         initToggle('#desafioEShowMinimize');
-        initToggle('#desafioEEvaluation');
 
         $('#desafioEUseLives').on('change', function () {
             const marcado = $(this).is(':checked');
@@ -608,16 +589,7 @@ var $exeDevice = {
             }
         });
 
-        $('#desafioEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#desafioEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#desafioEEvaluationHelpLnk').on('click', function (e) {
-            e.preventDefault();
-            $('#desafioEEvaluationHelp').toggleClass('d-none d-block');
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         if (
             window.File &&
@@ -841,18 +813,15 @@ var $exeDevice = {
             typeof game.desafioID === 'undefined'
                 ? $exeDevice.desafioID
                 : game.desafioID;
-        game.evaluation =
-            typeof game.evaluation !== 'undefined' ? game.evaluation : false;
-        game.evaluationID =
-            typeof game.evaluationID !== 'undefined' ? game.evaluationID : '';
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#desafioEShowMinimize').prop('checked', game.showMinimize);
-        $('#desafioEEvaluation').prop('checked', game.evaluation);
-        $('#desafioEEvaluationID').val(game.evaluationID);
-        $('#desafioEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
@@ -1031,9 +1000,11 @@ var $exeDevice = {
         const instructions = $('#eXeGameInstructions').text(),
             instructionsExe = tinyMCE.get('eXeGameInstructions').getContent(),
             showMinimize = $('#desafioEShowMinimize').is(':checked'),
-            evaluation = $('#desafioEEvaluation').is(':checked'),
-            evaluationID = $('#desafioEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
+
+        if (!progressBar) return false;
 
         if ($exeDevice.desafioTitle.length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgTitleDesafio);
@@ -1043,11 +1014,6 @@ var $exeDevice = {
             return false;
         } else if ($exeDevice.desafioDescription.length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgDescriptionDesafio);
-            return false;
-        }
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
 
@@ -1086,8 +1052,8 @@ var $exeDevice = {
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted || 100,
             desafioID: $exeDevice.desafioID,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
         };
     },

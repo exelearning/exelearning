@@ -137,9 +137,6 @@ var $exeDevice = {
         );
         msgs.msgEOneCard = _('Please create at least one card');
         msgs.msgMaxCards = _('Maximum card number: %s.');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning'); //eXe 3.0
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -235,26 +232,7 @@ var $exeDevice = {
                                 </p>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="flipcardsEEvaluation" class="toggle-input" data-target="#flipcardsEEvaluationIDWrapper" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="flipcardsEEvaluation">${_('Progress report')}.</label>
-                                </span>
-                                <span id="flipcardsEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="flipcardsEEvaluationID" >${_('Identifier')}:</label>
-                                    <input type="text" id="flipcardsEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </span>
-                                <strong class="GameModeLabel">
-                                    <a href="#" id="flipcardsEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                    </a>
-                                </strong>
-                            </div>
-                            <div id="flipcardsEEvaluationHelp" class="FLCRDS-TypeGameHelp alert alert-info alert-dismissible fade show d-none" role="alert">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="${_('Hide')}"></button>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -1036,17 +1014,14 @@ var $exeDevice = {
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#flipcardsETime').val()),
-            evaluation = $('#flipcardsEEvaluation').is(':checked'),
-            evaluationID = $('#flipcardsEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             imgCard = $('#flipcardsEURLImgCard').val();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
         return {
             typeGame: 'FlipCards',
             author: author,
@@ -1066,8 +1041,8 @@ var $exeDevice = {
             showSolution: showSolution,
             timeShowSolution: timeShowSolution,
             time: time,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             imgCard: imgCard,
             id: id,
         };
@@ -1456,16 +1431,7 @@ var $exeDevice = {
             }
         );
 
-        $('#flipcardsEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#flipcardsEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#flipcardsEEvaluationHelpLnk').click(function (e) {
-            e.preventDefault();
-            $('#flipcardsEEvaluationHelp').toggleClass('d-none d-block');
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
@@ -1618,9 +1584,10 @@ var $exeDevice = {
         );
         $('#flipcardsETimeDiv').hide();
         $('#flipcardBackDiv').hide();
-        $('#flipcardsEEvaluation').prop('checked', game.evaluation);
-        $('#flipcardsEEvaluationID').val(game.evaluationID);
-        $('#flipcardsEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#flipcardsEURLImgCard').val(game.imgCard);
         $exeDevice.showImageCard(game.imgCard);
         if (game.type == 3) {

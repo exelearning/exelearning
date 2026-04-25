@@ -148,9 +148,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgMaximeSize = _(
             'The word cannot contain more than fourteen characters or white spaces'
         );
@@ -261,26 +258,8 @@ var $exeDevice = {
                             <button id="eXeQuickEditButton" class="btn btn-primary">${_('Show')}</button>
                         </div>
                         <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="ccgmEEvaluation" class="toggle-input" data-target="#ccgmEEvaluationIDWrapper" />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
-                                </span>
-                                <label class="toggle-label" for="ccgmEEvaluation">${_('Progress report')}.</label>
-                            </span>
-                            <span id="ccgmEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap">
-                                <label for="ccgmEEvaluationID" class="mb-0 me-0">${_('Identifier')}: </label>
-                                <input type="text" id="ccgmEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}"/> 
-                            </span>
-                            <strong class="GameModeLabel">
-                                <a href="#ccgmEEvaluationHelp" id="ccgmEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                </a>
-                            </strong>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
-                        <p id="ccgmEEvaluationHelp" class="CCGM-TypeGameHelp exe-block-info" style="display:none;">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
                      </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
@@ -742,8 +721,8 @@ var $exeDevice = {
             tilde = $('#ccgmETilde').is(':checked'),
             feedBack = $('#ccgmEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#ccgmEPercentajeFB').val())),
-            evaluation = $('#ccgmEEvaluation').is(':checked'),
-            evaluationID = $('#ccgmEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             percentajeQuestions = $('#ccgmEPercentajeQuestions').val(),
             authorBackImage = $('#ccgmAuthorBack').val(),
             id = $exeDevice.getIdeviceID(),
@@ -751,6 +730,7 @@ var $exeDevice = {
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (feedBack && textFeedBack.trim().length === 0) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
@@ -758,10 +738,6 @@ var $exeDevice = {
         }
         if (wordsGame.length < 2) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
         for (let i = 0; i < wordsGame.length; i++) {
@@ -811,8 +787,8 @@ var $exeDevice = {
             feedBack,
             percentajeFB,
             version: 2,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             percentajeQuestions,
             difficulty,
             time,
@@ -1136,15 +1112,7 @@ var $exeDevice = {
             }
         });
 
-        $('#ccgmEEvaluation').on('change', function () {
-            const checked = $(this).is(':checked');
-            $('#ccgmEEvaluationID').prop('disabled', !checked);
-        });
-
-        $('#ccgmEEvaluationHelpLnk').on('click', function () {
-            $('#ccgmEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#ccgmEShowMore').on('click', (e) => {
             e.preventDefault();
@@ -1378,10 +1346,11 @@ var $exeDevice = {
         $('#ccgmETilde').prop('checked', game.tilde);
         $('#ccgmEHasFeedBack').prop('checked', game.feedBack);
         $('#ccgmEPercentajeFB').val(game.percentajeFB);
-        $('#ccgmEEvaluation').prop('checked', game.evaluation);
-        $('#ccgmEEvaluationID').val(game.evaluationID);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#ccgmBack0').prop('checked', game.hasBack);
-        $('#ccgmEEvaluationID').prop('disabled', !game.evaluation);
         $('#ccgmAuthorBack').val(game.authorBackImage);
         $('#ccgmEPercentajeQuestions').val(game.percentajeQuestions);
 

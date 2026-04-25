@@ -123,9 +123,6 @@ var $exeDevice = {
         );
         msgs.msgEOneCard = _('Please create at least one card');
         msgs.msgMaxCards = _('Maximum card number: %s.');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -194,24 +191,8 @@ var $exeDevice = {
                             <input id="rclEAuthory" type="text" class="form-control" />
                         </div>
                         <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            <div class="toggle-item">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="rclEEvaluation" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="rclEEvaluation">${_('Progress report')}</label>
-                            </div>
-                            <div class="d-flex align-items-center flex-nowrap gap-2">
-                                <label for="rclEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                <input type="text" class="form-control" id="rclEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </div>
-                            <a href="#rclEEvaluationHelp" id="rclEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                            </a>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
-                        <p id="rclEEvaluationHelp" class="RLC-TypeGameHelp exe-block-info">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
                     </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
@@ -1028,16 +1009,12 @@ var $exeDevice = {
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#rclETime').val()),
-            evaluation = $('#rclEEvaluation').is(':checked'),
-            evaluationID = $('#rclEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
+        if (!progressBar) return false;
 
         if (itinerary.showClue && itinerary.clueGame.length == '') {
             return false;
@@ -1070,8 +1047,8 @@ var $exeDevice = {
             showSolution,
             timeShowSolution,
             time,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id,
         };
     },
@@ -1351,15 +1328,7 @@ var $exeDevice = {
                 .toggleClass('d-flex', type === 2);
         });
 
-        $('#rclEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#rclEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#rclEEvaluationHelpLnk').click(() => {
-            $('#rclEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
@@ -1503,9 +1472,10 @@ var $exeDevice = {
             true
         );
         $('#rclETimeDiv').removeClass('d-flex').addClass('d-none');
-        $('#rclEEvaluation').prop('checked', game.evaluation);
-        $('#rclEEvaluationID').val(game.evaluationID);
-        $('#rclEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         if (game.type == 2) {
             $('#rclETimeDiv').removeClass('d-none').addClass('d-flex');
         }

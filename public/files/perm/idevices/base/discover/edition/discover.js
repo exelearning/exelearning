@@ -155,9 +155,6 @@ var $exeDevice = {
             'You must indicate an image, a text or/and an audio for each card'
         );
         msgs.msgPairsMax = _('Maximum number of pairs: 20');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning'); //eXe 3.0
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -291,25 +288,8 @@ var $exeDevice = {
                                 </p>
                             </div>   
                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="descubreEEvaluation" class="toggle-input" data-target="#descubreEEvaluationIDWrapper" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreEEvaluation">${_('Progress report')}.</label>
-                                </span>
-                                <span id="descubreEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap">
-                                   <label for="descubreEEvaluationID" class="mb-0">${_('Identifier')}:</label><input type="text" id="descubreEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}" />
-                                </span>
-                                <strong class="GameModeLabel">
-                                    <a href="#descubreEEvaluationHelp" id="descubreEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </strong>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="descubreEEvaluationHelp" class="Descubre-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1056,16 +1036,12 @@ var $exeDevice = {
             gameMode = parseInt($('input[name=qtxgamemode]:checked').val()),
             gameLevels = parseInt($('input[name=qtxgamelevels]:checked').val()),
             wordsGame = $exeDevice.wordsGame,
-            evaluation = $('#descubreEEvaluation').is(':checked'),
-            evaluationID = $('#descubreEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return;
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
+        if (!progressBar) return false;
 
         if (wordsGame.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
@@ -1137,8 +1113,8 @@ var $exeDevice = {
             gameLevels: gameLevels,
             showCards: showCards,
             version: $exeDevice.version,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
         };
     },
@@ -1612,15 +1588,7 @@ var $exeDevice = {
             $('#descubreEAuthorAlt-3').slideToggle();
         });
 
-        $('#descubreEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#descubreEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#descubreEEvaluationHelpLnk').click(function () {
-            $('#descubreEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#descubreEURLImgCard').on('change', () =>
             $exeDevice.loadImageCard()
@@ -2077,10 +2045,10 @@ var $exeDevice = {
             $('#descubreEDatosCarta-2').show();
             $('#descubreEDatosCarta-3').show();
         }
-        $('#descubreEEvaluation').prop('checked', game.evaluation);
-        $('#descubreEEvaluationID').val(game.evaluationID);
-        $('#descubreEEvaluationID').prop('disabled', !game.evaluation);
-
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,

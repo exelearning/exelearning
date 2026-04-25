@@ -159,9 +159,6 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -232,24 +229,7 @@ var $exeDevice = {
                                     </div>
                                     <label class="toggle-label" for="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
                                 </div>
-
-                                <div class="toggle-item" idevice-id="roscoEEvaluation">
-                                    <div class="toggle-control">
-                                        <input type="checkbox" id="roscoEEvaluation" class="toggle-input"">
-                                        <span class="toggle-visual"></span>
-                                    </div>
-                                    <label class="toggle-label" for="roscoEEvaluation">${_('Progress report')}.</label>
-                                    <div class="toggle-related">
-                                        <label for="roscoEEvaluationID">${_('Identifier')}:</label>
-                                        <input type="text" class="form-control form-control-sm" id="roscoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                                        <a href="#roscoEEvaluationHelp" id="roscoEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                            <img src="${path}quextIEHelp.png"  width="18" height="18" alt="${_('Help')}"/>
-                                        </a>
-                                    </div>
-                                </div>
-                                <p id="roscoEEvaluationHelp" class="roscoTypeGameHelp exe-block-info">
-                                    ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                                </p>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -335,9 +315,10 @@ var $exeDevice = {
         $('#roscoTimeShowSolution').val(dataGame.timeShowSolution);
         $('#roscoModeBoard').prop('checked', dataGame.modeBoard);
         $('#roscoTimeShowSolution').prop('disabled', !dataGame.showSolution);
-        $('#roscoEEvaluation').prop('checked', dataGame.evaluation);
-        $('#roscoEEvaluationID').val(dataGame.evaluationID);
-        $('#roscoEEvaluationID').prop('disabled', !dataGame.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: dataGame.evaluation,
+            evaluationID: dataGame.evaluationID,
+        });
 
         for (let i = 0; i < dataGame.wordsGame.length; i++) {
             dataGame.wordsGame[i].audio =
@@ -978,11 +959,12 @@ var $exeDevice = {
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#roscoCaseSensitive').is(':checked'),
-            evaluation = $('#roscoEEvaluation').is(':checked'),
-            evaluationID = $('#roscoEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (showSolution && timeShowSolution === 0) {
             eXe.app.alert(msgs.msgProvideTimeSolution);
@@ -1000,11 +982,6 @@ var $exeDevice = {
 
         if (zr) {
             eXe.app.alert(msgs.msgOneWord);
-            return false;
-        }
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert(msgs.msgIDLenght);
             return false;
         }
 
@@ -1128,8 +1105,8 @@ var $exeDevice = {
             caseSensitive: caseSensitive,
             version: 2,
             modeBoard: modeBoard,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
         };
     },
@@ -1657,15 +1634,7 @@ var $exeDevice = {
             $('#eXeGameExportImport').hide();
         }
 
-        $('#roscoEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#roscoEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#roscoEEvaluationHelpLnk').click(function () {
-            $('#roscoEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $(document).on('click', '.toggle-item', function (e) {
             if ($(e.target).is('input, label, a, button')) return;

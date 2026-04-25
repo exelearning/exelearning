@@ -245,6 +245,12 @@ describe('challenge iDevice', () => {
               getTab: vi.fn(() => '<div class="mock-scorm-tab"></div>'),
               init: vi.fn(),
             },
+            progressBar: {
+              getContents: vi.fn(() => '<div class="mock-progress-bar"></div>'),
+              setValues: vi.fn(),
+              getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
+              addEvents: vi.fn(),
+            },
           },
           tabs: { init: vi.fn() },
         },
@@ -262,6 +268,8 @@ describe('challenge iDevice', () => {
 
     it('renders top info as dismissible Bootstrap alert', () => {
       $exeDevice.createForm();
+      const progressBar =
+        global.$exeDevicesEdition.iDevice.gamification.progressBar;
       const topAlert = container.querySelector(
         '#desafioIdeviceForm > .alert.alert-info.alert-dismissible',
       );
@@ -270,36 +278,37 @@ describe('challenge iDevice', () => {
       );
       expect(topAlert).not.toBeNull();
       expect(closeButton).not.toBeNull();
-    });
-
-    it('renders evaluation help as dismissible Bootstrap alert hidden by default', () => {
-      $exeDevice.createForm();
-      const helpAlert = container.querySelector('#desafioEEvaluationHelp');
-      expect(helpAlert).not.toBeNull();
-      expect(helpAlert.classList.contains('alert-dismissible')).toBe(true);
-      expect(helpAlert.classList.contains('d-none')).toBe(true);
+      expect(progressBar.getContents).toHaveBeenCalledWith('/test/');
+      expect(container.querySelector('.mock-progress-bar')).not.toBeNull();
     });
   });
 
   describe('addEvents', () => {
+    let originalExeDevicesEdition;
+
     beforeEach(() => {
-      document.body.innerHTML = `
-        <div id="desafioIdeviceForm"></div>
-        <a id="desafioEEvaluationHelpLnk" href="#desafioEEvaluationHelp"></a>
-        <div id="desafioEEvaluationHelp" class="d-none"></div>
-      `;
-      $exeDevice.challengesGame = [{ title: 'Test', solution: 'Sol', description: '' }];
+      originalExeDevicesEdition = global.$exeDevicesEdition;
+      document.body.innerHTML = '<div id="desafioIdeviceForm"></div>';
+      $exeDevice.challengesGame = [];
+
+      global.$exeDevicesEdition = {
+        iDevice: {
+          gamification: {
+            progressBar: { addEvents: vi.fn() },
+          },
+        },
+      };
     });
 
-    it('toggles evaluation help classes when clicking the help link', () => {
-      $exeDevice.addEvents();
-      $('#desafioEEvaluationHelpLnk').trigger('click');
-      expect($('#desafioEEvaluationHelp').hasClass('d-none')).toBe(false);
-      expect($('#desafioEEvaluationHelp').hasClass('d-block')).toBe(true);
+    afterEach(() => {
+      global.$exeDevicesEdition = originalExeDevicesEdition;
+    });
 
-      $('#desafioEEvaluationHelpLnk').trigger('click');
-      expect($('#desafioEEvaluationHelp').hasClass('d-none')).toBe(true);
-      expect($('#desafioEEvaluationHelp').hasClass('d-block')).toBe(false);
+    it('registers shared progress bar events', () => {
+      $exeDevice.addEvents();
+      expect(
+        global.$exeDevicesEdition.iDevice.gamification.progressBar.addEvents,
+      ).toHaveBeenCalledTimes(1);
     });
   });
 
