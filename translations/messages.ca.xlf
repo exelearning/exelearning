@@ -8789,14 +8789,6 @@
         <source>Apply</source>
         <target>Aplica</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>Completa la taula per definir una guia de puntuació. Defineix la puntuació o el valor de cada descriptor.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>Aprèn com aplicar una rúbrica</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>Rúbrica d'exemple</target>
@@ -14084,10 +14076,6 @@
       <trans-unit id="qicfdve" resname="Import (.elpx…)">
         <source>Import (.elpx…)</source>
         <target>~Importar (.elpx…)</target>
-      </trans-unit>
-      <trans-unit id="ozgw08p" resname="Download as">
-        <source>Download as</source>
-        <target>~Descarregar com</target>
       </trans-unit>
       <trans-unit id="x6bop4n" resname="0 iDevices">
         <source>0 iDevices</source>

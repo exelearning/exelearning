@@ -8793,14 +8793,6 @@
         <source>Apply</source>
         <target>~Anwenden  </target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>~Fülle die Tabelle aus, um eine Bewertungsrichtlinie zu definieren. Lege die Punktzahl oder den Wert für jede Beschreibung fest.  </target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>~Lerne, wie man eine Bewertungsrichtlinie anwendet  </target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>~Beispiel für eine Bewertungsrichtlinie  </target>
@@ -14084,10 +14076,6 @@
       <trans-unit id="b5nu2qa" resname="Import (.elpx…)">
         <source>Import (.elpx…)</source>
         <target>~Importieren (.elpx…)</target>
-      </trans-unit>
-      <trans-unit id="1hinbxp" resname="Download as">
-        <source>Download as</source>
-        <target>~Herunterladen als</target>
       </trans-unit>
       <trans-unit id="0ejnebe" resname="0 iDevices">
         <source>0 iDevices</source>

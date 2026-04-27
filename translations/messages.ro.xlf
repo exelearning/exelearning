@@ -8789,14 +8789,6 @@
         <source>Apply</source>
         <target>Aplică</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>Completează tabelul pentru a defini un ghid de punctaj. Definește scorul sau valoarea fiecărui descriptor.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>Află cum să aplici un barem</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>Exemplu de barem</target>
@@ -14084,10 +14076,6 @@
       <trans-unit id="flvvvyd" resname="Import (.elpx…)">
         <source>Import (.elpx…)</source>
         <target>Importă (.elpx…)</target>
-      </trans-unit>
-      <trans-unit id="8406fy0" resname="Download as">
-        <source>Download as</source>
-        <target>Descarcă ca</target>
       </trans-unit>
       <trans-unit id="bxvsxea" resname="0 iDevices">
         <source>0 iDevices</source>

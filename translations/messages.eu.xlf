@@ -8789,14 +8789,6 @@
         <source>Apply</source>
         <target>Aplikatu</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>Osatu taula puntuazio gida definitzeko. Definitu deskribatzaile bakoitzaren puntuazioa edo balioa.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>Ikasi nola aplikatu behar den errubrika bat</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>Adibide moduko errubrika</target>
@@ -14084,10 +14076,6 @@
       <trans-unit id="h69zf3b" resname="Import (.elpx…)">
         <source>Import (.elpx…)</source>
         <target>Inportatu (.elpx…)</target>
-      </trans-unit>
-      <trans-unit id="qbsekk0" resname="Download as">
-        <source>Download as</source>
-        <target>Deskargatu honela</target>
       </trans-unit>
       <trans-unit id="y28ca74" resname="0 iDevices">
         <source>0 iDevices</source>
