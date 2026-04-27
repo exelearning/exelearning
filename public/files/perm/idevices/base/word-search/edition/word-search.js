@@ -347,7 +347,7 @@ var $exeDevice = {
         <div id="sopaQEIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('Create word search games with additional text, images or sound.'),
-                null,
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/buscar-palabras.html',
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Find the hidden words.'))}

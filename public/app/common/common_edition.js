@@ -111,7 +111,7 @@ var $exeDevicesEdition = {
                 var textHtml = _(text);
                 var linkHtml = "";
                 if (typeof url === "string" && url.length > 0) {
-                    linkHtml = ` <a href="${url}" target="_blank" hreflang="es">${_('Usage Instructions')}</a>`;
+                    linkHtml = ` <a href="${url}" target="_blank" hreflang="es" class="alert-link">${_('Usage Instructions')}</a>`;
                 }
 
                 var closeBtnHtml = ` <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="${_('Hide')}"></button>`;

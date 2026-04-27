@@ -134,7 +134,7 @@ var $exeDevice = {
             <div id="dragdropQIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice versa).'),
-                    null,
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/arrastra.html',
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each item onto the one it matches with'))}

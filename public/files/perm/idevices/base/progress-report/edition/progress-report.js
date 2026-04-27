@@ -586,7 +586,7 @@ var $exeDevice = {
         <div id="reportQEIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('It shows the result of the pupils in the activities linked to their average score.'),
-                null,
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/informe-de-progreso.html',
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 <fieldset class="exe-fieldset">

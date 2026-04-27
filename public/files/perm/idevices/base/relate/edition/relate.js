@@ -135,7 +135,7 @@ var $exeDevice = {
         <div id="relateQIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('Create matching games with images, sounds and enriched texts.'),
-                null,
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/relaciona.html',
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}

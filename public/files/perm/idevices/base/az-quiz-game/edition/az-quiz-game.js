@@ -178,7 +178,7 @@ var $exeDevice = {
             <div id="roscoIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.'),
-                    null,
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rosco.html',
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}

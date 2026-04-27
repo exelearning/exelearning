@@ -113,7 +113,7 @@ var $exeDevice = {
             <div id="candadoIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create activities with a password protected feedback.'),
-                    null,
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/candado.html',
                 )}
                 <div class="exe-form-tab" title="${msgs.msgEGeneralSettings}">
                     <div class="candado-EPanel" id="candadoEPanel">

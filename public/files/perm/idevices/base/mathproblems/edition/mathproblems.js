@@ -144,7 +144,7 @@ var $exeDevice = {
             <div id="gameQEIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create random basic math problems.'),
-                    null,
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/problemas-matematicos.html',
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following math problems.'))}

@@ -194,7 +194,7 @@ var $exeDevice = {
         <div id="clasificaQEIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('Create interactive activities in which players have to classify cards with images, texts and/or sounds.'),
-                null,
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/clasifica.html',
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each card to its container.'))}
