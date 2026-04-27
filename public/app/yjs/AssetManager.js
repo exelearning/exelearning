@@ -42,6 +42,13 @@
 // Logger is defined globally by yjs-loader.js before this file loads
 
 class AssetManager {
+  // IndexedDB fallback constants (#1710) — used when Cache API is unavailable
+  // (non-secure contexts such as HTTP on a non-loopback host). A single shared
+  // DB holds blobs for every project; rows are scoped via the `projectId` index.
+  static BLOB_IDB_NAME = 'exe-assets-idb';
+  static BLOB_IDB_VERSION = 1;
+  static BLOB_IDB_STORE = 'blobs';
+
   /**
    * @param {string} projectId - Project UUID
    */
@@ -204,14 +211,20 @@ class AssetManager {
   }
 
   /**
-   * Store blob in Cache API for persistence across page reloads
+   * Store blob in Cache API for persistence across page reloads.
+   * Falls back to IndexedDB when the Cache API is unavailable — e.g. when
+   * the app is served over HTTP on a non-loopback host, which the browser
+   * treats as a non-secure context and forbids from using Cache API (#1710).
    * @param {string} id - Asset UUID
    * @param {Blob} blob - Asset blob
    * @private
    */
   async _putToCache(id, blob) {
     const cacheStorage = this._getCacheStorage();
-    if (!cacheStorage || this.cachePersistenceDisabled) return; // Cache API not supported
+    if (!cacheStorage || this.cachePersistenceDisabled) {
+      await this._putToIdb(id, blob);
+      return;
+    }
 
     try {
       const cache = await cacheStorage.open(this.getCacheName());
@@ -223,19 +236,23 @@ class AssetManager {
       console.warn('[AssetManager] Cache API write failed:', e.message);
       if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
         this._disableCachePersistence(e);
+        await this._putToIdb(id, blob);
       }
     }
   }
 
   /**
-   * Get blob from Cache API
+   * Get blob from Cache API, or IndexedDB fallback when Cache API is
+   * unavailable (#1710).
    * @param {string} id - Asset UUID
    * @returns {Promise<Blob|null>}
    * @private
    */
   async _getFromCache(id) {
     const cacheStorage = this._getCacheStorage();
-    if (!cacheStorage || this.cachePersistenceDisabled) return null;
+    if (!cacheStorage || this.cachePersistenceDisabled) {
+      return this._getFromIdb(id);
+    }
 
     try {
       const cache = await cacheStorage.open(this.getCacheName());
@@ -247,19 +264,24 @@ class AssetManager {
       console.warn('[AssetManager] Cache API read failed:', e.message);
       if (/unsupported|scheme|Failed to execute/i.test(e.message || '')) {
         this._disableCachePersistence(e);
+        return this._getFromIdb(id);
       }
     }
     return null;
   }
 
   /**
-   * Delete blob from Cache API
+   * Delete blob from Cache API (and from IndexedDB fallback when that is
+   * the active persistence layer).
    * @param {string} id - Asset UUID
    * @private
    */
   async _deleteFromCache(id) {
     const cacheStorage = this._getCacheStorage();
-    if (!cacheStorage || this.cachePersistenceDisabled) return;
+    if (!cacheStorage || this.cachePersistenceDisabled) {
+      await this._deleteFromIdb(id);
+      return;
+    }
 
     try {
       const cache = await cacheStorage.open(this.getCacheName());
@@ -270,12 +292,15 @@ class AssetManager {
   }
 
   /**
-   * Clear entire cache for this project
-   * Called on project close or after successful save
+   * Clear entire cache for this project.
+   * Called on project close or after successful save.
    */
   async clearCache() {
     const cacheStorage = this._getCacheStorage();
-    if (!cacheStorage || this.cachePersistenceDisabled) return;
+    if (!cacheStorage || this.cachePersistenceDisabled) {
+      await this._clearProjectIdb();
+      return;
+    }
 
     try {
       await cacheStorage.delete(this.getCacheName());
@@ -283,6 +308,195 @@ class AssetManager {
     } catch (e) {
       console.warn('[AssetManager] Cache clear failed:', e.message);
     }
+  }
+
+  // ===== IndexedDB fallback (non-secure contexts, #1710) =====
+  //
+  // Cache API is only available in secure contexts. When eXeLearning is
+  // served over HTTP on a non-loopback origin (e.g. http://<LAN-IP>:8082),
+  // the browser refuses to open any cache. Without a persistent fallback,
+  // asset blobs are lost between "put" and "save" — SaveManager ends up
+  // posting an empty multipart upload-session batch, the server replies
+  // "No files provided" (400), and a later /assets/by-client-id/... lookup
+  // returns 404.
+  //
+  // IndexedDB has no secure-context restriction, so we mirror the four
+  // Cache API primitives here. This fallback activates only when Cache API
+  // is unavailable — in secure contexts none of these methods is touched.
+  //
+  // Storage shape:
+  //   DB:    exe-assets-idb
+  //   Store: blobs (keyPath "key" = `${projectId}:${assetId}`)
+  //   Index: projectId (for per-project scans and clear)
+
+  /**
+   * Open (and lazily initialize) the IndexedDB database used as Cache API
+   * fallback. Memoized per AssetManager instance. Returns null if IndexedDB
+   * is itself unavailable (very old browser, privacy mode rejecting IDB).
+   * @returns {Promise<IDBDatabase|null>}
+   * @private
+   */
+  _openBlobIdb() {
+    if (this._blobIdbPromise) return this._blobIdbPromise;
+
+    const idb = (typeof globalThis !== 'undefined' && globalThis.indexedDB)
+      || (typeof window !== 'undefined' && window.indexedDB)
+      || null;
+    if (!idb) {
+      this._blobIdbPromise = Promise.resolve(null);
+      return this._blobIdbPromise;
+    }
+
+    this._blobIdbPromise = new Promise((resolve) => {
+      let request;
+      try {
+        request = idb.open(AssetManager.BLOB_IDB_NAME, AssetManager.BLOB_IDB_VERSION);
+      } catch (e) {
+        console.warn('[AssetManager] IndexedDB open threw:', e.message);
+        resolve(null);
+        return;
+      }
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(AssetManager.BLOB_IDB_STORE)) {
+          const store = db.createObjectStore(AssetManager.BLOB_IDB_STORE, { keyPath: 'key' });
+          store.createIndex('projectId', 'projectId', { unique: false });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => {
+        console.warn('[AssetManager] IndexedDB open failed:', request.error?.message || 'unknown');
+        resolve(null);
+      };
+    });
+    return this._blobIdbPromise;
+  }
+
+  /**
+   * Build compound primary key. Per-project prefix keeps clearProjectIdb
+   * scoped without walking the entire store.
+   * @param {string} assetId
+   * @returns {string}
+   * @private
+   */
+  _buildIdbKey(assetId) {
+    return `${this.projectId}:${assetId}`;
+  }
+
+  /**
+   * Store blob in IndexedDB fallback.
+   * @param {string} id - Asset UUID
+   * @param {Blob} blob - Asset blob
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _putToIdb(id, blob) {
+    const db = await this._openBlobIdb();
+    if (!db) return;
+    await new Promise((resolve) => {
+      try {
+        const tx = db.transaction([AssetManager.BLOB_IDB_STORE], 'readwrite');
+        const store = tx.objectStore(AssetManager.BLOB_IDB_STORE);
+        const request = store.put({
+          key: this._buildIdbKey(id),
+          projectId: this.projectId,
+          assetId: id,
+          blob,
+        });
+        request.onsuccess = () => resolve();
+        request.onerror = () => {
+          console.warn('[AssetManager] IndexedDB put failed:', request.error?.message || 'unknown');
+          resolve();
+        };
+      } catch (e) {
+        console.warn('[AssetManager] IndexedDB put threw:', e.message);
+        resolve();
+      }
+    });
+  }
+
+  /**
+   * Retrieve blob from IndexedDB fallback.
+   * @param {string} id - Asset UUID
+   * @returns {Promise<Blob|null>}
+   * @private
+   */
+  async _getFromIdb(id) {
+    const db = await this._openBlobIdb();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction([AssetManager.BLOB_IDB_STORE], 'readonly');
+        const store = tx.objectStore(AssetManager.BLOB_IDB_STORE);
+        const request = store.get(this._buildIdbKey(id));
+        request.onsuccess = () => {
+          const entry = request.result;
+          resolve(entry?.blob instanceof Blob ? entry.blob : null);
+        };
+        request.onerror = () => {
+          console.warn('[AssetManager] IndexedDB get failed:', request.error?.message || 'unknown');
+          resolve(null);
+        };
+      } catch (e) {
+        console.warn('[AssetManager] IndexedDB get threw:', e.message);
+        resolve(null);
+      }
+    });
+  }
+
+  /**
+   * Delete a single blob from IndexedDB fallback.
+   * @param {string} id - Asset UUID
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _deleteFromIdb(id) {
+    const db = await this._openBlobIdb();
+    if (!db) return;
+    await new Promise((resolve) => {
+      try {
+        const tx = db.transaction([AssetManager.BLOB_IDB_STORE], 'readwrite');
+        const store = tx.objectStore(AssetManager.BLOB_IDB_STORE);
+        const request = store.delete(this._buildIdbKey(id));
+        request.onsuccess = () => resolve();
+        request.onerror = () => resolve(); // ignore
+      } catch (e) {
+        resolve();
+      }
+    });
+  }
+
+  /**
+   * Delete every blob belonging to this project from IndexedDB fallback.
+   * Mirrors Cache API `clearCache()` — scoped to the current project only,
+   * never touches entries for other projects stored in the shared DB.
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _clearProjectIdb() {
+    const db = await this._openBlobIdb();
+    if (!db) return;
+    await new Promise((resolve) => {
+      try {
+        const tx = db.transaction([AssetManager.BLOB_IDB_STORE], 'readwrite');
+        const store = tx.objectStore(AssetManager.BLOB_IDB_STORE);
+        const index = store.index('projectId');
+        const cursorReq = index.openCursor(IDBKeyRange.only(this.projectId));
+        cursorReq.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            store.delete(cursor.primaryKey);
+            cursor.continue();
+          } else {
+            resolve();
+          }
+        };
+        cursorReq.onerror = () => resolve();
+      } catch (e) {
+        resolve();
+      }
+    });
   }
 
   /**

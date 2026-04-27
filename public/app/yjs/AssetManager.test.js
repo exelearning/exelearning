@@ -64,18 +64,28 @@ describe('AssetManager', () => {
     // Create mock IndexedDB store (now only stores blobs)
     const storedBlobs = new Map();
 
+    // The mock below is vestigial — AssetManager uses in-memory + Cache API now.
+    // Requests must still fire onsuccess asynchronously so the IndexedDB fallback
+    // introduced in #1710 resolves cleanly when tests simulate a missing Cache API
+    // (via `delete global.caches`). Without `queueMicrotask`, fallback awaits hang.
+    const fireRequestAsync = (request) => {
+      queueMicrotask(() => {
+        if (request.onsuccess) request.onsuccess({ target: request });
+      });
+      return request;
+    };
     mockStore = {
       put: mock((blobRecord) => {
         storedBlobs.set(blobRecord.id, blobRecord);
-        return { onsuccess: null, onerror: null };
+        return fireRequestAsync({ result: undefined, error: null, onsuccess: null, onerror: null });
       }),
       get: mock((id) => {
         const result = storedBlobs.get(id) || null;
-        return { result, onsuccess: null, onerror: null };
+        return fireRequestAsync({ result, error: null, onsuccess: null, onerror: null });
       }),
       delete: mock((id) => {
         storedBlobs.delete(id);
-        return { onsuccess: null, onerror: null };
+        return fireRequestAsync({ result: undefined, error: null, onsuccess: null, onerror: null });
       }),
       index: mock(() => ({
         getAll: mock((key) => {
@@ -85,7 +95,11 @@ describe('AssetManager', () => {
               results.push(record);
             }
           }
-          return { result: results, onsuccess: null, onerror: null };
+          return fireRequestAsync({ result: results, error: null, onsuccess: null, onerror: null });
+        }),
+        openCursor: mock(() => {
+          // Empty cursor result — vestigial mock has no real data to iterate.
+          return fireRequestAsync({ result: null, error: null, onsuccess: null, onerror: null });
         }),
       })),
       createIndex: mock(() => undefined),
@@ -116,6 +130,12 @@ describe('AssetManager', () => {
         }, 0);
         return request;
       }),
+    };
+
+    // Required by the IndexedDB fallback introduced in #1710 — harmless here
+    // because the vestigial mock's index.openCursor returns an empty cursor.
+    global.IDBKeyRange = {
+      only: (value) => ({ _type: 'only', value }),
     };
 
     global.URL = {
@@ -197,6 +217,7 @@ describe('AssetManager', () => {
     mockObjectURLs = null;
 
     delete global.indexedDB;
+    delete global.IDBKeyRange;
     delete global.URL;
     delete global.crypto;
     delete global.fetch;
@@ -14462,5 +14483,317 @@ describe('setServerConfig', () => {
 
     expect(am._serverApiBaseUrl).toBe('http://api.example.com');
     expect(am._serverToken).toBe('my-token');
+  });
+});
+
+// ===========================================================================
+// IndexedDB fallback — issue #1710
+// ===========================================================================
+// Context: when eXeLearning is served over HTTP on a non-loopback host
+// (e.g. http://192.168.x.x:8082), the Cache API is unavailable because the
+// origin is not a secure context. Without a persistent-storage fallback,
+// asset blobs are lost between the moment they are added and the moment a
+// save is triggered, so SaveManager ends up posting an empty multipart
+// upload-session batch, the server replies "No files provided" (400), and
+// a later GET /assets/by-client-id/... returns 404.
+//
+// These tests pin down the contract the fix must satisfy: when the Cache API
+// is unavailable, AssetManager falls back to IndexedDB, blobs survive
+// "page reload" (a fresh AssetManager instance for the same projectId),
+// and behavior in secure contexts is left untouched.
+describe('AssetManager IndexedDB fallback when Cache API is unavailable', () => {
+  let originalIndexedDB;
+  let originalIDBKeyRange;
+  let originalCaches;
+  let originalLogger;
+  let fakeIdb;
+
+  /**
+   * Minimal in-memory IndexedDB fake sufficient for AssetManager's needs:
+   * - indexedDB.open(name, version) with async onupgradeneeded / onsuccess
+   * - db.transaction([store], mode).objectStore(store)
+   * - store.put / get / delete / createIndex
+   * - store.index(name).openCursor(IDBKeyRange.only(value)) with cursor.continue()
+   *
+   * Kept tiny on purpose — we only need to verify AssetManager's fallback
+   * contract, not reimplement the full IndexedDB spec.
+   */
+  const installFakeIndexedDB = () => {
+    const dbs = new Map(); // dbName -> { version, stores: Map<storeName, store> }
+
+    const fireAsync = (req, fn) => {
+      queueMicrotask(() => {
+        try {
+          fn();
+        } catch (err) {
+          req.error = err;
+          if (req.onerror) req.onerror({ target: req });
+        }
+      });
+    };
+
+    const buildStore = (storeState) => ({
+      put(entry) {
+        const req = { result: undefined, error: null, onsuccess: null, onerror: null };
+        fireAsync(req, () => {
+          const key = entry[storeState.keyPath];
+          storeState.entries.set(key, entry);
+          if (req.onsuccess) req.onsuccess({ target: req });
+        });
+        return req;
+      },
+      get(key) {
+        const req = { result: undefined, error: null, onsuccess: null, onerror: null };
+        fireAsync(req, () => {
+          req.result = storeState.entries.get(key);
+          if (req.onsuccess) req.onsuccess({ target: req });
+        });
+        return req;
+      },
+      delete(key) {
+        const req = { result: undefined, error: null, onsuccess: null, onerror: null };
+        fireAsync(req, () => {
+          storeState.entries.delete(key);
+          if (req.onsuccess) req.onsuccess({ target: req });
+        });
+        return req;
+      },
+      createIndex(indexName, keyPath) {
+        storeState.indexes.set(indexName, keyPath);
+        return { name: indexName };
+      },
+      index(indexName) {
+        const indexKeyPath = storeState.indexes.get(indexName);
+        return {
+          openCursor(range) {
+            const req = { result: null, error: null, onsuccess: null, onerror: null };
+            const matched = [];
+            for (const [primaryKey, value] of storeState.entries) {
+              if (range && value[indexKeyPath] === range.value) {
+                matched.push([primaryKey, value]);
+              }
+            }
+            let idx = 0;
+            const advance = () => {
+              if (idx >= matched.length) {
+                req.result = null;
+                if (req.onsuccess) req.onsuccess({ target: req });
+                return;
+              }
+              const [primaryKey, value] = matched[idx++];
+              req.result = {
+                primaryKey,
+                value,
+                continue: () => fireAsync(req, advance),
+              };
+              if (req.onsuccess) req.onsuccess({ target: req });
+            };
+            fireAsync(req, advance);
+            return req;
+          },
+        };
+      },
+    });
+
+    const buildDb = (dbState) => ({
+      objectStoreNames: {
+        contains: (name) => dbState.stores.has(name),
+      },
+      createObjectStore(name, options = {}) {
+        const storeState = {
+          keyPath: options.keyPath,
+          entries: new Map(),
+          indexes: new Map(),
+        };
+        dbState.stores.set(name, storeState);
+        return buildStore(storeState);
+      },
+      transaction(storeNames /*, mode */) {
+        const tx = {
+          objectStore: (name) => buildStore(dbState.stores.get(name)),
+          oncomplete: null,
+          onerror: null,
+        };
+        return tx;
+      },
+      close() {},
+    });
+
+    global.IDBKeyRange = {
+      only: (value) => ({ _type: 'only', value }),
+    };
+
+    global.indexedDB = {
+      open(dbName, version = 1) {
+        const request = {
+          result: null,
+          error: null,
+          onsuccess: null,
+          onerror: null,
+          onupgradeneeded: null,
+        };
+        queueMicrotask(() => {
+          if (!dbs.has(dbName)) {
+            dbs.set(dbName, { version: 0, stores: new Map() });
+          }
+          const dbState = dbs.get(dbName);
+          const needsUpgrade = version > dbState.version;
+          const db = buildDb(dbState);
+          request.result = db;
+          if (needsUpgrade) {
+            dbState.version = version;
+            if (request.onupgradeneeded) {
+              request.onupgradeneeded({ target: { result: db } });
+            }
+          }
+          if (request.onsuccess) request.onsuccess({ target: request });
+        });
+        return request;
+      },
+    };
+
+    return {
+      // For test inspection
+      entriesForProject(projectId) {
+        const results = [];
+        for (const dbState of dbs.values()) {
+          for (const storeState of dbState.stores.values()) {
+            for (const entry of storeState.entries.values()) {
+              if (entry.projectId === projectId) results.push(entry);
+            }
+          }
+        }
+        return results;
+      },
+      reset() {
+        dbs.clear();
+      },
+    };
+  };
+
+  const installFailingCacheApi = () => {
+    global.caches = {
+      open: mock(async () => {
+        throw new Error(
+          "Failed to execute 'open' on 'CacheStorage': Request scheme 'http' is unsupported"
+        );
+      }),
+      delete: mock(async () => true),
+    };
+  };
+
+  const installWorkingCacheApi = () => {
+    const storage = new Map();
+    global.caches = {
+      open: mock(async (name) => {
+        if (!storage.has(name)) storage.set(name, new Map());
+        const cache = storage.get(name);
+        return {
+          put: async (url, response) => { cache.set(url, response); },
+          match: async (url) => cache.get(url),
+          delete: async (url) => cache.delete(url),
+        };
+      }),
+      delete: mock(async (name) => storage.delete(name)),
+      _storage: storage,
+    };
+  };
+
+  beforeEach(() => {
+    originalIndexedDB = global.indexedDB;
+    originalIDBKeyRange = global.IDBKeyRange;
+    originalCaches = global.caches;
+    originalLogger = global.Logger;
+    global.Logger = { log: () => {} };
+    fakeIdb = installFakeIndexedDB();
+    spyOn(console, 'log').mockImplementation(() => {});
+    spyOn(console, 'warn').mockImplementation(() => {});
+    spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    global.indexedDB = originalIndexedDB;
+    global.IDBKeyRange = originalIDBKeyRange;
+    global.caches = originalCaches;
+    global.Logger = originalLogger;
+    fakeIdb = null;
+  });
+
+  it('persists blob to IndexedDB when Cache API throws "unsupported scheme"', async () => {
+    installFailingCacheApi();
+    const mgr = new AssetManager('project-alpha');
+
+    const blob = new Blob(['hello-fallback'], { type: 'image/png' });
+    await mgr._putToCache('asset-1', blob);
+
+    // Cache API failed with unsupported-scheme → permanently disabled
+    expect(mgr.cachePersistenceDisabled).toBe(true);
+
+    // Blob should have been routed to IndexedDB instead
+    const idbEntries = fakeIdb.entriesForProject('project-alpha');
+    expect(idbEntries.length).toBe(1);
+    expect(idbEntries[0].blob).toBeInstanceOf(Blob);
+  });
+
+  it('getBlob retrieves blob from IndexedDB after "page reload" (new AssetManager instance)', async () => {
+    installFailingCacheApi();
+
+    // Session 1: user adds an asset while on http://<LAN-IP> (non-secure)
+    const session1 = new AssetManager('project-alpha');
+    const originalBlob = new Blob(['persisted-across-reload'], { type: 'image/png' });
+    await session1._putToCache('asset-77', originalBlob);
+
+    // Session 2: simulate a fresh load — new AssetManager instance,
+    // empty in-memory blobCache. The fix must surface the blob via IDB.
+    const session2 = new AssetManager('project-alpha');
+    const retrieved = await session2.getBlob('asset-77');
+
+    expect(retrieved).toBeInstanceOf(Blob);
+    expect(await retrieved.text()).toBe('persisted-across-reload');
+  });
+
+  it('_deleteFromCache also removes the blob from IndexedDB', async () => {
+    installFailingCacheApi();
+    const mgr = new AssetManager('project-beta');
+
+    const blob = new Blob(['to-be-deleted'], { type: 'text/plain' });
+    await mgr._putToCache('asset-del', blob);
+    expect(fakeIdb.entriesForProject('project-beta').length).toBe(1);
+
+    await mgr._deleteFromCache('asset-del');
+
+    expect(fakeIdb.entriesForProject('project-beta').length).toBe(0);
+    expect(await mgr._getFromCache('asset-del')).toBeNull();
+  });
+
+  it('clearCache removes only entries belonging to the current projectId', async () => {
+    installFailingCacheApi();
+    const mgrA = new AssetManager('project-a');
+    const mgrB = new AssetManager('project-b');
+
+    await mgrA._putToCache('asset-aa', new Blob(['A']));
+    await mgrB._putToCache('asset-bb', new Blob(['B']));
+
+    expect(fakeIdb.entriesForProject('project-a').length).toBe(1);
+    expect(fakeIdb.entriesForProject('project-b').length).toBe(1);
+
+    await mgrA.clearCache();
+
+    expect(fakeIdb.entriesForProject('project-a').length).toBe(0);
+    expect(fakeIdb.entriesForProject('project-b').length).toBe(1);
+  });
+
+  it('does NOT touch IndexedDB when Cache API is working (secure context)', async () => {
+    installWorkingCacheApi();
+    const mgr = new AssetManager('project-secure');
+
+    const blob = new Blob(['secure-path'], { type: 'image/png' });
+    await mgr._putToCache('asset-secure', blob);
+
+    // The secure-context code path must be unchanged: Cache API still takes
+    // the write, cache persistence stays enabled, and nothing leaks into IDB.
+    expect(global.caches.open).toHaveBeenCalledWith('exe-assets-project-secure');
+    expect(mgr.cachePersistenceDisabled).toBe(false);
+    expect(fakeIdb.entriesForProject('project-secure')).toEqual([]);
   });
 });
