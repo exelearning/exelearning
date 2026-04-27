@@ -12107,7 +12107,7 @@
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
         <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
-        <target></target>
+        <target>~Galdetegia osatu aurretik jardueraren edukien %s% berrikusi behar duzu.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
