@@ -54,7 +54,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -196,7 +196,7 @@ var $exeDevice = {
                                     <label for="cmptEEstrictCheck" class="toggle-label">${_('Allow errors in typed words')}.</label>
                                 </span>
                                 <span id="cmptEPercentajeErrorsDiv" class="CMPT-Hide  align-items-center gap-2 flex-nowrap">
-                                    <label for="cmptEPercentajeError">${_('Incorrect letters allowed (&percnt;)')}:</label><input type="number" name="cmptEPercentajeError" id="cmptEPercentajeError" value="20" min="0" max="100" step="5" class="form-control" />
+                                    <label for="cmptEPercentajeError">${_('Incorrect letters allowed (%)')}:</label><input type="number" name="cmptEPercentajeError" id="cmptEPercentajeError" value="20" min="0" max="100" step="5" class="form-control" />
                                 </span>
                             </div>
                             <div id="cmptECaseSensitiveDiv" class="mb-3">
@@ -235,7 +235,7 @@ var $exeDevice = {
                                     <label for="cmptEHasFeedBack" class="toggle-label">${_('Feedback')}.</label>
                                 </span>
                                 <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <input type="number" name="cmptEPercentajeFB" id="cmptEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" /><label for="cmptEPercentajeFB">${_('&percnt; right to see the feedback')}.</label>
+                                    <input type="number" name="cmptEPercentajeFB" id="cmptEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" /><label for="cmptEPercentajeFB">${_('% right to see the feedback')}.</label>
                                 </span>
                             </div>
                             <div id="cmptEFeedbackP" class="CMPT-EFeedbackP mb-3">

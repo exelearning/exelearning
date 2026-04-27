@@ -5513,9 +5513,9 @@
         <source>Cool!</source>
         <target>Primeran!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target><![CDATA[Gutxienez %s&percnt; erantzun zuzena eman behar duzu informazioa lortzeko. Saiatu berriro.]]></target>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
+        <target>Gutxienez %s% erantzun zuzena eman behar duzu informazioa lortzeko. Saiatu berriro.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5633,9 +5633,9 @@
         <source>Percent</source>
         <target>Ehunekoa</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[&percnt; prest iruzkinak ikusteko]]></target>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
+        <target>% prest iruzkinak ikusteko</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5753,9 +5753,9 @@
         <source>Allow errors in typed words</source>
         <target>Onartu erroreak sartutako hitzetan</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target><![CDATA[Letra okerrak onartzen dira (&percnt;)]]></target>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
+        <target>Letra okerrak onartzen dira (%)</target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -8789,14 +8789,6 @@
         <source>Apply</source>
         <target>Aplikatu</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>Osatu taula puntuazio gida definitzeko. Definitu deskribatzaile bakoitzaren puntuazioa edo balioa.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>Ikasi nola aplikatu behar den errubrika bat</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>Adibide moduko errubrika</target>
@@ -9473,8 +9465,8 @@
         <source>Representation</source>
         <target>Ulermena</target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
-        <source>Action &amp; Expression</source>
+      <trans-unit id="o84Jjwl" resname="Action & Expression">
+        <source>Action & Expression</source>
         <target><![CDATA[Ekintza & Adierazpena]]></target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
@@ -12113,9 +12105,9 @@
         <source>Line highlight</source>
         <target>Lerroa nabarmentzea</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target></target>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
+        <target>~Galdetegia osatu aurretik jardueraren edukien %s% berrikusi behar duzu.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
@@ -12318,7 +12310,7 @@
         <target>Orrialdea ez da aurkitu</target>
       </trans-unit>
       <trans-unit id="22ovvv5" resname="Server error">
-        <source>Server error</source>d
+        <source>Server error</source>
         <target>Errorea zerbitzarian</target>
       </trans-unit>
       <trans-unit id="mwsy5zj" resname="Sorry, but the page cannot be displayed.">
@@ -12511,7 +12503,7 @@
       </trans-unit>
       <trans-unit id="vpiyoit" resname="Original">
         <source>Original</source>
-        <target>Jatorrikoa</target>Estimated
+        <target>Jatorrikoa</target>
       </trans-unit>
       <trans-unit id="z3su8em" resname="Estimated">
         <source>Estimated</source>
@@ -14085,10 +14077,6 @@
         <source>Import (.elpx…)</source>
         <target>Inportatu (.elpx…)</target>
       </trans-unit>
-      <trans-unit id="qbsekk0" resname="Download as">
-        <source>Download as</source>
-        <target>Deskargatu honela</target>
-      </trans-unit>
       <trans-unit id="y28ca74" resname="0 iDevices">
         <source>0 iDevices</source>
         <target>0 iDevice</target>
@@ -14236,6 +14224,18 @@
       <trans-unit id="ub82ubi" resname="Imported rubric">
         <source>Imported rubric</source>
         <target>Inportatutako errubrika</target>
+      </trans-unit>
+      <trans-unit id="qlacqik" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Mesedez, osatu errubrika zure puntuazioa gorde aurretik.</target>
+      </trans-unit>
+      <trans-unit id="vi46ol5" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~Zure puntuazioa aldaketa bakoitzaren ondoren gordeko da. Behin bakarrik osa dezakezu.</target>
+      </trans-unit>
+      <trans-unit id="x1iyh3o" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~Zure puntuazioa automatikoki gordeko da aldaketa bakoitzaren ondoren.</target>
       </trans-unit>
     </body>
   </file>

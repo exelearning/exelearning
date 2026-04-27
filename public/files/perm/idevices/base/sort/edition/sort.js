@@ -71,7 +71,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'

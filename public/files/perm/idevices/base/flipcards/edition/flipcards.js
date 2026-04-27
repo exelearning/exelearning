@@ -104,7 +104,7 @@ var $exeDevice = {
             msgTrue: c_('True'),
             msgFalse: c_('False'),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             mgsAllQuestions: c_('Questions completed!'),
             msgTrue1: c_("Right. That's the card."),

@@ -5513,9 +5513,9 @@
         <source>Cool!</source>
         <target>~Bone!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target><![CDATA[__You need at least %s&amp;percnt;  of correct answers to get the information. Please try again.]]></target>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
+        <target>~Vi bezonas almenaŭ %s% da ĝustaj respondoj por ricevi la informon. Bonvolu provi denove.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5633,9 +5633,9 @@
         <source>Percent</source>
         <target>~Procento</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[__&percnt; right to see the feedback]]></target>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
+        <target>~% ĝuste por vidi la retrosciigon</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5753,9 +5753,9 @@
         <source>Allow errors in typed words</source>
         <target>~Permesi erarojn en tajpitaj vortoj</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target><![CDATA[__Incorrect letters allowed (&percnt;)]]></target>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
+        <target>~Permesitaj malĝustaj literoj (%)</target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -8789,14 +8789,6 @@
         <source>Apply</source>
         <target>~Apliki</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>~Plenigu la tabelon por difini taksogvidilon. Difinu la poentaron aŭ valoron de ĉiu priskribo.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>~Lerni kiel apliki rubricon</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>~Ekzempla rubrico</target>
@@ -9473,9 +9465,9 @@
         <source>Representation</source>
         <target>~Reprezentado</target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
-        <source>Action &amp; Expression</source>
-        <target><![CDATA[__Action & Expression]]></target>
+      <trans-unit id="o84Jjwl" resname="Action & Expression">
+        <source>Action & Expression</source>
+        <target>~Ago &amp; Esprimo</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>
@@ -12113,9 +12105,9 @@
         <source>Line highlight</source>
         <target>~Linia emfazado</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target><![CDATA[__You must review %s&percnt; of the contents of the activity before completing the questionnaire.]]></target>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
+        <target>~Vi devas trarigardi %s% de la enhavoj de la agado antaŭ ol kompletigi la demandaron.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
@@ -14085,10 +14077,6 @@
         <source>Import (.elpx…)</source>
         <target>~Importi (.elpx…)</target>
       </trans-unit>
-      <trans-unit id="5qzib1r" resname="Download as">
-        <source>Download as</source>
-        <target>~Elŝuti kiel</target>
-      </trans-unit>
       <trans-unit id="5eaeiph" resname="0 iDevices">
         <source>0 iDevices</source>
         <target>~0 iDevices</target>
@@ -14236,6 +14224,18 @@
       <trans-unit id="5relnqj" resname="Imported rubric">
         <source>Imported rubric</source>
         <target>~Importita rubrik</target>
+      </trans-unit>
+      <trans-unit id="tar0eks" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Bonvolu kompletigi la rubron antaŭ konservi vian poentaron.</target>
+      </trans-unit>
+      <trans-unit id="lly5w0h" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~Via poentaro estos konservita post ĉiu ŝanĝo. Vi povas kompletigi nur unufoje.</target>
+      </trans-unit>
+      <trans-unit id="21qeoch" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~Via poentaro estos aŭtomate konservita post ĉiu ŝanĝo.</target>
       </trans-unit>
     </body>
   </file>
