@@ -27,13 +27,22 @@
 
     <!-- Static mode overrides -->
     <style>
-        /* Show exe-online menu items in static mode (they contain Open and Recent Projects) */
-        li.exe-online { display: list-item !important; }
-        /* Hide exe-online items that don't make sense in static mode (Save, Share, Logout) */
-        li.exe-online:has(#navbar-button-save),
-        li.exe-online:has(#navbar-button-share),
-        li.exe-online:has(#mobile-navbar-button-save),
-        li.exe-online:has(#head-bottom-logout-button) { display: none !important; }
+        /* Base CSS (main.scss) already hides `.exe-online` under `body[installation-type="static"]`.
+           The static bundler renders the offline block (`{% if config.isOfflineInstallation %}`) too,
+           so the File menu naturally shows only the offline variants. We only need to fix:
+            1. Mobile user menu: still expose the "Download as..." section (header + divider +
+               Website export). The .elpx download is replaced by `Guardar` (File System API).
+            2. Desktop: hide the orphan divider between the hidden online group and the offline
+               block. */
+        li.d-md-none.exe-online:has(#mobile-navbar-button-export-web),
+        li.d-md-none.exe-online:has(h6.dropdown-header),
+        li.dropdown-divider.d-md-none.exe-online { display: list-item !important; }
+        @media (min-width: 768px) {
+            li.d-md-none.exe-online:has(#mobile-navbar-button-export-web),
+            li.d-md-none.exe-online:has(h6.dropdown-header),
+            li.dropdown-divider.d-md-none.exe-online { display: none !important; }
+        }
+        li.dropdown-divider:has(+ li.exe-online:has(#navbar-button-share)) { display: none !important; }
         /* Hide Exit button (for Electron only) and its divider in static mode */
         li.exe-electron { display: none !important; }
         li.dropdown-divider.exe-online.exe-electron { display: none !important; }
