@@ -994,7 +994,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     private: trans('Private', {}, locale),
                     public: trans('Public', {}, locale),
                     preferences: trans('Preferences', {}, locale),
-                    admin_panel: trans('Admin panel', {}, locale),
+                    admin_panel: 'Admin', // Admin panel is English-only; replace 'en' with `locale` to re-enable translations
                     logout: trans('Logout', {}, locale),
                     toggle_panels: trans('Toggle panels', {}, locale),
                     structure_panel: trans('Structure panel', {}, locale),
