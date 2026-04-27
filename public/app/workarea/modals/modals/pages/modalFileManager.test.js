@@ -113,6 +113,19 @@ describe('ModalFilemanager', () => {
               <li><a class="dropdown-item media-library-fullsize-btn" href="#">View full size</a></li>
             </ul>
           </div>
+          <div class="dropdown media-library-mobile-actions">
+            <button class="dropdown-toggle media-library-mobile-actions-toggle" disabled>Actions</button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-mobile-action="delete">Delete</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="rename">Rename</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="duplicate">Duplicate</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="move">Move</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="download">Download</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="extract-zip">Extract ZIP</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="copyurl">Copy URL</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="fullsize">Full size</a></li>
+            </ul>
+          </div>
         </div>
         <button class="media-library-insert-btn">Insert</button>
       </div>
@@ -4134,6 +4147,105 @@ describe('ModalFilemanager', () => {
       // Should have root + other = 2 items (parent and parent/child excluded)
       const items = modal.folderPickerList.querySelectorAll('.folder-picker-item');
       expect(items.length).toBe(2);
+    });
+  });
+
+  describe('mobile actions dropdown', () => {
+    const mobileItem = (action) =>
+      modal.mobileActionsWrapper.querySelector(`[data-mobile-action="${action}"]`);
+
+    it('wires up all mobile action targets', () => {
+      expect(modal.mobileActionsWrapper).toBeTruthy();
+      expect(modal.mobileActionsToggle).toBeTruthy();
+      expect(modal.mobileActionTargets.delete).toBe(modal.deleteBtn);
+      expect(modal.mobileActionTargets.rename).toBe(modal.renameBtn);
+      expect(modal.mobileActionTargets.duplicate).toBe(modal.duplicateBtn);
+      expect(modal.mobileActionTargets.move).toBe(modal.moveBtn);
+      expect(modal.mobileActionTargets.download).toBe(modal.downloadBtn);
+      expect(modal.mobileActionTargets['extract-zip']).toBe(modal.extractBtn);
+      expect(modal.mobileActionTargets.copyurl).toBe(modal.dropdownCopyUrlBtn);
+      expect(modal.mobileActionTargets.fullsize).toBe(modal.fullSizeBtn);
+    });
+
+    it('forwards a click to the matching desktop button when enabled', () => {
+      modal.deleteBtn.disabled = false;
+      const clickSpy = vi.spyOn(modal.deleteBtn, 'click');
+      mobileItem('delete').click();
+      expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('does not forward a click when the target is disabled', () => {
+      modal.renameBtn.disabled = true;
+      const clickSpy = vi.spyOn(modal.renameBtn, 'click');
+      mobileItem('rename').click();
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not forward a click to a hidden extract-zip target', () => {
+      modal.extractBtn.classList.add('d-none');
+      modal.extractBtn.disabled = false;
+      // syncMobileActions propagates the hidden state onto the mobile item
+      modal.syncMobileActions();
+      const clickSpy = vi.spyOn(modal.extractBtn, 'click');
+      mobileItem('extract-zip').click();
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not forward a click when the mobile item is marked disabled', () => {
+      modal.renameBtn.disabled = true;
+      modal.syncMobileActions();
+      const clickSpy = vi.spyOn(modal.renameBtn, 'click');
+      mobileItem('rename').click();
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('forwards a click when desktop target has d-none (its mobile-only class)', () => {
+      // Desktop buttons have `d-none d-md-inline-block`, so d-none is always present on
+      // mobile viewports. The click handler must not treat that as "hide the item".
+      modal.deleteBtn.classList.add('d-none');
+      modal.deleteBtn.disabled = false;
+      modal.syncMobileActions();
+      const clickSpy = vi.spyOn(modal.deleteBtn, 'click');
+      mobileItem('delete').click();
+      expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('syncMobileActions mirrors disabled state onto the items', () => {
+      modal.deleteBtn.disabled = false;
+      modal.renameBtn.disabled = true;
+      modal.syncMobileActions();
+      expect(mobileItem('delete').classList.contains('disabled')).toBe(false);
+      expect(mobileItem('delete').getAttribute('aria-disabled')).toBe('false');
+      expect(mobileItem('rename').classList.contains('disabled')).toBe(true);
+      expect(mobileItem('rename').getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('syncMobileActions hides extract-zip only when the source button is hidden', () => {
+      modal.extractBtn.disabled = false;
+      modal.extractBtn.classList.add('d-none');
+      modal.syncMobileActions();
+      expect(mobileItem('extract-zip').classList.contains('d-none')).toBe(true);
+
+      modal.extractBtn.classList.remove('d-none');
+      modal.syncMobileActions();
+      expect(mobileItem('extract-zip').classList.contains('d-none')).toBe(false);
+    });
+
+    it('syncMobileActions ignores d-none on non-extract targets (the mobile-only class)', () => {
+      modal.deleteBtn.classList.add('d-none');
+      modal.deleteBtn.disabled = false;
+      modal.syncMobileActions();
+      expect(mobileItem('delete').classList.contains('d-none')).toBe(false);
+    });
+
+    it('dropdown toggle is enabled when at least one action is available', () => {
+      Object.values(modal.mobileActionTargets).forEach((btn) => { btn.disabled = true; });
+      modal.syncMobileActions();
+      expect(modal.mobileActionsToggle.disabled).toBe(true);
+
+      modal.deleteBtn.disabled = false;
+      modal.syncMobileActions();
+      expect(modal.mobileActionsToggle.disabled).toBe(false);
     });
   });
 });

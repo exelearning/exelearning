@@ -145,7 +145,10 @@ describe('doc-lock', () => {
         it('should return duration for locked project', async () => {
             const release = await acquireLock('uuid-1');
 
-            await new Promise(resolve => setTimeout(resolve, 10));
+            // Sleep with a generous margin: setTimeout can fire ~1ms early and
+            // Date.now() is millisecond-rounded, so a tight 10ms/>=10 assertion
+            // is flaky on loaded CI runners.
+            await new Promise(resolve => setTimeout(resolve, 50));
 
             const duration = getLockDuration('uuid-1');
             expect(duration).not.toBeNull();
