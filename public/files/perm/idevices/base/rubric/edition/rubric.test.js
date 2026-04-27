@@ -347,7 +347,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     expect(getIdeviceDescriptionSpy).toHaveBeenCalledWith(
       'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
-      null
+      'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rubrica.html'
     );
     expect($exeDevice.ideviceBody.innerHTML).toContain('alert alert-info alert-dismissible');
     expect($exeDevice.ideviceBody.innerHTML).not.toContain('exe-block-dismissible');
