@@ -995,4 +995,79 @@ describe('NavbarStyles', () => {
             uploadSpy.mockRestore();
         });
     });
+
+    describe('imported-styles tab visibility', () => {
+        // Minimal DOM scaffolding matching the bootstrap HTML structure.
+        function scaffoldTabs() {
+            document.body.innerHTML = `
+                <ul class="nav">
+                    <li class="nav-item"><button id="exestylescontent-tab">System</button></li>
+                    <li class="nav-item"><button id="importedstylescontent-tab" class="active">Imported</button></li>
+                </ul>
+                <div id="exestylescontent"></div>
+                <div id="importedstylescontent" class="show active"></div>
+            `;
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            delete window.eXeLearning.config.themeRegistryOverride;
+            delete window.eXeLearning.config.userStyles;
+            delete window.eXeLearning.config.isOfflineInstallation;
+        });
+
+        it('_isImportBlocked returns true when themeRegistryOverride.blockImportInstall is set', () => {
+            const ns = Object.create(NavbarStyles.prototype);
+            window.eXeLearning.config.themeRegistryOverride = { blockImportInstall: true };
+            expect(ns._isImportBlocked()).toBe(true);
+        });
+
+        it('_isImportBlocked honors the legacy ONLINE_THEMES_INSTALL=false flag', () => {
+            const ns = Object.create(NavbarStyles.prototype);
+            window.eXeLearning.config.userStyles = 0;
+            window.eXeLearning.config.isOfflineInstallation = false;
+            expect(ns._isImportBlocked()).toBe(true);
+        });
+
+        it('_isImportBlocked is false when neither flag disables imports', () => {
+            const ns = Object.create(NavbarStyles.prototype);
+            window.eXeLearning.config.userStyles = 1;
+            expect(ns._isImportBlocked()).toBe(false);
+        });
+
+        it('_hideImportedStylesTab hides the Imported tab and activates System', () => {
+            scaffoldTabs();
+            const ns = Object.create(NavbarStyles.prototype);
+            ns._hideImportedStylesTab();
+
+            const navItem = document.querySelector('#importedstylescontent-tab').closest('li');
+            expect(navItem.style.display).toBe('none');
+            const pane = document.getElementById('importedstylescontent');
+            expect(pane.style.display).toBe('none');
+            expect(pane.classList.contains('show')).toBe(false);
+            const systemTab = document.getElementById('exestylescontent-tab');
+            expect(systemTab.classList.contains('active')).toBe(true);
+            const systemPane = document.getElementById('exestylescontent');
+            expect(systemPane.classList.contains('show')).toBe(true);
+        });
+
+        it('_hideImportedStylesTab falls back to the tab element when no nav-item wrapper exists', () => {
+            // Deliberate: button NOT wrapped in a <li> / .nav-item.
+            document.body.innerHTML = `
+                <button id="importedstylescontent-tab" class="active">Imported</button>
+                <div id="importedstylescontent" class="show active"></div>
+            `;
+            const ns = Object.create(NavbarStyles.prototype);
+            ns._hideImportedStylesTab();
+            const tab = document.getElementById('importedstylescontent-tab');
+            expect(tab.style.display).toBe('none');
+        });
+
+        it('_hideImportedStylesTab is a no-op when the tab and pane are absent', () => {
+            document.body.innerHTML = '<div></div>';
+            const ns = Object.create(NavbarStyles.prototype);
+            // Should not throw.
+            expect(() => ns._hideImportedStylesTab()).not.toThrow();
+        });
+    });
 });
