@@ -13505,67 +13505,54 @@
         <source>Generating ELPX file...</source>
         <target>S’està generant el fitxer ELPX...</target>
       </trans-unit>
-
       <trans-unit id="jd7qzd0" resname="File generated and downloaded.">
         <source>File generated and downloaded.</source>
         <target>El fitxer s’ha generat i descarregat.</target>
       </trans-unit>
-
       <trans-unit id="8e7gh3x" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
         <target>Error en generar el fitxer ELPX.</target>
       </trans-unit>
-
       <trans-unit id="h24yuzm" resname="Saving document...">
         <source>Saving document...</source>
         <target>Guardant el document...</target>
       </trans-unit>
-
       <trans-unit id="n3t58u0" resname="Saving...">
         <source>Saving...</source>
         <target>Guardant...</target>
       </trans-unit>
-
       <trans-unit id="vqfqjdb" resname="Offline Mode">
         <source>Offline Mode</source>
         <target>Mode fora de línia</target>
       </trans-unit>
-
       <trans-unit id="g1l6o52" resname="Your project is automatically saved in your browser. Use File &gt; Export to download a copy.">
         <source>Your project is automatically saved in your browser. Use File &gt; Export to download a copy.</source>
         <target>El teu projecte es guarda automàticament en el navegador. Utilitza Fitxer &gt; Exportar per a descarregar-ne una còpia.</target>
       </trans-unit>
-
       <trans-unit id="njspmuf" resname="Cannot save project to server because your storage quota has been exceeded. You can download the project locally.">
         <source>Cannot save project to server because your storage quota has been exceeded. You can download the project locally.</source>
         <target>No s’ha pogut guardar el projecte al servidor perquè has superat la quota d’emmagatzematge. Pots descarregar el projecte localment.</target>
       </trans-unit>
-
       <trans-unit id="62nlxne" resname="Quota exceeded">
         <source>Quota exceeded</source>
         <target>Quota superada</target>
       </trans-unit>
-
       <trans-unit id="i5knvk6" resname="Project saved successfully">
         <source>Project saved successfully</source>
         <target>El projecte s’ha guardat correctament</target>
       </trans-unit>
-
       <trans-unit id="qm5mq65" resname="Failed to save project">
         <source>Failed to save project</source>
         <target>No s’ha pogut guardar el projecte</target>
       </trans-unit>
-
       <trans-unit id="4pl6f30" resname="Project saved">
         <source>Project saved</source>
         <target>Projecte guardat</target>
       </trans-unit>
-
       <trans-unit id="kvcsk7s" resname="Failed to import style">
         <source>Failed to import style</source>
         <target>No s’ha pogut importar l’estil</target>
       </trans-unit>
-
       <trans-unit id="37wjnam" resname="Legacy license, please review">
         <source>Legacy license, please review</source>
         <target>Llicència heretada, revisa-la</target>

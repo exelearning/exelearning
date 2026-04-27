@@ -12613,7 +12613,7 @@
         <source>Delete "%1"?</source>
         <target>Ștergi "%1"?</target>
       </trans-unit>
-      <trans-unit id="pitu10s" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; > |">
+      <trans-unit id="pitu10s" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
         <target>Numele fișierului nu este valid. Evită caracterele speciale precum / \\ : * ? " &lt; &gt; |</target>
       </trans-unit>

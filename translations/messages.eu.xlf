@@ -12310,7 +12310,7 @@
         <target>Orrialdea ez da aurkitu</target>
       </trans-unit>
       <trans-unit id="22ovvv5" resname="Server error">
-        <source>Server error</source>d
+        <source>Server error</source>
         <target>Errorea zerbitzarian</target>
       </trans-unit>
       <trans-unit id="mwsy5zj" resname="Sorry, but the page cannot be displayed.">
@@ -12503,7 +12503,7 @@
       </trans-unit>
       <trans-unit id="vpiyoit" resname="Original">
         <source>Original</source>
-        <target>Jatorrikoa</target>Estimated
+        <target>Jatorrikoa</target>
       </trans-unit>
       <trans-unit id="z3su8em" resname="Estimated">
         <source>Estimated</source>
