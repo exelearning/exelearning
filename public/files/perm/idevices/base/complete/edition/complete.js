@@ -136,7 +136,7 @@ var $exeDevice = {
             <div id="completeQEIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.'),
-                    null,
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/completa.html',
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Read the text and complete the missing words.'))}

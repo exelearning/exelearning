@@ -175,7 +175,7 @@ var $exeDevice = {
             <div id="ri_IdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
-                    null,
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rubrica.html',
                 )}
 
                 <div class="exe-form-tab" title="${_('General settings')}">
