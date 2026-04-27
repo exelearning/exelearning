@@ -1,9 +1,9 @@
 <div class="modal exe-modal-fade" tabindex="-1" id="modalFileManager" role="dialog" aria-hidden="true" data-testid="modal-filemanager" data-open="false">
-    <div class="modal-dialog modal-dialog-centered modal-xl modal-confirm" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down modal-xl modal-confirm" role="document">
         <div class="modal-content" id="modalFileManagerContent">
             <div class="modal-header">
                 <div class="modal-title">{{ 'File manager' | trans }}</div>
-                <div class="media-library-header-search">
+                <div class="media-library-header-search d-none d-md-block">
                     <input type="search" class="form-control media-library-search" placeholder="{{ 'Search files...' | trans }}">
                 </div>
                 <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
@@ -29,7 +29,7 @@
                         </button>
                     </div>
 
-                    <div class="media-library-sort-controls">
+                    <div class="media-library-sort-controls d-none d-md-flex">
                         <label>{{ 'Sort' | trans }}:</label>
                         <select class="form-select media-library-sort">
                             <option value="name-asc">{{ 'Name A-Z' | trans }}</option>
@@ -43,21 +43,21 @@
                         </select>
                     </div>
 
-                    <div class="media-library-filter-controls">
+                    <div class="media-library-filter-controls d-none d-md-flex">
                         <label>{{ 'Type' | trans }}:</label>
                         <select class="form-select media-library-filter">
                             <option value="">{{ 'All' | trans }}</option>
                         </select>
                     </div>
 
-                    <div class="media-library-refcount-toggle">
+                    <div class="media-library-refcount-toggle d-none d-md-flex">
                         <label class="form-check-label">
                             <input type="checkbox" class="form-check-input media-library-show-refcount">
                             {{ 'Show references' | trans }}
                         </label>
                     </div>
 
-                    <div class="media-library-file-count">
+                    <div class="media-library-file-count d-none d-md-block">
                         <span class="media-library-count-value">0</span> {{ 'files' | trans }}
                     </div>
                 </div>
@@ -164,24 +164,24 @@
             </div>
             <div class="modal-footer media-library-footer">
                 <div class="media-library-footer-actions">
-                    <button type="button" class="btn btn-danger media-library-delete-btn" disabled>
+                    <button type="button" class="btn btn-danger media-library-delete-btn d-none d-md-inline-block" disabled>
                         <span class="exe-icon">delete</span> {{ 'Delete' | trans }}
                     </button>
-                    <button type="button" class="btn btn-secondary media-library-rename-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-rename-btn d-none d-md-inline-block" disabled>
                         <span class="exe-icon">edit</span> {{ 'Rename' | trans }}
                     </button>
-                    <button type="button" class="btn btn-secondary media-library-duplicate-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-duplicate-btn d-none d-md-inline-block" disabled>
                         <span class="exe-icon">content_copy</span> {{ 'Duplicate' | trans }}
                     </button>
-                    <button type="button" class="btn btn-secondary media-library-move-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-move-btn d-none d-md-inline-block" disabled>
                         <span class="exe-icon">drive_file_move</span> {{ 'Move' | trans }}
                     </button>
-                    <button type="button" class="btn btn-secondary media-library-download-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-download-btn d-none d-md-inline-block" disabled>
                         <span class="exe-icon">download</span> {{ 'Download' | trans }}
                     </button>
 
-                    <!-- Dropdown More Options -->
-                    <div class="dropdown d-inline-block">
+                    <!-- Dropdown More Options (desktop only) -->
+                    <div class="dropdown d-none d-md-inline-block">
                         <button type="button" class="btn btn-secondary media-library-more-btn dropdown-toggle" data-bs-toggle="dropdown" disabled>
                             <span class="exe-icon">more_horiz</span>
                         </button>
@@ -193,6 +193,40 @@
                                 <span class="exe-icon">link</span> {{ 'Copy URL' | trans }}
                             </a></li>
                             <li><a class="dropdown-item media-library-fullsize-btn" href="#">
+                                <span class="exe-icon">open_in_new</span> {{ 'View full size' | trans }}
+                            </a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Mobile-only: all actions collapsed in one dropdown -->
+                    <div class="dropdown d-md-none media-library-mobile-actions">
+                        <button type="button" class="btn btn-secondary dropdown-toggle media-library-mobile-actions-toggle" data-bs-toggle="dropdown" disabled>
+                            <span class="exe-icon">more_vert</span> {{ 'Actions' | trans }}
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item text-danger" href="#" data-mobile-action="delete">
+                                <span class="exe-icon">delete</span> {{ 'Delete' | trans }}
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="rename">
+                                <span class="exe-icon">edit</span> {{ 'Rename' | trans }}
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="duplicate">
+                                <span class="exe-icon">content_copy</span> {{ 'Duplicate' | trans }}
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="move">
+                                <span class="exe-icon">drive_file_move</span> {{ 'Move' | trans }}
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="download">
+                                <span class="exe-icon">download</span> {{ 'Download' | trans }}
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item d-none" href="#" data-mobile-action="extract-zip">
+                                <span class="exe-icon">folder_zip</span> {{ 'Extract ZIP' | trans }}
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="copyurl">
+                                <span class="exe-icon">link</span> {{ 'Copy URL' | trans }}
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="fullsize">
                                 <span class="exe-icon">open_in_new</span> {{ 'View full size' | trans }}
                             </a></li>
                         </ul>

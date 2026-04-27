@@ -4,7 +4,13 @@ export default class Theme {
         this.id = data.dirName;
         this.dirName = data.dirName; // Store dirName for theme editing
         this.setConfigValues(data);
-        this.path = `${manager.symfonyURL}${data.url}/`;
+        // Admin-approved uploaded themes may ship with an absolute URL
+        // (host integrations serving from a writable uploads directory).
+        // In that case use the URL verbatim; otherwise keep the legacy
+        // behavior and anchor relative paths at the editor's symfonyURL.
+        this.path = /^(?:data:|blob:|https?:)\/\//i.test(data.url)
+            ? `${data.url.replace(/\/$/, '')}/`
+            : `${manager.symfonyURL}${data.url}/`;
         this.valid = data.valid;
     }
 

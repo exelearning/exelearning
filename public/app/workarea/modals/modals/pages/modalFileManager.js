@@ -98,6 +98,32 @@ export default class ModalFilemanager extends Modal {
         this.dropdownCopyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
         this.fullSizeBtn = footer?.querySelector('.media-library-fullsize-btn');
 
+        // Mobile-only collapsed actions dropdown
+        this.mobileActionsWrapper = footer?.querySelector('.media-library-mobile-actions');
+        this.mobileActionsToggle = this.mobileActionsWrapper?.querySelector('.media-library-mobile-actions-toggle');
+        this.mobileActionTargets = {
+            delete: this.deleteBtn,
+            rename: this.renameBtn,
+            duplicate: this.duplicateBtn,
+            move: this.moveBtn,
+            download: this.downloadBtn,
+            'extract-zip': this.extractBtn,
+            copyurl: this.dropdownCopyUrlBtn,
+            fullsize: this.fullSizeBtn,
+        };
+        if (this.mobileActionsWrapper) {
+            this.mobileActionsWrapper.addEventListener('click', (event) => {
+                const item = event.target.closest('[data-mobile-action]');
+                if (!item) return;
+                event.preventDefault();
+                if (item.classList.contains('disabled') || item.classList.contains('d-none')) return;
+                const target = this.mobileActionTargets[item.dataset.mobileAction];
+                if (target && !target.disabled) {
+                    target.click();
+                }
+            });
+        }
+
         // WebSocket handler reference and bound event handlers for rename sync
         this._wsHandler = null;
         this._onAssetRenamed = null;
@@ -1062,6 +1088,29 @@ export default class ModalFilemanager extends Modal {
         // Extract button visibility (only for ZIP files)
         if (this.extractBtn) {
             this.extractBtn.classList.toggle('d-none', !isZip);
+        }
+
+        this.syncMobileActions();
+    }
+
+    syncMobileActions() {
+        if (!this.mobileActionsWrapper) return;
+        let anyEnabled = false;
+        for (const [action, target] of Object.entries(this.mobileActionTargets)) {
+            const item = this.mobileActionsWrapper.querySelector(`[data-mobile-action="${action}"]`);
+            if (!item) continue;
+            // Only `extract-zip` is genuinely hidden based on the target's d-none class (non-zip files).
+            // Main action buttons have d-none from `d-none d-md-inline-block`, which hides them on
+            // mobile only and must not propagate to the mobile dropdown items.
+            const hidden = !target || (action === 'extract-zip' && target.classList.contains('d-none'));
+            const disabled = !target || target.disabled;
+            item.classList.toggle('d-none', hidden);
+            item.classList.toggle('disabled', disabled);
+            item.setAttribute('aria-disabled', String(disabled));
+            if (!hidden && !disabled) anyEnabled = true;
+        }
+        if (this.mobileActionsToggle) {
+            this.mobileActionsToggle.disabled = !anyEnabled;
         }
     }
 

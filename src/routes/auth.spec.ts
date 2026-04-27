@@ -16,7 +16,7 @@ import {
 } from '../db/migrations/005_user_id_nullable';
 import { up as migration006Up } from '../db/migrations/006_impersonation_audit_log';
 import { now } from '../db/types';
-import { createAuthRoutes, verifyToken, getJwtSecret, type AuthDependencies } from './auth';
+import { createAuthRoutes, verifyToken, getJwtSecret, shouldAutoCreateUsers, type AuthDependencies } from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
 
 let testDb: Kysely<Database>;
@@ -2348,6 +2348,297 @@ describe('Auth Routes', () => {
             // Should have at least one user with random hex email
             const randomHexUser = user.find(u => /^[0-9a-f]{16}@domain\.local$/.test(u.email));
             expect(randomHexUser).toBeDefined();
+        });
+    });
+
+    // =========================================================================
+    // AUTH_CREATE_USERS Gating Tests
+    // =========================================================================
+
+    describe('shouldAutoCreateUsers helper', () => {
+        let prevAuthCreate: string | undefined;
+
+        beforeEach(() => {
+            prevAuthCreate = process.env.AUTH_CREATE_USERS;
+        });
+
+        afterEach(() => {
+            if (prevAuthCreate === undefined) {
+                delete process.env.AUTH_CREATE_USERS;
+            } else {
+                process.env.AUTH_CREATE_USERS = prevAuthCreate;
+            }
+        });
+
+        it('returns true when unset (documented default)', () => {
+            delete process.env.AUTH_CREATE_USERS;
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns true for empty string', () => {
+            process.env.AUTH_CREATE_USERS = '';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns true for "true"', () => {
+            process.env.AUTH_CREATE_USERS = 'true';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns false for "false"', () => {
+            process.env.AUTH_CREATE_USERS = 'false';
+            expect(shouldAutoCreateUsers()).toBe(false);
+        });
+
+        it('returns false for "0"', () => {
+            process.env.AUTH_CREATE_USERS = '0';
+            expect(shouldAutoCreateUsers()).toBe(false);
+        });
+
+        it('returns true for "1"', () => {
+            process.env.AUTH_CREATE_USERS = '1';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns false for "NO" (case-insensitive)', () => {
+            process.env.AUTH_CREATE_USERS = 'NO';
+            expect(shouldAutoCreateUsers()).toBe(false);
+        });
+
+        it('returns true for "On" (case-insensitive)', () => {
+            process.env.AUTH_CREATE_USERS = 'On';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns true for "yes"', () => {
+            process.env.AUTH_CREATE_USERS = 'yes';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+
+        it('returns true for unknown values (permissive default)', () => {
+            process.env.AUTH_CREATE_USERS = 'unknown-value';
+            expect(shouldAutoCreateUsers()).toBe(true);
+        });
+    });
+
+    describe('AUTH_CREATE_USERS gating for CAS callback', () => {
+        const originalFetch = globalThis.fetch;
+        let prevMethods: string | undefined;
+        let prevCasUrl: string | undefined;
+        let prevAuthCreate: string | undefined;
+
+        beforeEach(() => {
+            prevMethods = process.env.APP_AUTH_METHODS;
+            prevCasUrl = process.env.CAS_URL;
+            prevAuthCreate = process.env.AUTH_CREATE_USERS;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+
+            globalThis.fetch = async () =>
+                new Response(`
+                    <cas:serviceResponse>
+                        <cas:authenticationSuccess>
+                            <cas:user>newcasuser@example.com</cas:user>
+                        </cas:authenticationSuccess>
+                    </cas:serviceResponse>
+                `);
+        });
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+            if (prevMethods === undefined) delete process.env.APP_AUTH_METHODS;
+            else process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevCasUrl === undefined) delete process.env.CAS_URL;
+            else process.env.CAS_URL = prevCasUrl;
+            if (prevAuthCreate === undefined) delete process.env.AUTH_CREATE_USERS;
+            else process.env.AUTH_CREATE_USERS = prevAuthCreate;
+        });
+
+        it('creates unknown CAS user when AUTH_CREATE_USERS=true', async () => {
+            process.env.AUTH_CREATE_USERS = 'true';
+            let createUserCalls = 0;
+
+            const trackingApp = new Elysia().use(
+                createAuthRoutes({
+                    db: testDb,
+                    queries: {
+                        findUserByEmail,
+                        findUserById,
+                        createUser: async (db, data) => {
+                            createUserCalls++;
+                            return createUser(db, data);
+                        },
+                    },
+                }),
+            );
+
+            const response = await trackingApp.handle(
+                new Request('http://localhost/login/cas/callback?ticket=ST-create-true'),
+            );
+
+            expect(response.status).toBe(302);
+            expect(createUserCalls).toBe(1);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'newcasuser@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+        });
+
+        it('rejects unknown CAS user when AUTH_CREATE_USERS=false', async () => {
+            process.env.AUTH_CREATE_USERS = 'false';
+            let createUserCalls = 0;
+
+            const trackingApp = new Elysia().use(
+                createAuthRoutes({
+                    db: testDb,
+                    queries: {
+                        findUserByEmail,
+                        findUserById,
+                        createUser: async (db, data) => {
+                            createUserCalls++;
+                            return createUser(db, data);
+                        },
+                    },
+                }),
+            );
+
+            const response = await trackingApp.handle(
+                new Request('http://localhost/login/cas/callback?ticket=ST-create-false'),
+            );
+
+            expect(response.status).toBe(401);
+            expect(createUserCalls).toBe(0);
+            const data = (await response.json()) as { error: string; message: string };
+            expect(data.error).toBe('Unauthorized');
+            expect(data.message).toBe('CAS authentication failed.');
+
+            // No user row was written
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'newcasuser@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeUndefined();
+        });
+    });
+
+    describe('AUTH_CREATE_USERS gating for OpenID callback', () => {
+        const originalFetch = globalThis.fetch;
+        let prevMethods: string | undefined;
+        let prevTokenEndpoint: string | undefined;
+        let prevAuthCreate: string | undefined;
+
+        // ID token carrying a brand-new user (so auto-create path is the only way in).
+        const mockIdToken = (() => {
+            const payload = Buffer.from(
+                JSON.stringify({
+                    sub: 'new-oidc-sub',
+                    email: 'newoidcuser@example.com',
+                    iat: Math.floor(Date.now() / 1000),
+                    exp: Math.floor(Date.now() / 1000) + 3600,
+                }),
+            ).toString('base64url');
+            return `header.${payload}.signature`;
+        })();
+
+        beforeEach(() => {
+            prevMethods = process.env.APP_AUTH_METHODS;
+            prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+            prevAuthCreate = process.env.AUTH_CREATE_USERS;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-gating',
+                        id_token: mockIdToken,
+                    }),
+                );
+        });
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+            if (prevMethods === undefined) delete process.env.APP_AUTH_METHODS;
+            else process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevTokenEndpoint === undefined) delete process.env.OIDC_TOKEN_ENDPOINT;
+            else process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+            if (prevAuthCreate === undefined) delete process.env.AUTH_CREATE_USERS;
+            else process.env.AUTH_CREATE_USERS = prevAuthCreate;
+        });
+
+        it('creates unknown OpenID user when AUTH_CREATE_USERS=true', async () => {
+            process.env.AUTH_CREATE_USERS = 'true';
+            let createUserCalls = 0;
+
+            const trackingApp = new Elysia().use(
+                createAuthRoutes({
+                    db: testDb,
+                    queries: {
+                        findUserByEmail,
+                        findUserById,
+                        createUser: async (db, data) => {
+                            createUserCalls++;
+                            return createUser(db, data);
+                        },
+                    },
+                }),
+            );
+
+            const response = await trackingApp.handle(
+                new Request('http://localhost/login/openid/callback?code=oidc-create-true'),
+            );
+
+            expect(response.status).toBe(302);
+            expect(createUserCalls).toBe(1);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'newoidcuser@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+        });
+
+        it('rejects unknown OpenID user when AUTH_CREATE_USERS=false', async () => {
+            process.env.AUTH_CREATE_USERS = 'false';
+            let createUserCalls = 0;
+
+            const trackingApp = new Elysia().use(
+                createAuthRoutes({
+                    db: testDb,
+                    queries: {
+                        findUserByEmail,
+                        findUserById,
+                        createUser: async (db, data) => {
+                            createUserCalls++;
+                            return createUser(db, data);
+                        },
+                    },
+                }),
+            );
+
+            const response = await trackingApp.handle(
+                new Request('http://localhost/login/openid/callback?code=oidc-create-false'),
+            );
+
+            expect(response.status).toBe(401);
+            expect(createUserCalls).toBe(0);
+            const data = (await response.json()) as { error: string; message: string };
+            expect(data.error).toBe('Unauthorized');
+            expect(data.message).toBe('OpenID authentication failed.');
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'newoidcuser@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeUndefined();
         });
     });
 });

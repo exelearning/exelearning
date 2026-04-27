@@ -47,7 +47,6 @@ services:
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForHADeployment}"
       APP_ONLINE_MODE: 1
       ONLINE_THEMES_INSTALL: ${ONLINE_THEMES_INSTALL:-0}
-      XDEBUG_MODE: off
 
       # Database settings (PostgreSQL)
       DB_DRIVER: pdo_pgsql
@@ -102,7 +101,6 @@ services:
       APP_DEBUG: 0
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForHADeployment}"
       APP_ONLINE_MODE: 1
-      XDEBUG_MODE: off
 
       # Database settings (PostgreSQL - same as instance 1)
       DB_DRIVER: pdo_pgsql

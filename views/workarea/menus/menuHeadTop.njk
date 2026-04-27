@@ -54,33 +54,19 @@
                 </button>
 
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exeUserMenuToggler">
-                    {# Menú móvil plano: visible solo en móviles (d-md-none) #}
-                    <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.file or 'File' }}</small></li>
+                    {# Mobile-only essentials: New, Open, File manager. Save/Preview/Styles/Settings/Share already live as icon buttons in the toolbar. #}
                     <li class="d-md-none {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-new" href="#">{{ t.new or 'New' }}</a></li>
                     <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-openuserodefiles" href="#">{{ t.open or 'Open' }}</a></li>
-                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-save" href="#">{{ t.save or 'Save' }}</a></li>
-                    {# Hidden to reduce Open/Import confusion (issue #1223) #}
-                    <li class="d-none"><a class="dropdown-item" id="mobile-navbar-button-import-elp" href="#">{{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
+                    {% if config.isOfflineInstallation %}
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-open-offline" href="#">{{ t.open or 'Open' }}</a></li>
+                    {% endif %}
+                    <li class="dropdown-divider d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><h6 class="dropdown-header">{{ t.download_as or 'Download as...' }}</h6></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-download-project" href="#">{{ t.exelearning_content or 'eXeLearning content (.elpx)' }}</a></li>
+                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-export-web" href="#">{{ t.website or 'Website' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>
-                    <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.download_as or 'Download as' }}</small></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-html5" href="#">{{ t.website or 'Website' }}</a></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-scorm12" href="#">SCORM 1.2</a></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-epub3" href="#">ePub3</a></li>
-                    <li class="dropdown-divider d-md-none"></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-settings" href="#">{{ t.project_properties or 'Project Properties' }}</a></li>
-                    <li class="d-md-none exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="mobile-navbar-button-share" href="#">{{ t.share or 'Share' }}</a></li>
-                    <li class="dropdown-divider d-md-none"></li>
-                    <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.utilities or 'Utilities' }}</small></li>
-                    <li class="d-md-none exe-advanced"><a class="dropdown-item" id="mobile-navbar-button-filemanager" href="#">{{ t.file_manager or 'File manager' }}</a></li>
-                    <li class="dropdown-divider d-md-none"></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-styles" href="#">{{ t.styles or 'Styles' }}</a></li>
-                    <li class="dropdown-divider d-md-none"></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-preview" href="#">{{ t.preview or 'Preview' }}</a></li>
-                    <li class="dropdown-divider d-md-none"></li>
-                    <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.help or 'Help' }}</small></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-exe-tutorial" href="#">{{ t.user_manual or 'User manual' }}</a></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-filemanager" href="#">{{ t.file_manager or 'File manager' }}</a></li>
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-about-exe" href="#">{{ t.about_exelearning or 'About eXeLearning' }}</a></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-exe-web" href="#">{{ t.exelearning_website or 'eXeLearning website' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>
 
                     {# Items existentes #}

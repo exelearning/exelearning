@@ -72,37 +72,33 @@ export default class MenuEngine {
      */
     initMobileButtonHandlers() {
         // Map mobile button IDs to desktop button IDs
+        // Each mobile button forwards to the first matching desktop button. Listing the offline
+        // (`exportas-*`) variant first means static mode prefers the browser-only handler; in
+        // pure online mode that variant isn't rendered and we fall through to the online one.
         const buttonMappings = {
-            'mobile-navbar-button-new': 'navbar-button-new',
-            'mobile-navbar-button-openuserodefiles': 'navbar-button-openuserodefiles',
-            'mobile-navbar-button-save': 'navbar-button-save',
-            'mobile-navbar-button-import-elp': 'navbar-button-import-elp',
-            'mobile-navbar-button-settings': 'navbar-button-settings',
-            'mobile-navbar-button-share': 'navbar-button-share',
-            'mobile-navbar-button-export-html5': 'navbar-button-export-html5',
-            'mobile-navbar-button-export-scorm12': 'navbar-button-export-scorm12',
-            'mobile-navbar-button-export-epub3': 'navbar-button-export-epub3',
-            'mobile-navbar-button-styles': 'navbar-button-styles',
-            'mobile-navbar-button-preview': 'navbar-button-preview',
-            'mobile-navbar-button-filemanager': 'navbar-button-filemanager',
-            'mobile-navbar-button-exe-tutorial': 'navbar-button-exe-tutorial',
-            'mobile-navbar-button-about-exe': 'navbar-button-about-exe',
-            'mobile-navbar-button-exe-web': 'navbar-button-exe-web'
+            'mobile-navbar-button-new': ['navbar-button-new'],
+            'mobile-navbar-button-openuserodefiles': ['navbar-button-openuserodefiles'],
+            'mobile-navbar-button-open-offline': ['navbar-button-open-offline'],
+            'mobile-navbar-button-download-project': ['navbar-button-download-project'],
+            'mobile-navbar-button-export-web': ['navbar-button-exportas-html5', 'navbar-button-export-html5'],
+            'mobile-navbar-button-filemanager': ['navbar-button-filemanager'],
+            'mobile-navbar-button-about-exe': ['navbar-button-about-exe']
         };
 
-        // Add click handlers for each mobile button
-        Object.entries(buttonMappings).forEach(([mobileId, desktopId]) => {
+        Object.entries(buttonMappings).forEach(([mobileId, desktopIds]) => {
             const mobileButton = document.getElementById(mobileId);
-            const desktopButton = document.getElementById(desktopId);
-
-            if (mobileButton && desktopButton) {
-                mobileButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Trigger click on desktop button
-                    desktopButton.click();
-                });
-            }
+            if (!mobileButton) return;
+            mobileButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                for (const id of desktopIds) {
+                    const desktopButton = document.getElementById(id);
+                    if (desktopButton) {
+                        desktopButton.click();
+                        return;
+                    }
+                }
+            });
         });
     }
 

@@ -29,6 +29,23 @@ import { logActivity } from '../services/activity-logger';
 const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
 
 /**
+ * Whether SSO (CAS / OIDC) should auto-create unknown users on first login.
+ * Default is `true` as documented in `.env.dist` and `doc/development/authentication.md`
+ * (keep behaviour backward-compatible and avoid locking operators out on typos).
+ * Reads `process.env.AUTH_CREATE_USERS` on every call so runtime overrides (including
+ * tests that mutate `process.env`) take effect without restarting the module.
+ */
+export function shouldAutoCreateUsers(): boolean {
+    const raw = process.env.AUTH_CREATE_USERS;
+    if (raw === undefined || raw === null) return true;
+    const normalized = String(raw).toLowerCase().trim();
+    if (normalized === '') return true;
+    if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+    // Any other value (true/1/yes/on, or typos) falls back to the documented default.
+    return true;
+}
+
+/**
  * Dependency types for auth routes
  */
 export interface AuthDependencies {
@@ -579,6 +596,13 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     // Find or create user in database
                     let user = await findUserByEmail(db, email);
                     if (!user) {
+                        if (!shouldAutoCreateUsers()) {
+                            console.warn(
+                                `CAS login rejected for unknown user "${email}": AUTH_CREATE_USERS is disabled.`,
+                            );
+                            set.status = 401;
+                            return { error: 'Unauthorized', message: 'CAS authentication failed.' };
+                        }
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
                         const defaultQuota = await getSettingNumber(
                             db,
@@ -868,6 +892,13 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     // Find or create user in database
                     let user = await findUserByEmail(db, userEmail);
                     if (!user) {
+                        if (!shouldAutoCreateUsers()) {
+                            console.warn(
+                                `OpenID login rejected for unknown user "${userEmail}": AUTH_CREATE_USERS is disabled.`,
+                            );
+                            set.status = 401;
+                            return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                        }
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
                         const defaultQuota = await getSettingNumber(
                             db,
