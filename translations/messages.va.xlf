@@ -14250,6 +14250,18 @@
         <source>Imported rubric</source>
         <target>Rúbrica importada</target>
       </trans-unit>
+      <trans-unit id="wxeh20s" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Si us plau, completeu la rúbrica abans de guardar la vostra puntuació.</target>
+      </trans-unit>
+      <trans-unit id="f3mm7iu" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~La vostra puntuació es guardarà després de cada canvi. Sols podeu completar-la una vegada.</target>
+      </trans-unit>
+      <trans-unit id="1jpalng" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~La vostra puntuació es guardarà automàticament després de cada canvi.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

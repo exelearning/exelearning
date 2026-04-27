@@ -14237,6 +14237,18 @@
         <source>Imported rubric</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="ekboded" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kty2woh" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fdgncjm" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

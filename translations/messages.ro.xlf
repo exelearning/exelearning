@@ -14237,6 +14237,18 @@
         <source>Imported rubric</source>
         <target>Rubrică importată</target>
       </trans-unit>
+      <trans-unit id="d379fgz" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Vă rugăm să completați rubrica înainte de a salva scorul.</target>
+      </trans-unit>
+      <trans-unit id="9pohxm9" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~Scorul dvs. va fi salvat după fiecare modificare. Puteți completa o singură dată.</target>
+      </trans-unit>
+      <trans-unit id="7z9sd7x" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~Scorul dvs. va fi salvat automat după fiecare modificare.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

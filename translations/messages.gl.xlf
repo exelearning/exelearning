@@ -14237,6 +14237,18 @@
         <source>Imported rubric</source>
         <target>Rúbrica importada</target>
       </trans-unit>
+      <trans-unit id="3mpguf8" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Por favor, completa a rúbrica antes de gardar a túa puntuación.</target>
+      </trans-unit>
+      <trans-unit id="v0mb6tf" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~A túa puntuación gardarase despois de cada cambio. Só podes completala unha vez.</target>
+      </trans-unit>
+      <trans-unit id="tavri14" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~A túa puntuación gardarase automaticamente despois de cada cambio.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

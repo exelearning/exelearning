@@ -14237,6 +14237,18 @@
         <source>Imported rubric</source>
         <target>Inportatutako errubrika</target>
       </trans-unit>
+      <trans-unit id="qlacqik" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Mesedez, osatu errubrika zure puntuazioa gorde aurretik.</target>
+      </trans-unit>
+      <trans-unit id="vi46ol5" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~Zure puntuazioa aldaketa bakoitzaren ondoren gordeko da. Behin bakarrik osa dezakezu.</target>
+      </trans-unit>
+      <trans-unit id="x1iyh3o" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~Zure puntuazioa automatikoki gordeko da aldaketa bakoitzaren ondoren.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

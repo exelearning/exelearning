@@ -14237,6 +14237,18 @@
         <source>Imported rubric</source>
         <target>Griglia importata</target>
       </trans-unit>
+      <trans-unit id="yth6crp" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Si prega di completare la griglia prima di salvare il punteggio.</target>
+      </trans-unit>
+      <trans-unit id="widz42p" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~Il tuo punteggio verrà salvato dopo ogni modifica. Puoi completarla solo una volta.</target>
+      </trans-unit>
+      <trans-unit id="fzx8qmc" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~Il tuo punteggio verrà salvato automaticamente dopo ogni modifica.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

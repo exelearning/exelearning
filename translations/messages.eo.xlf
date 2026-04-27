@@ -14237,6 +14237,18 @@
         <source>Imported rubric</source>
         <target>~Importita rubrik</target>
       </trans-unit>
+      <trans-unit id="tar0eks" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Bonvolu kompletigi la rubron antaŭ konservi vian poentaron.</target>
+      </trans-unit>
+      <trans-unit id="lly5w0h" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~Via poentaro estos konservita post ĉiu ŝanĝo. Vi povas kompletigi nur unufoje.</target>
+      </trans-unit>
+      <trans-unit id="21qeoch" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~Via poentaro estos aŭtomate konservita post ĉiu ŝanĝo.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
