@@ -123,7 +123,7 @@ var $exeDevice = {
                 'You can do this activity as many times as you want'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgClose: c_('Close'),
             msgOption: c_('Option'),
@@ -916,7 +916,7 @@ var $exeDevice = {
                                         <label class="toggle-label" for="vquextEHasFeedBack">${_('Feedback')}.</label>
                                     </div>
                                     <input class="form-control" type="number" name="vquextEPercentajeFB" id="vquextEPercentajeFB" value="100" min="5" max="100" step="5" disabled style="width: 9.5ch !important; max-width:9.5ch !important;"/>
-                                    <label for="vquextEPercentajeFB" class="mb-0">${_('&percnt; right to see the feedback')}</label>
+                                    <label for="vquextEPercentajeFB" class="mb-0">${_('% right to see the feedback')}</label>
                                 </div>
                                 <div id="vquextEFeedbackP" class="VDQXTE-EFeedbackP mb-3">
                                     <textarea id="vquextEFeedBackEditor" class="exe-html-editor"></textarea>

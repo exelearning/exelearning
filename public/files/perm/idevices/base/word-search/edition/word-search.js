@@ -70,7 +70,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgScoreScorm: c_(
                 "The score can't be saved because this page is not part of a SCORM package."
@@ -400,7 +400,7 @@ var $exeDevice = {
                             <div class="d-flex flex-nowrap align-items-center gap-2">
                                 <label for="sopaEPercentajeFB" class="mb-0"></label>
                                 <input type="number" class="form-control" name="sopaEPercentajeFB" id="sopaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                                <span class="mb-0">${_('&percnt; right to see the feedback')}</span>
+                                <span class="mb-0">${_('% right to see the feedback')}</span>
                             </div>
                         </div>
                         <div id="sopaEFeedbackP" class="SPE-EFeedbackP mb-3">

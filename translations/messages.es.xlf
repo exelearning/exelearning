@@ -5517,9 +5517,9 @@
         <source>Cool!</source>
         <target>¡Bien!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target><![CDATA[Necesitas al menos %s&percnt; de respuestas correctas para obtener la información. Inténtalo de nuevo.]]></target>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
+        <target>Necesitas al menos %s% de respuestas correctas para obtener la información. Inténtalo de nuevo.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5637,9 +5637,9 @@
         <source>Percent</source>
         <target>Porcentaje</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[&percnt; de aciertos requerido para ver la retroalimentación]]></target>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
+        <target>% de aciertos requerido para ver la retroalimentación</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5757,9 +5757,9 @@
         <source>Allow errors in typed words</source>
         <target>Permitir errores en los palabras introducidas</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target><![CDATA[Letras incorrectas permitidas (&percnt;)]]></target>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
+        <target>Letras incorrectas permitidas (%)</target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -8793,14 +8793,6 @@
         <source>Apply</source>
         <target>Aplicar</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>Complete la tabla para definir una guía de calificación. Defina la puntuación o el valor de cada descriptor.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>Aprenda a aplicar una rúbrica</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>Rúbrica de ejemplo</target>
@@ -9477,8 +9469,8 @@
         <source>Representation</source>
         <target>Comprensión</target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
-        <source>Action &amp; Expression</source>
+      <trans-unit id="o84Jjwl" resname="Action & Expression">
+        <source>Action & Expression</source>
         <target>Acción y expresión</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
@@ -12117,9 +12109,9 @@
         <source>Line highlight</source>
         <target>Resaltado de línea</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target><![CDATA[Debes revisar el %s&percnt; de los contenidos de la actividad antes de completar el cuestionario.]]></target>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
+        <target>Debes revisar el %s% de los contenidos de la actividad antes de completar el cuestionario.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
@@ -14085,10 +14077,6 @@
         <source>Import (.elpx…)</source>
         <target>Importar (.elpx…)</target>
       </trans-unit>
-      <trans-unit id="cu0ajzl" resname="Download as">
-        <source>Download as</source>
-        <target>Descargar como</target>
-      </trans-unit>
       <trans-unit id="f8dtp2c" resname="0 iDevices">
         <source>0 iDevices</source>
         <target>~0 iDevices</target>
@@ -14236,6 +14224,18 @@
       <trans-unit id="0lnw512" resname="Imported rubric">
         <source>Imported rubric</source>
         <target>Rúbrica importada</target>
+      </trans-unit>
+      <trans-unit id="o0z9l2g" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>Completa la rúbrica antes de guardar tu puntuación.</target>
+      </trans-unit>
+      <trans-unit id="4f8wq8r" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>Tu puntuación se guardará después de cada cambio. Solo puedes completarla una vez.</target>
+      </trans-unit>
+      <trans-unit id="mgwpyfz" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>Tu puntuación se guardará automáticamente después de cada cambio.</target>
       </trans-unit>
     </body>
   </file>

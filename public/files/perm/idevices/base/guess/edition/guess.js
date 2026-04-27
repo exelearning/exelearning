@@ -100,7 +100,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgWrote: c_(
                 'Write the correct word and click on Reply. If you hesitate, click on Move on.'
@@ -289,7 +289,7 @@ var $exeDevice = {
                                     <label class="toggle-label" for="adivinaEHasFeedBack">${_('Feedback')}.</label>
                                 </div>
                                 <input type="number" name="adivinaEPercentajeFB" id="adivinaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
-                                <label for="adivinaEPercentajeFB">${_('&percnt; right to see the feedback')}</label>
+                                <label for="adivinaEPercentajeFB">${_('% right to see the feedback')}</label>
                             </div>
                             <div id="adivinaEFeedbackP" class="ADVNE-EFeedbackP mb-3">
                                 <textarea id="adivinaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>

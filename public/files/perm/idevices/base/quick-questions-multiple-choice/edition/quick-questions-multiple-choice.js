@@ -139,7 +139,7 @@ var $exeDevice = {
                 'You can do this activity as many times as you want'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgVideoIntro: c_('Video Intro'),
             msgClose: c_('Close'),
@@ -1364,7 +1364,7 @@ var $exeDevice = {
                                 </div>
                                 <div class="mb-0 d-flex align-items-center gap-2">
                                     <input type="number" name="seleccionaEPercentajeFB" id="seleccionaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
-                                    <label for="seleccionaEPercentajeFB">${_('&percnt; right to see the feedback')}</label>
+                                    <label for="seleccionaEPercentajeFB">${_('% right to see the feedback')}</label>
                                 </div>
                             </div>
                             <div id="seleccionaEFeedbackP" class="SLCNE-EFeedbackP mb-3">

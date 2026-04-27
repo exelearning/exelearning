@@ -93,7 +93,7 @@ var $exeDevice = {
                 'You can do this activity as many times as you want'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgClose: c_('Close'),
             msgClue: c_('Hint'),
@@ -497,7 +497,7 @@ var $exeDevice = {
                                 <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="idfEPercentajeFB" class="mb-0">%FB</label>
                                     <input type="number" name="idfEPercentajeFB" id="idfEPercentajeFB" class="form-control" value="100" min="5" max="100" step="5" disabled />
-                                    <span class="ms-2">${_('&percnt; right to see the feedback')}</span>
+                                    <span class="ms-2">${_('% right to see the feedback')}</span>
                                 </div>
                             </div>
                             <div id="idfEFeedbackP" class="IDFE-EFeedbackP mb-3">

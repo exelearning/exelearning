@@ -5517,8 +5517,8 @@
         <source>Cool!</source>
         <target>Fantastico!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
         <target>Hai bisogno di almeno una percentuale di risposte corrette per ottenere le informazioni. riprova.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
@@ -5637,8 +5637,8 @@
         <source>Percent</source>
         <target>Percentuale</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
         <target>&amp;percnt; di risposte corrette per vedere il feedback</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
@@ -5757,8 +5757,8 @@
         <source>Allow errors in typed words</source>
         <target>Consenti errori nelle parole digitate</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
         <target>Lettere errate consentite (&amp;percnt;)</target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
@@ -8793,14 +8793,6 @@
         <source>Apply</source>
         <target>Applica</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>Completa la tabella per definire una guida al punteggio. Definisci il punteggio o il valore di ogni descriptor.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>Scopri come applicare una griglia di valutazione</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>Esempio di griglia</target>
@@ -9477,8 +9469,8 @@
         <source>Representation</source>
         <target>Rappresentazione</target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
-        <source>Action &amp; Expression</source>
+      <trans-unit id="o84Jjwl" resname="Action & Expression">
+        <source>Action & Expression</source>
         <target>Azione ed espressione</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
@@ -12117,8 +12109,8 @@
         <source>Line highlight</source>
         <target>Evidenziazione riga</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
         <target>Devi rivedere il %s&amp;percnt; dei contenuti dell'attività prima di completare il questionario.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
@@ -14085,10 +14077,6 @@
         <source>Import (.elpx…)</source>
         <target>Importa (.elpx...)</target>
       </trans-unit>
-      <trans-unit id="1upcsut" resname="Download as">
-        <source>Download as</source>
-        <target>Scarica come</target>
-      </trans-unit>
       <trans-unit id="09pe22y" resname="0 iDevices">
         <source>0 iDevices</source>
         <target>0 iDevices</target>
@@ -14236,6 +14224,18 @@
       <trans-unit id="r5ifrwr" resname="Imported rubric">
         <source>Imported rubric</source>
         <target>Griglia importata</target>
+      </trans-unit>
+      <trans-unit id="yth6crp" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Si prega di completare la griglia prima di salvare il punteggio.</target>
+      </trans-unit>
+      <trans-unit id="widz42p" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~Il tuo punteggio verrà salvato dopo ogni modifica. Puoi completarla solo una volta.</target>
+      </trans-unit>
+      <trans-unit id="fzx8qmc" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~Il tuo punteggio verrà salvato automaticamente dopo ogni modifica.</target>
       </trans-unit>
     </body>
   </file>

@@ -5513,9 +5513,9 @@
         <source>Cool!</source>
         <target>Genial!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target></target>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
+        <target>~Necessiteu almenys un %s% de respostes correctes per obtenir la informació. Torneu-ho a intentar.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5633,9 +5633,9 @@
         <source>Percent</source>
         <target>Percentatge</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[&percnt; veure els comentaris]]></target>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
+        <target><![CDATA[% veure els comentaris]]></target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5753,9 +5753,9 @@
         <source>Allow errors in typed words</source>
         <target>Permetre errors a les paraules introduïdes</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target><![CDATA[Es permeten lletres incorrectes (&percnt;)]]></target>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
+        <target><![CDATA[Es permeten lletres incorrectes (%)]]></target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -8789,14 +8789,6 @@
         <source>Apply</source>
         <target>Aplicar</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>Completeu la taula per a definir una guia de qualificació. Definiu la puntuació o el valor de cada descriptor.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>Aprenga a aplicar una rúbrica</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>Rúbrica d'exemple</target>
@@ -9473,8 +9465,8 @@
         <source>Representation</source>
         <target>Comprensió</target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
-        <source>Action &amp; Expression</source>
+      <trans-unit id="o84Jjwl" resname="Action & Expression">
+        <source>Action & Expression</source>
         <target><![CDATA[Acció & Expressió]]></target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
@@ -12113,8 +12105,8 @@
         <source>Line highlight</source>
         <target>Línia destacada</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
         <target>Heu de revisar %s&amp;percnt; del contingut de l'activitat abans de completar el qüestionari.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
@@ -13513,67 +13505,54 @@
         <source>Generating ELPX file...</source>
         <target>S’està generant el fitxer ELPX...</target>
       </trans-unit>
-
       <trans-unit id="jd7qzd0" resname="File generated and downloaded.">
         <source>File generated and downloaded.</source>
         <target>El fitxer s’ha generat i descarregat.</target>
       </trans-unit>
-
       <trans-unit id="8e7gh3x" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
         <target>Error en generar el fitxer ELPX.</target>
       </trans-unit>
-
       <trans-unit id="h24yuzm" resname="Saving document...">
         <source>Saving document...</source>
         <target>Guardant el document...</target>
       </trans-unit>
-
       <trans-unit id="n3t58u0" resname="Saving...">
         <source>Saving...</source>
         <target>Guardant...</target>
       </trans-unit>
-
       <trans-unit id="vqfqjdb" resname="Offline Mode">
         <source>Offline Mode</source>
         <target>Mode fora de línia</target>
       </trans-unit>
-
       <trans-unit id="g1l6o52" resname="Your project is automatically saved in your browser. Use File &gt; Export to download a copy.">
         <source>Your project is automatically saved in your browser. Use File &gt; Export to download a copy.</source>
         <target>El teu projecte es guarda automàticament en el navegador. Utilitza Fitxer &gt; Exportar per a descarregar-ne una còpia.</target>
       </trans-unit>
-
       <trans-unit id="njspmuf" resname="Cannot save project to server because your storage quota has been exceeded. You can download the project locally.">
         <source>Cannot save project to server because your storage quota has been exceeded. You can download the project locally.</source>
         <target>No s’ha pogut guardar el projecte al servidor perquè has superat la quota d’emmagatzematge. Pots descarregar el projecte localment.</target>
       </trans-unit>
-
       <trans-unit id="62nlxne" resname="Quota exceeded">
         <source>Quota exceeded</source>
         <target>Quota superada</target>
       </trans-unit>
-
       <trans-unit id="i5knvk6" resname="Project saved successfully">
         <source>Project saved successfully</source>
         <target>El projecte s’ha guardat correctament</target>
       </trans-unit>
-
       <trans-unit id="qm5mq65" resname="Failed to save project">
         <source>Failed to save project</source>
         <target>No s’ha pogut guardar el projecte</target>
       </trans-unit>
-
       <trans-unit id="4pl6f30" resname="Project saved">
         <source>Project saved</source>
         <target>Projecte guardat</target>
       </trans-unit>
-
       <trans-unit id="kvcsk7s" resname="Failed to import style">
         <source>Failed to import style</source>
         <target>No s’ha pogut importar l’estil</target>
       </trans-unit>
-
       <trans-unit id="37wjnam" resname="Legacy license, please review">
         <source>Legacy license, please review</source>
         <target>Llicència heretada, revisa-la</target>
@@ -14098,10 +14077,6 @@
         <source>Import (.elpx…)</source>
         <target>Importar (.elpx…)</target>
       </trans-unit>
-      <trans-unit id="nzmi95w" resname="Download as">
-        <source>Download as</source>
-        <target>Descarregar com</target>
-      </trans-unit>
       <trans-unit id="xfnhb6m" resname="0 iDevices">
         <source>0 iDevices</source>
         <target>0 iDevices</target>
@@ -14249,6 +14224,18 @@
       <trans-unit id="qna4zkx" resname="Imported rubric">
         <source>Imported rubric</source>
         <target>Rúbrica importada</target>
+      </trans-unit>
+      <trans-unit id="wxeh20s" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Si us plau, completeu la rúbrica abans de guardar la vostra puntuació.</target>
+      </trans-unit>
+      <trans-unit id="f3mm7iu" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~La vostra puntuació es guardarà després de cada canvi. Sols podeu completar-la una vegada.</target>
+      </trans-unit>
+      <trans-unit id="1jpalng" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~La vostra puntuació es guardarà automàticament després de cada canvi.</target>
       </trans-unit>
     </body>
   </file>

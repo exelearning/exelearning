@@ -104,7 +104,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -156,7 +156,7 @@ var $exeDevice = {
             msgSearch: c_('Find'),
             msgClickOn: c_('Click on'),
             msgReviewContents: c_(
-                'You must review %s&percnt; of the contents of the activity before completing the questionnaire.'
+                'You must review %s% of the contents of the activity before completing the questionnaire.'
             ),
             msgScore10: c_(
                 'Everything is perfect! Do you want to repeat this activity?'

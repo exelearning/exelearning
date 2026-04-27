@@ -5513,8 +5513,8 @@
         <source>Cool!</source>
         <target>Super!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
         <target>Ai nevoie de măcar %s&amp;percnt; răspunsuri corecte pentru a primi informația. Te rog să încerci din nou.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
@@ -5633,8 +5633,8 @@
         <source>Percent</source>
         <target>Procentaj</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
         <target>&amp;percnt; drept de a vedea feedback-ul</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
@@ -5753,8 +5753,8 @@
         <source>Allow errors in typed words</source>
         <target>Permite erori în cuvintele tastate</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
         <target>Litere incorecte permise (&amp;percnt;)</target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
@@ -8789,14 +8789,6 @@
         <source>Apply</source>
         <target>Aplică</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>Completează tabelul pentru a defini un ghid de punctaj. Definește scorul sau valoarea fiecărui descriptor.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>Află cum să aplici un barem</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>Exemplu de barem</target>
@@ -9473,8 +9465,8 @@
         <source>Representation</source>
         <target>Reprezentare</target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
-        <source>Action &amp; Expression</source>
+      <trans-unit id="o84Jjwl" resname="Action & Expression">
+        <source>Action & Expression</source>
         <target>Acțiune și expresie</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
@@ -12113,8 +12105,8 @@
         <source>Line highlight</source>
         <target>Evidențiere linie</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
         <target>Trebuie să revizuiți %s&amp;percnt; din conținutul activității înainte de a completa chestionarul.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
@@ -12621,7 +12613,7 @@
         <source>Delete "%1"?</source>
         <target>Ștergi "%1"?</target>
       </trans-unit>
-      <trans-unit id="pitu10s" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; > |">
+      <trans-unit id="pitu10s" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
         <target>Numele fișierului nu este valid. Evită caracterele speciale precum / \\ : * ? " &lt; &gt; |</target>
       </trans-unit>
@@ -14085,10 +14077,6 @@
         <source>Import (.elpx…)</source>
         <target>Importă (.elpx…)</target>
       </trans-unit>
-      <trans-unit id="8406fy0" resname="Download as">
-        <source>Download as</source>
-        <target>Descarcă ca</target>
-      </trans-unit>
       <trans-unit id="bxvsxea" resname="0 iDevices">
         <source>0 iDevices</source>
         <target>0 iDevices</target>
@@ -14236,6 +14224,18 @@
       <trans-unit id="m94phqg" resname="Imported rubric">
         <source>Imported rubric</source>
         <target>Rubrică importată</target>
+      </trans-unit>
+      <trans-unit id="d379fgz" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Vă rugăm să completați rubrica înainte de a salva scorul.</target>
+      </trans-unit>
+      <trans-unit id="9pohxm9" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~Scorul dvs. va fi salvat după fiecare modificare. Puteți completa o singură dată.</target>
+      </trans-unit>
+      <trans-unit id="7z9sd7x" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~Scorul dvs. va fi salvat automat după fiecare modificare.</target>
       </trans-unit>
     </body>
   </file>

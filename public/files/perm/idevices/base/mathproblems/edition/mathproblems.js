@@ -90,7 +90,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -213,7 +213,7 @@ var $exeDevice = {
                                 <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="eCQPercentajeFB" class="mb-0">%FB</label>
                                     <input type="number" name="eCQPercentajeFB" id="eCQPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
-                                    <span>${_('&percnt; right to see the feedback')}.</span>
+                                    <span>${_('% right to see the feedback')}.</span>
                                 </div>
                             </div>
                             <div id="eCQFeedbackP" class="MTOE-EFeedbackP mb-3" style="display:none">
