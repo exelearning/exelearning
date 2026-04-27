@@ -13929,18 +13929,6 @@
         <source>DigCompEdu settings</source>
         <target>~Agordo de DigCompEdu</target>
       </trans-unit>
-      <trans-unit id="tgcnndm" resname="Español (MRCDD detallado)">
-        <source>Español (MRCDD detallado)</source>
-        <target>~Hispana (Detala MRCDD)</target>
-      </trans-unit>
-      <trans-unit id="4wayhny" resname="Galego (MRCDD completo)">
-        <source>Galego (MRCDD completo)</source>
-        <target>~Galega (Plena MRCDD)</target>
-      </trans-unit>
-      <trans-unit id="runzdvs" resname="English (DigCompEdu core)">
-        <source>English (DigCompEdu core)</source>
-        <target>~Angla (DigCompEdu kerna)</target>
-      </trans-unit>
       <trans-unit id="oanb207" resname="Display options">
         <source>Display options</source>
         <target>~Opcioj de vida</target>

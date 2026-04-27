@@ -13929,18 +13929,6 @@
         <source>DigCompEdu settings</source>
         <target>DigCompEdu konfigurazioa</target>
       </trans-unit>
-      <trans-unit id="ebr9yse" resname="Español (MRCDD detallado)">
-        <source>Español (MRCDD detallado)</source>
-        <target>Euskara (IKDEE zehaztuta)</target>
-      </trans-unit>
-      <trans-unit id="mr7nnhi" resname="Galego (MRCDD completo)">
-        <source>Galego (MRCDD completo)</source>
-        <target>Galego (MRCDD completo)</target>
-      </trans-unit>
-      <trans-unit id="mxgi13i" resname="English (DigCompEdu core)">
-        <source>English (DigCompEdu core)</source>
-        <target>Ingelesa (DigCompEdu core)</target>
-      </trans-unit>
       <trans-unit id="tcu6sch" resname="Display options">
         <source>Display options</source>
         <target>Erakutsi aukerak</target>
