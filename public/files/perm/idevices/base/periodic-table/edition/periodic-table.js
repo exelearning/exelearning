@@ -69,7 +69,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -432,7 +432,7 @@ var $exeDevice = {
                                     </span>
                                     <label class="toggle-label" for="ptEHasFeedBack">${_('Feedback')}.</label>
                                 </span>
-                                <input type="number" name="ptEPercentajeFB" id="ptEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" /><label for="ptEPercentajeFB" class="ms-2">${_('&percnt; right to see the feedback')}</label>
+                                <input type="number" name="ptEPercentajeFB" id="ptEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" /><label for="ptEPercentajeFB" class="ms-2">${_('% right to see the feedback')}</label>
                             </div>
                             <div id="ptEFeedbackP" class="PTE-EFeedbackP mb-3">
                                 <textarea id="ptEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>

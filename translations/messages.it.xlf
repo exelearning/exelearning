@@ -5517,8 +5517,8 @@
         <source>Cool!</source>
         <target>Fantastico!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
         <target>Hai bisogno di almeno una percentuale di risposte corrette per ottenere le informazioni. riprova.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
@@ -5637,8 +5637,8 @@
         <source>Percent</source>
         <target>Percentuale</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
         <target>&amp;percnt; di risposte corrette per vedere il feedback</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
@@ -5757,8 +5757,8 @@
         <source>Allow errors in typed words</source>
         <target>Consenti errori nelle parole digitate</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
         <target>Lettere errate consentite (&amp;percnt;)</target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
@@ -9469,8 +9469,8 @@
         <source>Representation</source>
         <target>Rappresentazione</target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
-        <source>Action &amp; Expression</source>
+      <trans-unit id="o84Jjwl" resname="Action & Expression">
+        <source>Action & Expression</source>
         <target>Azione ed espressione</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
@@ -12109,8 +12109,8 @@
         <source>Line highlight</source>
         <target>Evidenziazione riga</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
         <target>Devi rivedere il %s&amp;percnt; dei contenuti dell'attività prima di completare il questionario.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">

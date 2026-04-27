@@ -5513,9 +5513,9 @@
         <source>Cool!</source>
         <target>Primeran!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target><![CDATA[Gutxienez %s&percnt; erantzun zuzena eman behar duzu informazioa lortzeko. Saiatu berriro.]]></target>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
+        <target>Gutxienez %s% erantzun zuzena eman behar duzu informazioa lortzeko. Saiatu berriro.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5633,9 +5633,9 @@
         <source>Percent</source>
         <target>Ehunekoa</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[&percnt; prest iruzkinak ikusteko]]></target>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
+        <target>% prest iruzkinak ikusteko</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5753,9 +5753,9 @@
         <source>Allow errors in typed words</source>
         <target>Onartu erroreak sartutako hitzetan</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target><![CDATA[Letra okerrak onartzen dira (&percnt;)]]></target>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
+        <target>Letra okerrak onartzen dira (%)</target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -9465,8 +9465,8 @@
         <source>Representation</source>
         <target>Ulermena</target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
-        <source>Action &amp; Expression</source>
+      <trans-unit id="o84Jjwl" resname="Action & Expression">
+        <source>Action & Expression</source>
         <target><![CDATA[Ekintza & Adierazpena]]></target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
@@ -12105,8 +12105,8 @@
         <source>Line highlight</source>
         <target>Lerroa nabarmentzea</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">

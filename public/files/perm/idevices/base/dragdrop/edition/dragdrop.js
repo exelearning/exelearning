@@ -95,7 +95,7 @@ var $exeDevice = {
             msgAudio: c_('Audio'),
             msgNumQuestions: c_('Number of cards'),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameM: c_('You finished the game. Your score is %s.'),
             msgUncompletedActivity: c_('Incomplete activity'),

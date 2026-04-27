@@ -5517,9 +5517,9 @@
         <source>Cool!</source>
         <target>¡Bien!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target><![CDATA[Necesitas al menos %s&percnt; de respuestas correctas para obtener la información. Inténtalo de nuevo.]]></target>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
+        <target>Necesitas al menos %s% de respuestas correctas para obtener la información. Inténtalo de nuevo.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5637,9 +5637,9 @@
         <source>Percent</source>
         <target>Porcentaje</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[&percnt; de aciertos requerido para ver la retroalimentación]]></target>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
+        <target>% de aciertos requerido para ver la retroalimentación</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5757,9 +5757,9 @@
         <source>Allow errors in typed words</source>
         <target>Permitir errores en los palabras introducidas</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target><![CDATA[Letras incorrectas permitidas (&percnt;)]]></target>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
+        <target>Letras incorrectas permitidas (%)</target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -9469,8 +9469,8 @@
         <source>Representation</source>
         <target>Comprensión</target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
-        <source>Action &amp; Expression</source>
+      <trans-unit id="o84Jjwl" resname="Action & Expression">
+        <source>Action & Expression</source>
         <target>Acción y expresión</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
@@ -12109,9 +12109,9 @@
         <source>Line highlight</source>
         <target>Resaltado de línea</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target><![CDATA[Debes revisar el %s&percnt; de los contenidos de la actividad antes de completar el cuestionario.]]></target>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
+        <target>Debes revisar el %s% de los contenidos de la actividad antes de completar el cuestionario.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
