@@ -2,16 +2,21 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { StaticDataProvider } from './StaticDataProvider.js';
+import {
+    StaticDataProvider,
+    applyThemeRegistryOverride,
+} from './StaticDataProvider.js';
 
 describe('StaticDataProvider', () => {
     beforeEach(() => {
         // Clean up window.__EXE_STATIC_DATA__ before each test
         delete window.__EXE_STATIC_DATA__;
+        delete window.eXeLearning;
     });
 
     afterEach(() => {
         delete window.__EXE_STATIC_DATA__;
+        delete window.eXeLearning;
     });
 
     describe('constructor', () => {
@@ -76,6 +81,88 @@ describe('StaticDataProvider', () => {
             });
             const result = await provider.getThemes();
             expect(result.themes).toHaveLength(2);
+        });
+
+        it('should hide built-in themes listed in disabledBuiltins override', async () => {
+            window.eXeLearning = {
+                config: { themeRegistryOverride: { disabledBuiltins: ['neo'] } },
+            };
+            const provider = new StaticDataProvider({
+                themes: { themes: [{ name: 'base' }, { name: 'neo' }] },
+            });
+            const result = await provider.getThemes();
+            expect(result.themes.map((t) => t.name)).toEqual(['base']);
+        });
+
+        it('should append uploaded themes from the override', async () => {
+            window.eXeLearning = {
+                config: {
+                    themeRegistryOverride: {
+                        uploaded: [
+                            { name: 'acme', title: 'Acme', type: 'uploaded' },
+                        ],
+                    },
+                },
+            };
+            const provider = new StaticDataProvider({
+                themes: { themes: [{ name: 'base' }] },
+            });
+            const result = await provider.getThemes();
+            expect(result.themes.map((t) => t.name)).toEqual(['base', 'acme']);
+        });
+
+        it('should let an uploaded theme shadow a built-in on id collision', async () => {
+            window.eXeLearning = {
+                config: {
+                    themeRegistryOverride: {
+                        uploaded: [{ name: 'base', title: 'Custom Base' }],
+                    },
+                },
+            };
+            const provider = new StaticDataProvider({
+                themes: { themes: [{ name: 'base', title: 'Default' }] },
+            });
+            const result = await provider.getThemes();
+            expect(result.themes).toHaveLength(1);
+            expect(result.themes[0].title).toBe('Custom Base');
+        });
+
+        it('should ignore a malformed override and pass through the payload', async () => {
+            window.eXeLearning = {
+                config: { themeRegistryOverride: 'not-an-object' },
+            };
+            const provider = new StaticDataProvider({
+                themes: { themes: [{ name: 'base' }] },
+            });
+            const result = await provider.getThemes();
+            expect(result.themes).toHaveLength(1);
+        });
+    });
+
+    describe('applyThemeRegistryOverride (unit)', () => {
+        it('returns the original payload when no override is provided', () => {
+            const payload = { themes: [{ name: 'base' }] };
+            expect(applyThemeRegistryOverride(payload, null)).toEqual(payload);
+        });
+
+        it('copes with a null payload', () => {
+            const result = applyThemeRegistryOverride(null, {
+                uploaded: [{ name: 'a' }],
+            });
+            expect(result.themes.map((t) => t.name)).toEqual(['a']);
+        });
+
+        it('drops themes present in disabledBuiltins by id or name', () => {
+            const payload = {
+                themes: [
+                    { id: 'a', name: 'alpha' },
+                    { id: 'b', name: 'beta' },
+                ],
+            };
+            const result = applyThemeRegistryOverride(payload, {
+                disabledBuiltins: ['alpha', 'b'],
+            });
+            expect(result.themes).toEqual([]);
         });
     });
 

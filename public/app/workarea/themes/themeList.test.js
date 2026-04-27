@@ -564,6 +564,49 @@ describe('ThemeList', () => {
     });
   });
 
+  describe('themeRegistryOverride blockImportInstall', () => {
+    let warnSpy;
+
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      window.eXeLearning = {
+        config: { themeRegistryOverride: { blockImportInstall: true } },
+      };
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+      delete window.eXeLearning;
+    });
+
+    it('refuses addUserTheme and returns null when import is blocked', () => {
+      const result = themeList.addUserTheme({
+        name: 'blocked-theme',
+        dirName: 'blocked-theme',
+      });
+
+      expect(result).toBeNull();
+      expect(themeList.installed['blocked-theme']).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Refusing to install theme 'blocked-theme'")
+      );
+    });
+
+    it('short-circuits loadUserThemesFromIndexedDB when import is blocked', async () => {
+      const addSpy = vi.spyOn(themeList, 'addUserTheme');
+      const fakeCache = {
+        listUserThemes: vi.fn().mockResolvedValue([
+          { name: 'x', config: { name: 'x', dirName: 'x' } },
+        ]),
+      };
+
+      await themeList.loadUserThemesFromIndexedDB(fakeCache);
+
+      expect(fakeCache.listUserThemes).not.toHaveBeenCalled();
+      expect(addSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('integration', () => {
     it('should load and order themes from API', async () => {
       await themeList.load();
