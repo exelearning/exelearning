@@ -215,11 +215,13 @@
 }
 
 /*
- * Hide the native radio visually while keeping it in the DOM for
- * accessibility and form semantics. The selected state is conveyed
- * through the option's background/border colour instead.
+ * Hide the native control (radio for legacy, checkbox for select-multi)
+ * visually while keeping it in the DOM for accessibility and form
+ * semantics. The selected state is conveyed through the option's
+ * background/border colour instead.
  */
-.ADAPTATIVEQUIZ-Option input[type="radio"] {
+.ADAPTATIVEQUIZ-Option input[type="radio"],
+.ADAPTATIVEQUIZ-Option input[type="checkbox"] {
     position: absolute;
     opacity: 0;
     width: 1px;
@@ -230,7 +232,8 @@
     pointer-events: none;
 }
 
-.ADAPTATIVEQUIZ-Option:has(input[type="radio"]:checked) {
+.ADAPTATIVEQUIZ-Option:has(input[type="radio"]:checked),
+.ADAPTATIVEQUIZ-Option:has(input[type="checkbox"]:checked) {
     background: #dbe4f7;
     border-color: #3f5ba9;
     box-shadow: inset 0 0 0 1px #3f5ba9;
@@ -263,6 +266,21 @@
 .ADAPTATIVEQUIZ-OptionIncorrect {
     background: #fbe9e7;
     border-color: #ef9a9a;
+}
+
+/* Feedback colours must beat the blue "selected" state. Mirror the
+   `:has(input:checked)` shape so specificity wins when the option is
+   both selected and correct/incorrect. */
+.ADAPTATIVEQUIZ-Option.ADAPTATIVEQUIZ-OptionCorrect:has(input) {
+    background: #e8f5e9;
+    border-color: #a5d6a7;
+    box-shadow: inset 0 0 0 1px #a5d6a7;
+}
+
+.ADAPTATIVEQUIZ-Option.ADAPTATIVEQUIZ-OptionIncorrect:has(input) {
+    background: #fbe9e7;
+    border-color: #ef9a9a;
+    box-shadow: inset 0 0 0 1px #ef9a9a;
 }
 
 /* Sort items already declare a background; bump specificity so the
