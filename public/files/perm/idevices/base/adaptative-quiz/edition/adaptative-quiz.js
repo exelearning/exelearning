@@ -582,17 +582,19 @@ var $exeDevice = {
      */
     showQuestionType: typeSelect => {
         const t = parseInt(typeSelect, 10);
-        // Reset shared state.
-        $('input.ADQ-ESolutionMulti').removeClass('d-none');
-        $('.ADQ-ESolutionOrder').addClass('d-none');
+        // Reset shared state. Use jQuery show()/hide() so the toggling does
+        // not depend on Bootstrap's `d-none` being available in whatever
+        // CSS context the iDevice editor is rendered in.
+        $('input.ADQ-ESolutionMulti').show().removeClass('d-none');
+        $('.ADQ-ESolutionOrder').hide().addClass('d-none');
         $('#adaptativeQuizEAnswers').removeClass('d-none');
         $('#adaptativeQuizEWordDiv').removeClass('d-flex').addClass('d-none');
 
         if (t === 1) {
             // Sort/Order: show static rank labels (1,2,3,...) instead of
             // checkboxes. The option order in the form is the correct order.
-            $('input.ADQ-ESolutionMulti').addClass('d-none');
-            $('.ADQ-ESolutionOrder').removeClass('d-none');
+            $('input.ADQ-ESolutionMulti').hide().addClass('d-none');
+            $('.ADQ-ESolutionOrder').show().removeClass('d-none');
         } else if (t === 2) {
             // Word: hide options panel, show solution-word input
             $('#adaptativeQuizEAnswers').addClass('d-none');
