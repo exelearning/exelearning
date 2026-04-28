@@ -640,8 +640,8 @@ var $adaptativequiz = {
         const stemImage = question.type === 1 ? this.renderMedia(opts, question.url, 'image', question.question) : '';
         const stemAudio = this.renderMedia(opts, question.audio, 'audio', null, 'stem');
 
-        let html = `<div class="ADAPTATIVEQUIZ-QuestionRow">${stemAudio}<div class="ADAPTATIVEQUIZ-QuestionText">${this.escapeHtml(question.question)}</div></div>`;
-        html += `<div class="ADAPTATIVEQUIZ-QuestionMedia">${stemImage}</div>`;
+        let html = `<div class="ADAPTATIVEQUIZ-QuestionMedia">${stemImage}</div>`;
+        html += `<div class="ADAPTATIVEQUIZ-QuestionRow">${stemAudio}<div class="ADAPTATIVEQUIZ-QuestionText">${this.escapeHtml(question.question)}</div></div>`;
 
         if (tSel === 2) {
             // Word: free-text answer input
