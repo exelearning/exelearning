@@ -1043,6 +1043,124 @@ describe('common_edition.js', () => {
       expect(result.format).toEqual([]);
     });
 
+    describe('adaptative quiz (gameId 10)', () => {
+      const share = () => globalThis.$exeDevicesEdition.iDevice.gamification.share;
+
+      it('getAllowedFormats(10) defaults to 3 levels', () => {
+        const result = share().getAllowedFormats(10);
+        expect(result.format.length).toBe(3);
+        expect(result.examples.length).toBe(3);
+        expect(result.explanation).toContain('0 (low)');
+        expect(result.explanation).toContain('2 (high)');
+        expect(result.explanation).not.toContain('expert');
+        expect(result.prompt).toContain('20 low');
+        expect(result.allowRegex.test('0@1#Q#A#B#C#D')).toBe(true);
+        expect(result.allowRegex.test('2@3#Q#A#B')).toBe(true);
+        // Level 3 not allowed in 3-level mode
+        expect(result.allowRegex.test('3@1#Q#A#B')).toBe(false);
+        // Missing @ separator
+        expect(result.allowRegex.test('0#1#Q#A#B')).toBe(false);
+      });
+
+      it('getAllowedFormats(10, { numLevels: 4 }) extends to 4 levels', () => {
+        const result = share().getAllowedFormats(10, { numLevels: 4 });
+        expect(result.examples.length).toBe(4);
+        expect(result.explanation).toContain('3 (expert)');
+        expect(result.prompt).toContain('15 expert');
+        expect(result.allowRegex.test('3@2#Q#A#B#C')).toBe(true);
+        expect(result.allowRegex.test('0@1#Q#A#B')).toBe(true);
+        // Level 4 still rejected
+        expect(result.allowRegex.test('4@1#Q#A#B')).toBe(false);
+      });
+
+      it('getAllowedFormats(10) treats unknown numLevels as 3-level mode', () => {
+        const result = share().getAllowedFormats(10, { numLevels: 5 });
+        expect(result.examples.length).toBe(3);
+        expect(result.explanation).not.toContain('expert');
+      });
+
+      it('buildIAPromptText(10) joins lines with real newlines (no literal \\n)', () => {
+        const text = share().buildIAPromptText(10);
+        expect(text).toContain('Act as a highly experienced teacher.');
+        expect(text).toContain('Formats');
+        expect(text).toContain('Examples');
+        expect(text).toContain('20 low');
+        expect(text).not.toContain('expert');
+        // Must NOT contain a literal backslash-n sequence
+        expect(text.indexOf('\\n')).toBe(-1);
+        // Must split into multiple actual lines
+        expect(text.split('\n').length).toBeGreaterThan(5);
+      });
+
+      it('buildIAPromptText(10, { numLevels: 4 }) reflects 4-level config', () => {
+        const text = share().buildIAPromptText(10, { numLevels: 4 });
+        expect(text).toContain('15 low');
+        expect(text).toContain('15 expert');
+        expect(text).toContain('3 (expert)');
+      });
+
+      it('refreshIAPrompt writes the current prompt into #eXeEPromptArea and updates on re-call', () => {
+        const $textarea = $('<textarea id="eXeEPromptArea"></textarea>').appendTo('body');
+        try {
+          share().refreshIAPrompt(10, { numLevels: 4 });
+          expect($textarea.val()).toContain('15 expert');
+          share().refreshIAPrompt(10, { numLevels: 3 });
+          expect($textarea.val()).toContain('20 high');
+          expect($textarea.val()).not.toContain('15 expert');
+        } finally {
+          $textarea.remove();
+        }
+      });
+
+      it('refreshIAPrompt is a no-op when the textarea does not exist', () => {
+        expect(() => {
+          share().refreshIAPrompt(10, { numLevels: 3 });
+        }).not.toThrow();
+      });
+
+      it('validateAndSave(10, $area, options) honours the 4-level regex', () => {
+        const textarea = $('<textarea></textarea>')
+          .val('3@1#Q4#A#B#C\n0@1#Q1#A#B')
+          .appendTo('body');
+        try {
+          // 3-level mode: line with level 3 is invalid
+          const result3 = share().validateAndSave(10, textarea);
+          expect(result3.validLines).toContain('0@1#Q1#A#B');
+          expect(result3.invalidLines).toContain('3@1#Q4#A#B#C');
+
+          // Refill and try 4-level mode: both should be valid
+          textarea.val('3@1#Q4#A#B#C\n0@1#Q1#A#B');
+          const result4 = share().validateAndSave(10, textarea, { numLevels: 4 });
+          expect(result4.validLines).toContain('0@1#Q1#A#B');
+          expect(result4.validLines).toContain('3@1#Q4#A#B#C');
+          expect(result4.invalidLines.length).toBe(0);
+        } finally {
+          textarea.remove();
+        }
+      });
+
+      it('validateQuesionsIA(10, lines, options) honours the 4-level regex', () => {
+        const lines = ['3@1#Q4#A#B#C', '0@1#Q1#A#B'];
+        const result3 = share().validateQuesionsIA(10, lines);
+        expect(result3).toContain('0@1#Q1#A#B');
+        expect(result3).not.toContain('3@1#Q4#A#B#C');
+        const result4 = share().validateQuesionsIA(10, lines, { numLevels: 4 });
+        expect(result4).toContain('0@1#Q1#A#B');
+        expect(result4).toContain('3@1#Q4#A#B#C');
+      });
+
+      it('legacy callers (no options) keep working for gameId 0..9', () => {
+        for (let i = 0; i <= 9; i++) {
+          const result = share().getAllowedFormats(i);
+          expect(result).toHaveProperty('format');
+          expect(Array.isArray(result.format)).toBe(true);
+        }
+        const text = share().buildIAPromptText(0);
+        expect(text).toContain('Act as a highly experienced teacher.');
+        expect(text.indexOf('\\n')).toBe(-1);
+      });
+    });
+
     it('cleanText removes extra spaces and trims', () => {
       const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.cleanText('  line1  \n  line2  ');
       expect(result).toBe('line1\nline2');

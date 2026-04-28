@@ -525,9 +525,9 @@ var $exeDevicesEdition = {
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
 
-                getTabIA: function (type = 0) {
+                getTabIA: function (type = 0, options = {}) {
                     const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
+                    const promptText = $exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
                     const tab = `
                         <div class="exe-form-tab" title="${_('AI')}">
                             <p class="exe-block-info">${msgAddText}</p>
@@ -551,16 +551,7 @@ var $exeDevicesEdition = {
                                     </li>
                                 </ul>
                                 <div class="eXeE-LightboxContent p-2">
-                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">
-                                        ${c_('Act as a highly experienced teacher.')}
-                                        ${fprompt.prompt}
-                                        ${c_('Formats')}:
-                                        ${fprompt.format.join('\n')}
-                                        ${fprompt.explanation}
-                                        ${c_('Examples')}:
-                                        ${fprompt.examples.join('\n')}
-                                        ${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')}, 
-                                    </textarea>
+                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">${promptText}</textarea>
                                     <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
                                     <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
                                         ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
@@ -637,7 +628,7 @@ var $exeDevicesEdition = {
                 },
 
 
-                getAllowedFormats: function (gameId) {
+                getAllowedFormats: function (gameId, options = {}) {
                     const gameFormats = {
                         0: { // Word/Definition
                             format: [`${c_('Word')}#${c_('Definition')}`],
@@ -755,6 +746,32 @@ var $exeDevicesEdition = {
                             examples: [`${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`],
                             allowRegex: /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/
                         },
+                        10: (() => { // adaptative quiz
+                            const numLevels = parseInt(options.numLevels, 10) === 4 ? 4 : 3;
+                            const format = [
+                                `${c_('Level')}@${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}#${c_('OptionD')}`,
+                                `${c_('Level')}@${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}`,
+                                `${c_('Level')}@${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}`
+                            ];
+                            const examples = [
+                                `0@1#${c_('What is the largest planet in the solar system?')}#${c_('Earth')}#${c_('Jupiter')}#${c_('Mars')}#${c_('Venus')}`,
+                                `1@0#${c_('What process do plants use to produce energy?')}#${c_('Photosynthesis')}#${c_('Respiration')}#${c_('Digestion')}`,
+                                `2@2#${c_('Which particle has no electric charge?')}#${c_('Proton')}#${c_('Electron')}#${c_('Neutron')}#${c_('Positron')}`
+                            ];
+                            if (numLevels === 4) {
+                                examples.push(`3@3#${c_('Which of these is a transcendental number?')}#${c_('2')}#${c_('1/3')}#${c_('Square root of 2')}#${c_('Pi')}`);
+                            }
+                            const explanation = numLevels === 4
+                                ? c_('Level: 0 (low), 1 (medium), 2 (high) or 3 (expert). Solution: 0, 1, 2 or 3. Separate the level from the solution with @.')
+                                : c_('Level: 0 (low), 1 (medium) or 2 (high). Solution: 0, 1, 2 or 3. Separate the level from the solution with @.');
+                            const allowRegex = numLevels === 4
+                                ? /^(0|1|2|3)@(0|1|2|3)#([^#]+)#([^#]+)#([^#]+)(#[^#]+){0,2}$/
+                                : /^(0|1|2)@(0|1|2|3)#([^#]+)#([^#]+)#([^#]+)(#[^#]+){0,2}$/;
+                            const prompt = numLevels === 4
+                                ? c_('Create 60 multiple-choice questions with 2 to 4 options balanced by difficulty: 15 low (level 0), 15 medium (level 1), 15 high (level 2) and 15 expert (level 3). Start every line with the level, the @ separator, the correct solution (0, 1, 2 or 3), the question and each option, all separated by #. Example: 0@1#Question#OptionA#OptionB#OptionC#OptionD.')
+                                : c_('Create 60 multiple-choice questions with 2 to 4 options balanced by difficulty: 20 low (level 0), 20 medium (level 1) and 20 high (level 2). Start every line with the level, the @ separator, the correct solution (0, 1, 2 or 3), the question and each option, all separated by #. Example: 0@1#Question#OptionA#OptionB#OptionC#OptionD.');
+                            return { format, explanation, examples, allowRegex, prompt };
+                        })(),
                     };
 
                     const game = gameFormats[gameId];
@@ -772,7 +789,31 @@ var $exeDevicesEdition = {
                     };
                 },
 
-                addEvents: function (type, saveQuestions) {
+                buildIAPromptText: function (gameId, options = {}) {
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options);
+                    const lines = [
+                        c_('Act as a highly experienced teacher.'),
+                        fprompt.prompt,
+                        `${c_('Formats')}:`,
+                        fprompt.format.join('\n'),
+                        fprompt.explanation,
+                        `${c_('Examples')}:`,
+                        fprompt.examples.join('\n'),
+                        `${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')},`
+                    ];
+                    return lines.filter((line) => line !== undefined && line !== '').join('\n');
+                },
+
+                refreshIAPrompt: function (gameId, options = {}) {
+                    const $prompt = $('#eXeEPromptArea');
+                    if (!$prompt.length) return;
+                    $prompt.val($exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(gameId, options));
+                },
+
+                addEvents: function (type, saveQuestions, getOptions) {
+                    const resolveOptions = typeof getOptions === 'function'
+                        ? getOptions
+                        : () => (getOptions && typeof getOptions === 'object' ? getOptions : {});
                     const $textQuestionsArea = $('#eXeEQuestionsArea');
                     const $textPrompt = $('#eXeEPromptArea');
                     const $textAreaIa = $('#eXeEQuestionsIA');
@@ -903,7 +944,7 @@ var $exeDevicesEdition = {
                             eXe.app.alert(_("Please enter at least one question."));
                             return;
                         }
-                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
@@ -920,7 +961,7 @@ var $exeDevicesEdition = {
                             return;
                         }
 
-                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
@@ -956,11 +997,11 @@ var $exeDevicesEdition = {
 
                     $('#eXeIAButton').on('click', function () {
                         $('#eXeIAMessage').text(_('Generating questions. Please wait...')).show();
-                        $exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions);
+                        $exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions, resolveOptions());
                     });
 
                 },
-                genarateIAQuestons: async function (type, saveQuestions) {
+                genarateIAQuestons: async function (type, saveQuestions, options = {}) {
                     $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', true);
                     const $specialty = $('#eXeSpecialtyIA');
                     const $course = $('#eXeCourseIA');
@@ -997,14 +1038,14 @@ var $exeDevicesEdition = {
                         promptText += `${_('With the following formats:')}`;
                     }
 
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type, options);
                     let prompt = `
                         ${promptText}
                         ${fprompt.format.join('\n')}
                         ${fprompt.explanation}
                         ${_('Examples')}:
-                        ${fprompt.examples.join('\n')}  
-                        ${_('You must return only the questions without numbering and without classification or bullet points')},                    
+                        ${fprompt.examples.join('\n')}
+                        ${_('You must return only the questions without numbering and without classification or bullet points')},
                     `;
 
                     let sdata = '';
@@ -1016,7 +1057,7 @@ var $exeDevicesEdition = {
                         if (data.questions) {
                             let questions = $exeDevicesEdition.iDevice.gamification.share.checkQuestions(data.questions);
                             if (questions) {
-                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions);
+                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions, options);
                                 saveQuestions(correctsQuestions);
                             } else {
                                 sdata = _('The questions could not be generated');
@@ -1065,11 +1106,11 @@ var $exeDevicesEdition = {
                 },
 
 
-                validateAndSave: function (gameId, $textQuestionsArea) {
+                validateAndSave: function (gameId, $textQuestionsArea, options = {}) {
                     const lines = $textQuestionsArea.val().trim().split('\n');
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();
@@ -1087,10 +1128,10 @@ var $exeDevicesEdition = {
                     }
                 },
 
-                validateQuesionsIA: function (gameId, lines) {
+                validateQuesionsIA: function (gameId, lines, options = {}) {
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();
