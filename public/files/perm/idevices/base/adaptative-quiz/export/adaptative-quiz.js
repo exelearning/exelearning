@@ -718,15 +718,15 @@ var $adaptativequiz = {
             // blocks are horizontally centered via the wrapper.
             //
             // Data mapping (matches the edition form labels):
-            //   q.question     -> the DEFINITION (the prompt shown above the input)
-            //   q.solutionWord -> the WORD (what the learner types; hint cells)
+            //   q.question     -> the WORD (what the learner types; hint cells)
+            //   q.solutionWord -> the DEFINITION (the prompt shown above the input)
             const inputId = `adaptativeQuizWord-${id}`;
-            const hintMarkup = this.buildWordHint(question.solutionWord || '', question.percentageShow);
+            const hintMarkup = this.buildWordHint(question.question || '', question.percentageShow);
             html += `<div class="ADAPTATIVEQUIZ-WordAnswer">`;
             if (hintMarkup) {
                 html += `<div class="ADAPTATIVEQUIZ-WordHint" aria-hidden="true">${hintMarkup}</div>`;
             }
-            html += `<div class="ADAPTATIVEQUIZ-WordDefinition">${stemAudio}<div class="ADAPTATIVEQUIZ-WordDefinitionText">${this.escapeHtml(question.question || '')}</div></div>`;
+            html += `<div class="ADAPTATIVEQUIZ-WordDefinition">${stemAudio}<div class="ADAPTATIVEQUIZ-WordDefinitionText">${this.escapeHtml(question.solutionWord || '')}</div></div>`;
             html += `<label for="${inputId}" class="sr-av">${this.escapeHtml((opts.msgs || {}).msgAnswer || 'Answer')}</label><input type="text" class="ADAPTATIVEQUIZ-WordInput form-control" id="${inputId}" autocomplete="off" /></div>`;
         } else if (tSel === 1) {
             // Sort: drag-and-drop reorderable list. Each item shows a live
@@ -1022,11 +1022,10 @@ var $adaptativequiz = {
                 }
                 return v;
             };
-            // The learner types the WORD, which is stored in q.solutionWord
-            // (see edition form: the shared "Question" input maps to
-            // q.question = the definition/prompt; the dedicated "Word"
-            // input maps to q.solutionWord = the answer).
-            isCorrect = norm(answer) === norm(question.solutionWord || '');
+            // The learner types the WORD, which is stored in q.question (see
+            // edition form: the "Word" field maps to q.question, the
+            // "Definition" field maps to q.solutionWord).
+            isCorrect = norm(answer) === norm(question.question || '');
             chosen = answer;
         }
 
@@ -1067,7 +1066,7 @@ var $adaptativequiz = {
                     // Word: reveal the full word in the hint cells and tint
                     // them green when the learner's answer was correct,
                     // blue when it was incorrect.
-                    const fullHint = this.buildWordHint(question.solutionWord || '', 100);
+                    const fullHint = this.buildWordHint(question.question || '', 100);
                     const $hint = $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-WordHint');
                     if ($hint.length) {
                         $hint.html(fullHint).addClass(
