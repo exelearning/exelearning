@@ -199,16 +199,26 @@ var $adaptativequiz = {
             const questionText = source.question || source.text || '';
             const type = Number.isInteger(source.type) ? source.type : source.image ? 1 : 0;
             const url = type === 1 ? source.url || source.image || '' : '';
-            const typeSelect = Number.isInteger(source.typeSelect) ? source.typeSelect : 3;
+            // typeSelect: 0=select (multi), 1=sort, 2=word, 4=trueFalse.
+            // Legacy/test (3 or absent) maps to Select with the legacy single
+            // `solution` index promoted to a one-element solutionMulti.
+            let typeSelect = Number.isInteger(source.typeSelect) ? source.typeSelect : 0;
+            if (typeSelect !== 0 && typeSelect !== 1 && typeSelect !== 2 && typeSelect !== 4) {
+                typeSelect = 0;
+            }
 
-            // Per-type solution normalization. Default behavior (test/3 and
-            // legacy entries with no typeSelect) keeps `solution` as a single
-            // index. The other types pull from the dedicated fields.
-            const solutionMulti = Array.isArray(source.solutionMulti)
+            // Per-type solution normalization. The Select (multi) type pulls
+            // from `solutionMulti`; falls back to `[solution]` for migrated
+            // entries. Sort uses `solutionOrder`. Word uses `solutionWord`.
+            // True/False keeps the single `solution` index.
+            let solutionMulti = Array.isArray(source.solutionMulti)
                 ? source.solutionMulti
                       .map(n => parseInt(n, 10))
                       .filter(n => Number.isInteger(n) && n >= 0 && n < options.length)
                 : [];
+            if (typeSelect === 0 && solutionMulti.length === 0 && Number.isInteger(solution)) {
+                if (solution >= 0 && solution < options.length) solutionMulti = [solution];
+            }
             const solutionOrder = Array.isArray(source.solutionOrder)
                 ? source.solutionOrder.slice(0, options.length).map(n => parseInt(n, 10) || 0)
                 : [];
@@ -764,7 +774,7 @@ var $adaptativequiz = {
         const question = opts.questions[opts.currentQuestionIndex];
         if (!question) return;
 
-        const tSel = Number.isInteger(question.typeSelect) ? question.typeSelect : 3;
+        const tSel = Number.isInteger(question.typeSelect) ? question.typeSelect : 0;
         const msgs = opts.msgs || {};
 
         let isCorrect = false;
@@ -819,8 +829,8 @@ var $adaptativequiz = {
             const norm = s => String(s).trim().toLocaleLowerCase();
             isCorrect = norm(answer) === norm(question.solutionWord || '');
             chosen = answer;
-        } else {
-            // Test (3) and TrueFalse (4) share single-radio model
+        } else if (tSel === 4) {
+            // True/False uses the single-radio model
             $selected = $('input[name="adaptativeQuizAnswer-' + id + '"]:checked');
             if ($selected.length === 0) {
                 this.setMessage(id, msgs.msgSelectOption || 'Click on an option to choose your answer.', 'info');
@@ -843,7 +853,7 @@ var $adaptativequiz = {
                         const orig = parseInt($(this).attr('data-orig-index'));
                         if (expectedSet.has(orig)) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
                     });
-                } else if (tSel === 3 || tSel === 4) {
+                } else if (tSel === 4) {
                     const correctIndex = Number.isInteger(question.solution) ? question.solution : 0;
                     $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-Option').each(function () {
                         const orig = parseInt($(this).attr('data-orig-index'));
@@ -851,7 +861,7 @@ var $adaptativequiz = {
                     });
                 }
             }
-            if (!isCorrect && (tSel === 3 || tSel === 4) && $selected.length) {
+            if (!isCorrect && tSel === 4 && $selected.length) {
                 $selected.closest('.ADAPTATIVEQUIZ-Option').addClass('ADAPTATIVEQUIZ-OptionIncorrect');
             }
         }

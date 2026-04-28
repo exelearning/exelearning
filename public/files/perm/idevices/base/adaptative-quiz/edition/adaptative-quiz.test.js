@@ -150,6 +150,8 @@ describe('adaptative-quiz edition', () => {
                         <input id="adaptativeQuizEOption3" value="" />
                         <input id="adaptativeQuizAudio-option3" value="" />
                         <input type="radio" name="adqsolution" value="0" checked />
+                        <input type="checkbox" name="adqsolutionmulti" value="0" checked />
+                        <input type="checkbox" name="adqsolutionmulti" value="1" />
                         <input id="adaptativeQuizEMessageOK" value="" />
                         <input id="adaptativeQuizAudio-msgHit" value="" />
                         <input id="adaptativeQuizEMessageKO" value="" />
@@ -544,15 +546,14 @@ describe('adaptative-quiz edition', () => {
         });
     });
 
-    describe('5 question types (typeSelect)', () => {
+    describe('4 question types (typeSelect)', () => {
         function buildTypedForm() {
             document.body.innerHTML = `
                 <div class="idevice_node adaptative-quiz" id="idevice-1">
                     <div id="adaptativeQuizIdeviceForm">
-                        <input type="radio" name="adqtypeselect" value="0" id="adaptativeQuizTypeSelect" />
+                        <input type="radio" name="adqtypeselect" value="0" id="adaptativeQuizTypeSelect" checked />
                         <input type="radio" name="adqtypeselect" value="1" id="adaptativeQuizTypeOrder" />
                         <input type="radio" name="adqtypeselect" value="2" id="adaptativeQuizTypeWord" />
-                        <input type="radio" name="adqtypeselect" value="3" id="adaptativeQuizTypeTest" checked />
                         <input type="radio" name="adqtypeselect" value="4" id="adaptativeQuizTypeTrueFalse" />
                         <input type="radio" name="adqtype" value="0" checked />
                         <input type="radio" name="adqnumber" value="4" checked />
@@ -599,9 +600,9 @@ describe('adaptative-quiz edition', () => {
             idevice.showMessage = () => {};
         });
 
-        it('defaults typeSelect to 3 (test) in getCuestionDefault', () => {
+        it('defaults typeSelect to 0 (select) in getCuestionDefault', () => {
             const q = idevice.getCuestionDefault();
-            expect(q.typeSelect).toBe(3);
+            expect(q.typeSelect).toBe(0);
             expect(q.solutionMulti).toEqual([]);
             expect(q.solutionOrder).toEqual([]);
             expect(q.solutionWord).toBe('');
@@ -609,7 +610,6 @@ describe('adaptative-quiz edition', () => {
 
         it('readQuestionFromDom captures multi solution for typeSelect=0', () => {
             document.querySelector('#adaptativeQuizTypeSelect').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
             document.querySelector('#adaptativeQuizESolutionMulti0').checked = true;
             document.querySelector('#adaptativeQuizESolutionMulti2').checked = true;
             const q = idevice.readQuestionFromDom();
@@ -619,7 +619,7 @@ describe('adaptative-quiz edition', () => {
 
         it('readQuestionFromDom captures order for typeSelect=1', () => {
             document.querySelector('#adaptativeQuizTypeOrder').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
+            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
             document.querySelector('#adaptativeQuizESolutionOrder0').value = '2';
             document.querySelector('#adaptativeQuizESolutionOrder1').value = '4';
             document.querySelector('#adaptativeQuizESolutionOrder2').value = '1';
@@ -631,7 +631,7 @@ describe('adaptative-quiz edition', () => {
 
         it('readQuestionFromDom captures word solution for typeSelect=2', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
+            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
             document.querySelector('#adaptativeQuizESolutionWord').value = 'answer';
             const q = idevice.readQuestionFromDom();
             expect(q.typeSelect).toBe(2);
@@ -640,7 +640,7 @@ describe('adaptative-quiz edition', () => {
 
         it('readQuestionFromDom forces numberOptions=2 for typeSelect=4', () => {
             document.querySelector('#adaptativeQuizTypeTrueFalse').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
+            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
             document.querySelector('#adaptativeQuizESolution1').checked = true;
             const q = idevice.readQuestionFromDom();
             expect(q.typeSelect).toBe(4);
@@ -648,24 +648,49 @@ describe('adaptative-quiz edition', () => {
             expect(q.solution).toBe(1);
         });
 
-        it('validateQuestion rejects test type without exactly one correct answer', () => {
-            // No radio checked → solution stays 0 from readQuestionFromDom default.
-            // Test default behavior should accept solution=0 if option 0 has text.
-            // Force an out-of-range solution: numberOptions=4, solution=10 (parsed via radio).
-            const validRes = idevice.validateQuestion();
-            expect(validRes).toBe(true);
+        it('migrates legacy typeSelect=3 to 0 with solutionMulti from solution', () => {
+            // Simulate legacy data in questionsGame; showQuestion should
+            // upgrade it before populating the form.
+            idevice.questionsGame = [
+                {
+                    type: 0,
+                    typeSelect: 3,
+                    url: '',
+                    audio: '',
+                    question: 'Q',
+                    numberOptions: 4,
+                    options: [
+                        { text: 'A', audio: '' },
+                        { text: 'B', audio: '' },
+                        { text: 'C', audio: '' },
+                        { text: 'D', audio: '' },
+                    ],
+                    solution: 2,
+                    difficulty: 2,
+                    msgHit: '',
+                    msgHitAudio: '',
+                    msgError: '',
+                    msgErrorAudio: '',
+                },
+            ];
+            // showQuestion expects an `#adaptativeQuizInputImage` and similar
+            // shells; the typed form omits them. Stub showOptions/related DOM
+            // dependencies to no-op for this targeted assertion.
+            idevice.showOptions = () => {};
+            idevice.updateImagePreview = () => {};
+            idevice.showQuestion(0);
+            expect(idevice.questionsGame[0].typeSelect).toBe(0);
+            expect(idevice.questionsGame[0].solutionMulti).toEqual([2]);
         });
 
         it('validateQuestion rejects select type with zero correct answers', () => {
             document.querySelector('#adaptativeQuizTypeSelect').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
             const res = idevice.validateQuestion();
             expect(res).toBe(false);
         });
 
         it('validateQuestion accepts select type with one correct answer', () => {
             document.querySelector('#adaptativeQuizTypeSelect').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
             document.querySelector('#adaptativeQuizESolutionMulti0').checked = true;
             const res = idevice.validateQuestion();
             expect(res).toBe(true);
@@ -673,7 +698,7 @@ describe('adaptative-quiz edition', () => {
 
         it('validateQuestion rejects sort type when ranks are not unique 1..N', () => {
             document.querySelector('#adaptativeQuizTypeOrder').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
+            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
             document.querySelector('#adaptativeQuizESolutionOrder0').value = '1';
             document.querySelector('#adaptativeQuizESolutionOrder1').value = '1';
             document.querySelector('#adaptativeQuizESolutionOrder2').value = '2';
@@ -684,7 +709,7 @@ describe('adaptative-quiz edition', () => {
 
         it('validateQuestion accepts sort type with a valid permutation', () => {
             document.querySelector('#adaptativeQuizTypeOrder').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
+            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
             document.querySelector('#adaptativeQuizESolutionOrder0').value = '4';
             document.querySelector('#adaptativeQuizESolutionOrder1').value = '1';
             document.querySelector('#adaptativeQuizESolutionOrder2').value = '3';
@@ -695,14 +720,14 @@ describe('adaptative-quiz edition', () => {
 
         it('validateQuestion rejects word type without solution word', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
+            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
             const res = idevice.validateQuestion();
             expect(res).toBe(false);
         });
 
         it('validateQuestion accepts word type with definition + solution word', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
+            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
             document.querySelector('#adaptativeQuizESolutionWord').value = 'answer';
             const res = idevice.validateQuestion();
             expect(res).toBe(true);
@@ -710,7 +735,7 @@ describe('adaptative-quiz edition', () => {
 
         it('validateQuestion accepts true/false type with solution=0 (True)', () => {
             document.querySelector('#adaptativeQuizTypeTrueFalse').checked = true;
-            document.querySelector('#adaptativeQuizTypeTest').checked = false;
+            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
             document.querySelector('#adaptativeQuizESolution0').checked = true;
             const res = idevice.validateQuestion();
             expect(res).toBe(true);

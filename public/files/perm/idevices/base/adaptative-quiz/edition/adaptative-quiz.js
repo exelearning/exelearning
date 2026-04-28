@@ -136,7 +136,6 @@ var $exeDevice = {
                 'Warning: the selected initial level has no questions. The quiz will start using the fallback level.',
             ),
             msgProvideTimeSolution: _('Please indicate the time the solution will be displayed.'),
-            msgETestOne: _('Question %s: a test question must have exactly one correct answer.'),
             msgESelectAtLeastOne: _('Question %s: please mark at least one correct answer.'),
             msgETrueFalseSolution: _('Question %s: please choose True or False as the correct answer.'),
             msgEProvideWord: _('Question %s: please provide the solution word or phrase.'),
@@ -291,12 +290,8 @@ var $exeDevice = {
                                         <span>${_('Type')}:</span>
                                         <span class="ADQ-EInputTypeSelect d-flex align-items-center gap-2 flex-wrap">
                                             <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeSelect" type="radio" name="adqtypeselect" value="0" />
+                                                <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeSelect" type="radio" name="adqtypeselect" value="0" checked="checked" />
                                                 <label for="adaptativeQuizTypeSelect">${_('Select')}</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeTest" type="radio" name="adqtypeselect" value="3" checked="checked" />
-                                                <label for="adaptativeQuizTypeTest">${_('Test')}</label>
                                             </div>
                                             <div class="form-check form-check-inline m-0">
                                                 <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeTrueFalse" type="radio" name="adqtypeselect" value="4" />
@@ -469,7 +464,7 @@ var $exeDevice = {
 
     getCuestionDefault: () => ({
         type: 0,
-        typeSelect: 3,
+        typeSelect: 0,
         url: '',
         audio: '',
         question: '',
@@ -499,7 +494,17 @@ var $exeDevice = {
         this.active = idx;
         const q = this.questionsGame[idx] || this.getCuestionDefault();
 
-        const tSel = Number.isInteger(q.typeSelect) ? q.typeSelect : 3;
+        // Legacy migration: drop the obsolete "Test" type (3). Treat it (and
+        // any missing/invalid value other than 0/1/2/4) as "Select" with the
+        // single legacy `solution` mapped into `solutionMulti`.
+        let tSel = Number.isInteger(q.typeSelect) ? q.typeSelect : 0;
+        if (tSel !== 0 && tSel !== 1 && tSel !== 2 && tSel !== 4) {
+            tSel = 0;
+            if (!Array.isArray(q.solutionMulti) || q.solutionMulti.length === 0) {
+                q.solutionMulti = Number.isInteger(q.solution) ? [q.solution] : [];
+            }
+        }
+        q.typeSelect = tSel;
         $('input[name="adqtypeselect"][value="' + tSel + '"]').prop('checked', true);
         $('input[name="adqtype"][value="' + (q.type || 0) + '"]').prop('checked', true);
         $('input[name="adqnumber"][value="' + (q.numberOptions || 4) + '"]').prop('checked', true);
@@ -550,8 +555,8 @@ var $exeDevice = {
             });
         } else if (tSel === 2) {
             $('#adaptativeQuizESolutionWord').val(q.solutionWord || '');
-        } else {
-            // test (3) and trueFalse (4) share single-radio model
+        } else if (tSel === 4) {
+            // True/False uses the single-radio solution
             const solutionIdx = Number.isInteger(q.solution) ? q.solution : 0;
             $('#adaptativeQuizESolution' + solutionIdx).prop('checked', true);
         }
@@ -568,9 +573,9 @@ var $exeDevice = {
 
     /**
      * Apply UI changes for a given question type.
-     * 0=select (multi-checkbox), 1=sort (order inputs), 2=word (single solution input,
-     * options hidden), 3=test (single radio, default), 4=trueFalse (forced 2 options
-     * labelled True/False, single radio).
+     * 0=select (multi-checkbox, default), 1=sort (order inputs),
+     * 2=word (single solution input, options hidden),
+     * 4=trueFalse (forced 2 options labelled True/False, single radio).
      */
     showQuestionType: function (typeSelect) {
         const t = parseInt(typeSelect, 10);
@@ -583,11 +588,7 @@ var $exeDevice = {
         $('input.ADQ-EAnwersOptions').prop('readonly', false);
         $('input[name="adqnumber"]').prop('disabled', false);
 
-        if (t === 0) {
-            // Select (multi)
-            $('input.ADQ-ESolution').addClass('d-none');
-            $('input.ADQ-ESolutionMulti').removeClass('d-none');
-        } else if (t === 1) {
+        if (t === 1) {
             // Sort/Order
             $('input.ADQ-ESolution').addClass('d-none');
             $('input.ADQ-ESolutionOrder').removeClass('d-none');
@@ -608,8 +609,11 @@ var $exeDevice = {
             if (!$opt1.val()) $opt1.val(falseLabel);
             $opt0.prop('readonly', true);
             $opt1.prop('readonly', true);
+        } else {
+            // Select (multi, default)
+            $('input.ADQ-ESolution').addClass('d-none');
+            $('input.ADQ-ESolutionMulti').removeClass('d-none');
         }
-        // type 3 (test) keeps default radio UI
     },
 
     showOptions: function (n) {
@@ -681,7 +685,9 @@ var $exeDevice = {
     readQuestionFromDom: function () {
         const q = this.questionsGame[this.active] || this.getCuestionDefault();
         const tSelRaw = parseInt($('input[name="adqtypeselect"]:checked').val(), 10);
-        q.typeSelect = Number.isInteger(tSelRaw) ? tSelRaw : 3;
+        let tSel = Number.isInteger(tSelRaw) ? tSelRaw : 0;
+        if (tSel !== 0 && tSel !== 1 && tSel !== 2 && tSel !== 4) tSel = 0;
+        q.typeSelect = tSel;
         q.type = parseInt($('input[name="adqtype"]:checked').val()) || 0;
         q.numberOptions = parseInt($('input[name="adqnumber"]:checked').val()) || 4;
         if (q.typeSelect === 4) q.numberOptions = 2;
@@ -715,7 +721,7 @@ var $exeDevice = {
             }
         } else if (q.typeSelect === 2) {
             q.solutionWord = $('#adaptativeQuizESolutionWord').val() || '';
-        } else {
+        } else if (q.typeSelect === 4) {
             const solutionVal = parseInt($('input[name="adqsolution"]:checked').val());
             q.solution = Number.isInteger(solutionVal) ? solutionVal : 0;
         }
@@ -744,7 +750,7 @@ var $exeDevice = {
     validateQuestion: function () {
         const q = this.readQuestionFromDom();
         const human = this.active + 1;
-        const tSel = Number.isInteger(q.typeSelect) ? q.typeSelect : 3;
+        const tSel = Number.isInteger(q.typeSelect) ? q.typeSelect : 0;
 
         if (!q.question || this.removeTags(q.question).length === 0) {
             const msg =
@@ -793,12 +799,6 @@ var $exeDevice = {
             // True/False: solution must be 0 or 1.
             if (q.solution !== 0 && q.solution !== 1) {
                 this.showMessage(this.msgs.msgETrueFalseSolution.replace('%s', human));
-                return false;
-            }
-        } else {
-            // Test (3): exactly one correct, in range.
-            if (!Number.isInteger(q.solution) || q.solution < 0 || q.solution >= num) {
-                this.showMessage(this.msgs.msgETestOne.replace('%s', human));
                 return false;
             }
         }

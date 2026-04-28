@@ -154,17 +154,29 @@ describe('adaptative-quiz export', () => {
         });
     });
 
-    describe('updateConfig question normalization (5 types)', () => {
-        it('defaults typeSelect=3 and empty per-type fields when source omits them', () => {
+    describe('updateConfig question normalization (4 types)', () => {
+        it('migrates legacy entries (no typeSelect, single solution) to typeSelect=0 with solutionMulti', () => {
             const data = {
                 questionsGame: [{ question: 'Q', options: [{ text: 'A' }, { text: 'B' }], solution: 1 }],
                 numRound: 1,
             };
             const out = adq.updateConfig(data, 'norm1');
-            expect(out.questions[0].typeSelect).toBe(3);
-            expect(out.questions[0].solutionMulti).toEqual([]);
+            expect(out.questions[0].typeSelect).toBe(0);
+            expect(out.questions[0].solutionMulti).toEqual([1]);
             expect(out.questions[0].solutionOrder).toEqual([]);
             expect(out.questions[0].solutionWord).toBe('');
+        });
+
+        it('migrates explicit legacy typeSelect=3 to 0 with solutionMulti from solution', () => {
+            const data = {
+                questionsGame: [
+                    { question: 'Q', options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }], typeSelect: 3, solution: 2 },
+                ],
+                numRound: 1,
+            };
+            const out = adq.updateConfig(data, 'norm1b');
+            expect(out.questions[0].typeSelect).toBe(0);
+            expect(out.questions[0].solutionMulti).toEqual([2]);
         });
 
         it('preserves per-type fields when provided', () => {
