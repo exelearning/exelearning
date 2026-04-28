@@ -970,9 +970,11 @@ var $adaptativequiz = {
         let $selected = $();
 
         if (tSel === 0) {
-            // Select (multi)
+            // Select (multi). solutionMulti can be empty: in that case the
+            // correct response is to submit without selecting any option.
             $selected = $('input[name="adaptativeQuizAnswer-' + id + '"]:checked');
-            if ($selected.length === 0) {
+            const expected = (question.solutionMulti || []).slice().sort((a, b) => a - b);
+            if ($selected.length === 0 && expected.length > 0) {
                 this.setMessage(id, msgs.msgSelectOption || 'Click on an option to choose your answer.', 'info');
                 const $msg = $('#adaptativeQuizMessages-' + id);
                 $msg.stop(true, true).fadeIn(100).delay(2500).fadeOut(400);
@@ -984,7 +986,6 @@ var $adaptativequiz = {
                 })
                 .get()
                 .sort((a, b) => a - b);
-            const expected = (question.solutionMulti || []).slice().sort((a, b) => a - b);
             isCorrect = picked.length === expected.length && picked.every((v, i) => v === expected[i]);
             chosen = picked;
         } else if (tSel === 1) {

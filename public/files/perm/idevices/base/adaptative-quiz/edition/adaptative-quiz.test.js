@@ -785,10 +785,13 @@ describe('adaptative-quiz edition', () => {
             expect(idevice.questionsGame[0].solutionMulti).toEqual([1]);
         });
 
-        it('validateQuestion rejects select type with zero correct answers', () => {
+        it('validateQuestion accepts select type with zero correct answers', () => {
+            // A select question with no correct answer is valid: the
+            // learner is expected to submit without selecting any option
+            // to score it correctly.
             document.querySelector('#adaptativeQuizTypeSelect').checked = true;
             const res = idevice.validateQuestion();
-            expect(res).toBe(false);
+            expect(res).toBe(true);
         });
 
         it('validateQuestion accepts select type with one correct answer', () => {

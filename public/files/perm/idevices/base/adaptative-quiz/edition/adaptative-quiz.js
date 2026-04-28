@@ -849,9 +849,12 @@ var $exeDevice = {
             // Sort: option order is the correct order. The per-option text
             // check above already guarantees a fully-defined sequence.
         } else {
-            // Select (multi, default): at least 1 marked, all within range.
+            // Select (multi, default): zero or more marked solutions are
+            // allowed (a question with no correct answer is valid — the
+            // learner must then submit without picking any option). Any
+            // marked indexes must still be within range.
             const inRange = q.solutionMulti.every(idx => idx >= 0 && idx < num);
-            if (q.solutionMulti.length < 1 || !inRange) {
+            if (!inRange) {
                 this.showMessage(this.msgs.msgESelectAtLeastOne.replace('%s', human));
                 return false;
             }
