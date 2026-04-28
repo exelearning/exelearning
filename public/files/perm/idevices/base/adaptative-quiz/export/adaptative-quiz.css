@@ -265,6 +265,66 @@
     border-color: #ef9a9a;
 }
 
+/* Sort (typeSelect=1) drag-and-drop list. */
+.ADAPTATIVEQUIZ-SortList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ADAPTATIVEQUIZ-SortItem {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    padding: 0.6em 0.8em;
+    margin: 0.35em 0;
+    border: 1px solid #cfd8dc;
+    border-radius: 6px;
+    background: #fafafa;
+    cursor: grab;
+    user-select: none;
+}
+
+.ADAPTATIVEQUIZ-SortItem:focus {
+    outline: 2px solid #1976d2;
+    outline-offset: 2px;
+}
+
+.ADAPTATIVEQUIZ-SortItem.is-dragging {
+    opacity: 0.6;
+    cursor: grabbing;
+}
+
+.ADAPTATIVEQUIZ-SortItem.is-drop-target {
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.ADAPTATIVEQUIZ-SortItem--locked {
+    cursor: default;
+    opacity: 0.95;
+}
+
+.ADAPTATIVEQUIZ-SortHandle {
+    color: #607d8b;
+    font-size: 1.1em;
+    line-height: 1;
+}
+
+.ADAPTATIVEQUIZ-SortRank {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.8em;
+    height: 1.8em;
+    padding: 0 0.4em;
+    border-radius: 999px;
+    background: #1976d2;
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
 .ADAPTATIVEQUIZ-ButtonsContainer {
     margin-top: 1em;
     text-align: center;

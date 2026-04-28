@@ -572,10 +572,10 @@ describe('adaptative-quiz edition', () => {
                         <input type="checkbox" name="adqsolutionmulti" value="1" id="adaptativeQuizESolutionMulti1" />
                         <input type="checkbox" name="adqsolutionmulti" value="2" id="adaptativeQuizESolutionMulti2" />
                         <input type="checkbox" name="adqsolutionmulti" value="3" id="adaptativeQuizESolutionMulti3" />
-                        <input type="number" id="adaptativeQuizESolutionOrder0" />
-                        <input type="number" id="adaptativeQuizESolutionOrder1" />
-                        <input type="number" id="adaptativeQuizESolutionOrder2" />
-                        <input type="number" id="adaptativeQuizESolutionOrder3" />
+                        <span class="ADQ-ESolutionOrder" id="adaptativeQuizESolutionOrder0">1</span>
+                        <span class="ADQ-ESolutionOrder" id="adaptativeQuizESolutionOrder1">2</span>
+                        <span class="ADQ-ESolutionOrder" id="adaptativeQuizESolutionOrder2">3</span>
+                        <span class="ADQ-ESolutionOrder" id="adaptativeQuizESolutionOrder3">4</span>
                         <input id="adaptativeQuizESolutionWord" value="" />
                         <input id="adaptativeQuizEMessageOK" value="" />
                         <input id="adaptativeQuizAudio-msgHit" value="" />
@@ -612,16 +612,14 @@ describe('adaptative-quiz edition', () => {
             expect(q.solutionMulti.sort()).toEqual([0, 2]);
         });
 
-        it('readQuestionFromDom captures order for typeSelect=1', () => {
+        it('readQuestionFromDom emits sequential solutionOrder for typeSelect=1', () => {
             document.querySelector('#adaptativeQuizTypeOrder').checked = true;
             document.querySelector('#adaptativeQuizTypeSelect').checked = false;
-            document.querySelector('#adaptativeQuizESolutionOrder0').value = '2';
-            document.querySelector('#adaptativeQuizESolutionOrder1').value = '4';
-            document.querySelector('#adaptativeQuizESolutionOrder2').value = '1';
-            document.querySelector('#adaptativeQuizESolutionOrder3').value = '3';
             const q = idevice.readQuestionFromDom();
             expect(q.typeSelect).toBe(1);
-            expect(q.solutionOrder).toEqual([2, 4, 1, 3]);
+            // The option order in the form is the correct order, so the
+            // solutionOrder is always [1, 2, ..., numberOptions].
+            expect(q.solutionOrder).toEqual([1, 2, 3, 4]);
         });
 
         it('readQuestionFromDom captures word solution for typeSelect=2', () => {
@@ -714,26 +712,51 @@ describe('adaptative-quiz edition', () => {
             expect(res).toBe(true);
         });
 
-        it('validateQuestion rejects sort type when ranks are not unique 1..N', () => {
+        it('validateQuestion accepts sort type when all options have text', () => {
             document.querySelector('#adaptativeQuizTypeOrder').checked = true;
             document.querySelector('#adaptativeQuizTypeSelect').checked = false;
-            document.querySelector('#adaptativeQuizESolutionOrder0').value = '1';
-            document.querySelector('#adaptativeQuizESolutionOrder1').value = '1';
-            document.querySelector('#adaptativeQuizESolutionOrder2').value = '2';
-            document.querySelector('#adaptativeQuizESolutionOrder3').value = '3';
+            const res = idevice.validateQuestion();
+            expect(res).toBe(true);
+        });
+
+        it('validateQuestion rejects sort type when an option text is missing', () => {
+            document.querySelector('#adaptativeQuizTypeOrder').checked = true;
+            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
+            document.querySelector('#adaptativeQuizEOption2').value = '';
             const res = idevice.validateQuestion();
             expect(res).toBe(false);
         });
 
-        it('validateQuestion accepts sort type with a valid permutation', () => {
-            document.querySelector('#adaptativeQuizTypeOrder').checked = true;
-            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
-            document.querySelector('#adaptativeQuizESolutionOrder0').value = '4';
-            document.querySelector('#adaptativeQuizESolutionOrder1').value = '1';
-            document.querySelector('#adaptativeQuizESolutionOrder2').value = '3';
-            document.querySelector('#adaptativeQuizESolutionOrder3').value = '2';
-            const res = idevice.validateQuestion();
-            expect(res).toBe(true);
+        it('migrates legacy sort solutionOrder permutation by reordering options', () => {
+            idevice.questionsGame = [
+                {
+                    type: 0,
+                    typeSelect: 1,
+                    url: '',
+                    audio: '',
+                    question: 'Q',
+                    numberOptions: 4,
+                    options: [
+                        { text: 'A', audio: '' },
+                        { text: 'B', audio: '' },
+                        { text: 'C', audio: '' },
+                        { text: 'D', audio: '' },
+                    ],
+                    // A->2, B->4, C->1, D->3 means correct order is C,A,D,B
+                    solutionOrder: [2, 4, 1, 3],
+                    difficulty: 2,
+                    msgHit: '',
+                    msgHitAudio: '',
+                    msgError: '',
+                    msgErrorAudio: '',
+                },
+            ];
+            idevice.showOptions = () => {};
+            idevice.updateImagePreview = () => {};
+            idevice.showQuestion(0);
+            const q = idevice.questionsGame[0];
+            expect(q.options.map(o => o.text)).toEqual(['C', 'A', 'D', 'B']);
+            expect(q.solutionOrder).toEqual([1, 2, 3, 4]);
         });
 
         it('validateQuestion rejects word type without solution word', () => {

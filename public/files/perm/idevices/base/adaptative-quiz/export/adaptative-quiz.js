@@ -484,6 +484,88 @@ var $adaptativequiz = {
     },
 
     /**
+     * Wire HTML5 drag-and-drop handlers on the sort list so the learner can
+     * reorder items. Also supports keyboard reordering with ArrowUp/ArrowDown
+     * (when the item is focused) for accessibility. The visible rank badge
+     * is recomputed after every move.
+     */
+    bindSortDragDrop: id => {
+        const $list = $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-SortList');
+        if (!$list.length) return;
+        const list = $list.get(0);
+        const refreshRanks = () => {
+            $list.children('.ADAPTATIVEQUIZ-SortItem').each(function (i) {
+                $(this)
+                    .find('.ADAPTATIVEQUIZ-SortRank')
+                    .text(i + 1);
+            });
+        };
+        let dragged = null;
+        $list.on('dragstart', '.ADAPTATIVEQUIZ-SortItem', function (e) {
+            if ($(this).hasClass('ADAPTATIVEQUIZ-SortItem--locked')) {
+                e.preventDefault();
+                return;
+            }
+            dragged = this;
+            $(this).addClass('is-dragging').attr('aria-grabbed', 'true');
+            const dt = e.originalEvent && e.originalEvent.dataTransfer;
+            if (dt) {
+                dt.effectAllowed = 'move';
+                try {
+                    dt.setData('text/plain', $(this).attr('data-orig-index') || '');
+                } catch (_err) {
+                    // Some browsers (e.g. certain test envs) reject setData; safe to ignore.
+                }
+            }
+        });
+        $list.on('dragend', '.ADAPTATIVEQUIZ-SortItem', function () {
+            $(this).removeClass('is-dragging').attr('aria-grabbed', 'false');
+            $list.children('.ADAPTATIVEQUIZ-SortItem').removeClass('is-drop-target');
+            dragged = null;
+            refreshRanks();
+        });
+        $list.on('dragover', '.ADAPTATIVEQUIZ-SortItem', function (e) {
+            if (!dragged || dragged === this) return;
+            e.preventDefault();
+            if (e.originalEvent && e.originalEvent.dataTransfer) {
+                e.originalEvent.dataTransfer.dropEffect = 'move';
+            }
+            $list.children('.ADAPTATIVEQUIZ-SortItem').removeClass('is-drop-target');
+            $(this).addClass('is-drop-target');
+        });
+        $list.on('drop', '.ADAPTATIVEQUIZ-SortItem', function (e) {
+            e.preventDefault();
+            if (!dragged || dragged === this) return;
+            const $target = $(this);
+            const targetIdx = $target.index();
+            const draggedIdx = $(dragged).index();
+            if (draggedIdx < targetIdx) {
+                $target.after(dragged);
+            } else {
+                $target.before(dragged);
+            }
+            $target.removeClass('is-drop-target');
+            refreshRanks();
+        });
+        $list.on('keydown', '.ADAPTATIVEQUIZ-SortItem', function (e) {
+            if ($(this).hasClass('ADAPTATIVEQUIZ-SortItem--locked')) return;
+            const key = e.key;
+            if (key !== 'ArrowUp' && key !== 'ArrowDown') return;
+            e.preventDefault();
+            const $self = $(this);
+            if (key === 'ArrowUp') {
+                const $prev = $self.prev('.ADAPTATIVEQUIZ-SortItem');
+                if ($prev.length) $self.insertBefore($prev);
+            } else {
+                const $next = $self.next('.ADAPTATIVEQUIZ-SortItem');
+                if ($next.length) $self.insertAfter($next);
+            }
+            refreshRanks();
+            $self.trigger('focus');
+        });
+    },
+
+    /**
      * Wire click handlers that play the stem / option audio on click and
      * stop playback from the red pause buttons overlaid on each audio
      * container. Inspired by flipcards' `cardClick` pattern (see
@@ -545,10 +627,14 @@ var $adaptativequiz = {
         if (!question) return;
 
         const tSel = Number.isInteger(question.typeSelect) ? question.typeSelect : 0;
+        // Sort questions are always shuffled so the learner has something to
+        // reorder; other types respect the opts.shuffle preference.
         const order =
-            opts.shuffle && tSel !== 1
+            tSel === 1
                 ? this.shuffleArray(question.options.map((_, i) => i))
-                : question.options.map((_, i) => i);
+                : opts.shuffle
+                  ? this.shuffleArray(question.options.map((_, i) => i))
+                  : question.options.map((_, i) => i);
         opts.optionOrder = order;
 
         const stemImage = question.type === 1 ? this.renderMedia(opts, question.url, 'image', question.question) : '';
@@ -561,14 +647,39 @@ var $adaptativequiz = {
             // Word: free-text answer input
             const inputId = `adaptativeQuizWord-${id}`;
             html += `<div class="ADAPTATIVEQUIZ-WordAnswer"><label for="${inputId}" class="sr-av">${this.escapeHtml((opts.msgs || {}).msgAnswer || 'Answer')}</label><input type="text" class="ADAPTATIVEQUIZ-WordInput form-control" id="${inputId}" autocomplete="off" /></div>`;
+        } else if (tSel === 1) {
+            // Sort: drag-and-drop reorderable list. Each item shows a live
+            // rank badge (1..n) reflecting its visual position.
+            const hasOptionAudio = order.some(origIndex => (question.options[origIndex] || {}).audio);
+            const layoutClass = hasOptionAudio ? ' ADAPTATIVEQUIZ-OptionsGrid' : '';
+            html += `<ol class="ADAPTATIVEQUIZ-Options ADAPTATIVEQUIZ-SortList${layoutClass}" data-type-select="1">`;
+            for (let visualIndex = 0; visualIndex < order.length; visualIndex++) {
+                const origIndex = order[visualIndex];
+                const option = question.options[origIndex] || {};
+                const optText = option.text || '';
+                const hasAudio = !!option.audio;
+                const audioCls = hasAudio ? ' ADAPTATIVEQUIZ-Option--has-audio' : '';
+                const playLabel = this.escapeAttr((opts.msgs || {}).msgPlayAudio || 'Play audio');
+                const audioBtn = hasAudio
+                    ? `<button type="button" class="ADAPTATIVEQUIZ-AudioToggle ADAPTATIVEQUIZ-AudioToggle--option" data-audio-url="${this.escapeAttr(option.audio)}" aria-label="${playLabel}" title="${playLabel}"><span class="ADAPTATIVEQUIZ-AudioToggleIcon" aria-hidden="true"></span></button>`
+                    : '';
+                html += `
+                    <li class="ADAPTATIVEQUIZ-Option ADAPTATIVEQUIZ-SortItem${audioCls}" draggable="true" data-orig-index="${origIndex}" tabindex="0" aria-grabbed="false">
+                        <span class="ADAPTATIVEQUIZ-SortHandle" aria-hidden="true">☰</span>
+                        <span class="ADAPTATIVEQUIZ-SortRank" aria-hidden="true">${visualIndex + 1}</span>
+                        <span class="ADAPTATIVEQUIZ-OptionBody">
+                            <span class="ADAPTATIVEQUIZ-OptionText">${this.escapeHtml(optText)}</span>
+                        </span>
+                        ${audioBtn}
+                    </li>
+                `;
+            }
+            html += '</ol>';
         } else {
             const hasOptionAudio = order.some(origIndex => (question.options[origIndex] || {}).audio);
             const layoutClass = hasOptionAudio ? ' ADAPTATIVEQUIZ-OptionsGrid' : '';
-            const isSort = tSel === 1;
             // Default to multi-select (checkbox) for tSel===0 and any unknown.
-            const inputType = isSort ? 'number' : 'checkbox';
-            const groupRole = isSort ? 'radiogroup' : 'group';
-            html += `<div class="ADAPTATIVEQUIZ-Options${layoutClass}" role="${groupRole}" data-type-select="${tSel}">`;
+            html += `<div class="ADAPTATIVEQUIZ-Options${layoutClass}" role="group" data-type-select="${tSel}">`;
             const groupName = `adaptativeQuizAnswer-${id}`;
 
             for (let visualIndex = 0; visualIndex < order.length; visualIndex++) {
@@ -582,13 +693,7 @@ var $adaptativequiz = {
                 const audioBtn = hasAudio
                     ? `<button type="button" class="ADAPTATIVEQUIZ-AudioToggle ADAPTATIVEQUIZ-AudioToggle--option" data-audio-url="${this.escapeAttr(option.audio)}" aria-label="${playLabel}" title="${playLabel}"><span class="ADAPTATIVEQUIZ-AudioToggleIcon" aria-hidden="true"></span></button>`
                     : '';
-
-                let inputHtml;
-                if (isSort) {
-                    inputHtml = `<input type="number" name="${groupName}-${origIndex}" min="1" max="${order.length}" value="" class="ADAPTATIVEQUIZ-OptionInput ADAPTATIVEQUIZ-OptionSort form-control form-control-sm" id="${inputId}" data-orig-index="${origIndex}" style="width:4em" />`;
-                } else {
-                    inputHtml = `<input type="${inputType}" name="${groupName}" value="${origIndex}" class="ADAPTATIVEQUIZ-OptionInput" id="${inputId}" />`;
-                }
+                const inputHtml = `<input type="checkbox" name="${groupName}" value="${origIndex}" class="ADAPTATIVEQUIZ-OptionInput" id="${inputId}" />`;
                 html += `
                     <label class="ADAPTATIVEQUIZ-Option${audioCls}" data-orig-index="${origIndex}" for="${inputId}">
                         ${inputHtml}
@@ -605,6 +710,7 @@ var $adaptativequiz = {
 
         $('#adaptativeQuizQuestionContainer-' + id).html(html);
         this.bindMediaToggle(id);
+        if (tSel === 1) this.bindSortDragDrop(id);
         // Auto-play the question stem audio if present. Clicking the toggle
         // reuses the existing play/stop logic and marks it as `is-playing`.
         if (question.audio) {
@@ -801,23 +907,21 @@ var $adaptativequiz = {
             isCorrect = picked.length === expected.length && picked.every((v, i) => v === expected[i]);
             chosen = picked;
         } else if (tSel === 1) {
-            // Sort: every option must have a unique rank from 1..n.
-            const ranks = {};
-            let allFilled = true;
-            $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-OptionSort').each(function () {
-                const orig = parseInt($(this).attr('data-orig-index'));
-                const v = parseInt($(this).val());
-                if (!Number.isInteger(v) || v < 1) allFilled = false;
-                ranks[orig] = v;
-            });
-            const num = question.options.length;
-            const used = new Set(Object.values(ranks).filter(v => Number.isInteger(v) && v >= 1 && v <= num));
-            if (!allFilled || used.size !== num) {
+            // Sort: read the user's answer from the visual order of the items.
+            const $items = $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-SortItem');
+            if (!$items.length) {
                 this.setMessage(id, msgs.msgSelectOption || 'Click on an option to choose your answer.', 'info');
                 return;
             }
+            const ranks = {};
+            $items.each(function (visualIndex) {
+                const orig = parseInt($(this).attr('data-orig-index'), 10);
+                ranks[orig] = visualIndex + 1;
+            });
+            const num = question.options.length;
             const expected = (question.solutionOrder || []).slice(0, num);
-            isCorrect = expected.every((expectedRank, origIdx) => ranks[origIdx] === expectedRank);
+            isCorrect =
+                expected.length === num && expected.every((expectedRank, origIdx) => ranks[origIdx] === expectedRank);
             chosen = ranks;
         } else if (tSel === 2) {
             // Word
@@ -833,6 +937,10 @@ var $adaptativequiz = {
         }
 
         $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-OptionInput').prop('disabled', true);
+        // Lock the sort list so the learner cannot reorder it after checking.
+        $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-SortItem')
+            .addClass('ADAPTATIVEQUIZ-SortItem--locked')
+            .attr('draggable', 'false');
 
         if (opts.immediateFeedback) {
             if (opts.showSolution) {
@@ -842,6 +950,15 @@ var $adaptativequiz = {
                         const orig = parseInt($(this).attr('data-orig-index'));
                         if (expectedSet.has(orig)) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
                     });
+                } else if (tSel === 1) {
+                    const expected = (question.solutionOrder || []).slice(0, question.options.length);
+                    $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-SortItem').each(
+                        function (visualIndex) {
+                            const orig = parseInt($(this).attr('data-orig-index'), 10);
+                            if (expected[orig] === visualIndex + 1) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
+                            else $(this).addClass('ADAPTATIVEQUIZ-OptionIncorrect');
+                        },
+                    );
                 }
             }
         }

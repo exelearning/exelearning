@@ -435,7 +435,7 @@ var $exeDevice = {
                     <div class="ADQ-EOptionRow">
                         <input type="checkbox" class="ADQ-ESolutionMulti form-check-input" name="adqsolutionmulti" id="adaptativeQuizESolutionMulti${i}" value="${i}" />
                         <label class="sr-av" for="adaptativeQuizESolutionMulti${i}">${_('Solution')} ${letter}</label>
-                        <input type="number" class="ADQ-ESolutionOrder form-control form-control-sm d-none" id="adaptativeQuizESolutionOrder${i}" min="1" max="${this.MAX_OPTIONS}" placeholder="#" style="width:4em" />
+                        <span class="ADQ-ESolutionOrder badge bg-secondary d-none" aria-hidden="true">${i + 1}</span>
                         <label class="sr-av" for="adaptativeQuizEOption${i}">${_('Option')} ${letter}:</label>
                         <input type="text" class="ADQ-EOption${i} ADQ-EAnwersOptions form-control" id="adaptativeQuizEOption${i}" placeholder="${_('Option')} ${letter}" />
                         ${this.audioToggleButton('option' + i)}
@@ -528,18 +528,33 @@ var $exeDevice = {
 
         // Reset type-specific solution inputs first.
         $('input[name="adqsolutionmulti"]').prop('checked', false);
-        for (let k = 0; k < this.MAX_OPTIONS; k++) {
-            $('#adaptativeQuizESolutionOrder' + k).val('');
-        }
         $('#adaptativeQuizESolutionWord').val('');
 
         if (tSel === 1) {
-            const order = Array.isArray(q.solutionOrder) ? q.solutionOrder : [];
-            order.forEach((rank, k) => {
-                if (Number.isInteger(rank) && rank > 0) {
-                    $('#adaptativeQuizESolutionOrder' + k).val(rank);
+            // Sort: option order in the form IS the correct order. Migrate
+            // legacy data where solutionOrder was a permutation of 1..n by
+            // reordering options so that solutionOrder becomes [1,2,...,n].
+            const num = q.numberOptions || this.MAX_OPTIONS;
+            const order = Array.isArray(q.solutionOrder) ? q.solutionOrder.slice(0, num) : [];
+            const isPermutation =
+                order.length === num &&
+                order.every(v => Number.isInteger(v) && v >= 1 && v <= num) &&
+                new Set(order).size === num;
+            if (isPermutation && order.some((v, k) => v !== k + 1)) {
+                const reordered = new Array(num);
+                for (let k = 0; k < num; k++) {
+                    const targetIdx = order[k] - 1;
+                    reordered[targetIdx] = q.options[k];
                 }
-            });
+                for (let k = 0; k < num; k++) {
+                    if (reordered[k]) {
+                        q.options[k] = reordered[k];
+                        $('#adaptativeQuizEOption' + k).val(reordered[k].text || '');
+                        $('#adaptativeQuizAudio-option' + k).val(reordered[k].audio || '');
+                    }
+                }
+            }
+            q.solutionOrder = Array.from({ length: num }, (_, k) => k + 1);
         } else if (tSel === 2) {
             $('#adaptativeQuizESolutionWord').val(q.solutionWord || '');
         } else {
@@ -569,14 +584,15 @@ var $exeDevice = {
         const t = parseInt(typeSelect, 10);
         // Reset shared state.
         $('input.ADQ-ESolutionMulti').removeClass('d-none');
-        $('input.ADQ-ESolutionOrder').addClass('d-none');
+        $('.ADQ-ESolutionOrder').addClass('d-none');
         $('#adaptativeQuizEAnswers').removeClass('d-none');
         $('#adaptativeQuizEWordDiv').removeClass('d-flex').addClass('d-none');
 
         if (t === 1) {
-            // Sort/Order
+            // Sort/Order: show static rank labels (1,2,3,...) instead of
+            // checkboxes. The option order in the form is the correct order.
             $('input.ADQ-ESolutionMulti').addClass('d-none');
-            $('input.ADQ-ESolutionOrder').removeClass('d-none');
+            $('.ADQ-ESolutionOrder').removeClass('d-none');
         } else if (t === 2) {
             // Word: hide options panel, show solution-word input
             $('#adaptativeQuizEAnswers').addClass('d-none');
@@ -678,10 +694,9 @@ var $exeDevice = {
         q.solutionOrder = [];
         q.solutionWord = '';
         if (q.typeSelect === 1) {
-            for (let k = 0; k < this.MAX_OPTIONS; k++) {
-                const v = parseInt($('#adaptativeQuizESolutionOrder' + k).val(), 10);
-                q.solutionOrder.push(Number.isInteger(v) ? v : 0);
-            }
+            // Sort: the option order in the form is the correct order, so
+            // solutionOrder is always sequential [1, 2, ..., numberOptions].
+            q.solutionOrder = Array.from({ length: q.numberOptions }, (_, k) => k + 1);
         } else if (q.typeSelect === 2) {
             q.solutionWord = $('#adaptativeQuizESolutionWord').val() || '';
         } else {
@@ -744,15 +759,8 @@ var $exeDevice = {
         }
 
         if (tSel === 1) {
-            // Sort: every active option must have a unique order from 1..num.
-            const order = q.solutionOrder.slice(0, num);
-            const valid = order.every(v => Number.isInteger(v) && v >= 1 && v <= num);
-            const unique = new Set(order).size === num;
-            if (!valid || !unique) {
-                const msg = this.msgs.msgETypeChoose.replace('%s', human).replace('%n', String(num));
-                this.showMessage(msg);
-                return false;
-            }
+            // Sort: option order is the correct order. The per-option text
+            // check above already guarantees a fully-defined sequence.
         } else {
             // Select (multi, default): at least 1 marked, all within range.
             const inRange = q.solutionMulti.every(idx => idx >= 0 && idx < num);
