@@ -355,21 +355,35 @@ var $exeDevice = {
                                 </div>
                             </div>
                             <div class="ADQ-EContents">
-                                <div class="ADQ-EQuestionDiv">
-                                    <label class="sr-av" for="adaptativeQuizEQuestion">${_('Question')}:</label>
-                                    <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2">
-                                        <input type="text" class="ADQ-EQuestion form-control" id="adaptativeQuizEQuestion" placeholder="${_('Question')}" />
-                                        ${this.audioToggleButton('question')}
+                                <div class="ADQ-EQASelect" id="adaptativeQuizEQASelect">
+                                    <div class="ADQ-EQuestionDiv">
+                                        <label class="sr-av" for="adaptativeQuizEQuestion">${_('Question')}:</label>
+                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2">
+                                            <input type="text" class="ADQ-EQuestion form-control" id="adaptativeQuizEQuestion" placeholder="${_('Question')}" />
+                                            ${this.audioToggleButton('question')}
+                                        </div>
+                                        ${this.audioField('question')}
                                     </div>
-                                    ${this.audioField('question')}
+                                    <div class="ADQ-EAnswers" id="adaptativeQuizEAnswers">
+                                        ${this.renderAnswerRows()}
+                                    </div>
                                 </div>
-                                <div class="ADQ-EAnswers" id="adaptativeQuizEAnswers">
-                                    ${this.renderAnswerRows()}
-                                </div>
-                                <div class="ADQ-EWordDiv d-none" id="adaptativeQuizEWordDiv">
-                                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                                <div class="ADQ-EQAWord d-none" id="adaptativeQuizEQAWord">
+                                    <div class="ADQ-EWordRow">
+                                        <label for="adaptativeQuizEWord">${_('Word')}:</label>
+                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2">
+                                            <input type="text" class="ADQ-EWord form-control" id="adaptativeQuizEWord" placeholder="${_('Word')}" />
+                                            ${this.audioToggleButton('word')}
+                                        </div>
+                                        ${this.audioField('word')}
+                                    </div>
+                                    <div class="ADQ-EWordRow">
                                         <label for="adaptativeQuizESolutionWord">${_('Solution')}:</label>
-                                        <input type="text" class="ADQ-ESolutionWord form-control" id="adaptativeQuizESolutionWord" placeholder="${_('Solution word or phrase')}" />
+                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2">
+                                            <input type="text" class="ADQ-ESolutionWord form-control" id="adaptativeQuizESolutionWord" placeholder="${_('Solution word or phrase')}" />
+                                            ${this.audioToggleButton('solutionWord')}
+                                        </div>
+                                        ${this.audioField('solutionWord')}
                                     </div>
                                 </div>
                             </div>
@@ -500,6 +514,7 @@ var $exeDevice = {
         solutionMulti: [],
         solutionOrder: [],
         solutionWord: '',
+        solutionWordAudio: '',
         difficulty: 2,
         msgHit: '',
         msgHitAudio: '',
@@ -541,8 +556,14 @@ var $exeDevice = {
         $('#adaptativeQuizEURLImage').val(q.url || '');
         this.updateImagePreview(q.url || '');
 
+        // Populate both question structures (select/sort and word). The
+        // visible one is chosen by `showQuestionType` below; populating both
+        // keeps the DOM in sync regardless of which type is active.
         $('#adaptativeQuizAudio-question').val(q.audio || '');
         $('#adaptativeQuizEQuestion').val(q.question || '');
+        $('#adaptativeQuizEWord').val(q.question || '');
+        $('#adaptativeQuizAudio-word').val(q.audio || '');
+        $('#adaptativeQuizAudio-solutionWord').val(q.solutionWordAudio || '');
 
         const options = Array.isArray(q.options) ? q.options : [];
         for (let k = 0; k < this.MAX_OPTIONS; k++) {
@@ -557,6 +578,7 @@ var $exeDevice = {
         // Reset type-specific solution inputs first.
         $('input[name="adqsolutionmulti"]').prop('checked', false);
         $('#adaptativeQuizESolutionWord').val('');
+        $('#adaptativeQuizAudio-solutionWord').val('');
 
         if (tSel === 1) {
             // Sort: option order in the form IS the correct order. Migrate
@@ -585,6 +607,7 @@ var $exeDevice = {
             q.solutionOrder = Array.from({ length: num }, (_, k) => k + 1);
         } else if (tSel === 2) {
             $('#adaptativeQuizESolutionWord').val(q.solutionWord || '');
+            $('#adaptativeQuizAudio-solutionWord').val(q.solutionWordAudio || '');
         } else {
             // Select (multi, default)
             const arr = Array.isArray(q.solutionMulti) ? q.solutionMulti : [];
@@ -613,13 +636,16 @@ var $exeDevice = {
         // Swap the leading control per row so only one element type ever
         // exists in the DOM (no hide/show CSS dependency).
         this.applyAnswerControls(t);
-        $('#adaptativeQuizEAnswers').removeClass('d-none').show();
-        $('#adaptativeQuizEWordDiv').removeClass('d-flex').addClass('d-none').hide();
 
         if (t === 2) {
-            // Word: hide options panel, show solution-word input.
-            $('#adaptativeQuizEAnswers').addClass('d-none').hide();
-            $('#adaptativeQuizEWordDiv').removeClass('d-none').addClass('d-flex').show();
+            // Word: hide select/sort container, show the word/solution
+            // dual-row container.
+            $('#adaptativeQuizEQASelect').addClass('d-none').hide();
+            $('#adaptativeQuizEQAWord').removeClass('d-none').show();
+        } else {
+            // Select (multi) or Sort: show the question + answers container.
+            $('#adaptativeQuizEQAWord').addClass('d-none').hide();
+            $('#adaptativeQuizEQASelect').removeClass('d-none').show();
         }
     },
 
@@ -700,8 +726,14 @@ var $exeDevice = {
         q.difficulty = parseInt($('#adaptativeQuizDifficulty').val()) || 2;
         if (this.LEVELS.indexOf(q.difficulty) === -1) q.difficulty = 2;
         q.url = q.type === 1 ? $('#adaptativeQuizEURLImage').val() || '' : '';
-        q.audio = $('#adaptativeQuizAudio-question').val() || '';
-        q.question = $('#adaptativeQuizEQuestion').val() || '';
+        if (q.typeSelect === 2) {
+            // Word type reads its own dedicated inputs.
+            q.audio = $('#adaptativeQuizAudio-word').val() || '';
+            q.question = $('#adaptativeQuizEWord').val() || '';
+        } else {
+            q.audio = $('#adaptativeQuizAudio-question').val() || '';
+            q.question = $('#adaptativeQuizEQuestion').val() || '';
+        }
 
         const options = [];
         for (let k = 0; k < this.MAX_OPTIONS; k++) {
@@ -716,12 +748,14 @@ var $exeDevice = {
         q.solutionMulti = [];
         q.solutionOrder = [];
         q.solutionWord = '';
+        q.solutionWordAudio = '';
         if (q.typeSelect === 1) {
             // Sort: the option order in the form is the correct order, so
             // solutionOrder is always sequential [1, 2, ..., numberOptions].
             q.solutionOrder = Array.from({ length: q.numberOptions }, (_, k) => k + 1);
         } else if (q.typeSelect === 2) {
             q.solutionWord = $('#adaptativeQuizESolutionWord').val() || '';
+            q.solutionWordAudio = $('#adaptativeQuizAudio-solutionWord').val() || '';
         } else {
             // Select (multi, default)
             $('input[name="adqsolutionmulti"]:checked').each(function () {
@@ -739,7 +773,9 @@ var $exeDevice = {
     },
 
     clearQuestion: function () {
-        $('#adaptativeQuizEURLImage, #adaptativeQuizAudio-question, #adaptativeQuizEQuestion').val('');
+        $(
+            '#adaptativeQuizEURLImage, #adaptativeQuizAudio-question, #adaptativeQuizEQuestion, #adaptativeQuizEWord, #adaptativeQuizAudio-word, #adaptativeQuizESolutionWord, #adaptativeQuizAudio-solutionWord',
+        ).val('');
         for (let k = 0; k < this.MAX_OPTIONS; k++) {
             $('#adaptativeQuizEOption' + k).val('');
             $('#adaptativeQuizAudio-option' + k).val('');
@@ -1031,6 +1067,7 @@ var $exeDevice = {
         const solutionOrder = solutionOrderRaw.slice(0, numberOptions).map(v => parseInt(v, 10) || 0);
 
         const solutionWord = String(source.solutionWord || '');
+        const solutionWordAudio = String(source.solutionWordAudio || '');
 
         return {
             type: type === 1 ? 1 : 0,
@@ -1044,6 +1081,7 @@ var $exeDevice = {
             solutionMulti: solutionMulti,
             solutionOrder: solutionOrder,
             solutionWord: solutionWord,
+            solutionWordAudio: solutionWordAudio,
             difficulty: difficulty,
             msgHit: msgHit,
             msgHitAudio: msgHitAudio,
@@ -1221,6 +1259,7 @@ var $exeDevice = {
             solutionMulti: [solution],
             solutionOrder: [],
             solutionWord: '',
+            solutionWordAudio: '',
             difficulty: legacyMap[level],
             msgHit: '',
             msgHitAudio: '',

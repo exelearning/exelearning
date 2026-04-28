@@ -640,6 +640,11 @@ describe('adaptative-quiz edition', () => {
                         <span class="ADQ-EAnswerControl" data-option-index="2"></span>
                         <span class="ADQ-EAnswerControl" data-option-index="3"></span>
                         <input id="adaptativeQuizESolutionWord" value="" />
+                        <input id="adaptativeQuizEWord" value="" />
+                        <input id="adaptativeQuizAudio-word" value="" />
+                        <input id="adaptativeQuizAudio-solutionWord" value="" />
+                        <div id="adaptativeQuizEQASelect"></div>
+                        <div id="adaptativeQuizEQAWord" class="d-none"></div>
                         <input id="adaptativeQuizEMessageOK" value="" />
                         <input id="adaptativeQuizAudio-msgHit" value="" />
                         <input id="adaptativeQuizEMessageKO" value="" />
@@ -705,13 +710,19 @@ describe('adaptative-quiz edition', () => {
             expect(document.querySelectorAll('.ADQ-ESolutionOrder').length).toBe(0);
         });
 
-        it('readQuestionFromDom captures word solution for typeSelect=2', () => {
+        it('readQuestionFromDom captures word + solution + their audios for typeSelect=2', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
             document.querySelector('#adaptativeQuizTypeSelect').checked = false;
+            document.querySelector('#adaptativeQuizEWord').value = 'apple';
+            document.querySelector('#adaptativeQuizAudio-word').value = 'word.mp3';
             document.querySelector('#adaptativeQuizESolutionWord').value = 'answer';
+            document.querySelector('#adaptativeQuizAudio-solutionWord').value = 'sol.mp3';
             const q = idevice.readQuestionFromDom();
             expect(q.typeSelect).toBe(2);
+            expect(q.question).toBe('apple');
+            expect(q.audio).toBe('word.mp3');
             expect(q.solutionWord).toBe('answer');
+            expect(q.solutionWordAudio).toBe('sol.mp3');
         });
 
         it('migrates legacy typeSelect=3 (Test) to 0 with solutionMulti from solution', () => {
@@ -845,6 +856,7 @@ describe('adaptative-quiz edition', () => {
         it('validateQuestion rejects word type without solution word', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
             document.querySelector('#adaptativeQuizTypeSelect').checked = false;
+            document.querySelector('#adaptativeQuizEWord').value = 'apple';
             const res = idevice.validateQuestion();
             expect(res).toBe(false);
         });
@@ -852,6 +864,7 @@ describe('adaptative-quiz edition', () => {
         it('validateQuestion accepts word type with definition + solution word', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
             document.querySelector('#adaptativeQuizTypeSelect').checked = false;
+            document.querySelector('#adaptativeQuizEWord').value = 'apple';
             document.querySelector('#adaptativeQuizESolutionWord').value = 'answer';
             const res = idevice.validateQuestion();
             expect(res).toBe(true);

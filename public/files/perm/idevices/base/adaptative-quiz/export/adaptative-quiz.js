@@ -224,6 +224,7 @@ var $adaptativequiz = {
                 ? source.solutionOrder.slice(0, options.length).map(n => parseInt(n, 10) || 0)
                 : [];
             const solutionWord = String(source.solutionWord || '');
+            const solutionWordAudio = String(source.solutionWordAudio || '');
 
             return {
                 type: type === 1 ? 1 : 0,
@@ -237,6 +238,7 @@ var $adaptativequiz = {
                 solutionMulti: solutionMulti,
                 solutionOrder: solutionOrder,
                 solutionWord: solutionWord,
+                solutionWordAudio: this.resolveMediaUrl(solutionWordAudio),
                 difficulty: difficulty,
                 msgHit: source.msgHit || legacyFeedback.correct || '',
                 msgHitAudio: this.resolveMediaUrl(source.msgHitAudio || ''),
