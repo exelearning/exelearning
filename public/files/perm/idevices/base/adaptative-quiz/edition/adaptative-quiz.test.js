@@ -635,14 +635,10 @@ describe('adaptative-quiz edition', () => {
                         <input id="adaptativeQuizAudio-option2" value="" />
                         <input id="adaptativeQuizEOption3" value="D" />
                         <input id="adaptativeQuizAudio-option3" value="" />
-                        <input type="checkbox" class="ADQ-ESolutionMulti" name="adqsolutionmulti" value="0" id="adaptativeQuizESolutionMulti0" />
-                        <input type="checkbox" class="ADQ-ESolutionMulti" name="adqsolutionmulti" value="1" id="adaptativeQuizESolutionMulti1" />
-                        <input type="checkbox" class="ADQ-ESolutionMulti" name="adqsolutionmulti" value="2" id="adaptativeQuizESolutionMulti2" />
-                        <input type="checkbox" class="ADQ-ESolutionMulti" name="adqsolutionmulti" value="3" id="adaptativeQuizESolutionMulti3" />
-                        <span class="ADQ-ESolutionOrder" id="adaptativeQuizESolutionOrder0">1</span>
-                        <span class="ADQ-ESolutionOrder" id="adaptativeQuizESolutionOrder1">2</span>
-                        <span class="ADQ-ESolutionOrder" id="adaptativeQuizESolutionOrder2">3</span>
-                        <span class="ADQ-ESolutionOrder" id="adaptativeQuizESolutionOrder3">4</span>
+                        <span class="ADQ-EAnswerControl" data-option-index="0"></span>
+                        <span class="ADQ-EAnswerControl" data-option-index="1"></span>
+                        <span class="ADQ-EAnswerControl" data-option-index="2"></span>
+                        <span class="ADQ-EAnswerControl" data-option-index="3"></span>
                         <input id="adaptativeQuizESolutionWord" value="" />
                         <input id="adaptativeQuizEMessageOK" value="" />
                         <input id="adaptativeQuizAudio-msgHit" value="" />
@@ -660,6 +656,9 @@ describe('adaptative-quiz edition', () => {
             idevice.refreshTranslations();
             idevice.setMessagesInfo();
             idevice.showMessage = () => {};
+            // Populate the answer-control slots with checkboxes (default Select layout)
+            // so tests that read/write them directly work without invoking showQuestionType.
+            idevice.applyAnswerControls(0);
         });
 
         it('defaults typeSelect to 0 (select) in getCuestionDefault', () => {
@@ -689,25 +688,21 @@ describe('adaptative-quiz edition', () => {
             expect(q.solutionOrder).toEqual([1, 2, 3, 4]);
         });
 
-        it('showQuestionType(1) hides the answer checkboxes and reveals the rank labels', () => {
+        it('showQuestionType(1) removes the answer checkboxes and renders rank labels', () => {
             idevice.showQuestionType(1);
-            document.querySelectorAll('input.ADQ-ESolutionMulti').forEach(el => {
-                expect(el.style.display).toBe('none');
-            });
-            document.querySelectorAll('.ADQ-ESolutionOrder').forEach(el => {
-                expect(el.style.display).not.toBe('none');
-            });
+            // Sort mode replaces each row's leading control with a static
+            // rank badge, so checkboxes are gone from the DOM.
+            expect(document.querySelectorAll('input.ADQ-ESolutionMulti').length).toBe(0);
+            expect(document.querySelectorAll('.ADQ-ESolutionOrder').length).toBe(4);
+            const ranks = Array.from(document.querySelectorAll('.ADQ-ESolutionOrder')).map(el => el.textContent.trim());
+            expect(ranks).toEqual(['1', '2', '3', '4']);
         });
 
-        it('showQuestionType(0) reveals the answer checkboxes and hides the rank labels', () => {
+        it('showQuestionType(0) restores the answer checkboxes and removes rank labels', () => {
             idevice.showQuestionType(1);
             idevice.showQuestionType(0);
-            document.querySelectorAll('input.ADQ-ESolutionMulti').forEach(el => {
-                expect(el.style.display).not.toBe('none');
-            });
-            document.querySelectorAll('.ADQ-ESolutionOrder').forEach(el => {
-                expect(el.style.display).toBe('none');
-            });
+            expect(document.querySelectorAll('input.ADQ-ESolutionMulti').length).toBe(4);
+            expect(document.querySelectorAll('.ADQ-ESolutionOrder').length).toBe(0);
         });
 
         it('readQuestionFromDom captures word solution for typeSelect=2', () => {

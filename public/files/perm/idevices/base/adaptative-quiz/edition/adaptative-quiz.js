@@ -425,6 +425,9 @@ var $exeDevice = {
 
     /**
      * Render the four answer rows (2-4 visible depending on numberOptions).
+     * The leading slot (`.ADQ-EAnswerControl`) is filled in by
+     * `applyAnswerControls` according to the current question type so that
+     * only one control element exists per row at any moment.
      */
     renderAnswerRows: function () {
         let html = '';
@@ -433,9 +436,7 @@ var $exeDevice = {
             html += `
                 <div class="ADQ-EOptionDiv" data-option-index="${i}">
                     <div class="ADQ-EOptionRow">
-                        <input type="checkbox" class="ADQ-ESolutionMulti form-check-input" name="adqsolutionmulti" id="adaptativeQuizESolutionMulti${i}" value="${i}" />
-                        <label class="sr-av" for="adaptativeQuizESolutionMulti${i}">${_('Solution')} ${letter}</label>
-                        <span class="ADQ-ESolutionOrder badge bg-secondary d-none" aria-hidden="true">${i + 1}</span>
+                        <span class="ADQ-EAnswerControl" data-option-index="${i}"></span>
                         <label class="sr-av" for="adaptativeQuizEOption${i}">${_('Option')} ${letter}:</label>
                         <input type="text" class="ADQ-EOption${i} ADQ-EAnwersOptions form-control" id="adaptativeQuizEOption${i}" placeholder="${_('Option')} ${letter}" />
                         ${this.audioToggleButton('option' + i)}
@@ -445,6 +446,33 @@ var $exeDevice = {
             `;
         }
         return html;
+    },
+
+    /**
+     * Replace the leading control in every answer row with the markup that
+     * matches the active type:
+     *  - typeSelect=0 (Select): a checkbox per row.
+     *  - typeSelect=1 (Sort):   a static rank badge (1..n).
+     *  - typeSelect=2 (Word):   nothing (the answers panel is hidden).
+     * Re-running this is cheap and idempotent.
+     */
+    applyAnswerControls: function (typeSelect) {
+        const t = parseInt(typeSelect, 10);
+        for (let i = 0; i < this.MAX_OPTIONS; i++) {
+            const letter = String.fromCharCode(65 + i);
+            const $slot = $('.ADQ-EAnswerControl[data-option-index="' + i + '"]');
+            if (!$slot.length) continue;
+            if (t === 1) {
+                $slot.html(`<span class="ADQ-ESolutionOrder badge bg-secondary" aria-hidden="true">${i + 1}</span>`);
+            } else if (t === 2) {
+                $slot.empty();
+            } else {
+                $slot.html(
+                    `<input type="checkbox" class="ADQ-ESolutionMulti form-check-input" name="adqsolutionmulti" id="adaptativeQuizESolutionMulti${i}" value="${i}" />` +
+                        `<label class="sr-av" for="adaptativeQuizESolutionMulti${i}">${_('Solution')} ${letter}</label>`,
+                );
+            }
+        }
     },
 
     initQuestions: function () {
@@ -580,25 +608,18 @@ var $exeDevice = {
      * 0=select (multi-checkbox, default), 1=sort (order inputs),
      * 2=word (single solution input, options hidden).
      */
-    showQuestionType: typeSelect => {
+    showQuestionType: function (typeSelect) {
         const t = parseInt(typeSelect, 10);
-        // Reset shared state. Use jQuery show()/hide() so the toggling does
-        // not depend on Bootstrap's `d-none` being available in whatever
-        // CSS context the iDevice editor is rendered in.
-        $('input.ADQ-ESolutionMulti').show().removeClass('d-none');
-        $('.ADQ-ESolutionOrder').hide().addClass('d-none');
-        $('#adaptativeQuizEAnswers').removeClass('d-none');
-        $('#adaptativeQuizEWordDiv').removeClass('d-flex').addClass('d-none');
+        // Swap the leading control per row so only one element type ever
+        // exists in the DOM (no hide/show CSS dependency).
+        this.applyAnswerControls(t);
+        $('#adaptativeQuizEAnswers').removeClass('d-none').show();
+        $('#adaptativeQuizEWordDiv').removeClass('d-flex').addClass('d-none').hide();
 
-        if (t === 1) {
-            // Sort/Order: show static rank labels (1,2,3,...) instead of
-            // checkboxes. The option order in the form is the correct order.
-            $('input.ADQ-ESolutionMulti').hide().addClass('d-none');
-            $('.ADQ-ESolutionOrder').show().removeClass('d-none');
-        } else if (t === 2) {
-            // Word: hide options panel, show solution-word input
-            $('#adaptativeQuizEAnswers').addClass('d-none');
-            $('#adaptativeQuizEWordDiv').removeClass('d-none').addClass('d-flex');
+        if (t === 2) {
+            // Word: hide options panel, show solution-word input.
+            $('#adaptativeQuizEAnswers').addClass('d-none').hide();
+            $('#adaptativeQuizEWordDiv').removeClass('d-none').addClass('d-flex').show();
         }
     },
 
