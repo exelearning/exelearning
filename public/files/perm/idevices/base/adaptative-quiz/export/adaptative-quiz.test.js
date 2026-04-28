@@ -170,7 +170,12 @@ describe('adaptative-quiz export', () => {
         it('migrates explicit legacy typeSelect=3 to 0 with solutionMulti from solution', () => {
             const data = {
                 questionsGame: [
-                    { question: 'Q', options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }], typeSelect: 3, solution: 2 },
+                    {
+                        question: 'Q',
+                        options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }],
+                        typeSelect: 3,
+                        solution: 2,
+                    },
                 ],
                 numRound: 1,
             };

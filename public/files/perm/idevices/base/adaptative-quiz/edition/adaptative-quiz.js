@@ -137,7 +137,6 @@ var $exeDevice = {
             ),
             msgProvideTimeSolution: _('Please indicate the time the solution will be displayed.'),
             msgESelectAtLeastOne: _('Question %s: please mark at least one correct answer.'),
-            msgETrueFalseSolution: _('Question %s: please choose True or False as the correct answer.'),
             msgEProvideWord: _('Question %s: please provide the solution word or phrase.'),
             msgEDefinition: _('Question %s: please provide the definition.'),
             msgETypeChoose: _('Question %s: please specify a unique order from 1 to %n for every option.'),
@@ -294,10 +293,6 @@ var $exeDevice = {
                                                 <label for="adaptativeQuizTypeSelect">${_('Select')}</label>
                                             </div>
                                             <div class="form-check form-check-inline m-0">
-                                                <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeTrueFalse" type="radio" name="adqtypeselect" value="4" />
-                                                <label for="adaptativeQuizTypeTrueFalse">${_('True / False')}</label>
-                                            </div>
-                                            <div class="form-check form-check-inline m-0">
                                                 <input class="ADQ-ETypeSelect form-check-input" id="adaptativeQuizTypeOrder" type="radio" name="adqtypeselect" value="1" />
                                                 <label for="adaptativeQuizTypeOrder">${_('Order')}</label>
                                             </div>
@@ -438,9 +433,8 @@ var $exeDevice = {
             html += `
                 <div class="ADQ-EOptionDiv" data-option-index="${i}">
                     <div class="ADQ-EOptionRow">
-                        <label class="sr-av" for="adaptativeQuizESolution${i}">${_('Solution')} ${letter}:</label>
-                        <input type="radio" class="ADQ-ESolution form-check-input" name="adqsolution" id="adaptativeQuizESolution${i}" value="${i}"${i === 0 ? ' checked="checked"' : ''} />
-                        <input type="checkbox" class="ADQ-ESolutionMulti form-check-input d-none" name="adqsolutionmulti" id="adaptativeQuizESolutionMulti${i}" value="${i}" />
+                        <input type="checkbox" class="ADQ-ESolutionMulti form-check-input" name="adqsolutionmulti" id="adaptativeQuizESolutionMulti${i}" value="${i}" />
+                        <label class="sr-av" for="adaptativeQuizESolutionMulti${i}">${_('Solution')} ${letter}</label>
                         <input type="number" class="ADQ-ESolutionOrder form-control form-control-sm d-none" id="adaptativeQuizESolutionOrder${i}" min="1" max="${this.MAX_OPTIONS}" placeholder="#" style="width:4em" />
                         <label class="sr-av" for="adaptativeQuizEOption${i}">${_('Option')} ${letter}:</label>
                         <input type="text" class="ADQ-EOption${i} ADQ-EAnwersOptions form-control" id="adaptativeQuizEOption${i}" placeholder="${_('Option')} ${letter}" />
@@ -475,7 +469,6 @@ var $exeDevice = {
             { text: '', audio: '' },
             { text: '', audio: '' },
         ],
-        solution: 0,
         solutionMulti: [],
         solutionOrder: [],
         solutionWord: '',
@@ -494,11 +487,11 @@ var $exeDevice = {
         this.active = idx;
         const q = this.questionsGame[idx] || this.getCuestionDefault();
 
-        // Legacy migration: drop the obsolete "Test" type (3). Treat it (and
-        // any missing/invalid value other than 0/1/2/4) as "Select" with the
-        // single legacy `solution` mapped into `solutionMulti`.
+        // Legacy migration: drop the obsolete "Test" (3) and "True/False"
+        // (4) types. Anything other than 0/1/2 becomes "Select" (multi)
+        // with the previous single `solution` mapped into `solutionMulti`.
         let tSel = Number.isInteger(q.typeSelect) ? q.typeSelect : 0;
-        if (tSel !== 0 && tSel !== 1 && tSel !== 2 && tSel !== 4) {
+        if (tSel !== 0 && tSel !== 1 && tSel !== 2) {
             tSel = 0;
             if (!Array.isArray(q.solutionMulti) || q.solutionMulti.length === 0) {
                 q.solutionMulti = Number.isInteger(q.solution) ? [q.solution] : [];
@@ -534,19 +527,13 @@ var $exeDevice = {
         this.showQuestionType(tSel);
 
         // Reset type-specific solution inputs first.
-        $('input[name="adqsolution"]').prop('checked', false);
         $('input[name="adqsolutionmulti"]').prop('checked', false);
         for (let k = 0; k < this.MAX_OPTIONS; k++) {
             $('#adaptativeQuizESolutionOrder' + k).val('');
         }
         $('#adaptativeQuizESolutionWord').val('');
 
-        if (tSel === 0) {
-            const arr = Array.isArray(q.solutionMulti) ? q.solutionMulti : [];
-            arr.forEach(idx2 => {
-                $('#adaptativeQuizESolutionMulti' + idx2).prop('checked', true);
-            });
-        } else if (tSel === 1) {
+        if (tSel === 1) {
             const order = Array.isArray(q.solutionOrder) ? q.solutionOrder : [];
             order.forEach((rank, k) => {
                 if (Number.isInteger(rank) && rank > 0) {
@@ -555,10 +542,12 @@ var $exeDevice = {
             });
         } else if (tSel === 2) {
             $('#adaptativeQuizESolutionWord').val(q.solutionWord || '');
-        } else if (tSel === 4) {
-            // True/False uses the single-radio solution
-            const solutionIdx = Number.isInteger(q.solution) ? q.solution : 0;
-            $('#adaptativeQuizESolution' + solutionIdx).prop('checked', true);
+        } else {
+            // Select (multi, default)
+            const arr = Array.isArray(q.solutionMulti) ? q.solutionMulti : [];
+            arr.forEach(idx2 => {
+                $('#adaptativeQuizESolutionMulti' + idx2).prop('checked', true);
+            });
         }
 
         $('#adaptativeQuizEMessageOK').val(q.msgHit || '');
@@ -574,45 +563,24 @@ var $exeDevice = {
     /**
      * Apply UI changes for a given question type.
      * 0=select (multi-checkbox, default), 1=sort (order inputs),
-     * 2=word (single solution input, options hidden),
-     * 4=trueFalse (forced 2 options labelled True/False, single radio).
+     * 2=word (single solution input, options hidden).
      */
-    showQuestionType: function (typeSelect) {
+    showQuestionType: typeSelect => {
         const t = parseInt(typeSelect, 10);
         // Reset shared state.
-        $('input.ADQ-ESolution').removeClass('d-none');
-        $('input.ADQ-ESolutionMulti').addClass('d-none');
+        $('input.ADQ-ESolutionMulti').removeClass('d-none');
         $('input.ADQ-ESolutionOrder').addClass('d-none');
         $('#adaptativeQuizEAnswers').removeClass('d-none');
         $('#adaptativeQuizEWordDiv').removeClass('d-flex').addClass('d-none');
-        $('input.ADQ-EAnwersOptions').prop('readonly', false);
-        $('input[name="adqnumber"]').prop('disabled', false);
 
         if (t === 1) {
             // Sort/Order
-            $('input.ADQ-ESolution').addClass('d-none');
+            $('input.ADQ-ESolutionMulti').addClass('d-none');
             $('input.ADQ-ESolutionOrder').removeClass('d-none');
         } else if (t === 2) {
             // Word: hide options panel, show solution-word input
             $('#adaptativeQuizEAnswers').addClass('d-none');
             $('#adaptativeQuizEWordDiv').removeClass('d-none').addClass('d-flex');
-        } else if (t === 4) {
-            // True / False: lock to 2 options with fixed labels
-            $('input[name="adqnumber"]').prop('disabled', true);
-            $('input[name="adqnumber"][value="2"]').prop('checked', true);
-            this.showOptions(2);
-            const trueLabel = c_('True');
-            const falseLabel = c_('False');
-            const $opt0 = $('#adaptativeQuizEOption0');
-            const $opt1 = $('#adaptativeQuizEOption1');
-            if (!$opt0.val()) $opt0.val(trueLabel);
-            if (!$opt1.val()) $opt1.val(falseLabel);
-            $opt0.prop('readonly', true);
-            $opt1.prop('readonly', true);
-        } else {
-            // Select (multi, default)
-            $('input.ADQ-ESolution').addClass('d-none');
-            $('input.ADQ-ESolutionMulti').removeClass('d-none');
         }
     },
 
@@ -686,11 +654,10 @@ var $exeDevice = {
         const q = this.questionsGame[this.active] || this.getCuestionDefault();
         const tSelRaw = parseInt($('input[name="adqtypeselect"]:checked').val(), 10);
         let tSel = Number.isInteger(tSelRaw) ? tSelRaw : 0;
-        if (tSel !== 0 && tSel !== 1 && tSel !== 2 && tSel !== 4) tSel = 0;
+        if (tSel !== 0 && tSel !== 1 && tSel !== 2) tSel = 0;
         q.typeSelect = tSel;
         q.type = parseInt($('input[name="adqtype"]:checked').val()) || 0;
         q.numberOptions = parseInt($('input[name="adqnumber"]:checked').val()) || 4;
-        if (q.typeSelect === 4) q.numberOptions = 2;
         q.difficulty = parseInt($('#adaptativeQuizDifficulty').val()) || 2;
         if (this.LEVELS.indexOf(q.difficulty) === -1) q.difficulty = 2;
         q.url = q.type === 1 ? $('#adaptativeQuizEURLImage').val() || '' : '';
@@ -710,20 +677,18 @@ var $exeDevice = {
         q.solutionMulti = [];
         q.solutionOrder = [];
         q.solutionWord = '';
-        if (q.typeSelect === 0) {
-            $('input[name="adqsolutionmulti"]:checked').each(function () {
-                q.solutionMulti.push(parseInt($(this).val(), 10));
-            });
-        } else if (q.typeSelect === 1) {
+        if (q.typeSelect === 1) {
             for (let k = 0; k < this.MAX_OPTIONS; k++) {
                 const v = parseInt($('#adaptativeQuizESolutionOrder' + k).val(), 10);
                 q.solutionOrder.push(Number.isInteger(v) ? v : 0);
             }
         } else if (q.typeSelect === 2) {
             q.solutionWord = $('#adaptativeQuizESolutionWord').val() || '';
-        } else if (q.typeSelect === 4) {
-            const solutionVal = parseInt($('input[name="adqsolution"]:checked').val());
-            q.solution = Number.isInteger(solutionVal) ? solutionVal : 0;
+        } else {
+            // Select (multi, default)
+            $('input[name="adqsolutionmulti"]:checked').each(function () {
+                q.solutionMulti.push(parseInt($(this).val(), 10));
+            });
         }
 
         q.msgHit = $('#adaptativeQuizEMessageOK').val() || '';
@@ -778,14 +743,7 @@ var $exeDevice = {
             }
         }
 
-        if (tSel === 0) {
-            // Select (multi): at least 1 marked, all within range.
-            const inRange = q.solutionMulti.every(idx => idx >= 0 && idx < num);
-            if (q.solutionMulti.length < 1 || !inRange) {
-                this.showMessage(this.msgs.msgESelectAtLeastOne.replace('%s', human));
-                return false;
-            }
-        } else if (tSel === 1) {
+        if (tSel === 1) {
             // Sort: every active option must have a unique order from 1..num.
             const order = q.solutionOrder.slice(0, num);
             const valid = order.every(v => Number.isInteger(v) && v >= 1 && v <= num);
@@ -795,10 +753,11 @@ var $exeDevice = {
                 this.showMessage(msg);
                 return false;
             }
-        } else if (tSel === 4) {
-            // True/False: solution must be 0 or 1.
-            if (q.solution !== 0 && q.solution !== 1) {
-                this.showMessage(this.msgs.msgETrueFalseSolution.replace('%s', human));
+        } else {
+            // Select (multi, default): at least 1 marked, all within range.
+            const inRange = q.solutionMulti.every(idx => idx >= 0 && idx < num);
+            if (q.solutionMulti.length < 1 || !inRange) {
+                this.showMessage(this.msgs.msgESelectAtLeastOne.replace('%s', human));
                 return false;
             }
         }
@@ -1197,12 +1156,15 @@ var $exeDevice = {
 
         return {
             type: 0,
+            typeSelect: 0,
             url: '',
             audio: '',
             question: question,
             numberOptions: texts.length,
             options: options,
-            solution: solution,
+            solutionMulti: [solution],
+            solutionOrder: [],
+            solutionWord: '',
             difficulty: legacyMap[level],
             msgHit: '',
             msgHitAudio: '',

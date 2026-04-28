@@ -28,7 +28,7 @@ describe('adaptative-quiz edition', () => {
             expect(q.question).toBe('Q?');
             expect(q.numberOptions).toBe(4);
             expect(q.options.map(o => o.text)).toEqual(['A', 'B', 'C', 'D']);
-            expect(q.solution).toBe(1);
+            expect(q.solutionMulti).toEqual([1]);
             expect(q.difficulty).toBe(1);
         });
 
@@ -36,7 +36,7 @@ describe('adaptative-quiz edition', () => {
             const q = idevice.parseAIQuestionLine('1@0#Q?#A#B#C');
             expect(q.numberOptions).toBe(3);
             expect(q.difficulty).toBe(2);
-            expect(q.solution).toBe(0);
+            expect(q.solutionMulti).toEqual([0]);
             expect(q.options[3].text).toBe('');
         });
 
@@ -44,7 +44,7 @@ describe('adaptative-quiz edition', () => {
             const q = idevice.parseAIQuestionLine('2@1#Q?#A#B');
             expect(q.numberOptions).toBe(2);
             expect(q.difficulty).toBe(3);
-            expect(q.solution).toBe(1);
+            expect(q.solutionMulti).toEqual([1]);
         });
 
         it('rejects lines without @ separator', () => {
@@ -63,7 +63,7 @@ describe('adaptative-quiz edition', () => {
                 const q = idevice.parseAIQuestionLine('3@2#Q?#A#B#C#D');
                 expect(q).not.toBeNull();
                 expect(q.difficulty).toBe(4);
-                expect(q.solution).toBe(2);
+                expect(q.solutionMulti).toEqual([2]);
                 // Level 4 is still out of range even with 4 levels configured.
                 expect(idevice.parseAIQuestionLine('4@0#Q?#A#B')).toBeNull();
             } finally {
@@ -546,7 +546,7 @@ describe('adaptative-quiz edition', () => {
         });
     });
 
-    describe('4 question types (typeSelect)', () => {
+    describe('3 question types (typeSelect)', () => {
         function buildTypedForm() {
             document.body.innerHTML = `
                 <div class="idevice_node adaptative-quiz" id="idevice-1">
@@ -554,7 +554,6 @@ describe('adaptative-quiz edition', () => {
                         <input type="radio" name="adqtypeselect" value="0" id="adaptativeQuizTypeSelect" checked />
                         <input type="radio" name="adqtypeselect" value="1" id="adaptativeQuizTypeOrder" />
                         <input type="radio" name="adqtypeselect" value="2" id="adaptativeQuizTypeWord" />
-                        <input type="radio" name="adqtypeselect" value="4" id="adaptativeQuizTypeTrueFalse" />
                         <input type="radio" name="adqtype" value="0" checked />
                         <input type="radio" name="adqnumber" value="4" checked />
                         <select id="adaptativeQuizDifficulty"><option value="2" selected>2</option></select>
@@ -569,10 +568,6 @@ describe('adaptative-quiz edition', () => {
                         <input id="adaptativeQuizAudio-option2" value="" />
                         <input id="adaptativeQuizEOption3" value="D" />
                         <input id="adaptativeQuizAudio-option3" value="" />
-                        <input type="radio" name="adqsolution" value="0" id="adaptativeQuizESolution0" />
-                        <input type="radio" name="adqsolution" value="1" id="adaptativeQuizESolution1" />
-                        <input type="radio" name="adqsolution" value="2" id="adaptativeQuizESolution2" />
-                        <input type="radio" name="adqsolution" value="3" id="adaptativeQuizESolution3" />
                         <input type="checkbox" name="adqsolutionmulti" value="0" id="adaptativeQuizESolutionMulti0" />
                         <input type="checkbox" name="adqsolutionmulti" value="1" id="adaptativeQuizESolutionMulti1" />
                         <input type="checkbox" name="adqsolutionmulti" value="2" id="adaptativeQuizESolutionMulti2" />
@@ -638,19 +633,7 @@ describe('adaptative-quiz edition', () => {
             expect(q.solutionWord).toBe('answer');
         });
 
-        it('readQuestionFromDom forces numberOptions=2 for typeSelect=4', () => {
-            document.querySelector('#adaptativeQuizTypeTrueFalse').checked = true;
-            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
-            document.querySelector('#adaptativeQuizESolution1').checked = true;
-            const q = idevice.readQuestionFromDom();
-            expect(q.typeSelect).toBe(4);
-            expect(q.numberOptions).toBe(2);
-            expect(q.solution).toBe(1);
-        });
-
-        it('migrates legacy typeSelect=3 to 0 with solutionMulti from solution', () => {
-            // Simulate legacy data in questionsGame; showQuestion should
-            // upgrade it before populating the form.
+        it('migrates legacy typeSelect=3 (Test) to 0 with solutionMulti from solution', () => {
             idevice.questionsGame = [
                 {
                     type: 0,
@@ -673,14 +656,41 @@ describe('adaptative-quiz edition', () => {
                     msgErrorAudio: '',
                 },
             ];
-            // showQuestion expects an `#adaptativeQuizInputImage` and similar
-            // shells; the typed form omits them. Stub showOptions/related DOM
-            // dependencies to no-op for this targeted assertion.
             idevice.showOptions = () => {};
             idevice.updateImagePreview = () => {};
             idevice.showQuestion(0);
             expect(idevice.questionsGame[0].typeSelect).toBe(0);
             expect(idevice.questionsGame[0].solutionMulti).toEqual([2]);
+        });
+
+        it('migrates legacy typeSelect=4 (True/False) to 0 with solutionMulti from solution', () => {
+            idevice.questionsGame = [
+                {
+                    type: 0,
+                    typeSelect: 4,
+                    url: '',
+                    audio: '',
+                    question: 'Q',
+                    numberOptions: 2,
+                    options: [
+                        { text: 'True', audio: '' },
+                        { text: 'False', audio: '' },
+                        { text: '', audio: '' },
+                        { text: '', audio: '' },
+                    ],
+                    solution: 1,
+                    difficulty: 2,
+                    msgHit: '',
+                    msgHitAudio: '',
+                    msgError: '',
+                    msgErrorAudio: '',
+                },
+            ];
+            idevice.showOptions = () => {};
+            idevice.updateImagePreview = () => {};
+            idevice.showQuestion(0);
+            expect(idevice.questionsGame[0].typeSelect).toBe(0);
+            expect(idevice.questionsGame[0].solutionMulti).toEqual([1]);
         });
 
         it('validateQuestion rejects select type with zero correct answers', () => {
@@ -692,6 +702,14 @@ describe('adaptative-quiz edition', () => {
         it('validateQuestion accepts select type with one correct answer', () => {
             document.querySelector('#adaptativeQuizTypeSelect').checked = true;
             document.querySelector('#adaptativeQuizESolutionMulti0').checked = true;
+            const res = idevice.validateQuestion();
+            expect(res).toBe(true);
+        });
+
+        it('validateQuestion accepts select type with multiple correct answers', () => {
+            document.querySelector('#adaptativeQuizTypeSelect').checked = true;
+            document.querySelector('#adaptativeQuizESolutionMulti0').checked = true;
+            document.querySelector('#adaptativeQuizESolutionMulti2').checked = true;
             const res = idevice.validateQuestion();
             expect(res).toBe(true);
         });
@@ -729,14 +747,6 @@ describe('adaptative-quiz edition', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
             document.querySelector('#adaptativeQuizTypeSelect').checked = false;
             document.querySelector('#adaptativeQuizESolutionWord').value = 'answer';
-            const res = idevice.validateQuestion();
-            expect(res).toBe(true);
-        });
-
-        it('validateQuestion accepts true/false type with solution=0 (True)', () => {
-            document.querySelector('#adaptativeQuizTypeTrueFalse').checked = true;
-            document.querySelector('#adaptativeQuizTypeSelect').checked = false;
-            document.querySelector('#adaptativeQuizESolution0').checked = true;
             const res = idevice.validateQuestion();
             expect(res).toBe(true);
         });

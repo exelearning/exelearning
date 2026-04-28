@@ -199,11 +199,12 @@ var $adaptativequiz = {
             const questionText = source.question || source.text || '';
             const type = Number.isInteger(source.type) ? source.type : source.image ? 1 : 0;
             const url = type === 1 ? source.url || source.image || '' : '';
-            // typeSelect: 0=select (multi), 1=sort, 2=word, 4=trueFalse.
-            // Legacy/test (3 or absent) maps to Select with the legacy single
+            // typeSelect: 0=select (multi), 1=sort, 2=word.
+            // Legacy types Test (3) and True/False (4) — and any absent or
+            // unknown value — map to Select (multi) with the legacy single
             // `solution` index promoted to a one-element solutionMulti.
             let typeSelect = Number.isInteger(source.typeSelect) ? source.typeSelect : 0;
-            if (typeSelect !== 0 && typeSelect !== 1 && typeSelect !== 2 && typeSelect !== 4) {
+            if (typeSelect !== 0 && typeSelect !== 1 && typeSelect !== 2) {
                 typeSelect = 0;
             }
 
@@ -543,7 +544,7 @@ var $adaptativequiz = {
         const question = opts.questions[idx];
         if (!question) return;
 
-        const tSel = Number.isInteger(question.typeSelect) ? question.typeSelect : 3;
+        const tSel = Number.isInteger(question.typeSelect) ? question.typeSelect : 0;
         const order =
             opts.shuffle && tSel !== 1
                 ? this.shuffleArray(question.options.map((_, i) => i))
@@ -563,10 +564,10 @@ var $adaptativequiz = {
         } else {
             const hasOptionAudio = order.some(origIndex => (question.options[origIndex] || {}).audio);
             const layoutClass = hasOptionAudio ? ' ADAPTATIVEQUIZ-OptionsGrid' : '';
-            const isMulti = tSel === 0;
             const isSort = tSel === 1;
-            const inputType = isMulti ? 'checkbox' : isSort ? 'number' : 'radio';
-            const groupRole = isMulti ? 'group' : 'radiogroup';
+            // Default to multi-select (checkbox) for tSel===0 and any unknown.
+            const inputType = isSort ? 'number' : 'checkbox';
+            const groupRole = isSort ? 'radiogroup' : 'group';
             html += `<div class="ADAPTATIVEQUIZ-Options${layoutClass}" role="${groupRole}" data-type-select="${tSel}">`;
             const groupName = `adaptativeQuizAnswer-${id}`;
 
@@ -829,18 +830,6 @@ var $adaptativequiz = {
             const norm = s => String(s).trim().toLocaleLowerCase();
             isCorrect = norm(answer) === norm(question.solutionWord || '');
             chosen = answer;
-        } else if (tSel === 4) {
-            // True/False uses the single-radio model
-            $selected = $('input[name="adaptativeQuizAnswer-' + id + '"]:checked');
-            if ($selected.length === 0) {
-                this.setMessage(id, msgs.msgSelectOption || 'Click on an option to choose your answer.', 'info');
-                const $msg = $('#adaptativeQuizMessages-' + id);
-                $msg.stop(true, true).fadeIn(100).delay(2500).fadeOut(400);
-                return;
-            }
-            chosen = parseInt($selected.val());
-            const correctIndex = Number.isInteger(question.solution) ? question.solution : 0;
-            isCorrect = chosen === correctIndex;
         }
 
         $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-OptionInput').prop('disabled', true);
@@ -853,16 +842,7 @@ var $adaptativequiz = {
                         const orig = parseInt($(this).attr('data-orig-index'));
                         if (expectedSet.has(orig)) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
                     });
-                } else if (tSel === 4) {
-                    const correctIndex = Number.isInteger(question.solution) ? question.solution : 0;
-                    $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-Option').each(function () {
-                        const orig = parseInt($(this).attr('data-orig-index'));
-                        if (orig === correctIndex) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
-                    });
                 }
-            }
-            if (!isCorrect && tSel === 4 && $selected.length) {
-                $selected.closest('.ADAPTATIVEQUIZ-Option').addClass('ADAPTATIVEQUIZ-OptionIncorrect');
             }
         }
         // Reference `chosen` to silence unused-variable lints when no diagnostic
