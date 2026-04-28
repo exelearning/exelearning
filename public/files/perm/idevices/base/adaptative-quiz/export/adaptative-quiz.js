@@ -225,6 +225,10 @@ var $adaptativequiz = {
                 : [];
             const solutionWord = String(source.solutionWord || '');
             const solutionWordAudio = String(source.solutionWordAudio || '');
+            const percentageShowRaw = parseInt(source.percentageShow, 10);
+            const percentageShow = Number.isInteger(percentageShowRaw)
+                ? Math.max(0, Math.min(100, percentageShowRaw))
+                : 35;
 
             return {
                 type: type === 1 ? 1 : 0,
@@ -239,6 +243,7 @@ var $adaptativequiz = {
                 solutionOrder: solutionOrder,
                 solutionWord: solutionWord,
                 solutionWordAudio: this.resolveMediaUrl(solutionWordAudio),
+                percentageShow: percentageShow,
                 difficulty: difficulty,
                 msgHit: source.msgHit || legacyFeedback.correct || '',
                 msgHitAudio: this.resolveMediaUrl(source.msgHitAudio || ''),
@@ -393,6 +398,59 @@ var $adaptativequiz = {
             [arr[i], arr[j]] = [arr[j], arr[i]];
         }
         return arr;
+    },
+
+    /**
+     * Build the partial-letter hint shown above the word-type answer input.
+     * Reveals `percentage`% of the (non-whitespace) letters of `word` at
+     * random positions, masking the rest with `_`. Whitespace splits the
+     * hint into separate `.ADAPTATIVEQUIZ-WordHintWord` rows so each word
+     * stays together (same pattern as the Guess iDevice).
+     */
+    buildWordHint: function (word, percentage) {
+        const text = String(word || '').trim();
+        if (text.length === 0) return '';
+        const pct = Math.max(0, Math.min(100, parseInt(percentage, 10) || 0));
+        // Pick which non-whitespace positions to reveal.
+        const letterPositions = [];
+        for (let i = 0; i < text.length; i++) {
+            if (!/\s/.test(text[i])) letterPositions.push(i);
+        }
+        const revealCount = Math.floor((letterPositions.length * pct) / 100);
+        const reveal = new Set();
+        const pool = letterPositions.slice();
+        for (let i = 0; i < revealCount && pool.length > 0; i++) {
+            const r = Math.floor(Math.random() * pool.length);
+            reveal.add(pool.splice(r, 1)[0]);
+        }
+        // Group consecutive non-whitespace runs into "word" rows.
+        const words = [];
+        let current = null;
+        for (let i = 0; i < text.length; i++) {
+            if (/\s/.test(text[i])) {
+                current = null;
+            } else {
+                if (!current) {
+                    current = [];
+                    words.push(current);
+                }
+                current.push({ ch: text[i], reveal: reveal.has(i) });
+            }
+        }
+        return words
+            .map(letters => {
+                const cells = letters
+                    .map(({ ch, reveal: r }) => {
+                        const cls = r
+                            ? 'ADAPTATIVEQUIZ-WordHintLetter ADAPTATIVEQUIZ-WordHintLetter--shown'
+                            : 'ADAPTATIVEQUIZ-WordHintLetter ADAPTATIVEQUIZ-WordHintLetter--hidden';
+                        const inner = r ? this.escapeHtml(ch) : '';
+                        return `<span class="${cls}">${inner}</span>`;
+                    })
+                    .join('');
+                return `<div class="ADAPTATIVEQUIZ-WordHintWord">${cells}</div>`;
+            })
+            .join('');
     },
 
     levelName: (opts, level) => {
@@ -643,12 +701,25 @@ var $adaptativequiz = {
         const stemAudio = this.renderMedia(opts, question.audio, 'audio', null, 'stem');
 
         let html = `<div class="ADAPTATIVEQUIZ-QuestionMedia">${stemImage}</div>`;
-        html += `<div class="ADAPTATIVEQUIZ-QuestionRow">${stemAudio}<div class="ADAPTATIVEQUIZ-QuestionText">${this.escapeHtml(question.question)}</div></div>`;
+        if (tSel !== 2) {
+            // Non-word types show the question stem above the answers.
+            // Word-type renders its own (centered) layout below: hint cells,
+            // definition, then input.
+            html += `<div class="ADAPTATIVEQUIZ-QuestionRow">${stemAudio}<div class="ADAPTATIVEQUIZ-QuestionText">${this.escapeHtml(question.question)}</div></div>`;
+        }
 
         if (tSel === 2) {
-            // Word: free-text answer input
+            // Word: render the partial-letter hint (guess-style cells), then
+            // the definition (the question text), then the answer input. All
+            // three blocks are horizontally centered via the wrapper.
             const inputId = `adaptativeQuizWord-${id}`;
-            html += `<div class="ADAPTATIVEQUIZ-WordAnswer"><label for="${inputId}" class="sr-av">${this.escapeHtml((opts.msgs || {}).msgAnswer || 'Answer')}</label><input type="text" class="ADAPTATIVEQUIZ-WordInput form-control" id="${inputId}" autocomplete="off" /></div>`;
+            const hintMarkup = this.buildWordHint(question.solutionWord || '', question.percentageShow);
+            html += `<div class="ADAPTATIVEQUIZ-WordAnswer">`;
+            if (hintMarkup) {
+                html += `<div class="ADAPTATIVEQUIZ-WordHint" aria-hidden="true">${hintMarkup}</div>`;
+            }
+            html += `<div class="ADAPTATIVEQUIZ-WordDefinition">${stemAudio}<div class="ADAPTATIVEQUIZ-WordDefinitionText">${this.escapeHtml(question.question)}</div></div>`;
+            html += `<label for="${inputId}" class="sr-av">${this.escapeHtml((opts.msgs || {}).msgAnswer || 'Answer')}</label><input type="text" class="ADAPTATIVEQUIZ-WordInput form-control" id="${inputId}" autocomplete="off" /></div>`;
         } else if (tSel === 1) {
             // Sort: drag-and-drop reorderable list. Each item shows a live
             // rank badge (1..n) reflecting its visual position.

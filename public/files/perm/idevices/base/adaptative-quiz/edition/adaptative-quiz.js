@@ -315,7 +315,7 @@ var $exeDevice = {
                                             </div>
                                         </span>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizEOptionsNumberDiv">
                                         <span>${_('Options Number')}:</span>
                                         <span class="ADQ-EInputNumbers d-flex align-items-center gap-2 flex-nowrap">
                                             <div class="form-check form-check-inline m-0">
@@ -331,6 +331,10 @@ var $exeDevice = {
                                                 <label for="adaptativeQuizNumQ4">4</label>
                                             </div>
                                         </span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3 d-none" id="adaptativeQuizEPercentageShowDiv">
+                                        <label for="adaptativeQuizEPercentageShow">${_('Percentage of letters to show (%)')}:</label>
+                                        <input type="number" id="adaptativeQuizEPercentageShow" class="ADQ-EPercentageShow form-control form-control-sm" value="35" min="0" max="100" step="5" style="width:auto" />
                                     </div>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                         <label for="adaptativeQuizDifficulty">${_('Difficulty')}:</label>
@@ -515,6 +519,7 @@ var $exeDevice = {
         solutionOrder: [],
         solutionWord: '',
         solutionWordAudio: '',
+        percentageShow: 35,
         difficulty: 2,
         msgHit: '',
         msgHitAudio: '',
@@ -608,6 +613,8 @@ var $exeDevice = {
         } else if (tSel === 2) {
             $('#adaptativeQuizESolutionWord').val(q.solutionWord || '');
             $('#adaptativeQuizAudio-solutionWord').val(q.solutionWordAudio || '');
+            const pct = Number.isInteger(q.percentageShow) ? q.percentageShow : 35;
+            $('#adaptativeQuizEPercentageShow').val(pct);
         } else {
             // Select (multi, default)
             const arr = Array.isArray(q.solutionMulti) ? q.solutionMulti : [];
@@ -639,13 +646,19 @@ var $exeDevice = {
 
         if (t === 2) {
             // Word: hide select/sort container, show the word/solution
-            // dual-row container.
+            // dual-row container. Also hide options-number radios and show
+            // the percentage-of-letters-to-show input.
             $('#adaptativeQuizEQASelect').addClass('d-none').hide();
             $('#adaptativeQuizEQAWord').removeClass('d-none').show();
+            $('#adaptativeQuizEOptionsNumberDiv').addClass('d-none').hide();
+            $('#adaptativeQuizEPercentageShowDiv').removeClass('d-none').show();
         } else {
-            // Select (multi) or Sort: show the question + answers container.
+            // Select (multi) or Sort: show the question + answers container
+            // and the options-number radios; hide the percentage input.
             $('#adaptativeQuizEQAWord').addClass('d-none').hide();
             $('#adaptativeQuizEQASelect').removeClass('d-none').show();
+            $('#adaptativeQuizEOptionsNumberDiv').removeClass('d-none').show();
+            $('#adaptativeQuizEPercentageShowDiv').addClass('d-none').hide();
         }
     },
 
@@ -749,6 +762,7 @@ var $exeDevice = {
         q.solutionOrder = [];
         q.solutionWord = '';
         q.solutionWordAudio = '';
+        q.percentageShow = 35;
         if (q.typeSelect === 1) {
             // Sort: the option order in the form is the correct order, so
             // solutionOrder is always sequential [1, 2, ..., numberOptions].
@@ -756,6 +770,8 @@ var $exeDevice = {
         } else if (q.typeSelect === 2) {
             q.solutionWord = $('#adaptativeQuizESolutionWord').val() || '';
             q.solutionWordAudio = $('#adaptativeQuizAudio-solutionWord').val() || '';
+            const pctRaw = parseInt($('#adaptativeQuizEPercentageShow').val(), 10);
+            q.percentageShow = Number.isInteger(pctRaw) ? Math.max(0, Math.min(100, pctRaw)) : 35;
         } else {
             // Select (multi, default)
             $('input[name="adqsolutionmulti"]:checked').each(function () {
@@ -1068,6 +1084,10 @@ var $exeDevice = {
 
         const solutionWord = String(source.solutionWord || '');
         const solutionWordAudio = String(source.solutionWordAudio || '');
+        const percentageShowRaw = parseInt(source.percentageShow, 10);
+        const percentageShow = Number.isInteger(percentageShowRaw)
+            ? Math.max(0, Math.min(100, percentageShowRaw))
+            : 35;
 
         return {
             type: type === 1 ? 1 : 0,
@@ -1082,6 +1102,7 @@ var $exeDevice = {
             solutionOrder: solutionOrder,
             solutionWord: solutionWord,
             solutionWordAudio: solutionWordAudio,
+            percentageShow: percentageShow,
             difficulty: difficulty,
             msgHit: msgHit,
             msgHitAudio: msgHitAudio,
@@ -1260,6 +1281,7 @@ var $exeDevice = {
             solutionOrder: [],
             solutionWord: '',
             solutionWordAudio: '',
+            percentageShow: 35,
             difficulty: legacyMap[level],
             msgHit: '',
             msgHitAudio: '',
