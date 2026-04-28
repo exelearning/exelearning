@@ -9469,8 +9469,8 @@
         <source>Representation</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="o84Jjwl" resname="Action & Expression">
-        <source>Action & Expression</source>
+      <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
+        <source>Action &amp; Expression</source>
         <target></target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
