@@ -136,6 +136,7 @@ describe('common_edition.js', () => {
       expect(result).toContain('href="https://example.com/help"');
       expect(result).toContain('target="_blank"');
       expect(result).toContain('hreflang="es"');
+      expect(result).toContain('class="alert-link"');
       expect(result).toContain('>Usage Instructions<');
       expect(result).toContain('btn-close');
       expect(result).toContain('data-bs-dismiss="alert"');

@@ -193,6 +193,44 @@ describe('YjsDocumentAdapter', () => {
             expect(metadata.theme).toBe('base');
         });
 
+        it('should fall back to APP_VERSION env var when neither yjs field nor window are set', () => {
+            const originalAppVersion = process.env.APP_VERSION;
+            process.env.APP_VERSION = 'v9.9.9-test';
+            try {
+                manager = new MockYjsDocumentManager({});
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                const metadata = adapter.getMetadata();
+
+                expect(metadata.exelearningVersion).toBe('v9.9.9-test');
+            } finally {
+                if (originalAppVersion === undefined) {
+                    delete process.env.APP_VERSION;
+                } else {
+                    process.env.APP_VERSION = originalAppVersion;
+                }
+            }
+        });
+
+        it('should prefer the yjs exelearning_version field over APP_VERSION', () => {
+            const originalAppVersion = process.env.APP_VERSION;
+            process.env.APP_VERSION = 'v9.9.9-test';
+            try {
+                manager = new MockYjsDocumentManager({ exelearning_version: '4.1.0' });
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                const metadata = adapter.getMetadata();
+
+                expect(metadata.exelearningVersion).toBe('4.1.0');
+            } finally {
+                if (originalAppVersion === undefined) {
+                    delete process.env.APP_VERSION;
+                } else {
+                    process.env.APP_VERSION = originalAppVersion;
+                }
+            }
+        });
+
         it('should include custom styles when present', () => {
             manager = new MockYjsDocumentManager({
                 customStyles: '.custom { color: red; }',

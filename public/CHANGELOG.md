@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## v4.0.0-rc3 – 2026-04-27
+
+### Added
+
+- Themes: host integrations (WordPress, Moodle, Omeka-S) can now inject admin-approved custom styles, hide built-in styles, block automatic style imports and define a fallback theme via a `themeRegistryOverride` hook without rebuilding the editor bundle
+- iDevices: a link to the online usage manual is now displayed in each iDevice editing interface
+
+### Fixed
+
+- Assets now persist correctly when eXeLearning is served over plain HTTP on externally accessible hosts (non-loopback environments); IndexedDB is used as fallback when the Cache API is unavailable in non-secure contexts
+- Auth: `AUTH_CREATE_USERS` setting is now enforced in CAS and OpenID Connect SSO flows, returning 401 when automatic user creation is disabled
+- Translation extraction mechanism now correctly generates valid XML XLF language files
+- Themes: the "Imported styles" tab is hidden when theme imports are blocked by admin configuration
+- Preview panel no longer overflows on screens below 992px width
+- User dropdown menu shows only essential actions on mobile devices
+- About, Preferences, Open file and File Manager modals now use responsive layout on mobile devices
+- iDevices: edition messages now use Bootstrap dismissible alerts
+- iDevices: the save dialog no longer appears twice when exporting questions in the desktop application
+- iDevices: AI prompt examples preserve line breaks correctly
+- iDevices: strings containing `%` are now correctly translated
+
+### Upgraded
+
+- uuid: 13.0.0 → 14.0.0
+
+---
+
 ## v4.0.0-rc2 – 2026-04-22
 
 ### Added

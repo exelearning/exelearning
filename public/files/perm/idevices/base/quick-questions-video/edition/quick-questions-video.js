@@ -833,7 +833,7 @@ var $exeDevice = {
                 <div id="vquextQEIdeviceForm">
                     ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                         _('Create activities consisting on a video with interactive questions.'),
-                        null,
+                        'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/videotest.html',
                     )}
                     <div class="exe-form-tab" title="${_('General settings')}">
                         ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}

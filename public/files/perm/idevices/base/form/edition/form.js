@@ -840,7 +840,7 @@ var $exeDevice = {
         const html = `<div id="formIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _('Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.'),
-                    null,
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/formulario.html',
                 )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the questions in the following quiz'))}

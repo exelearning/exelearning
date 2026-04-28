@@ -358,7 +358,7 @@ var $exeDevice = {
         <div id="desafioIdeviceForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 _('Create escape room type activities in which players will have to complete trials before solving the final challenge.'),
-                null,
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/desafio.html',
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve all the trials and complete the final challenge.'))}

@@ -57,7 +57,7 @@ var $exeDevice = {
         <div id="eXeAutoGeogebraForm">
             ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                 instructions,
-                null,
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/geogebra.html',
             )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 <fieldset class="exe-fieldset exe-fieldset-closed">

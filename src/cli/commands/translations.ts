@@ -244,6 +244,15 @@ export function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { conten
 }
 
 /**
+ * Replace bare & characters (not part of a valid XML entity reference) with &amp;.
+ * Safe to call on already-correct XML: &amp;, &lt;, &gt;, &quot;, &apos; and
+ * numeric references &#NNN; / &#xHHH; are left untouched.
+ */
+function sanitizeBareAmpersands(s: string): string {
+    return s.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/gi, '&amp;');
+}
+
+/**
  * Escape XML special characters
  */
 export function escapeXml(str: string): string {
@@ -383,6 +392,16 @@ async function processLocale(
                 cleaned = true;
             }
         }
+    }
+
+    // Always: fix bare & in resname attributes and <source> text content.
+    // XML validity requirement — runs regardless of --extract-only or --clean-only.
+    const afterSanitize = content
+        .replace(/resname="([^"]*)"/g, (_m, v: string) => `resname="${sanitizeBareAmpersands(v)}"`)
+        .replace(/<source>([^<]*)<\/source>/g, (_m, t: string) => `<source>${sanitizeBareAmpersands(t)}</source>`);
+    if (afterSanitize !== content) {
+        content = afterSanitize;
+        cleaned = true;
     }
 
     // Normalize </body> indentation (any operation can leave wrong leading whitespace)
