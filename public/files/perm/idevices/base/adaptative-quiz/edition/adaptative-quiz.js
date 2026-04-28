@@ -370,16 +370,16 @@ var $exeDevice = {
                                 </div>
                                 <div class="ADQ-EQAWord d-none" id="adaptativeQuizEQAWord">
                                     <div class="ADQ-EWordRow">
-                                        <label for="adaptativeQuizEWord">${_('Word')}:</label>
-                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2">
+                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2 flex-nowrap mb-2">
+                                            <label for="adaptativeQuizEWord" class="m-0">${_('Word')}:</label>
                                             <input type="text" class="ADQ-EWord form-control" id="adaptativeQuizEWord" placeholder="${_('Word')}" />
                                             ${this.audioToggleButton('word')}
                                         </div>
                                         ${this.audioField('word')}
                                     </div>
                                     <div class="ADQ-EWordRow">
-                                        <label for="adaptativeQuizESolutionWord">${_('Solution')}:</label>
-                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2">
+                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2 flex-nowrap mb-2">
+                                            <label for="adaptativeQuizESolutionWord" class="m-0">${_('Definition')}:</label>
                                             <input type="text" class="ADQ-ESolutionWord form-control" id="adaptativeQuizESolutionWord" placeholder="${_('Solution word or phrase')}" />
                                             ${this.audioToggleButton('solutionWord')}
                                         </div>
