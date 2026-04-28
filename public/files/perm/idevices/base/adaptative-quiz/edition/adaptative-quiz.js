@@ -393,14 +393,6 @@ var $exeDevice = {
                                         </div>
                                         ${this.audioField('word')}
                                     </div>
-                                    <div class="ADQ-EWordRow">
-                                        <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2 flex-nowrap mb-2">
-                                            <label for="adaptativeQuizESolutionWord" class="m-0">${_('Definition')}:</label>
-                                            <input type="text" class="ADQ-ESolutionWord form-control" id="adaptativeQuizESolutionWord" placeholder="${_('Solution word or phrase')}" />
-                                            ${this.audioToggleButton('solutionWord')}
-                                        </div>
-                                        ${this.audioField('solutionWord')}
-                                    </div>
                                 </div>
                             </div>
                             <div class="ADQ-EOrders" id="adaptativeQuizEOrder">
@@ -623,8 +615,8 @@ var $exeDevice = {
             }
             q.solutionOrder = Array.from({ length: num }, (_, k) => k + 1);
         } else if (tSel === 2) {
-            $('#adaptativeQuizESolutionWord').val(q.solutionWord || '');
-            $('#adaptativeQuizAudio-solutionWord').val(q.solutionWordAudio || '');
+            $('#adaptativeQuizEWord').val(q.solutionWord || '');
+            $('#adaptativeQuizAudio-word').val(q.solutionWordAudio || '');
             const pct = Number.isInteger(q.percentageShow) ? q.percentageShow : 35;
             $('#adaptativeQuizEPercentageShow').val(pct);
         } else {
@@ -657,18 +649,21 @@ var $exeDevice = {
         this.applyAnswerControls(t);
 
         if (t === 2) {
-            // Word: hide select/sort container, show the word/solution
-            // dual-row container. Also hide options-number radios and show
-            // the percentage-of-letters-to-show input.
-            $('#adaptativeQuizEQASelect').addClass('d-none').hide();
+            // Word: keep the shared Question input visible (it stores the
+            // DEFINITION, the prompt shown to the learner) but hide the
+            // answers grid. Reveal the dedicated Word input where the
+            // teacher provides the solution. Also hide the options-number
+            // radios and reveal the percentage-of-letters-to-show input.
+            $('#adaptativeQuizEAnswers').addClass('d-none').hide();
             $('#adaptativeQuizEQAWord').removeClass('d-none').show();
             $('#adaptativeQuizEOptionsNumberDiv').addClass('d-none').hide();
             $('#adaptativeQuizEPercentageShowDiv').removeClass('d-none').show();
         } else {
-            // Select (multi) or Sort: show the question + answers container
-            // and the options-number radios; hide the percentage input.
+            // Select (multi) or Sort: show the answers grid and the
+            // options-number radios, hide the Word input and the
+            // percentage selector.
             $('#adaptativeQuizEQAWord').addClass('d-none').hide();
-            $('#adaptativeQuizEQASelect').removeClass('d-none').show();
+            $('#adaptativeQuizEAnswers').removeClass('d-none').show();
             $('#adaptativeQuizEOptionsNumberDiv').removeClass('d-none').show();
             $('#adaptativeQuizEPercentageShowDiv').addClass('d-none').hide();
         }
@@ -752,9 +747,11 @@ var $exeDevice = {
         if (this.LEVELS.indexOf(q.difficulty) === -1) q.difficulty = 2;
         q.url = q.type === 1 ? $('#adaptativeQuizEURLImage').val() || '' : '';
         if (q.typeSelect === 2) {
-            // Word type reads its own dedicated inputs.
-            q.audio = $('#adaptativeQuizAudio-word').val() || '';
-            q.question = $('#adaptativeQuizEWord').val() || '';
+            // Word type: q.question holds the DEFINITION (reused from the
+            // shared Question input) and q.solutionWord holds the WORD the
+            // learner must type (entered in the dedicated Word input).
+            q.audio = $('#adaptativeQuizAudio-question').val() || '';
+            q.question = $('#adaptativeQuizEQuestion').val() || '';
         } else {
             q.audio = $('#adaptativeQuizAudio-question').val() || '';
             q.question = $('#adaptativeQuizEQuestion').val() || '';
@@ -780,8 +777,8 @@ var $exeDevice = {
             // solutionOrder is always sequential [1, 2, ..., numberOptions].
             q.solutionOrder = Array.from({ length: q.numberOptions }, (_, k) => k + 1);
         } else if (q.typeSelect === 2) {
-            q.solutionWord = $('#adaptativeQuizESolutionWord').val() || '';
-            q.solutionWordAudio = $('#adaptativeQuizAudio-solutionWord').val() || '';
+            q.solutionWord = $('#adaptativeQuizEWord').val() || '';
+            q.solutionWordAudio = $('#adaptativeQuizAudio-word').val() || '';
             const pctRaw = parseInt($('#adaptativeQuizEPercentageShow').val(), 10);
             q.percentageShow = Number.isInteger(pctRaw) ? Math.max(0, Math.min(100, pctRaw)) : 35;
         } else {
@@ -802,7 +799,7 @@ var $exeDevice = {
 
     clearQuestion: function () {
         $(
-            '#adaptativeQuizEURLImage, #adaptativeQuizAudio-question, #adaptativeQuizEQuestion, #adaptativeQuizEWord, #adaptativeQuizAudio-word, #adaptativeQuizESolutionWord, #adaptativeQuizAudio-solutionWord',
+            '#adaptativeQuizEURLImage, #adaptativeQuizAudio-question, #adaptativeQuizEQuestion, #adaptativeQuizEWord, #adaptativeQuizAudio-word',
         ).val('');
         for (let k = 0; k < this.MAX_OPTIONS; k++) {
             $('#adaptativeQuizEOption' + k).val('');

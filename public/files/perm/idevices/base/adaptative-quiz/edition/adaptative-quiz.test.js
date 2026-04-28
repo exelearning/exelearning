@@ -710,19 +710,21 @@ describe('adaptative-quiz edition', () => {
             expect(document.querySelectorAll('.ADQ-ESolutionOrder').length).toBe(0);
         });
 
-        it('readQuestionFromDom captures word + solution + their audios for typeSelect=2', () => {
+        it('readQuestionFromDom captures definition + word + their audios for typeSelect=2', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
             document.querySelector('#adaptativeQuizTypeSelect').checked = false;
+            // Definition (prompt) goes in the shared Question input.
+            document.querySelector('#adaptativeQuizEQuestion').value = 'Round red fruit';
+            document.querySelector('#adaptativeQuizAudio-question').value = 'def.mp3';
+            // Word (answer) goes in the dedicated Word input.
             document.querySelector('#adaptativeQuizEWord').value = 'apple';
             document.querySelector('#adaptativeQuizAudio-word').value = 'word.mp3';
-            document.querySelector('#adaptativeQuizESolutionWord').value = 'answer';
-            document.querySelector('#adaptativeQuizAudio-solutionWord').value = 'sol.mp3';
             const q = idevice.readQuestionFromDom();
             expect(q.typeSelect).toBe(2);
-            expect(q.question).toBe('apple');
-            expect(q.audio).toBe('word.mp3');
-            expect(q.solutionWord).toBe('answer');
-            expect(q.solutionWordAudio).toBe('sol.mp3');
+            expect(q.question).toBe('Round red fruit');
+            expect(q.audio).toBe('def.mp3');
+            expect(q.solutionWord).toBe('apple');
+            expect(q.solutionWordAudio).toBe('word.mp3');
         });
 
         it('migrates legacy typeSelect=3 (Test) to 0 with solutionMulti from solution', () => {
@@ -859,7 +861,7 @@ describe('adaptative-quiz edition', () => {
         it('validateQuestion rejects word type without solution word', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
             document.querySelector('#adaptativeQuizTypeSelect').checked = false;
-            document.querySelector('#adaptativeQuizEWord').value = 'apple';
+            document.querySelector('#adaptativeQuizEQuestion').value = 'Round red fruit';
             const res = idevice.validateQuestion();
             expect(res).toBe(false);
         });
@@ -867,8 +869,8 @@ describe('adaptative-quiz edition', () => {
         it('validateQuestion accepts word type with definition + solution word', () => {
             document.querySelector('#adaptativeQuizTypeWord').checked = true;
             document.querySelector('#adaptativeQuizTypeSelect').checked = false;
+            document.querySelector('#adaptativeQuizEQuestion').value = 'Round red fruit';
             document.querySelector('#adaptativeQuizEWord').value = 'apple';
-            document.querySelector('#adaptativeQuizESolutionWord').value = 'answer';
             const res = idevice.validateQuestion();
             expect(res).toBe(true);
         });
