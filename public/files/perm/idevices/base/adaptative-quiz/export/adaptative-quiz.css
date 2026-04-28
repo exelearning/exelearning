@@ -386,15 +386,20 @@
     color: transparent;
 }
 
-/* Solution feedback colours: correct = green letters, incorrect = red
-   letters. Background and border are left untouched on purpose. Applied
-   on the .ADAPTATIVEQUIZ-WordHint container after the learner submits
-   when the activity has "show solution" enabled. */
+/* Solution feedback colours: correct = green, incorrect = red. The
+   letter colour and the cell background/border match the existing
+   OptionCorrect / OptionIncorrect palette used by select and sort
+   types. Applied on the .ADAPTATIVEQUIZ-WordHint container after the
+   learner submits when the activity has "show solution" enabled. */
 .ADAPTATIVEQUIZ-WordHint--correct .ADAPTATIVEQUIZ-WordHintLetter {
+    background: #e8f5e9;
+    border-color: #a5d6a7;
     color: #2e7d32;
 }
 
 .ADAPTATIVEQUIZ-WordHint--incorrect .ADAPTATIVEQUIZ-WordHintLetter {
+    background: #fbe9e7;
+    border-color: #ef9a9a;
     color: #c62828;
 }
 
