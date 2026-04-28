@@ -988,14 +988,39 @@ var $exeDevice = {
         const type = Number.isInteger(source.type) ? source.type : source.image ? 1 : 0;
         const url = source.url || source.image || '';
 
+        // Per-type fields. typeSelect: 0=Select(multi), 1=Sort, 2=Word.
+        // Saved values may arrive as numeric strings, so coerce. Anything
+        // outside {0,1,2} (e.g. legacy 3=Test or 4=True/False) maps to 0.
+        let typeSelect = parseInt(source.typeSelect, 10);
+        if (typeSelect !== 0 && typeSelect !== 1 && typeSelect !== 2) typeSelect = 0;
+
+        const solutionMultiRaw = Array.isArray(source.solutionMulti) ? source.solutionMulti : [];
+        const solutionMulti = solutionMultiRaw
+            .map(v => parseInt(v, 10))
+            .filter(v => Number.isInteger(v) && v >= 0 && v < numberOptions);
+        // Promote legacy single `solution` into solutionMulti when the
+        // upgraded type is Select and no explicit array was provided.
+        if (typeSelect === 0 && solutionMulti.length === 0 && Number.isInteger(solution)) {
+            if (solution >= 0 && solution < numberOptions) solutionMulti.push(solution);
+        }
+
+        const solutionOrderRaw = Array.isArray(source.solutionOrder) ? source.solutionOrder : [];
+        const solutionOrder = solutionOrderRaw.slice(0, numberOptions).map(v => parseInt(v, 10) || 0);
+
+        const solutionWord = String(source.solutionWord || '');
+
         return {
             type: type === 1 ? 1 : 0,
+            typeSelect: typeSelect,
             url: url,
             audio: source.audio || '',
             question: questionText,
             numberOptions: numberOptions,
             options: options,
             solution: Math.max(0, Math.min(solution, numberOptions - 1)),
+            solutionMulti: solutionMulti,
+            solutionOrder: solutionOrder,
+            solutionWord: solutionWord,
             difficulty: difficulty,
             msgHit: msgHit,
             msgHitAudio: msgHitAudio,

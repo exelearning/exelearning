@@ -125,10 +125,77 @@ describe('adaptative-quiz edition', () => {
         });
     });
 
-    // TODO: Add round-trip test — THIS IS MANDATORY
-    // it('round-trip: save then load preserves all fields', () => {
-    //     ...
-    // });
+    describe('normalizeQuestion', () => {
+        it('preserves typeSelect=1 (Sort) and solutionOrder when loading saved data', () => {
+            const out = idevice.normalizeQuestion({
+                question: 'Order them',
+                type: 0,
+                typeSelect: 1,
+                numberOptions: 4,
+                options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }, { text: 'D' }],
+                solutionOrder: [1, 2, 3, 4],
+                difficulty: 2,
+            });
+            expect(out.typeSelect).toBe(1);
+            expect(out.solutionOrder).toEqual([1, 2, 3, 4]);
+            expect(out.solutionMulti).toEqual([]);
+            expect(out.solutionWord).toBe('');
+        });
+
+        it('preserves typeSelect=2 (Word) and solutionWord when loading saved data', () => {
+            const out = idevice.normalizeQuestion({
+                question: 'Define',
+                type: 0,
+                typeSelect: 2,
+                numberOptions: 4,
+                options: [{ text: '' }, { text: '' }, { text: '' }, { text: '' }],
+                solutionWord: 'answer',
+                difficulty: 2,
+            });
+            expect(out.typeSelect).toBe(2);
+            expect(out.solutionWord).toBe('answer');
+        });
+
+        it('preserves typeSelect=0 (Select) with solutionMulti when loading saved data', () => {
+            const out = idevice.normalizeQuestion({
+                question: 'Pick all',
+                type: 0,
+                typeSelect: 0,
+                numberOptions: 4,
+                options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }, { text: 'D' }],
+                solutionMulti: [0, 2],
+                difficulty: 2,
+            });
+            expect(out.typeSelect).toBe(0);
+            expect(out.solutionMulti).toEqual([0, 2]);
+        });
+
+        it('promotes legacy typeSelect=4 (True/False) to 0 with solutionMulti from solution', () => {
+            const out = idevice.normalizeQuestion({
+                question: 'TF',
+                type: 0,
+                typeSelect: 4,
+                numberOptions: 2,
+                options: [{ text: 'True' }, { text: 'False' }],
+                solution: 1,
+                difficulty: 2,
+            });
+            expect(out.typeSelect).toBe(0);
+            expect(out.solutionMulti).toEqual([1]);
+        });
+
+        it('coerces typeSelect provided as a string', () => {
+            const out = idevice.normalizeQuestion({
+                question: 'Q',
+                type: 0,
+                typeSelect: '1',
+                numberOptions: 2,
+                options: [{ text: 'A' }, { text: 'B' }],
+                difficulty: 2,
+            });
+            expect(out.typeSelect).toBe(1);
+        });
+    });
 
     describe('save', () => {
         function buildMinimalForm() {
