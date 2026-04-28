@@ -386,19 +386,16 @@
     color: transparent;
 }
 
-/* Solution feedback colours: correct = green, incorrect = blue.
-   Applied on the .ADAPTATIVEQUIZ-WordHint container after the learner
-   submits when the activity has "show solution" enabled. */
+/* Solution feedback colours: correct = green letters, incorrect = red
+   letters. Background and border are left untouched on purpose. Applied
+   on the .ADAPTATIVEQUIZ-WordHint container after the learner submits
+   when the activity has "show solution" enabled. */
 .ADAPTATIVEQUIZ-WordHint--correct .ADAPTATIVEQUIZ-WordHintLetter {
-    background: #e6f4ea;
-    border-color: #2e7d32;
     color: #2e7d32;
 }
 
 .ADAPTATIVEQUIZ-WordHint--incorrect .ADAPTATIVEQUIZ-WordHintLetter {
-    background: #e8f0fe;
-    border-color: #1565c0;
-    color: #1565c0;
+    color: #c62828;
 }
 
 .ADAPTATIVEQUIZ-WordDefinition {
