@@ -272,6 +272,10 @@ var $adaptativequiz = {
         data.questionsGame = data.questions;
         data.shuffle = data.shuffle !== false;
         data.immediateFeedback = data.immediateFeedback !== false;
+        // Word-type answer-matching options (default = lenient: ignore
+        // case and ignore accents, matching pre-feature behaviour).
+        data.caseSensitive = data.caseSensitive === true;
+        data.accentSensitive = data.accentSensitive === true;
         data.showSolution = data.showSolution !== false;
         data.timeShowSolution = Math.max(1, Math.min(9, parseInt(data.timeShowSolution, 10) || 3));
         data.numRound = parseInt(data.numRound) || Math.max(1, data.questions.length);
@@ -1008,7 +1012,15 @@ var $adaptativequiz = {
                 this.setMessage(id, msgs.msgSelectOption || 'Click on an option to choose your answer.', 'info');
                 return;
             }
-            const norm = s => String(s).trim().toLocaleLowerCase();
+            const norm = s => {
+                let v = String(s).trim();
+                if (!opts.caseSensitive) v = v.toLocaleLowerCase();
+                if (!opts.accentSensitive) {
+                    // Strip diacritics so e.g. "camion" matches "camión".
+                    v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                }
+                return v;
+            };
             // The learner types the WORD, which is stored in q.question (see
             // edition form: the "Word" field maps to q.question, the
             // "Definition" field maps to q.solutionWord).

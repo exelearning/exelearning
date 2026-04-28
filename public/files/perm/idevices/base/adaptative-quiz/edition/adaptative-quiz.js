@@ -258,6 +258,18 @@ var $exeDevice = {
                                     <label for="adaptativeQuizImmediateFeedback" class="toggle-label">${_('Show immediate feedback after each answer')}</label>
                                 </div>
                             </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizCaseSensitive" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="adaptativeQuizCaseSensitive" class="toggle-label">${_('Case-sensitive answer matching (word type)')}</label>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizAccentSensitive" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="adaptativeQuizAccentSensitive" class="toggle-label">${_('Require correct accents (word type)')}</label>
+                                </div>
+                            </div>
                             <div class="adaptativeQuizShowSolutionRow d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item m-0">
                                     <span class="toggle-control"><input type="checkbox" id="adaptativeQuizShowSolution" class="toggle-input" checked/><span class="toggle-visual"></span></span>
@@ -969,6 +981,10 @@ var $exeDevice = {
         $('#adaptativeQuizETime').val(Math.max(0, Math.min(59, parseInt(dataGame.time, 10) || 0)));
         $('#adaptativeQuizShuffle').prop('checked', dataGame.shuffle !== false);
         $('#adaptativeQuizImmediateFeedback').prop('checked', dataGame.immediateFeedback !== false);
+        // Word-type answer-matching options. Default to case- and
+        // accent-insensitive so existing activities behave as before.
+        $('#adaptativeQuizCaseSensitive').prop('checked', dataGame.caseSensitive === true);
+        $('#adaptativeQuizAccentSensitive').prop('checked', dataGame.accentSensitive === true);
         const showSolution = dataGame.showSolution !== false;
         $('#adaptativeQuizShowSolution').prop('checked', showSolution);
         const timeShowSolution = Math.max(1, Math.min(9, parseInt(dataGame.timeShowSolution, 10) || 3));
@@ -1131,6 +1147,8 @@ var $exeDevice = {
 
         const shuffle = $('#adaptativeQuizShuffle').is(':checked');
         const immediateFeedback = $('#adaptativeQuizImmediateFeedback').is(':checked');
+        const caseSensitive = $('#adaptativeQuizCaseSensitive').is(':checked');
+        const accentSensitive = $('#adaptativeQuizAccentSensitive').is(':checked');
         const showSolution = $('#adaptativeQuizShowSolution').is(':checked');
         const timeShowSolution = parseInt($('#adaptativeQuizTimeShowSolution').val(), 10) || 0;
         if (showSolution && timeShowSolution === 0) {
@@ -1189,6 +1207,8 @@ var $exeDevice = {
             time: time,
             shuffle: shuffle,
             immediateFeedback: immediateFeedback,
+            caseSensitive: caseSensitive,
+            accentSensitive: accentSensitive,
             showSolution: showSolution,
             timeShowSolution: Math.max(1, Math.min(9, timeShowSolution || 3)),
             customMessages: customMessages,
