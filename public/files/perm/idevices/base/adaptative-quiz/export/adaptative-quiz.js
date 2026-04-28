@@ -666,7 +666,7 @@ var $adaptativequiz = {
                 html += `
                     <li class="ADAPTATIVEQUIZ-Option ADAPTATIVEQUIZ-SortItem${audioCls}" draggable="true" data-orig-index="${origIndex}" tabindex="0" aria-grabbed="false">
                         <span class="ADAPTATIVEQUIZ-SortHandle" aria-hidden="true">☰</span>
-                        <span class="ADAPTATIVEQUIZ-SortRank" aria-hidden="true">${visualIndex + 1}</span>
+                        <span class="ADAPTATIVEQUIZ-SortRank" aria-hidden="true" hidden></span>
                         <span class="ADAPTATIVEQUIZ-OptionBody">
                             <span class="ADAPTATIVEQUIZ-OptionText">${this.escapeHtml(optText)}</span>
                         </span>
@@ -951,12 +951,20 @@ var $adaptativequiz = {
                         if (expectedSet.has(orig)) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
                     });
                 } else if (tSel === 1) {
+                    // Sort: reveal the rank badge for every item and colour
+                    // each row green when its current position matches the
+                    // expected rank, red otherwise.
                     const expected = (question.solutionOrder || []).slice(0, question.options.length);
                     $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-SortItem').each(
                         function (visualIndex) {
                             const orig = parseInt($(this).attr('data-orig-index'), 10);
-                            if (expected[orig] === visualIndex + 1) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
-                            else $(this).addClass('ADAPTATIVEQUIZ-OptionIncorrect');
+                            const $rank = $(this).find('.ADAPTATIVEQUIZ-SortRank');
+                            $rank.text(visualIndex + 1).removeAttr('hidden');
+                            if (expected[orig] === visualIndex + 1) {
+                                $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
+                            } else {
+                                $(this).addClass('ADAPTATIVEQUIZ-OptionIncorrect');
+                            }
                         },
                     );
                 }
