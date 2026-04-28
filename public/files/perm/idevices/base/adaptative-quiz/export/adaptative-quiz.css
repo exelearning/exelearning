@@ -265,6 +265,18 @@
     border-color: #ef9a9a;
 }
 
+/* Sort items already declare a background; bump specificity so the
+   correct/incorrect feedback colours win regardless of source order. */
+.ADAPTATIVEQUIZ-SortItem.ADAPTATIVEQUIZ-OptionCorrect {
+    background: #e8f5e9;
+    border-color: #a5d6a7;
+}
+
+.ADAPTATIVEQUIZ-SortItem.ADAPTATIVEQUIZ-OptionIncorrect {
+    background: #fbe9e7;
+    border-color: #ef9a9a;
+}
+
 /* Sort (typeSelect=1) drag-and-drop list. */
 .ADAPTATIVEQUIZ-SortList {
     list-style: none;

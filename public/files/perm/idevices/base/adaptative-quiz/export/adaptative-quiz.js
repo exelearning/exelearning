@@ -951,16 +951,18 @@ var $adaptativequiz = {
                         if (expectedSet.has(orig)) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
                     });
                 } else if (tSel === 1) {
-                    // Sort: reveal the rank badge for every item and colour
-                    // each row green when its current position matches the
-                    // expected rank, red otherwise.
+                    // Sort: reveal the correct rank for every item (its real
+                    // position in the expected order) and colour each row
+                    // green when its current visual position matches that
+                    // rank, red otherwise.
                     const expected = (question.solutionOrder || []).slice(0, question.options.length);
                     $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-SortItem').each(
                         function (visualIndex) {
                             const orig = parseInt($(this).attr('data-orig-index'), 10);
                             const $rank = $(this).find('.ADAPTATIVEQUIZ-SortRank');
-                            $rank.text(visualIndex + 1).removeAttr('hidden');
-                            if (expected[orig] === visualIndex + 1) {
+                            const expectedRank = expected[orig];
+                            $rank.text(expectedRank).removeAttr('hidden');
+                            if (expectedRank === visualIndex + 1) {
                                 $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
                             } else {
                                 $(this).addClass('ADAPTATIVEQUIZ-OptionIncorrect');
