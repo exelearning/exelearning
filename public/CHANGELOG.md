@@ -1,18 +1,18 @@
 # CHANGELOG
 
-## v4.0.0 – 2026-04-28
+## v4.0.0 – 2026-04-29
 
 eXeLearning 4.0 is a complete rebuild of the application. Every part of the stack has been rethought, from the server runtime to the collaboration engine, the distribution model and the user interface. The following summarises the most significant changes since version 3.
 
 ### New technology stack
 
-The server has been rewritten from scratch, moving from **PHP/Symfony/Mercure** to **Bun** (fast JavaScript/TypeScript runtime), **Elysia** (lightweight HTTP framework), and **Kysely** (type-safe SQL query builder). The result is a faster server with lower memory usage, improved concurrency under load and a significantly simpler codebase.
+The server has been rewritten from scratch, moving from **PHP/Symfony/Mercure** to **Bun** (fast JavaScript/TypeScript runtime), **Elysia** (lightweight HTTP framework) and **Kysely** (type-safe SQL query builder). The result is a faster server with lower memory usage, improved concurrency under load and a significantly simpler codebase.
 
 ### Three ways to use eXeLearning
 
-- **Team Edition**: full online editor with real-time collaboration, user management, persistent project storage, and database-backed persistence
-- **Personal Edition**: fully functional static Progressive Web App (PWA) that runs entirely in the browser
-- **Desktop**: native applications for Linux, Windows, and macOS, built with Electron
+- **Team Edition**: server installation, full online editor with real-time collaboration, user management, persistent project storage and database-backed persistence
+- **Personal Edition**: online, fully functional static Progressive Web App (PWA) that runs entirely in the browser
+- **Desktop**: local installation on device, native applications for Linux, Windows and macOS, built with Electron
 
 ### New admin panel
 
@@ -28,13 +28,13 @@ The File Manager has been improved in both usability and functionality. New feat
 
 ### LMS and platform integration
 
-Compatibility with the latest Moodle plugins has been improved. The editor can be embedded in platforms such as WordPress, Moodle, Omeka-S, and Drupal via iframe and postMessage, with a well-defined integration API. Host platforms can inject admin-approved custom styles, override themes or block style imports without rebuilding the editor bundle.
+Compatibility with the latest Moodle plugins has been improved. The editor can be embedded in platforms such as WordPress, Moodle, Omeka-S, or Drupal via iframe and postMessage, with a well-defined integration API. Host platforms can inject admin-approved custom styles, override themes or block style imports without rebuilding the editor bundle.
 
 ### iDevices
 
 Significant improvements across multiple iDevices:
 
-- **Rubric**: PDF export, CSV import/export, and SCORM score support
+- **Rubric**: PDF export, CSV import/export and SCORM score support
 - **Games**: native audio recording using the device microphone
 - **Classify**: maximum number of categories increased from 4 to 9
 - **Sort**: correct validation of exercises with identical cards
@@ -48,7 +48,7 @@ Significant improvements across multiple iDevices:
 
 - Project thumbnails (`screenshot.png`) are automatically generated on each save and included in `.elpx` archives
 - Accessibility improvements in exported content, including proper heading structure, a skip navigation link and correct `<title>` elements per page
-- Improved responsive layout: modals, preview panel, and navigation menus adapt to low-resolution screens
+- Improved responsive layout: modals, preview panel and navigation menus adapt to low-resolution screens
 - Teacher Mode: teacher-only content now includes a visual indicator in the editor
 - Pages, boxes and iDevices excluded from export are now visually marked in the work area; related presentation and functionality issues have been resolved
 - Export metadata has been improved: `content.xml` now records the actual eXeLearning version, and license information has been standardised
