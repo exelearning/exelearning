@@ -263,6 +263,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
 
         // Core library scripts
         head += `<script src="${basePath}libs/jquery/jquery.min.js"> </script>`;
+        head += `<script src="${basePath}libs/sandboxjs/sandbox.min.js"> </script>`;
         head += `<script src="${basePath}libs/common_i18n.js"> </script>`;
         head += `<script src="${basePath}libs/common.js"> </script>`;
         head += `<script src="${basePath}libs/exe_export.js"> </script>`;

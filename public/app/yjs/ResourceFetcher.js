@@ -45,6 +45,7 @@ const THIRD_PARTY_LIBS = new Set([
   'interact',
   'jquery',
   'jquery-ui',
+  'sandboxjs',
   'showdown',
   'simplelightbox',
   'tinymce_5',

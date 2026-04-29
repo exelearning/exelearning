@@ -45,6 +45,7 @@ const OUTPUT_PATH = path.join(projectRoot, 'public/bundles');
 // are detected and fetched on-demand via LibraryDetector, NOT included in base bundle
 const BASE_LIBS = [
   { src: 'libs/jquery/jquery.min.js', dest: 'jquery/jquery.min.js' },
+  { src: 'libs/sandboxjs/sandbox.min.js', dest: 'sandboxjs/sandbox.min.js' },
   { src: 'libs/bootstrap/bootstrap.bundle.min.js', dest: 'bootstrap/bootstrap.bundle.min.js' },
   { src: 'libs/bootstrap/bootstrap.min.css', dest: 'bootstrap/bootstrap.min.css' },
   { src: 'libs/bootstrap/bootstrap.bundle.min.js.map', dest: 'bootstrap/bootstrap.bundle.min.js.map' },

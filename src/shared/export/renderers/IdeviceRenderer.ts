@@ -18,6 +18,7 @@ import type {
     ExportComponentProperties,
 } from '../interfaces';
 import { getIdeviceConfig, getIdeviceExportFiles } from '../../../services/idevice-config';
+import { SandboxHtmlProcessor } from '../utils/SandboxHtmlProcessor';
 
 /**
  * CSS link for an iDevice
@@ -93,7 +94,13 @@ export class IdeviceRenderer {
         const type = component.type || 'text';
         const config = getIdeviceConfig(type);
         const ideviceId = component.id;
-        const htmlContent = component.content || '';
+        let htmlContent = component.content || '';
+
+        // Wrap user-provided scripts in SandboxJS to prevent XSS execution during export/preview
+        if (htmlContent) {
+            htmlContent = SandboxHtmlProcessor.process(htmlContent);
+        }
+
         // Structure properties (visibility, teacherOnly, cssClass, identifier)
         const structProps: ExportComponentProperties = component.structureProperties || {};
         // jsonProperties for iDevice-specific config
