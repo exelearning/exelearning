@@ -1291,6 +1291,16 @@ export default class App {
                 return;
             }
 
+            // Persist the opened file path across the reload that follows
+            // import, so the next Save dialog pre-fills with it.
+            try {
+                if (typeof window.electronAPI.setSavedPath === 'function') {
+                    await window.electronAPI.setSavedPath(filePath);
+                }
+            } catch (_e) {
+                // Best effort — must not break the open flow.
+            }
+
             // Convert base64 to File object
             const binStr = atob(res.base64);
             const bytes = new Uint8Array(binStr.length);

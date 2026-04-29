@@ -1633,7 +1633,7 @@ var $eXeMathOperations = {
                     $eXeMathOperations.startGame(instance);
                 }
                 $exeDevices.iDevice.gamification.math.updateLatex(
-                    'mthoMultimedia-' + instance
+                    '#mthoMultimedia-' + instance
                 );
             } else {
                 $eXeMathOperations.startGame(instance);

@@ -16,7 +16,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Glob } from 'bun';
 
-const TRANSLATIONS_DIR = path.join(process.cwd(), 'translations');
+// Resolved lazily so tests that mock process.cwd() after importing this module
+// (translations.spec.ts, translations-sort.spec.ts) still see the expected path.
+function getTranslationsDir(): string {
+    return path.join(process.cwd(), 'translations');
+}
 
 export interface TranslationsResult {
     success: boolean;
@@ -54,6 +58,27 @@ const EXCLUDE_FILE_PATTERNS = [
  */
 const EXCLUDE_EXACT_KEYS = new Set([
     'P + \\\\tfrac12 \\\\rho v^2 + \\\\rho g h = \\\\text{constant}', // Bernoulli equation example in edicuatex lang file
+    // TO DO: screenshot tab strings (pending localization)
+    'Screenshot',
+    'Current project screenshot preview',
+    'No screenshot yet. It will be auto-generated when you save or export.',
+    'Upload custom image',
+    'Screenshot must be smaller than 2 MB.',
+    'Invalid image',
+    'The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.',
+    'Generate from content',
+    'Not available',
+    'Screenshot generation is not available.',
+    'Generation failed',
+    'Could not generate screenshot from content. Try uploading an image instead.',
+    'Replace screenshot',
+    'This will delete the current image. Do you want to continue?',
+    'Delete screenshot',
+    'Delete the current image? This action cannot be undone.',
+    'Recommendations',
+    'Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.',
+    'The image will be used as a preview of this educational resource across different platforms.',
+    // END TO DO
 ]);
 
 /**
@@ -219,6 +244,15 @@ export function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { conten
 }
 
 /**
+ * Replace bare & characters (not part of a valid XML entity reference) with &amp;.
+ * Safe to call on already-correct XML: &amp;, &lt;, &gt;, &quot;, &apos; and
+ * numeric references &#NNN; / &#xHHH; are left untouched.
+ */
+function sanitizeBareAmpersands(s: string): string {
+    return s.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/gi, '&amp;');
+}
+
+/**
  * Escape XML special characters
  */
 export function escapeXml(str: string): string {
@@ -324,7 +358,7 @@ async function processLocale(
     cleanOnly: boolean,
     removeObsolete: boolean,
 ): Promise<{ extracted: number; cleaned: boolean; removed: number }> {
-    const xlfPath = path.join(TRANSLATIONS_DIR, `messages.${locale}.xlf`);
+    const xlfPath = path.join(getTranslationsDir(), `messages.${locale}.xlf`);
 
     if (!fs.existsSync(xlfPath)) {
         warning(`XLF file not found: ${xlfPath}`);
@@ -360,6 +394,16 @@ async function processLocale(
         }
     }
 
+    // Always: fix bare & in resname attributes and <source> text content.
+    // XML validity requirement — runs regardless of --extract-only or --clean-only.
+    const afterSanitize = content
+        .replace(/resname="([^"]*)"/g, (_m, v: string) => `resname="${sanitizeBareAmpersands(v)}"`)
+        .replace(/<source>([^<]*)<\/source>/g, (_m, t: string) => `<source>${sanitizeBareAmpersands(t)}</source>`);
+    if (afterSanitize !== content) {
+        content = afterSanitize;
+        cleaned = true;
+    }
+
     // Normalize </body> indentation (any operation can leave wrong leading whitespace)
     content = content.replace(/^[ \t]*<\/body>/m, '    </body>');
 
@@ -391,10 +435,11 @@ export async function execute(
     }
 
     // Check translations directory exists
-    if (!fs.existsSync(TRANSLATIONS_DIR)) {
+    const translationsDir = getTranslationsDir();
+    if (!fs.existsSync(translationsDir)) {
         return {
             success: false,
-            message: `Translations directory not found: ${TRANSLATIONS_DIR}`,
+            message: `Translations directory not found: ${translationsDir}`,
         };
     }
 

@@ -133,6 +133,58 @@ describe('translation-parser', () => {
             expect(translations).toEqual({});
         });
 
+        it('should strip leading "~" fuzzy marker from machine-translated placeholders', () => {
+            const xlfContent = `<?xml version="1.0" encoding="utf-8"?>
+<xliff version="1.2">
+    <file source-language="en" target-language="es">
+        <body>
+            <trans-unit id="1">
+                <source>Next</source>
+                <target>~Siguiente</target>
+            </trans-unit>
+            <trans-unit id="2">
+                <source>creative commons: cc0 1.0</source>
+                <target>~Creative Commons: CC0 1.0 Universal (dominio público)</target>
+            </trans-unit>
+            <trans-unit id="3">
+                <source>Already reviewed</source>
+                <target>Ya revisado</target>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>`;
+
+            const translations = parseXlfContent(xlfContent);
+
+            expect(translations.Next).toBe('Siguiente');
+            expect(translations['creative commons: cc0 1.0']).toBe(
+                'Creative Commons: CC0 1.0 Universal (dominio público)',
+            );
+            expect(translations['Already reviewed']).toBe('Ya revisado');
+            // No value should leak a leading "~"
+            for (const value of Object.values(translations)) {
+                expect(value.startsWith('~')).toBe(false);
+            }
+        });
+
+        it('should strip the leading "~" on a single trans-unit XLF', () => {
+            const xlfContent = `<?xml version="1.0"?>
+<xliff version="1.2">
+    <file>
+        <body>
+            <trans-unit id="1">
+                <source>Save</source>
+                <target>~Guardar</target>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>`;
+
+            const translations = parseXlfContent(xlfContent);
+
+            expect(translations).toEqual({ Save: 'Guardar' });
+        });
+
         it('should handle translations with special characters', () => {
             const xlfContent = `<?xml version="1.0" encoding="utf-8"?>
 <xliff version="1.2">

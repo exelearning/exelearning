@@ -22,7 +22,7 @@ describe('AulaSecreta3D', () => {
 
     mockCanvas = {
       getContext: vi.fn(() => mockCtx),
-      getBoundingClientRect: vi.fn(() => ({ width: 800, height: 600 })),
+      getBoundingClientRect: vi.fn(() => ({ left: 0, top: 0, width: 800, height: 600 })),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       width: 800,
@@ -172,6 +172,77 @@ describe('AulaSecreta3D', () => {
     it('should return false for empty cells', () => {
       // Empty space at 1,1
       expect(game.isSolid(1.5, 1.5)).toBe(false);
+    });
+  });
+
+  describe('pointer/touch controls', () => {
+    const pointerEvent = (clientX, clientY, pointerId = 1) => ({
+      clientX,
+      clientY,
+      pointerId,
+      preventDefault: vi.fn(),
+    });
+
+    beforeEach(() => {
+      mockElements.overlayEl.classList.add('hidden');
+    });
+
+    it('tap in the upper centre adds the forward key', () => {
+      game._onCanvasPointerDown(pointerEvent(400, 100));
+      expect(game.keysDown.has('w')).toBe(true);
+      expect(game.keysDown.has('arrowleft')).toBe(false);
+      expect(game.keysDown.has('arrowright')).toBe(false);
+    });
+
+    it('tap in the upper-left adds forward + turn-left', () => {
+      game._onCanvasPointerDown(pointerEvent(50, 100));
+      expect(game.keysDown.has('w')).toBe(true);
+      expect(game.keysDown.has('arrowleft')).toBe(true);
+    });
+
+    it('tap in the upper-right adds forward + turn-right', () => {
+      game._onCanvasPointerDown(pointerEvent(780, 100));
+      expect(game.keysDown.has('w')).toBe(true);
+      expect(game.keysDown.has('arrowright')).toBe(true);
+    });
+
+    it('tap in the bottom strip adds the back key', () => {
+      game._onCanvasPointerDown(pointerEvent(400, 560));
+      expect(game.keysDown.has('s')).toBe(true);
+      expect(game.keysDown.has('w')).toBe(false);
+    });
+
+    it('pointer move updates the active zone', () => {
+      game._onCanvasPointerDown(pointerEvent(50, 100));
+      expect(game.keysDown.has('arrowleft')).toBe(true);
+      game._onCanvasPointerMove(pointerEvent(780, 100));
+      expect(game.keysDown.has('arrowleft')).toBe(false);
+      expect(game.keysDown.has('arrowright')).toBe(true);
+    });
+
+    it('pointer up clears only touch-added keys', () => {
+      game.keysDown.add('d'); // simulate a keyboard key
+      game._onCanvasPointerDown(pointerEvent(400, 100));
+      expect(game.keysDown.has('w')).toBe(true);
+      game._onCanvasPointerEnd(pointerEvent(400, 100));
+      expect(game.keysDown.has('w')).toBe(false);
+      expect(game.keysDown.has('d')).toBe(true);
+    });
+
+    it('pointer down on a visible overlay triggers the start action', () => {
+      const actionSpy = vi.fn();
+      game._action = actionSpy;
+      mockElements.overlayEl.classList.remove('hidden');
+      game._onCanvasPointerDown(pointerEvent(10, 10));
+      expect(actionSpy).toHaveBeenCalled();
+      expect(game.keysDown.size).toBe(0);
+    });
+
+    it('pointer move from a different pointer id is ignored', () => {
+      game._onCanvasPointerDown(pointerEvent(50, 100, 1));
+      game._onCanvasPointerMove(pointerEvent(780, 100, 2));
+      expect(game.keysDown.has('arrowleft')).toBe(true);
+      expect(game.keysDown.has('arrowright')).toBe(false);
     });
   });
 

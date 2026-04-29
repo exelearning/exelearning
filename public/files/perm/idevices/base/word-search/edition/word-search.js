@@ -70,7 +70,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgScoreScorm: c_(
                 "The score can't be saved because this page is not part of a SCORM package."
@@ -135,9 +135,6 @@ var $exeDevice = {
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
-        );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
         );
         msgs.msgMaximeSize = _(
             'The word cannot contain more than fourteen characters or white spaces'
@@ -348,11 +345,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="sopaQEIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${_('Create word search games with additional text, images or sound.')}
-                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/sopa_de_letras.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('Create word search games with additional text, images or sound.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/buscar-palabras.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Find the hidden words.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -404,7 +400,7 @@ var $exeDevice = {
                             <div class="d-flex flex-nowrap align-items-center gap-2">
                                 <label for="sopaEPercentajeFB" class="mb-0"></label>
                                 <input type="number" class="form-control" name="sopaEPercentajeFB" id="sopaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                                <span class="mb-0">${_('&percnt; right to see the feedback')}</span>
+                                <span class="mb-0">${_('% right to see the feedback')}</span>
                             </div>
                         </div>
                         <div id="sopaEFeedbackP" class="SPE-EFeedbackP mb-3">
@@ -416,24 +412,8 @@ var $exeDevice = {
                             <span id="sopaENumeroPercentaje">1/1</span>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <div class="toggle-item mb-0">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="sopaEEvaluation" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="sopaEEvaluation">${_('Progress report')}.</label>
-                            </div>
-                            <div class="d-flex flex-nowrap align-items-center gap-2">
-                                <label for="sopaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                <input type="text" class="form-control" id="sopaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                            </div>
-                            <a href="#sopaEEvaluationHelp" id="sopaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                            </a>
+                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
-                        <p id="sopaEEvaluationHelp" class="SPE-TypeGameHelp exe-block-info">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
                     </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
@@ -861,13 +841,14 @@ var $exeDevice = {
             time = parseInt(clear($('#sopaETime').val())),
             diagonals = $('#sopaEDiagonals').is(':checked'),
             reverses = $('#sopaEReverses').is(':checked'),
-            evaluation = $('#sopaEEvaluation').is(':checked'),
-            evaluationID = $('#sopaEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             wordsGame = $exeDevice.wordsGame,
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (feedBack && textFeedBack.trim().length == 0) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
@@ -876,11 +857,6 @@ var $exeDevice = {
 
         if (wordsGame.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
 
@@ -920,8 +896,8 @@ var $exeDevice = {
             diagonals,
             reverses,
             showResolve,
-            evaluation,
-            evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id,
         };
     },
@@ -1250,14 +1226,7 @@ var $exeDevice = {
             this.value = this.value < 0 ? 0 : this.value;
         });
 
-        $('#sopaEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#sopaEEvaluationID').prop('disabled', !marcado);
-        });
-        $('#sopaEEvaluationHelpLnk').click(function () {
-            $('#sopaEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
@@ -1420,9 +1389,10 @@ var $exeDevice = {
         $('#sopaETime').val(game.time);
         $('#sopaEPercentajeFB').val(game.percentajeFB);
         $('#sopaEPercentajeQuestions').val(game.percentajeQuestions);
-        $('#sopaEEvaluation').prop('checked', game.evaluation);
-        $('#sopaEEvaluationID').val(game.evaluationID);
-        $('#sopaEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
@@ -1450,21 +1420,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('words')}-sopa.txt`;
-
-        document.getElementById('sopaQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('sopaQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('words')}-sopa.txt`,
+            'sopaQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (words) {

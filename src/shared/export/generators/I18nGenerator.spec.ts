@@ -97,6 +97,24 @@ describe('parseXlfTranslations', () => {
         expect(map.get('World')).toBe('Mundo');
     });
 
+    it('should strip the leading "~" fuzzy marker at parse time', () => {
+        const xlfWithFuzzy = `<xliff>
+  <body>
+    <trans-unit id="1"><source>Next</source><target>~Siguiente</target></trans-unit>
+    <trans-unit id="2"><source>creative commons: cc0 1.0</source><target>~Creative Commons: CC0 1.0 Universal (dominio público)</target></trans-unit>
+    <trans-unit id="3"><source>Reviewed</source><target>Revisado</target></trans-unit>
+  </body>
+</xliff>`;
+        const map = parseXlfTranslations(xlfWithFuzzy);
+
+        expect(map.get('Next')).toBe('Siguiente');
+        expect(map.get('creative commons: cc0 1.0')).toBe('Creative Commons: CC0 1.0 Universal (dominio público)');
+        expect(map.get('Reviewed')).toBe('Revisado');
+        for (const value of map.values()) {
+            expect(value.startsWith('~')).toBe(false);
+        }
+    });
+
     it('should handle multiline source and target values', () => {
         const xlf = `<xliff>
   <body>

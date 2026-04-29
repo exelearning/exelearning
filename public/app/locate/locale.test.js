@@ -73,8 +73,20 @@ describe('Locale translations', () => {
   it('getTranslation resolves idevice-specific keys before default', () => {
     locale.strings = translations;
     expect(locale.getTranslation('hello', null, 'idevice')).toBe('Idevice Hola');
-    expect(locale.getTranslation('hello')).toBe('~Hola');
+    // "~" marks machine-translated placeholders in the XLF files and must
+    // never leak into the UI, so getTranslation strips it like the GUI/content
+    // helpers already do.
+    expect(locale.getTranslation('hello')).toBe('Hola');
     expect(locale.getTranslation('missing')).toBe('missing');
+  });
+
+  it('getTranslation strips the "~" fuzzy marker from idevice-specific translations', () => {
+    locale.strings = {
+      translations: {
+        'idevice.next': '~Siguiente',
+      },
+    };
+    expect(locale.getTranslation('next', null, 'idevice')).toBe('Siguiente');
   });
 
   it('window _ and c_ helpers delegate to translation helpers and adjust elp suffix', () => {

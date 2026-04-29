@@ -45,7 +45,7 @@ export { PACKAGE_LOCALES };
 export const LICENSES: Record<string, string> = Object.fromEntries(
     Object.entries(LICENSE_REGISTRY)
         .filter(([, entry]) => !entry.legacy)
-        .map(([key, entry]) => [key, entry.displayName])
+        .map(([key, entry]) => [key, key.startsWith('creative commons') ? key : entry.displayName]),
 );
 
 // =============================================================================

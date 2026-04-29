@@ -18,7 +18,7 @@
  */
 
 import type { ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
-import { ODE_DTD_FILENAME, ODE_VERSION } from '../constants';
+import { ODE_DTD_FILENAME } from '../constants';
 import { isExcludedFromXml, getXmlKeyForProperty, valueToXmlString } from '../metadata-properties';
 
 /**
@@ -55,7 +55,7 @@ export function generateOdeXml(meta: ExportMetadata, pages: ExportPage[], option
     xml += generateUserPreferencesXml(meta);
 
     // ODE resources (version info, IDs)
-    xml += generateOdeResourcesXml(odeId, versionId);
+    xml += generateOdeResourcesXml(odeId, versionId, normalizeExeVersion(meta.exelearningVersion));
 
     // ODE properties (metadata)
     xml += generateOdePropertiesXml(meta);
@@ -94,13 +94,23 @@ function generateUserPreferenceEntry(key: string, value: string): string {
 /**
  * Generate ODE resources section (identifiers, version)
  */
-function generateOdeResourcesXml(odeId: string, versionId: string): string {
+function generateOdeResourcesXml(odeId: string, versionId: string, exeVersion: string): string {
     let xml = '<odeResources>\n';
     xml += generateOdeResourceEntry('odeId', odeId);
     xml += generateOdeResourceEntry('odeVersionId', versionId);
-    xml += generateOdeResourceEntry('exe_version', ODE_VERSION);
+    xml += generateOdeResourceEntry('exe_version', exeVersion);
     xml += '</odeResources>\n';
     return xml;
+}
+
+/**
+ * Normalize the eXeLearning version string for use in content.xml.
+ * Strips any leading 'v' so the value matches the historical bare-semver
+ * format (e.g. '4.0.0' rather than 'v4.0.0').
+ */
+export function normalizeExeVersion(version: string | undefined | null): string {
+    if (!version) return '';
+    return String(version).trim().replace(/^v/, '');
 }
 
 /**

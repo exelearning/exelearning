@@ -341,42 +341,24 @@ describe('componentDownloadHelper', () => {
 
             describe('blob: URL handling', () => {
                 let mockBlob;
-                let mockBase64;
+                let mockBytes;
                 let originalFetch;
-                let originalFileReader;
 
                 beforeEach(() => {
-                    // Create mock blob and base64 data
-                    mockBlob = new Blob(['test content'], { type: 'application/zip' });
-                    mockBase64 = 'dGVzdCBjb250ZW50'; // base64 of "test content"
+                    // "test content" as raw bytes — the main process expects a
+                    // Uint8Array / ArrayBuffer here (see app/main.js normalizeBinaryPayload).
+                    mockBytes = new TextEncoder().encode('test content');
+                    mockBlob = new Blob([mockBytes], { type: 'application/zip' });
 
-                    // Mock fetch for blob: URLs
                     originalFetch = global.fetch;
                     global.fetch = vi.fn(() => Promise.resolve({
                         blob: () => Promise.resolve(mockBlob),
+                        arrayBuffer: () => Promise.resolve(mockBytes.buffer.slice(0)),
                     }));
-
-                    // Mock FileReader for blobToBase64
-                    originalFileReader = global.FileReader;
-                    global.FileReader = class MockFileReader {
-                        constructor() {
-                            this.result = null;
-                            this.onload = null;
-                            this.onerror = null;
-                        }
-                        readAsDataURL() {
-                            // Simulate async behavior with setTimeout
-                            setTimeout(() => {
-                                this.result = `data:application/zip;base64,${mockBase64}`;
-                                if (this.onload) this.onload();
-                            }, 0);
-                        }
-                    };
                 });
 
                 afterEach(() => {
                     global.fetch = originalFetch;
-                    global.FileReader = originalFileReader;
                 });
 
                 it('should use saveBufferAs for blob: URLs when not remembered', async () => {
@@ -388,12 +370,11 @@ describe('componentDownloadHelper', () => {
 
                     // Should NOT call saveAs (uses HTTP which fails for blob:)
                     expect(mockElectronAPI.saveAs).not.toHaveBeenCalled();
-                    // Should call saveBufferAs with base64 data
-                    expect(mockElectronAPI.saveBufferAs).toHaveBeenCalledWith(
-                        mockBase64,
-                        expect.any(String),
-                        'test.zip'
-                    );
+                    // Should call saveBufferAs with a Uint8Array payload
+                    expect(mockElectronAPI.saveBufferAs).toHaveBeenCalledTimes(1);
+                    const [payload, , fileName] = mockElectronAPI.saveBufferAs.mock.calls[0];
+                    expect(payload).toBeInstanceOf(Uint8Array);
+                    expect(fileName).toBe('test.zip');
                 });
 
                 it('should use saveBuffer for blob: URLs when key is remembered', async () => {
@@ -405,12 +386,11 @@ describe('componentDownloadHelper', () => {
 
                     // Should NOT call save (uses HTTP which fails for blob:)
                     expect(mockElectronAPI.save).not.toHaveBeenCalled();
-                    // Should call saveBuffer with base64 data
-                    expect(mockElectronAPI.saveBuffer).toHaveBeenCalledWith(
-                        mockBase64,
-                        expect.any(String),
-                        'test.zip'
-                    );
+                    // Should call saveBuffer with a Uint8Array payload
+                    expect(mockElectronAPI.saveBuffer).toHaveBeenCalledTimes(1);
+                    const [payload, , fileName] = mockElectronAPI.saveBuffer.mock.calls[0];
+                    expect(payload).toBeInstanceOf(Uint8Array);
+                    expect(fileName).toBe('test.zip');
                 });
 
                 it('should fall back to saveBufferAs when saveBuffer fails for blob: URL', async () => {
@@ -636,6 +616,71 @@ describe('componentDownloadHelper', () => {
                 // save should be called first since key is remembered
                 expect(mockElectronAPI.save).toHaveBeenCalled();
             });
+        });
+    });
+
+    // Regression #1659: Export Page / Export Box / Export iDevice in the Electron
+    // desktop app showed the save dialog but never wrote a file. Root cause: the
+    // blob: branch of runElectronDownload handed a base64 string to saveBufferAs,
+    // but the main process's normalizeBinaryPayload only treats the first arg as
+    // binary when it is a Uint8Array / ArrayBuffer / Array, so it returned null
+    // and fs.writeFileSync never ran. These tests lock in the Uint8Array contract
+    // and the fallback behavior when the main process reports {saved:false}.
+    describe('downloadComponentFile — Electron blob handling (regression #1659)', () => {
+        let originalFetch;
+
+        beforeEach(() => {
+            global.eXeLearning = { config: { isOfflineInstallation: true } };
+            window.__currentProjectId = 'project-1659';
+
+            originalFetch = global.fetch;
+            global.fetch = vi.fn().mockResolvedValue({
+                blob: async () => new Blob([new Uint8Array([80, 75, 3, 4])]),
+                arrayBuffer: async () => new Uint8Array([80, 75, 3, 4]).buffer,
+            });
+        });
+
+        afterEach(() => {
+            global.fetch = originalFetch;
+        });
+
+        it('passes a Uint8Array (not a base64 string) to saveBufferAs for blob: URLs', async () => {
+            const saveBufferAs = vi
+                .fn()
+                .mockResolvedValue({ saved: true, filePath: '/tmp/out.elpx' });
+            window.electronAPI = { saveBufferAs };
+
+            await downloadComponentFile('blob:mock-url', 'page.elpx', {
+                typeKeySuffix: 'page',
+                alwaysAskLocation: true,
+            });
+
+            expect(saveBufferAs).toHaveBeenCalledTimes(1);
+            const [payload, , suggestedName] = saveBufferAs.mock.calls[0];
+            expect(typeof payload).not.toBe('string');
+            expect(payload).toBeInstanceOf(Uint8Array);
+            expect(suggestedName).toBe('page.elpx');
+        });
+
+        it('falls back to browser download when electron save reports {saved:false}', async () => {
+            const saveBufferAs = vi.fn().mockResolvedValue({
+                saved: false,
+                error: 'Failed to normalize binary payload',
+            });
+            window.electronAPI = { saveBufferAs };
+
+            const anchorClick = vi.fn();
+            global.document.createElement = vi.fn(() => ({
+                click: anchorClick,
+                style: {},
+            }));
+
+            await downloadComponentFile('blob:mock-url', 'page.elpx', {
+                typeKeySuffix: 'page',
+                alwaysAskLocation: true,
+            });
+
+            expect(anchorClick).toHaveBeenCalled();
         });
     });
 });

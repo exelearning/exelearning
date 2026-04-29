@@ -104,7 +104,7 @@ var $exeDevice = {
             msgTrue: c_('True'),
             msgFalse: c_('False'),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             mgsAllQuestions: c_('Questions completed!'),
             msgTrue1: c_("Right. That's the card."),
@@ -137,9 +137,6 @@ var $exeDevice = {
         );
         msgs.msgEOneCard = _('Please create at least one card');
         msgs.msgMaxCards = _('Maximum card number: %s.');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning'); //eXe 3.0
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
@@ -150,11 +147,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="flipcardsQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create card memory games with images, sounds or rich text.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/tarjetas_de_memoria.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create card memory games with images, sounds or rich text.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/tarjetas-de-memoria.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Click on the cards to see what they hide.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -236,26 +232,8 @@ var $exeDevice = {
                                 </p>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="flipcardsEEvaluation" class="toggle-input" data-target="#flipcardsEEvaluationIDWrapper" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="flipcardsEEvaluation">${_('Progress report')}.</label>
-                                </span>
-                                <span id="flipcardsEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="flipcardsEEvaluationID" >${_('Identifier')}:</label>
-                                    <input type="text" id="flipcardsEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </span>
-                                <strong class="GameModeLabel">
-                                    <a href="#" id="flipcardsEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                    </a>
-                                </strong>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="flipcardsEEvaluationHelp" class="FLCRDS-TypeGameHelp exe-block-info exe-block-dismissible">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1036,17 +1014,14 @@ var $exeDevice = {
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#flipcardsETime').val()),
-            evaluation = $('#flipcardsEEvaluation').is(':checked'),
-            evaluationID = $('#flipcardsEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             imgCard = $('#flipcardsEURLImgCard').val();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
         return {
             typeGame: 'FlipCards',
             author: author,
@@ -1066,8 +1041,8 @@ var $exeDevice = {
             showSolution: showSolution,
             timeShowSolution: timeShowSolution,
             time: time,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             imgCard: imgCard,
             id: id,
         };
@@ -1456,16 +1431,7 @@ var $exeDevice = {
             }
         );
 
-        $('#flipcardsEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#flipcardsEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#flipcardsEEvaluationHelpLnk').click(function (e) {
-            e.preventDefault();
-            $('#flipcardsEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
@@ -1485,21 +1451,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.cardsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('Memory cards')}.txt`;
-
-        document.getElementById('flipcardsQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('flipcardsQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Memory cards')}.txt`,
+            'flipcardsQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (cards) {
@@ -1628,9 +1584,10 @@ var $exeDevice = {
         );
         $('#flipcardsETimeDiv').hide();
         $('#flipcardBackDiv').hide();
-        $('#flipcardsEEvaluation').prop('checked', game.evaluation);
-        $('#flipcardsEEvaluationID').val(game.evaluationID);
-        $('#flipcardsEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#flipcardsEURLImgCard').val(game.imgCard);
         $exeDevice.showImageCard(game.imgCard);
         if (game.type == 3) {

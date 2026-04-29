@@ -535,6 +535,38 @@ describe('select-media-files iDevice', () => {
     // Structure checks
     // -------------------------------------------------------------------------
     describe('structure', () => {
+        it('exports validated data through the edition share helper', () => {
+            const dataGame = { phrasesGame: [] };
+            const exportGame = vi.fn();
+
+            document.body.innerHTML = `
+                <div id="eXeGameExportImport">
+                    <input id="eXeGameImportGame" type="file" />
+                    <button id="eXeGameExportQuestions" type="button"></button>
+                </div>
+            `;
+            global.$exeDevicesEdition.iDevice.gamification.share = { exportGame };
+            global.$exeDevicesEdition.iDevice.gamification.itinerary = {
+                addEvents: vi.fn(),
+            };
+            global.$exeDevicesEdition.iDevice.gamification.progressBar = {
+                getContents: vi.fn(() => '<div></div>'),
+                setValues: vi.fn(),
+                getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
+                addEvents: vi.fn(),
+            };
+            vi.spyOn($exeDevice, 'validateData').mockReturnValue(dataGame);
+
+            $exeDevice.addEvents();
+            $('#eXeGameExportQuestions').trigger('click');
+
+            expect(exportGame).toHaveBeenCalledWith(
+                dataGame,
+                'gameQEIdeviceForm',
+                'Select media files'
+            );
+        });
+
         it('exposes i18n with name and category', () => {
             expect($exeDevice.i18n).toBeDefined();
             expect($exeDevice.i18n.name).toBeDefined();

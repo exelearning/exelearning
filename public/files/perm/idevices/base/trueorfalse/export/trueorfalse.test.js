@@ -124,4 +124,50 @@ describe('trueorfalse iDevice export', () => {
       expect($trueorfalse.msgsdefault.msgKO).toBe('Incorrecto');
     });
   });
+
+  describe('addEvents', () => {
+    it('targets the trueorfalse iDevice body for report icons', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const updateEvaluationIcon = vi.fn();
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon };
+
+      document.body.innerHTML = `
+        <div class="idevice_body trueorfalseIdevice" id="tof-1">
+          <div class="exe-trueorfalse-container">
+            <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
+              <div id="tofPGameContainer-tof-1"></div>
+              <button id="tofPStartGame-tof-1"></button>
+              <button id="tofPCheckTest-tof-1"></button>
+              <button id="tofRebootTest-tof-1"></button>
+              <input id="tofPSendScore-tof-1" />
+            </div>
+          </div>
+        </div>
+      `;
+
+      const options = {
+        id: 'tof-1',
+        idevicePath: '/idevices/trueorfalse/',
+        msgs: { tofPStartGame: 'Start' },
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isScorm: 0,
+        showSlider: false,
+        isTest: true,
+        time: 0,
+        evaluation: true,
+        evaluationID: 'eval-1',
+        isInExe: false,
+      };
+
+      try {
+        $trueorfalse.addEvents(options);
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+
+      expect(options.idevice).toBe('trueorfalseIdevice');
+      expect(updateEvaluationIcon).toHaveBeenCalledWith(options, false);
+    });
+  });
 });

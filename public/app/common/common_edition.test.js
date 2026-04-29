@@ -37,6 +37,9 @@ globalThis.eXeLearning = {
       filemanager: {
         show: vi.fn(),
       }
+    },
+    project: {
+      odeId: ''
     }
   }
 };
@@ -121,6 +124,41 @@ describe('common_edition.js', () => {
       expect(result).toContain('fieldset');
       expect(result).toContain('eXeIdeviceTextAfter');
     });
+
+    it('getIdeviceDescription returns Bootstrap dismissible alert markup', () => {
+      const result = globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+        'Description text',
+        'https://example.com/help'
+      );
+
+      expect(result).toContain('class="alert alert-info alert-dismissible fade show mb-3"');
+      expect(result).toContain('role="alert"');
+      expect(result).toContain('href="https://example.com/help"');
+      expect(result).toContain('target="_blank"');
+      expect(result).toContain('hreflang="es"');
+      expect(result).toContain('class="alert-link"');
+      expect(result).toContain('>Usage Instructions<');
+      expect(result).toContain('btn-close');
+      expect(result).toContain('data-bs-dismiss="alert"');
+      expect(result).not.toContain('exe-block-info');
+      expect(result).not.toContain('exe-block-dismissible');
+      expect(result).not.toContain('exe-block-close');
+    });
+
+    it('getIdeviceDescription does not render usage link when url is not present', () => {
+      const result = globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+        'Description text',
+        null
+      );
+
+      expect(result).toContain('<p class="alert alert-info alert-dismissible fade show mb-3"');
+      expect(result).not.toContain('<a ');
+    });
+
+    it('getIdeviceDescription returns empty string when text is not a string', () => {
+      expect(globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(null, 'https://example.com')).toBe('');
+      expect(globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(42, 'https://example.com')).toBe('');
+    });
   });
 
   describe('gamification', () => {
@@ -178,6 +216,208 @@ describe('common_edition.js', () => {
       const values = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getValues();
       expect(values.isScorm).toBe(1);
       expect(values.textButtonScorm).toBe('Save');
+    });
+
+    describe('progressBar', () => {
+      const progressBar = () => globalThis.$exeDevicesEdition.iDevice.gamification.progressBar;
+
+      const mountHtml = (path = '/themes/example/') => {
+        document.body.innerHTML = progressBar().getContents(path);
+      };
+
+      it('getContents returns HTML with the unified IDs and the eXe toggle classes', () => {
+        const html = progressBar().getContents('/path/to/');
+        expect(html).toContain('id="eXeProgressReport"');
+        expect(html).toContain('id="eXeProgressReportID"');
+        expect(html).toContain('id="eXeProgressReportHelp"');
+        expect(html).toContain('id="eXeProgressReportHelpLnk"');
+        expect(html).toContain('toggle-item');
+        expect(html).toContain('toggle-control');
+        expect(html).toContain('toggle-input');
+        expect(html).toContain('toggle-visual');
+        expect(html).toContain('toggle-label');
+        expect(html).toContain('idevice-id="eXeProgressReport"');
+        expect(html).toContain('d-flex align-items-center flex-wrap gap-2');
+        expect(html).toContain('d-flex align-items-center flex-nowrap gap-2');
+        expect(html).toContain('form-control form-control-sm');
+        expect(html).toContain('alert alert-info d-none');
+        expect(html).toContain('/path/to/quextIEHelp.png');
+      });
+
+      it('setValues populates checkbox and input when evaluation is true', () => {
+        mountHtml();
+        progressBar().setValues({ evaluation: true, evaluationID: 'ABCDE' });
+        expect(document.getElementById('eXeProgressReport').checked).toBe(true);
+        expect(document.getElementById('eXeProgressReportID').value).toBe('ABCDE');
+        expect(document.getElementById('eXeProgressReportID').disabled).toBe(false);
+      });
+
+      it('setValues clears and disables input when evaluation is false', () => {
+        mountHtml();
+        progressBar().setValues({ evaluation: false, evaluationID: '' });
+        expect(document.getElementById('eXeProgressReport').checked).toBe(false);
+        expect(document.getElementById('eXeProgressReportID').value).toBe('');
+        expect(document.getElementById('eXeProgressReportID').disabled).toBe(true);
+      });
+
+      it('setValues handles missing data gracefully', () => {
+        mountHtml();
+        progressBar().setValues();
+        expect(document.getElementById('eXeProgressReport').checked).toBe(false);
+        expect(document.getElementById('eXeProgressReportID').disabled).toBe(true);
+      });
+
+      it('getValues returns the form values when evaluation is unchecked', () => {
+        mountHtml();
+        progressBar().setValues({ evaluation: false, evaluationID: '' });
+        const values = progressBar().getValues();
+        expect(values).toEqual({ evaluation: false, evaluationID: '' });
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('getValues returns the form values when evaluation is checked and ID is valid', () => {
+        mountHtml();
+        progressBar().setValues({ evaluation: true, evaluationID: 'VALIDID' });
+        const values = progressBar().getValues();
+        expect(values).toEqual({ evaluation: true, evaluationID: 'VALIDID' });
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('getValues returns false and alerts when ID is too short', () => {
+        mountHtml();
+        progressBar().setValues({ evaluation: true, evaluationID: 'abc' });
+        const values = progressBar().getValues();
+        expect(values).toBe(false);
+        expect(globalThis.eXe.app.alert).toHaveBeenCalled();
+      });
+
+      it('addEvents toggles input disabled state when checkbox changes', () => {
+        mountHtml();
+        progressBar().addEvents();
+        const checkbox = document.getElementById('eXeProgressReport');
+        const input = document.getElementById('eXeProgressReportID');
+        expect(input.disabled).toBe(true);
+        checkbox.checked = true;
+        globalThis.$(checkbox).trigger('change');
+        expect(input.disabled).toBe(false);
+        checkbox.checked = false;
+        globalThis.$(checkbox).trigger('change');
+        expect(input.disabled).toBe(true);
+      });
+
+      it('addEvents wires a centralized delegated handler for the help toggle', () => {
+        mountHtml();
+        progressBar().addEvents();
+        const help = document.getElementById('eXeProgressReportHelp');
+        const link = document.getElementById('eXeProgressReportHelpLnk');
+        expect(help.classList.contains('d-none')).toBe(true);
+        globalThis.$(link).trigger('click');
+        expect(help.classList.contains('d-none')).toBe(false);
+        globalThis.$(link).trigger('click');
+        expect(help.classList.contains('d-none')).toBe(true);
+      });
+
+      it('addEvents help-toggle handler is idempotent across re-renders', () => {
+        mountHtml();
+        progressBar().addEvents();
+        progressBar().addEvents();
+        progressBar().addEvents();
+        const help = document.getElementById('eXeProgressReportHelp');
+        const link = document.getElementById('eXeProgressReportHelpLnk');
+        globalThis.$(link).trigger('click');
+        expect(help.classList.contains('d-none')).toBe(false);
+      });
+
+      it('getContents interpolates eXeLearning.app.project.odeId as default identifier value', () => {
+        const previousOdeId = globalThis.eXeLearning.app.project.odeId;
+        globalThis.eXeLearning.app.project.odeId = 'PROJECT-123';
+        try {
+          const html = progressBar().getContents('/path/to/');
+          expect(html).toContain('value="PROJECT-123"');
+        } finally {
+          globalThis.eXeLearning.app.project.odeId = previousOdeId;
+        }
+      });
+
+      it('getContents falls back to empty value when odeId is missing', () => {
+        const previousOdeId = globalThis.eXeLearning.app.project.odeId;
+        globalThis.eXeLearning.app.project.odeId = '';
+        try {
+          const html = progressBar().getContents('/path/to/');
+          expect(html).toContain('value=""');
+        } finally {
+          globalThis.eXeLearning.app.project.odeId = previousOdeId;
+        }
+      });
+
+      it('getContents includes translation keys for the visible labels and help', () => {
+        const html = progressBar().getContents('/path/to/');
+        expect(html).toContain('Progress report');
+        expect(html).toContain('Identifier');
+        expect(html).toContain('Help');
+        expect(html).toContain('You must indicate the ID');
+      });
+
+      it('getContents adds an aria-label on the checkbox for accessibility', () => {
+        const html = progressBar().getContents('/path/to/');
+        expect(html).toMatch(/<input[^>]*id="eXeProgressReport"[^>]*aria-label="Progress report"/);
+      });
+
+      it('getValues trims whitespace from evaluationID before validating', () => {
+        mountHtml();
+        document.getElementById('eXeProgressReport').checked = true;
+        document.getElementById('eXeProgressReportID').value = '   PADDED   ';
+        const values = progressBar().getValues();
+        expect(values).toEqual({ evaluation: true, evaluationID: 'PADDED' });
+      });
+
+      it('getValues rejects an ID whose trimmed length is below 5 (boundary)', () => {
+        mountHtml();
+        document.getElementById('eXeProgressReport').checked = true;
+        document.getElementById('eXeProgressReportID').value = '  ab  ';
+        const values = progressBar().getValues();
+        expect(values).toBe(false);
+        expect(globalThis.eXe.app.alert).toHaveBeenCalled();
+      });
+
+      it('getValues accepts an ID with exactly 5 characters (boundary)', () => {
+        mountHtml();
+        document.getElementById('eXeProgressReport').checked = true;
+        document.getElementById('eXeProgressReportID').value = 'ABCDE';
+        const values = progressBar().getValues();
+        expect(values).toEqual({ evaluation: true, evaluationID: 'ABCDE' });
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('getValues ignores ID length validation when evaluation is unchecked', () => {
+        mountHtml();
+        document.getElementById('eXeProgressReport').checked = false;
+        document.getElementById('eXeProgressReportID').value = 'ab';
+        const values = progressBar().getValues();
+        expect(values).toEqual({ evaluation: false, evaluationID: 'ab' });
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('addEvents help-link click prevents the default link navigation', () => {
+        mountHtml();
+        progressBar().addEvents();
+        const link = document.getElementById('eXeProgressReportHelpLnk');
+        const event = globalThis.$.Event('click');
+        globalThis.$(link).trigger(event);
+        expect(event.isDefaultPrevented()).toBe(true);
+      });
+
+      it('addEvents change handler keeps the input value intact when toggling the checkbox', () => {
+        mountHtml();
+        progressBar().setValues({ evaluation: true, evaluationID: 'KEEPME' });
+        progressBar().addEvents();
+        const checkbox = document.getElementById('eXeProgressReport');
+        const input = document.getElementById('eXeProgressReportID');
+        checkbox.checked = false;
+        globalThis.$(checkbox).trigger('change');
+        expect(input.value).toBe('KEEPME');
+        expect(input.disabled).toBe(true);
+      });
     });
   });
 
@@ -315,7 +555,7 @@ describe('common_edition.js', () => {
       expect(fieldset.classList.contains('exe-fieldset-closed')).toBe(true);
     });
 
-    it('sets up exe-info elements with dismissible messages', () => {
+    it('sets up exe-info elements as Bootstrap dismissible alerts', () => {
       const infoDiv = document.createElement('div');
       infoDiv.className = 'exe-info';
       infoDiv.innerHTML = 'Test info message';
@@ -323,11 +563,11 @@ describe('common_edition.js', () => {
 
       globalThis.$exeDevicesEdition.iDevice.init();
 
-      expect(infoDiv.querySelector('.exe-block-info')).toBeTruthy();
-      expect(infoDiv.querySelector('.exe-block-close')).toBeTruthy();
+      expect(infoDiv.querySelector('.alert.alert-info')).toBeTruthy();
+      expect(infoDiv.querySelector('.btn-close[data-bs-dismiss="alert"]')).toBeTruthy();
     });
 
-    it('dismissible close button fades out parent', () => {
+    it('sets aria-label in Bootstrap close button for exe-info alerts', () => {
       vi.useFakeTimers();
       // Mock colorPicker which is called after a timeout
       globalThis.$exeDevicesEdition.iDevice.colorPicker = { init: vi.fn() };
@@ -338,8 +578,8 @@ describe('common_edition.js', () => {
       document.body.appendChild(infoDiv);
 
       globalThis.$exeDevicesEdition.iDevice.init();
-      const closeBtn = infoDiv.querySelector('.exe-block-close');
-      closeBtn.click();
+      const closeBtn = infoDiv.querySelector('.btn-close');
+      expect(closeBtn.getAttribute('aria-label')).toBe('Hide');
 
       vi.runAllTimers();
       vi.useRealTimers();
@@ -602,13 +842,14 @@ describe('common_edition.js', () => {
       expect(result).toContain('exe-form-tab');
     });
 
-    it('getTab with hidebutton hides button option', () => {
+    it('getTab with hidebutton applies d-none class to button block', () => {
       const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(true);
-      expect(result).toContain('display:none');
+      expect(result).toContain('id="eXeGameSCORMblock"');
+      expect(result).toContain('d-none');
     });
 
     it('getTab with onlybutton changes message', () => {
-      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(false, false, true);
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(false, true);
       expect(result).toContain('Save the score');
     });
 
@@ -654,6 +895,30 @@ describe('common_edition.js', () => {
       expect($('#eXeGameSCORMbuttonText').val()).toBe('My Button');
     });
 
+    it('setValues only shows weighted when saving score', () => {
+      document.body.innerHTML = `
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" />
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
+        <span id="eXeGameSCORgame"></span>
+        <span id="eXeGameSCORgameAuto"></span>
+        <div id="eXeGameSCORMPercentaje"></div>
+        <div id="eXeGameSCORMinstructionsButton"></div>
+        <div id="eXeGameSCORMinstructionsAuto"></div>
+        <input type="text" id="eXeGameSCORMbuttonText" />
+        <input type="number" id="eXeGameSCORMWeight" />
+      `;
+
+      globalThis.$exeDevicesEdition.iDevice.gamification.scorm.setValues(0, 'Save', true, 100);
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(true);
+
+      globalThis.$exeDevicesEdition.iDevice.gamification.scorm.setValues(1, 'Save', true, 100);
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(false);
+
+      globalThis.$exeDevicesEdition.iDevice.gamification.scorm.setValues(2, 'Save', true, 100);
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(false);
+    });
+
     it('getValues returns SCORM values with empty weight', () => {
       document.body.innerHTML = `
         <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" checked />
@@ -673,7 +938,7 @@ describe('common_edition.js', () => {
         <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
         <span id="eXeGameSCORgame"></span>
         <span id="eXeGameSCORgameAuto"></span>
-        <div id="eXeGameSCORMPercentaje" style="visibility:visible"></div>
+        <div id="eXeGameSCORMPercentaje"></div>
         <div id="eXeGameSCORMinstructionsButton"></div>
         <div id="eXeGameSCORMinstructionsAuto"></div>
         <input type="number" id="eXeGameSCORMWeight" />
@@ -683,16 +948,17 @@ describe('common_edition.js', () => {
 
       // Change to no save (value 0) - should hide percentage
       $('#eXeGameSCORMNoSave').prop('checked', true).trigger('change');
-      // The handler hides the percentage div
-      expect($('#eXeGameSCORMPercentaje').css('visibility')).toBe('hidden');
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(true);
 
       // Change to auto save (value 1)
       $('#eXeGameSCORMAutoSave').prop('checked', true).trigger('change');
       vi.runAllTimers();
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(false);
 
       // Change to button save (value 2)
       $('#eXeGameSCORMButtonSave').prop('checked', true).trigger('change');
       vi.runAllTimers();
+      expect($('#eXeGameSCORMPercentaje').hasClass('d-none')).toBe(false);
 
       vi.useRealTimers();
     });
@@ -732,10 +998,28 @@ describe('common_edition.js', () => {
       expect(result).toContain('eXeGameImportGame');
     });
 
+    it('getTab hides the native file input so only the btn-primary trigger is shown', () => {
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true);
+      expect(result).toMatch(/<input[^>]*id="eXeGameImportGame"[^>]*class="[^"]*\bd-none\b[^"]*"/);
+      expect(result).toMatch(/<button[^>]*class="[^"]*\bbtn-primary\b[^"]*\bexe-file-btn\b[^"]*"[^>]*data-exe-file-trigger/);
+    });
+
     it('getTabIA returns AI tab HTML', () => {
       const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.getTabIA(0);
       expect(result).toContain('exe-form-tab');
       expect(result).toContain('eXeEPromptArea');
+    });
+
+    it('getTabIA renders prompt examples on real newlines, not literal "\\n"', () => {
+      const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.getTabIA(0);
+      // The prompt textarea must NOT contain literal backslash-n sequences
+      // between examples — those would render verbatim instead of as line breaks.
+      const textareaMatch = result.match(
+        /<textarea[^>]*id="eXeEPromptArea"[^>]*>([\s\S]*?)<\/textarea>/
+      );
+      expect(textareaMatch).not.toBeNull();
+      expect(textareaMatch[1]).not.toContain('\\n');
+      expect(textareaMatch[1]).toContain('\n');
     });
 
     it('createIAButtonsHtml returns buttons HTML', () => {
@@ -1834,6 +2118,29 @@ describe('common_edition.js', () => {
       globalThis.$exeDevicesEdition.iDevice.init();
 
       expect(globalThis._('Unknown')).toBe('Unknown');
+    });
+
+    it('_ function strips the "~" fuzzy marker from top.translations', () => {
+      // XLF files use a leading "~" to flag machine-translated placeholders.
+      // The marker stays in the files for translator review but must never
+      // reach the iDevice editor UI.
+      document.documentElement.setAttribute('lang', 'fr');
+      globalThis.$exeDevice.i18n = undefined;
+      globalThis.top.translations = { Next: '~Siguiente' };
+
+      globalThis.$exeDevicesEdition.iDevice.init();
+
+      expect(globalThis._('Next')).toBe('Siguiente');
+    });
+
+    it('_ function strips the "~" fuzzy marker from $exeDevice.i18n', () => {
+      document.documentElement.setAttribute('lang', 'es');
+      globalThis.$exeDevice.i18n = { es: { Next: '~Siguiente' } };
+      globalThis.top.translations = {};
+
+      globalThis.$exeDevicesEdition.iDevice.init();
+
+      expect(globalThis._('Next')).toBe('Siguiente');
     });
   });
 });

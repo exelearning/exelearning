@@ -493,4 +493,21 @@ describe('Discover Edition Functions', () => {
             expect(showQuestionSpy).toHaveBeenCalledWith(0);
         });
     });
+
+    describe('real exportQuestions regression', () => {
+        it('downloads question text with the discover filename and container', () => {
+            const realExeDevice = global.loadIdevice(join(__dirname, 'discover.js'));
+            const downloadBlob = vi.fn(() => true);
+
+            global.$exeDevicesEdition.iDevice.gamification.share = { downloadBlob };
+            vi.spyOn(realExeDevice, 'validateData').mockReturnValue({
+                wordsGame: [{ word: 'Card', definition: 'Pair' }],
+            });
+
+            expect(realExeDevice.exportQuestions()).toBe(true);
+            expect(downloadBlob).toHaveBeenCalledTimes(1);
+            expect(downloadBlob.mock.calls[0][1]).toBe('words-descubre.txt');
+            expect(downloadBlob.mock.calls[0][2]).toBe('descubreQEIdeviceForm');
+        });
+    });
 });

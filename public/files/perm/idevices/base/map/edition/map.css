@@ -1299,7 +1299,6 @@ label[for=MQE-ActivitySCORM] {
 .GameModeLabel {
     font-weight: normal
 }
-
 .MQE-EOrders {
     margin-top: 0.5em;
     display: none;
@@ -1599,9 +1598,4 @@ label[for=gameQEActivitySCORM] {
 
 .GameModeLabel {
     font-weight: normal
-}
-
-.MQE-TypeGameHelp {
-    display: none;
-    font-size: .95em
 }

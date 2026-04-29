@@ -54,7 +54,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -134,11 +134,10 @@ var $exeDevice = {
     createForm: function () {
         const html = `
             <div id="completeQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/completa.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/completa.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Read the text and complete the missing words.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -197,7 +196,7 @@ var $exeDevice = {
                                     <label for="cmptEEstrictCheck" class="toggle-label">${_('Allow errors in typed words')}.</label>
                                 </span>
                                 <span id="cmptEPercentajeErrorsDiv" class="CMPT-Hide  align-items-center gap-2 flex-nowrap">
-                                    <label for="cmptEPercentajeError">${_('Incorrect letters allowed (&percnt;)')}:</label><input type="number" name="cmptEPercentajeError" id="cmptEPercentajeError" value="20" min="0" max="100" step="5" class="form-control" />
+                                    <label for="cmptEPercentajeError">${_('Incorrect letters allowed (%)')}:</label><input type="number" name="cmptEPercentajeError" id="cmptEPercentajeError" value="20" min="0" max="100" step="5" class="form-control" />
                                 </span>
                             </div>
                             <div id="cmptECaseSensitiveDiv" class="mb-3">
@@ -236,7 +235,7 @@ var $exeDevice = {
                                     <label for="cmptEHasFeedBack" class="toggle-label">${_('Feedback')}.</label>
                                 </span>
                                 <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <input type="number" name="cmptEPercentajeFB" id="cmptEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" /><label for="cmptEPercentajeFB">${_('&percnt; right to see the feedback')}.</label>
+                                    <input type="number" name="cmptEPercentajeFB" id="cmptEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" /><label for="cmptEPercentajeFB">${_('% right to see the feedback')}.</label>
                                 </span>
                             </div>
                             <div id="cmptEFeedbackP" class="CMPT-EFeedbackP mb-3">
@@ -271,22 +270,8 @@ var $exeDevice = {
                                 <input type="text" class="CMPT-EURLImage form-control" id="cmptAuthorBack"/>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap">
-                                <span class="toggle-item">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="cmptEEvaluation" class="toggle-input" data-target="#cmptEEvaluationIDWrapper" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="cmptEEvaluation" class="toggle-label">${_('Progress report')}.</label>
-                                </span>
-                                <span id="cmptEEvaluationIDWrapper" class="d-flex align-items-center flex-nowrap gap-2">
-                                    <label for="cmptEEvaluationID">${_('Identifier')}:</label> <input type="text" id="cmptEEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                                </span>
-                                <strong class="GameModeLabel"><a href="#cmptEEvaluationHelp" id="cmptEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" /></a></strong>
-
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                             </div>
-                            <p id="cmptEEvaluationHelp" class="CMPT-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -391,9 +376,10 @@ var $exeDevice = {
             'checked',
             true
         );
-        $('#cmptEEvaluation').prop('checked', game.evaluation);
-        $('#cmptEEvaluationID').val(game.evaluationID);
-        $('#cmptEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $('#cmptBack0').prop('checked', game.hasBack);
         $('#cmptEURLBack').val(game.urlBack);
         $('#cmptAuthorBack').val(game.authorBackImage);
@@ -578,14 +564,15 @@ var $exeDevice = {
             wordsErrors = $('#cmptEWordsErrors').val(),
             wordsLimit = $('#cmptEWordsLimit').is(':checked'),
             attempsNumber = parseInt($('#cmptAttemptsNumber').val(), 10),
-            evaluation = $('#cmptEEvaluation').is(':checked'),
-            evaluationID = $('#cmptEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             hasBack = $('#cmptBack0').is(':checked'),
             urlBack = $('#cmptEURLBack').val().trim(),
             authorBackImage = $('#cmptAuthorBack').val(),
             fontColor = $('#cmptEFontColor').val(),
             id = $exeDevice.getIdeviceID();
         if (!itinerary) return;
+        if (!progressBar) return false;
 
         if (textText.trim().length === 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
@@ -629,8 +616,8 @@ var $exeDevice = {
             percentajeError: percentajeError,
             showSolution: showSolution,
             wordsLimit: wordsLimit,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             hasBack: hasBack,
             urlBack: urlBack,
             authorBackImage: authorBackImage,
@@ -727,15 +714,7 @@ var $exeDevice = {
                 this.value = val;
             });
 
-        $('#cmptEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#cmptEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#cmptEEvaluationHelpLnk').on('click', function () {
-            $('#cmptEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#cmptBack0').on('change', function () {
             if ($(this).is(':checked')) {

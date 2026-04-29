@@ -98,6 +98,32 @@ export default class ModalFilemanager extends Modal {
         this.dropdownCopyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
         this.fullSizeBtn = footer?.querySelector('.media-library-fullsize-btn');
 
+        // Mobile-only collapsed actions dropdown
+        this.mobileActionsWrapper = footer?.querySelector('.media-library-mobile-actions');
+        this.mobileActionsToggle = this.mobileActionsWrapper?.querySelector('.media-library-mobile-actions-toggle');
+        this.mobileActionTargets = {
+            delete: this.deleteBtn,
+            rename: this.renameBtn,
+            duplicate: this.duplicateBtn,
+            move: this.moveBtn,
+            download: this.downloadBtn,
+            'extract-zip': this.extractBtn,
+            copyurl: this.dropdownCopyUrlBtn,
+            fullsize: this.fullSizeBtn,
+        };
+        if (this.mobileActionsWrapper) {
+            this.mobileActionsWrapper.addEventListener('click', (event) => {
+                const item = event.target.closest('[data-mobile-action]');
+                if (!item) return;
+                event.preventDefault();
+                if (item.classList.contains('disabled') || item.classList.contains('d-none')) return;
+                const target = this.mobileActionTargets[item.dataset.mobileAction];
+                if (target && !target.disabled) {
+                    target.click();
+                }
+            });
+        }
+
         // WebSocket handler reference and bound event handlers for rename sync
         this._wsHandler = null;
         this._onAssetRenamed = null;
@@ -1063,6 +1089,29 @@ export default class ModalFilemanager extends Modal {
         if (this.extractBtn) {
             this.extractBtn.classList.toggle('d-none', !isZip);
         }
+
+        this.syncMobileActions();
+    }
+
+    syncMobileActions() {
+        if (!this.mobileActionsWrapper) return;
+        let anyEnabled = false;
+        for (const [action, target] of Object.entries(this.mobileActionTargets)) {
+            const item = this.mobileActionsWrapper.querySelector(`[data-mobile-action="${action}"]`);
+            if (!item) continue;
+            // Only `extract-zip` is genuinely hidden based on the target's d-none class (non-zip files).
+            // Main action buttons have d-none from `d-none d-md-inline-block`, which hides them on
+            // mobile only and must not propagate to the mobile dropdown items.
+            const hidden = !target || (action === 'extract-zip' && target.classList.contains('d-none'));
+            const disabled = !target || target.disabled;
+            item.classList.toggle('d-none', hidden);
+            item.classList.toggle('disabled', disabled);
+            item.setAttribute('aria-disabled', String(disabled));
+            if (!hidden && !disabled) anyEnabled = true;
+        }
+        if (this.mobileActionsToggle) {
+            this.mobileActionsToggle.disabled = !anyEnabled;
+        }
     }
 
     /**
@@ -2025,13 +2074,15 @@ export default class ModalFilemanager extends Modal {
         Logger.log(`[MediaLibrary] uploadFiles: assetManager.projectId = ${this.assetManager.projectId}, folder = "${this.currentPath}"`);
 
         let uploadedCount = 0;
+        let lastUploadedUrl = null;
 
         for (const file of files) {
             try {
                 Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}, folder: "${this.currentPath}"`);
                 // Upload to current folder
-                await this.assetManager.insertImage(file, { folderPath: this.currentPath });
+                const url = await this.assetManager.insertImage(file, { folderPath: this.currentPath });
                 uploadedCount++;
+                lastUploadedUrl = url;
             } catch (err) {
                 console.error(`[MediaLibrary] Failed to upload ${file.name}:`, err);
             }
@@ -2040,6 +2091,28 @@ export default class ModalFilemanager extends Modal {
         if (uploadedCount > 0) {
             Logger.log(`[MediaLibrary] Uploaded ${uploadedCount} files to folder "${this.currentPath}"`);
             await this.loadAssets();
+
+            if (uploadedCount === 1 && lastUploadedUrl) {
+                const assetId = lastUploadedUrl.replace(/^asset:\/\//, '').replace(/\.[^.]*$/, '');
+                await this.autoSelectUploadedAsset(assetId);
+            }
+        }
+    }
+
+    /**
+     * Auto-select an asset after upload, as if the user clicked it.
+     * @param {string} assetId
+     */
+    async autoSelectUploadedAsset(assetId) {
+        const asset = this.assets.find(a => a.id === assetId);
+        if (!asset) return;
+
+        if (this.viewMode === 'list') {
+            const row = this.listTbody?.querySelector(`[data-asset-id="${assetId}"]`);
+            if (row) await this.selectAssetInList(asset, row);
+        } else {
+            const item = this.grid?.querySelector(`[data-asset-id="${assetId}"]`);
+            if (item) await this.selectAsset(asset, item);
         }
     }
 
@@ -2386,8 +2459,13 @@ export default class ModalFilemanager extends Modal {
 
                         let found = false;
 
-                        // Check htmlView or htmlContent (Y.Text or string)
-                        const htmlContent = compMap.get('htmlView') || compMap.get('htmlContent');
+                        // Check htmlContent (Y.Text or string) or htmlView (legacy fallback).
+                        // htmlContent is refreshed on every save; htmlView is only populated
+                        // during initial ELP import and never updated after edits, so reading
+                        // it first causes stale reference counts after image deletion in
+                        // iDevices whose save path only touches jsonProperties/htmlContent
+                        // (issue #1674).
+                        const htmlContent = compMap.get('htmlContent') || compMap.get('htmlView');
                         if (htmlContent) {
                             const content = htmlContent.toString ? htmlContent.toString() : String(htmlContent);
                             if (assetRegex.test(content)) {

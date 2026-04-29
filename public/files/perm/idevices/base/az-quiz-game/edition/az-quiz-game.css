@@ -70,10 +70,6 @@
     align-items: center;
 }
 
-#roscoIdeviceForm .roscoReport label[for=roscoEEvaluationID] {
-    margin-left: 0.2em
-}
-
 #roscoIdeviceForm .roscoLinkStart,
 #roscoIdeviceForm .roscoLinkClose,
 #roscoIdeviceForm .roscoPlayAudio,
@@ -437,11 +433,6 @@ label[for=roscoActivitySCORM] {
     margin: 0 0 .5em 0;
     padding: 0;
     list-style-image: none
-}
-
-.roscoTypeGameHelp {
-    display: none;
-    font-size: .95em
 }
 
 .Games-Reportdiv {

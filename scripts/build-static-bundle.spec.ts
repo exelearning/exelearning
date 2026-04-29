@@ -266,6 +266,30 @@ describe('parseXlfContent', () => {
         const result = parseXlfContent('');
         expect(result).toEqual({});
     });
+
+    it('should strip the leading "~" fuzzy marker from translations', () => {
+        const xlf = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2">
+    <file source-language="en" target-language="es">
+        <body>
+            <trans-unit id="1">
+                <source>Next</source>
+                <target>~Siguiente</target>
+            </trans-unit>
+            <trans-unit id="2">
+                <source>Reviewed</source>
+                <target>Revisado</target>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>`;
+
+        const result = parseXlfContent(xlf);
+        expect(result).toEqual({
+            Next: 'Siguiente',
+            Reviewed: 'Revisado',
+        });
+    });
 });
 
 // =============================================================================

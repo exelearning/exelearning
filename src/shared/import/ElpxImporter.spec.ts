@@ -342,6 +342,69 @@ describe('ElpxImporter', () => {
         });
     });
 
+    describe('top-level directory wrapper', () => {
+        it('should import an ELP whose contents are nested under a single top-level directory', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            // Re-pack the fixture so every entry lives under "repo-main/" — this mirrors
+            // the shape of a GitHub repository archive served by github-proxy.exelearning.dev.
+            const fflate = await import('fflate');
+            const originalEntries = fflate.unzipSync(new Uint8Array(elpBuffer));
+            const wrapped: Record<string, Uint8Array> = {};
+            for (const [path, data] of Object.entries(originalEntries)) {
+                wrapped[`repo-main/${path}`] = data;
+            }
+            const wrappedBuffer = fflate.zipSync(wrapped);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const result = await importer.importFromBuffer(wrappedBuffer);
+
+            expect(result.pages).toBeGreaterThan(0);
+            expect(ydoc.getArray('navigation').length).toBe(result.pages);
+
+            ydoc.destroy();
+        });
+
+        it('should not strip the prefix when files also live at the root', async () => {
+            const fflate = await import('fflate');
+            const zip = fflate.zipSync({
+                'repo-main/unrelated.txt': new Uint8Array([1]),
+                'README.md': new Uint8Array([2]),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            // No content.xml anywhere, and the root isn't a single-directory wrapper,
+            // so the importer must still reject the archive.
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(
+                'Unable to open this file: content.xml is missing',
+            );
+
+            ydoc.destroy();
+        });
+
+        it('should not strip when there are multiple top-level directories', async () => {
+            const fflate = await import('fflate');
+            const zip = fflate.zipSync({
+                'a/content.xml': new Uint8Array([1]),
+                'b/other.txt': new Uint8Array([2]),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(
+                'Unable to open this file: content.xml is missing',
+            );
+
+            ydoc.destroy();
+        });
+    });
+
     describe('error handling', () => {
         it('should throw error for invalid ZIP file', async () => {
             const ydoc = new Y.Doc();
@@ -2083,5 +2146,110 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
         expect(html).not.toContain('<div class="exe-text">');
 
         ydoc.destroy();
+    });
+
+    // =========================================================================
+    // Screenshot import tests
+    // =========================================================================
+    describe('screenshot import', () => {
+        // Minimal valid 1x1 PNG (binary)
+        const MINIMAL_PNG_BYTES = new Uint8Array([
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00,
+            0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
+            0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xe2,
+            0x21, 0xbc, 0x33, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ]);
+
+        const MINIMAL_CONTENT_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Screenshot Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-1</odePageId>
+  <pageName>Home</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures/>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        it('should import screenshot.png from archive root into metadata', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(MINIMAL_CONTENT_XML),
+                'screenshot.png': MINIMAL_PNG_BYTES,
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const screenshot = metadata.get('screenshot') as string;
+            expect(screenshot).toBeDefined();
+            expect(screenshot).toContain('data:image/png;base64,');
+
+            ydoc.destroy();
+        });
+
+        it('should work without screenshot.png (backward compatibility)', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(MINIMAL_CONTENT_XML),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const screenshot = metadata.get('screenshot');
+            expect(screenshot).toBeUndefined();
+
+            // Other metadata should still be set
+            expect(metadata.get('title')).toBe('Screenshot Test');
+
+            ydoc.destroy();
+        });
+
+        it('should store screenshot as valid base64 data URL that round-trips', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(MINIMAL_CONTENT_XML),
+                'screenshot.png': MINIMAL_PNG_BYTES,
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const screenshot = metadata.get('screenshot') as string;
+
+            // Verify the base64 can be decoded back to original bytes
+            const base64Part = screenshot.split(',')[1];
+            const decoded = atob(base64Part);
+            const roundTripped = new Uint8Array(decoded.length);
+            for (let i = 0; i < decoded.length; i++) {
+                roundTripped[i] = decoded.charCodeAt(i);
+            }
+            // Check PNG signature is preserved
+            expect(roundTripped[0]).toBe(0x89);
+            expect(roundTripped[1]).toBe(0x50);
+            expect(roundTripped[2]).toBe(0x4e);
+            expect(roundTripped[3]).toBe(0x47);
+
+            ydoc.destroy();
+        });
     });
 });

@@ -531,12 +531,6 @@ label[for=gameQEActivitySCORM] {
     padding: 0;
 }
 
-.IDFE-TypeGameHelp {
-    display: none;
-    margin-bottom: 2em;
-    font-size: .95em
-}
-
 .Games-Reportdiv {
     display: flex;
     justify-content: flex-start;

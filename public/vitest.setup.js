@@ -1129,6 +1129,35 @@ const mockGamificationCommon = {
   load: vi.fn(),
 };
 
+// Shared progress-report component used by every migrated gamified iDevice.
+// Mirrors the real implementation in public/app/common/common_edition.js so
+// iDevice tests can exercise loadPreviousValues / save without bundling the
+// whole common_edition module.
+const mockGamificationProgressBar = {
+  getContents: vi.fn(() => ''),
+  setValues: vi.fn((data) => {
+    const evaluation = !!(data && data.evaluation);
+    const evaluationID = data && typeof data.evaluationID !== 'undefined' ? data.evaluationID : '';
+    if (typeof window !== 'undefined' && window.$) {
+      window.$('#eXeProgressReport').prop('checked', evaluation);
+      window.$('#eXeProgressReportID').val(evaluationID);
+      window.$('#eXeProgressReportID').prop('disabled', !evaluation);
+    }
+  }),
+  getValues: vi.fn(() => {
+    if (typeof window === 'undefined' || !window.$) {
+      return { evaluation: false, evaluationID: '' };
+    }
+    const evaluation = window.$('#eXeProgressReport').is(':checked');
+    const evaluationID = (window.$('#eXeProgressReportID').val() || '').toString().trim();
+    if (evaluation && evaluationID.length < 5) {
+      return false;
+    }
+    return { evaluation, evaluationID };
+  }),
+  addEvents: vi.fn(),
+};
+
 const mockGamificationHelpers = {
   getFieldset: vi.fn((config) => {
     const title = config?.title || 'Gamification';
@@ -1207,6 +1236,7 @@ global.$exeDevicesEdition = {
       instructions: mockGamificationInstructions,
       scorm: mockGamificationScorm,
       common: mockGamificationCommon,
+      progressBar: mockGamificationProgressBar,
       helpers: mockGamificationHelpers,
       math: mockGamificationMath,
       observers: mockGamificationObservers,

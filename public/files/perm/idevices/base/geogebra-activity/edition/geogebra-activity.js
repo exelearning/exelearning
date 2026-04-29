@@ -55,10 +55,10 @@ var $exeDevice = {
         );
         const html = `
         <div id="eXeAutoGeogebraForm">
-            <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${instructions}
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                instructions,
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/geogebra.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 <fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${_('Instructions')}</a></legend>
@@ -130,25 +130,7 @@ var $exeDevice = {
                             <label for="geogebraActivityWeight" class="mb-0">${_('Weight')} (%):</label>
                             <input type="number" name="geogebraActivityWeight" id="geogebraActivityWeight" value="100" min="1" max="100" step="1" class="form-control" />
                         </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <div class="toggle-item mb-0">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="geogebraActivityEvaluation" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label for="geogebraActivityEvaluation" class="toggle-label mb-0">${_('Progress report')}.</label>
-                            </div>
-                            <div class="d-flex flex-nowrap align-items-center gap-2">
-                                <label for="geogebraActivityEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                <input type="text" id="geogebraActivityEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                            </div>
-                            <a href="#geogebraActivityEvaluationHelp" id="geogebraActivityEvaluationHelpLnk" class="geogebractivityModeHelpLink" title="${_('Help')}">
-                                <img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                            </a>
-                        </div>
-                        <p id="geogebraActivityEvaluationHelp" class="geogebractivityTypeGameHelp exe-block-info d-none">
-                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                        </p>
+                        ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                     </div>
                 </fieldset>
                 ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
@@ -203,26 +185,12 @@ var $exeDevice = {
                     .removeClass('d-flex');
             }
         });
-        $('#geogebraActivityEvaluation').change(function () {
-            $('#geogebraActivityEvaluationID').prop('disabled', !this.checked);
-        });
-        $('#geogebraActivityEvaluationHelpLnk').click(function () {
-            if ($('#geogebraActivityEvaluationHelp').hasClass('d-none')) {
-                $('#geogebraActivityEvaluationHelp')
-                    .removeClass('d-none')
-                    .addClass('d-flex');
-            } else {
-                $('#geogebraActivityEvaluationHelp')
-                    .removeClass('d-flex')
-                    .addClass('d-none');
-            }
-            return false;
-        });
         $('.exe-block-dismissible .exe-block-close').click(function () {
             $(this).parent().fadeOut();
             return false;
         });
         this.loadPreviousValues();
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
     },
 
     loadData: function (id, lurl) {
@@ -462,11 +430,8 @@ var $exeDevice = {
                 } else if (part.indexOf('auto-geogebra-evaluation-id-') > -1) {
                     let evid = part.replace('auto-geogebra-evaluation-id-', '');
                     if (evid != '0') {
-                        $('#geogebraActivityEvaluation').prop('checked', true);
-                        $('#geogebraActivityEvaluationID').val(evid);
-                        $('#geogebraActivityEvaluationID').prop(
-                            'disabled',
-                            false
+                        $exeDevicesEdition.iDevice.gamification.progressBar.setValues(
+                            { evaluation: true, evaluationID: evid }
                         );
                     }
                 } else if (part.indexOf('auto-geogebra-ideviceid-') > -1) {
@@ -539,8 +504,6 @@ var $exeDevice = {
 
         // URL
         let url = $('#geogebraActivityURL').val(),
-            evaluation = $('#geogebraActivityEvaluation').is(':checked'),
-            evaluationID = $('#geogebraActivityEvaluationID').val(),
             ideviceID = $exeDevice.getIdeviceID();
 
         url = url.replace('https://ggbm.at/', urlBase);
@@ -554,13 +517,11 @@ var $exeDevice = {
             $exeDevice.errorMessage(true);
             return false;
         }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert(
-                _('The report identifier must have at least 5 characters')
-            );
-            return false;
-        }
-        evaluationID = evaluation ? evaluationID : '0';
+        const progressBar =
+            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBar) return false;
+        const evaluation = progressBar.evaluation;
+        const evaluationID = evaluation ? progressBar.evaluationID : '0';
 
         let divContent = '';
         // Instructions

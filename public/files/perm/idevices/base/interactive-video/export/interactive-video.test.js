@@ -17,6 +17,7 @@ import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const jquery = global.$;
 
 /**
  * Helper to load export iDevice file and expose $interactivevideo globally.
@@ -246,6 +247,108 @@ describe('interactive-video iDevice export', () => {
 
     it('has base ID', () => {
       expect($interactivevideo.baseId).toBe('interactivevideo');
+    });
+  });
+
+  describe('progress report', () => {
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+    });
+
+    it('targets the interactive video iDevice body for report icons', () => {
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Interactive video</h1></header>
+          <div class="idevice_body interactive-videoIdevice">
+            <div id="interactive-video-1" class="idevice_node interactive-video">
+              <div class="exe-interactive-video"></div>
+            </div>
+          </div>
+        </article>
+      `;
+
+      const options = $interactivevideo.getOptions({
+        ideviceID: 'interactive-video-1',
+        evaluation: true,
+        evaluationID: 'progress-1',
+        scorm: { isScorm: 0, textButtonScorm: 'Save score' },
+        i18n: $interactivevideo.i18n,
+      });
+
+      expect(options.idevice).toBe('interactive-videoIdevice');
+      expect(options.main).toBe('.exe-interactive-video');
+      expect(options.evaluation).toBe(true);
+      expect(options.evaluationID).toBe('progress-1');
+    });
+
+    it('falls back to the exported iDevice node when no iDevice body wrapper exists', () => {
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Interactive video</h1></header>
+          <div id="interactive-video-1" class="idevice_node interactive-video">
+            <div class="exe-interactive-video"></div>
+          </div>
+        </article>
+      `;
+
+      const options = $interactivevideo.getOptions({
+        ideviceID: 'interactive-video-1',
+        evaluation: true,
+        evaluationID: 'progress-1',
+        scorm: { isScorm: 0, textButtonScorm: 'Save score' },
+        i18n: $interactivevideo.i18n,
+      });
+
+      expect(options.idevice).toBe('idevice_node');
+    });
+
+    it('shows progress report information during export initialization', () => {
+      const previousScorm = $exeDevices.iDevice.gamification.scorm;
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousIsInExe = eXe.app.isInExe;
+      const updateEvaluationIcon = vi.fn();
+
+      eXe.app.isInExe = vi.fn(() => false);
+      $exeDevices.iDevice.gamification.scorm = {
+        ...previousScorm,
+        addButtonScoreNew: vi.fn(() => ''),
+      };
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon };
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Interactive video</h1></header>
+          <div id="interactive-video-1" class="idevice_node interactive-video">
+            <div class="exe-interactive-video"></div>
+          </div>
+        </article>
+      `;
+      global.InteractiveVideo = {
+        ideviceID: 'interactive-video-1',
+        evaluation: true,
+        evaluationID: 'progress-1',
+        scorm: { isScorm: 0, textButtonScorm: 'Save score' },
+        scoreNIA: true,
+        slides: [],
+        i18n: $interactivevideo.i18n,
+      };
+
+      try {
+        $interactivevideo.enable();
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+        $exeDevices.iDevice.gamification.scorm = previousScorm;
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+
+      expect(updateEvaluationIcon).toHaveBeenCalledWith(
+        expect.objectContaining({
+          idevice: 'idevice_node',
+          evaluation: true,
+          evaluationID: 'progress-1',
+        }),
+        false,
+      );
     });
   });
 

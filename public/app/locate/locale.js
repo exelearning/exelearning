@@ -162,10 +162,9 @@ export default class Locale {
                 this.strings.translations &&
                 stringConcIdevice in this.strings.translations
             ) {
-                return this.strings.translations[stringConcIdevice].replace(
-                    /\\"/g,
-                    '"'
-                );
+                let res = this.strings.translations[stringConcIdevice].replace(/\\"/g, '"');
+                if (res.startsWith('~')) res = res.substring(1);
+                return res;
             }
         }
 
@@ -175,7 +174,9 @@ export default class Locale {
             this.strings.translations &&
             string in this.strings.translations
         ) {
-            return this.strings.translations[string].replace(/\\"/g, '"');
+            let res = this.strings.translations[string].replace(/\\"/g, '"');
+            if (res.startsWith('~')) res = res.substring(1);
+            return res;
         } else {
             return string.replace(/\\"/g, '"');
         }

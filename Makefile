@@ -326,6 +326,12 @@ translations-cleanup: check-bun
 translations-sort: check-bun
 	@$(CLI) translations:sort $(if $(LOCALE),--locale=$(LOCALE),)
 
+# Add CDATA to <target> elements that need it and normalise indentation
+# Usage: make translations-format [LOCALE=es]
+.PHONY: translations-format
+translations-format: check-bun
+	@$(CLI) translations:format $(if $(LOCALE),--locale=$(LOCALE),)
+
 # Update license information in public/libs/README.md
 # Usage: make update-licenses [DRY_RUN=1]
 .PHONY: update-licenses
@@ -946,6 +952,7 @@ help:
 	@echo "  make translations [LOCALE=es]                 Extract/clean translations"
 	@echo "  make translations-cleanup                     Remove obsolete translation strings"
 	@echo "  make translations-sort [LOCALE=es]            Sort trans-units to match messages.en.xlf"
+	@echo "  make translations-format [LOCALE=es]          Add CDATA where needed and normalise indentation"
 	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
 	@echo ""
 	@echo "ELPX Processing:"

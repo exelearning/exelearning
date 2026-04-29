@@ -426,6 +426,76 @@ export default class projectManager {
      */
     async checkAndImportElp() {
         const urlParams = new URLSearchParams(window.location.search);
+
+        // =====================================================
+        // PLATFORM INTEGRATION: Fetch ELP from LMS if requested
+        // =====================================================
+        const fetchPlatformElp = urlParams.get('fetchPlatformElp') === '1';
+        const jwtToken = urlParams.get('jwt_token');
+
+        if (jwtToken && fetchPlatformElp) {
+            Logger.log('[ProjectManager] Detected platform integration new project, fetching ELP from platform...');
+            try {
+                if (this.app?.modals?.loader) {
+                    this.app.modals.loader.show({ message: window._ ? window._('Downloading from platform...') : 'Downloading from platform...' });
+                }
+
+                const basePath = window.eXeLearning?.config?.basePath || '';
+                const response = await fetch(`${basePath}/api/platform/integration/openPlatformElp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: jwtToken })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (data.responseMessage === 'OK' && data.elpFile) {
+                        Logger.log('[ProjectManager] ELP file fetched from platform, base64 size:', data.elpFile.length);
+
+                        // Convert base64 to Blob/File
+                        const binaryString = atob(data.elpFile);
+                        const len = binaryString.length;
+                        const bytes = new Uint8Array(len);
+                        for (let i = 0; i < len; i++) {
+                            bytes[i] = binaryString.charCodeAt(i);
+                        }
+                        const fileName = data.elpFileName || 'platform_import.elpx';
+                        const file = new File([bytes], fileName, { type: 'application/octet-stream' });
+
+                        const stats = await this.importFromElpxViaYjs(file);
+                        Logger.log('[ProjectManager] Platform ELP import complete:', stats);
+
+                        try {
+                            await this._yjsBridge.documentManager.saveToServer();
+                            Logger.log('[ProjectManager] Document saved to server after platform import');
+                        } catch (saveError) {
+                            console.warn('[ProjectManager] Failed to save to server after platform import', saveError);
+                        }
+
+                    } else {
+                        Logger.log('[ProjectManager] No ELP file returned by platform or error:', data.error);
+                    }
+                } else {
+                    console.warn(`[ProjectManager] Platform API responded with status ${response.status}`);
+                }
+            } catch (error) {
+                // Do not block the user, just log and continue
+                console.error('[ProjectManager] Failed to fetch ELP from platform:', error);
+            } finally {
+                if (this.app?.modals?.loader) {
+                    this.app.modals.loader.hide();
+                }
+
+                // Cleanup fetchPlatformElp url parameter
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.delete('fetchPlatformElp');
+                window.history.replaceState({}, '', newUrl.toString());
+            }
+
+            return; // We handled the platform import, skip subsequent checks
+        }
+
         const importPathFromUrl = urlParams.get('import');
         const importPathFromEmbedding = this.app?.runtimeConfig?.embeddingConfig?.initialProjectUrl || '';
         const importPath = importPathFromUrl || importPathFromEmbedding;
@@ -620,6 +690,16 @@ export default class projectManager {
 
         switch (action) {
             case 'new': {
+                // Forget the main-process associated file BEFORE the
+                // reload so the next Save dialog starts fresh with the
+                // project title.
+                try {
+                    if (typeof window.electronAPI?.clearSavedPath === 'function') {
+                        await window.electronAPI.clearSavedPath();
+                    }
+                } catch (_e) {
+                    // Best effort.
+                }
                 if (isStaticMode) {
                     // Static/Electron: reload generates a fresh UUID automatically
                     window.location.reload();
@@ -648,6 +728,17 @@ export default class projectManager {
                 }
                 break;
             case 'import': {
+                // Persist the imported file's basename so the next Save
+                // dialog pre-fills with it. The main process pairs this
+                // with the global dir set by the native file picker (or
+                // falls back to lastUsedDir for pathless imports).
+                try {
+                    if (file?.name && typeof window.electronAPI?.setSavedPath === 'function') {
+                        await window.electronAPI.setSavedPath(file.name);
+                    }
+                } catch (_e) {
+                    // Best effort.
+                }
                 // Store file in IndexedDB before reload
                 await storePendingImport(file);
                 if (isStaticMode) {

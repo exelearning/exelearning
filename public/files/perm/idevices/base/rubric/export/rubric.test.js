@@ -836,3 +836,402 @@ describe('saveAsPdf Electron path', () => {
     if (temp.parentNode) temp.parentNode.removeChild(temp);
   });
 });
+
+// ============================================================================
+// SCORM integration
+// ============================================================================
+
+describe('rubric iDevice SCORM integration', () => {
+  let $rubric;
+
+  beforeEach(() => {
+    global.$rubric = undefined;
+
+    const filePath = join(__dirname, 'rubric.js');
+    const code = readFileSync(filePath, 'utf-8');
+    $rubric = loadExportIdevice(code);
+  });
+
+  function buildScoredTable() {
+      // 2 rows x 2 columns, each checkbox carries its own score in value
+      return $(`
+        <table class="exe-table exe-rubrics-export-table">
+          <tbody>
+            <tr>
+              <th>Row 1</th>
+              <td><input type="checkbox" name="r0" data-col-index="0" value="1" /></td>
+              <td><input type="checkbox" name="r0" data-col-index="1" value="3" /></td>
+            </tr>
+            <tr>
+              <th>Row 2</th>
+              <td><input type="checkbox" name="r1" data-col-index="0" value="2" /></td>
+              <td><input type="checkbox" name="r1" data-col-index="1" value="4" /></td>
+            </tr>
+          </tbody>
+        </table>
+      `);
+    }
+
+    it('getIdeviceDomId returns id from .idevice_node ancestor first', () => {
+      document.body.innerHTML = `
+        <div class="idevice_node rubric" id="node-id">
+          <article id="article-id">
+            <div class="rubric" id="scope-id"></div>
+          </article>
+        </div>
+      `;
+      expect($rubric.getIdeviceDomId($('#scope-id'))).toBe('node-id');
+    });
+
+    it('getIdeviceDomId falls back to own id when no idevice_node ancestor', () => {
+      document.body.innerHTML = `<div class="rubric" id="scope-only"></div>`;
+      expect($rubric.getIdeviceDomId($('#scope-only'))).toBe('scope-only');
+    });
+
+    it('getIdeviceDomId falls back to article id when no node or own id', () => {
+      document.body.innerHTML = `
+        <article id="article-fallback">
+          <div class="rubric"></div>
+        </article>
+      `;
+      expect($rubric.getIdeviceDomId($('article .rubric'))).toBe('article-fallback');
+    });
+
+    it('getIdeviceDomId returns empty string when scope has zero or multiple elements', () => {
+      expect($rubric.getIdeviceDomId($())).toBe('');
+      document.body.innerHTML = `<div class="rubric"></div><div class="rubric"></div>`;
+      expect($rubric.getIdeviceDomId($('.rubric'))).toBe('');
+    });
+
+    it('bindScopedDelegatedEvent unbinds previous handlers before binding new ones', () => {
+      const $root = $('<div></div>');
+      $root.append('<span class="target">hit</span>');
+      const firstHandler = vi.fn();
+      const secondHandler = vi.fn();
+
+      $rubric.bindScopedDelegatedEvent($root, 'click.rubric', '.target', firstHandler);
+      $rubric.bindScopedDelegatedEvent($root, 'click.rubric', '.target', secondHandler);
+
+      $root.find('.target').trigger('click');
+
+      expect(firstHandler).not.toHaveBeenCalled();
+      expect(secondHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('bindScopedDelegatedEvent handles multiple space-separated events', () => {
+      const $root = $('<div></div>');
+      $root.append('<input class="target" type="text" />');
+      const handler = vi.fn();
+
+      $rubric.bindScopedDelegatedEvent($root, 'change.rubric input.rubric', '.target', handler);
+      $root.find('.target').trigger('change');
+      $root.find('.target').trigger('input');
+
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
+
+    it('bindScopedDelegatedEvent is a no-op when $root is null or missing jQuery methods', () => {
+      expect(() => $rubric.bindScopedDelegatedEvent(null, 'click', '.x', vi.fn())).not.toThrow();
+      expect(() => $rubric.bindScopedDelegatedEvent({}, 'click', '.x', vi.fn())).not.toThrow();
+    });
+
+    it('calculateScormScore normalizes raw score to 0-10 scale', () => {
+      const table = buildScoredTable();
+      // Check max for each row: col index 1 with values 3 and 4 → max = 7
+      // Check row 0 col 0 (score 1) and row 1 col 1 (score 4) → raw = 5 → 5/7 * 10 ≈ 7.14
+      table.find('input[value="1"]').prop('checked', true);
+      table.find('input[value="4"]').prop('checked', true);
+
+      const score = $rubric.calculateScormScore(table);
+      expect(score).toBeCloseTo(7.14, 2);
+    });
+
+    it('calculateScormScore returns 0 when max score is 0', () => {
+      const table = $('<table class="exe-table"><tbody></tbody></table>');
+      expect($rubric.calculateScormScore(table)).toBe(0);
+    });
+
+    it('calculateScormScore clamps to 10 when all maximums selected', () => {
+      const table = buildScoredTable();
+      table.find('input[value="3"]').prop('checked', true);
+      table.find('input[value="4"]').prop('checked', true);
+
+      const score = $rubric.calculateScormScore(table);
+      expect(score).toBe(10);
+    });
+
+    it('buildScormGame builds structure with defaults and uses closest idevice_node id', () => {
+      const scope = $('<div class="idevice_node rubric" id="rubric-node-42"><div class="rubric"></div></div>');
+      document.body.append(scope);
+
+      const data = {
+        scope: scope.find('.rubric'),
+        scopeId: 'rubric-0',
+        strings: { msgYouScore: 'Tu puntuación' },
+        isScorm: 2,
+        textButtonScorm: 'Guardar',
+        repeatActivity: false,
+        weighted: 75,
+      };
+
+      const game = $rubric.buildScormGame(data);
+
+      expect(game.main).toBe('rubric-node-42');
+      expect(game.isScorm).toBe(2);
+      expect(game.textButtonScorm).toBe('Guardar');
+      expect(game.repeatActivity).toBe(false);
+      expect(game.weighted).toBe(75);
+      expect(game.scorerp).toBe(0);
+      expect(game.gameStarted).toBe(false);
+      expect(game.gameOver).toBe(false);
+      expect(game.msgs.msgYouScore).toBe('Tu puntuación');
+      expect(game.msgs.msgScore).toBeDefined();
+    });
+
+    it('buildScormGame applies safe defaults when optional fields missing', () => {
+      const scope = $('<div class="rubric" id="scope-raw"></div>');
+      document.body.append(scope);
+
+      const game = $rubric.buildScormGame({ scope, scopeId: 'scope-raw', strings: {} });
+
+      expect(game.isScorm).toBe(0);
+      expect(game.textButtonScorm).toBe('');
+      expect(game.repeatActivity).toBe(true);
+      expect(game.weighted).toBe(100);
+      expect(game.main).toBe('scope-raw');
+    });
+
+    it('getDataForTable returns matching option or null', () => {
+      const tableA = $('<table id="ta"></table>').get(0);
+      const tableB = $('<table id="tb"></table>').get(0);
+      const tableUnknown = $('<table id="tu"></table>').get(0);
+
+      $rubric.options = [
+        { table: tableA, label: 'A' },
+        { table: tableB, label: 'B' },
+      ];
+
+      expect($rubric.getDataForTable(tableB).label).toBe('B');
+      expect($rubric.getDataForTable(tableUnknown)).toBeNull();
+
+      $rubric.options = [];
+    });
+
+    it('restoreVisibleScoreFromLms applies previous LMS score to the table', () => {
+      const table = buildScoredTable();
+      document.body.append(
+        $('<div class="idevice_node rubric" id="restore-node"><div class="rubric"></div></div>')
+          .find('.rubric')
+          .append(table)
+          .end()
+      );
+
+      const renderSpy = vi.spyOn($rubric, 'renderTableScore').mockImplementation(() => {});
+      const saveSpy = vi.spyOn($rubric, 'saveRubricData').mockImplementation(() => {});
+
+      const data = {
+        table,
+        scormGame: { previousScore: '5' }, // 5/10 * maxScore (7) = 3.5
+      };
+
+      $rubric.restoreVisibleScoreFromLms(data);
+
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(renderSpy.mock.calls[0][1]).toBeCloseTo(3.5, 2);
+      expect(saveSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('restoreVisibleScoreFromLms is a no-op when previousScore is missing or invalid', () => {
+      const renderSpy = vi.spyOn($rubric, 'renderTableScore').mockImplementation(() => {});
+
+      $rubric.restoreVisibleScoreFromLms(null);
+      $rubric.restoreVisibleScoreFromLms({});
+      $rubric.restoreVisibleScoreFromLms({ scormGame: { previousScore: 'not-a-number' } });
+
+      expect(renderSpy).not.toHaveBeenCalled();
+    });
+
+    it('initScorm bails when isScorm is 0', () => {
+      const registerSpy = vi.fn();
+      globalThis.$exeDevices.iDevice.gamification.scorm.registerActivity = registerSpy;
+
+      $rubric.initScorm({ isScorm: 0 });
+
+      expect(registerSpy).not.toHaveBeenCalled();
+    });
+
+    it('initScorm registers activity and adds save button for isScorm=2', () => {
+      const scope = $('<div class="idevice_node rubric" id="init-node"><div class="rubric"></div></div>');
+      document.body.append(scope);
+
+      const table = buildScoredTable();
+      const $rubricRoot = scope.find('.rubric');
+      $rubricRoot.append('<div class="exe-rubrics-actions"></div>');
+      $rubricRoot.append(table);
+
+      const registerSpy = vi.fn();
+      globalThis.$exeDevices.iDevice.gamification.scorm.registerActivity = registerSpy;
+
+      const data = {
+        scope: $rubricRoot,
+        scopeId: 'init-node',
+        strings: {},
+        table,
+        isScorm: 2,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+      };
+
+      $rubric.initScorm(data);
+
+      expect(registerSpy).toHaveBeenCalledTimes(1);
+      expect(data.scormGame).toBeDefined();
+      expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(1);
+    });
+
+    it('initScorm does not add save button when isScorm=1', () => {
+      const scope = $('<div class="idevice_node rubric" id="init-auto"><div class="rubric"></div></div>');
+      document.body.append(scope);
+
+      const table = buildScoredTable();
+      const $rubricRoot = scope.find('.rubric');
+      $rubricRoot.append('<div class="exe-rubrics-actions"></div>');
+      $rubricRoot.append(table);
+
+      globalThis.$exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+
+      $rubric.initScorm({
+        scope: $rubricRoot,
+        scopeId: 'init-auto',
+        strings: {},
+        table,
+        isScorm: 1,
+      });
+
+      expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(0);
+    });
+
+    it('addScormSaveButton prepends a button with the configured text', () => {
+      const scope = $('<div class="idevice_node rubric" id="btn-scope"><div class="rubric"><div class="exe-rubrics-actions"><button class="existing"></button></div></div></div>');
+      document.body.append(scope);
+
+      const table = $('<table></table>');
+      scope.find('.rubric').append(table);
+
+      $rubric.addScormSaveButton({
+        table,
+        textButtonScorm: 'Enviar puntuación',
+        strings: {},
+      });
+
+      const $btn = scope.find('.exe-rubrics-scorm-save');
+      expect($btn.length).toBe(1);
+      expect($btn.text()).toBe('Enviar puntuación');
+      expect($btn.hasClass('Games-SendScore')).toBe(true);
+      // Button must be first child of actions container
+      expect(scope.find('.exe-rubrics-actions').children().first().is($btn)).toBe(true);
+    });
+
+    it('sendRubricScore calls sendScoreNew with computed score', () => {
+      const table = buildScoredTable();
+      table.find('input[value="3"]').prop('checked', true);
+      table.find('input[value="4"]').prop('checked', true);
+
+      const sendSpy = vi.fn();
+      globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+      const game = { scorerp: 0, gameStarted: false, gameOver: false };
+      $rubric.sendRubricScore(false, { table, scormGame: game });
+
+      expect(sendSpy).toHaveBeenCalledTimes(1);
+      expect(sendSpy.mock.calls[0][0]).toBe(false);
+      expect(sendSpy.mock.calls[0][1].scorerp).toBe(10);
+      expect(sendSpy.mock.calls[0][1].gameStarted).toBe(true);
+      expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
+    });
+
+    it('sendRubricScore is a no-op when data has no scormGame', () => {
+      const sendSpy = vi.fn();
+      globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+      $rubric.sendRubricScore(false, { table: buildScoredTable() });
+      $rubric.sendRubricScore(false, null);
+
+      expect(sendSpy).not.toHaveBeenCalled();
+    });
+
+    it('resetScormScore zeroes the score and flags gameOver', () => {
+      const sendSpy = vi.fn();
+      globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+      const game = { scorerp: 7, gameStarted: true, gameOver: false };
+      $rubric.resetScormScore({ isScorm: 1, scormGame: game });
+
+      expect(sendSpy).toHaveBeenCalledTimes(1);
+      expect(sendSpy.mock.calls[0][0]).toBe(true);
+      expect(sendSpy.mock.calls[0][1].scorerp).toBe(0);
+      expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+    });
+
+    it('resetScormScore is a no-op when isScorm is 0', () => {
+      const sendSpy = vi.fn();
+      globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+      $rubric.resetScormScore({ isScorm: 0, scormGame: { scorerp: 5 } });
+
+      expect(sendSpy).not.toHaveBeenCalled();
+    });
+
+    it('getGameData includes SCORM fields from stored data', () => {
+      const payload = escape(JSON.stringify({
+        title: 'Scorm rubric',
+        categories: ['C1'],
+        scores: ['L1', 'L2'],
+        descriptions: [[{ text: 'D1', weight: '1' }, { text: 'D2', weight: '2' }]],
+        isScorm: '2',
+        textButtonScorm: 'Submit',
+        repeatActivity: false,
+        weighted: 80,
+      }));
+
+      document.body.innerHTML = `
+        <div class="rubric-IDevice idevice_node rubric" id="rubric-scorm">
+          <div class="rubric">
+            <div class="exe-rubrics-DataGame js-hidden">${payload}</div>
+          </div>
+        </div>
+      `;
+
+      const data = $rubric.getGameData($('#rubric-scorm'), 0);
+
+      expect(data.isScorm).toBe(2);
+      expect(data.textButtonScorm).toBe('Submit');
+      expect(data.repeatActivity).toBe(false);
+      expect(data.weighted).toBe(80);
+    });
+
+    it('getGameData uses safe defaults when SCORM fields are absent', () => {
+      const payload = escape(JSON.stringify({
+        title: 'Plain rubric',
+        categories: ['C1'],
+        scores: ['L1'],
+        descriptions: [[{ text: 'D1', weight: '1' }]],
+      }));
+
+      document.body.innerHTML = `
+        <div class="rubric-IDevice idevice_node rubric" id="rubric-plain">
+          <div class="rubric">
+            <div class="exe-rubrics-DataGame js-hidden">${payload}</div>
+          </div>
+        </div>
+      `;
+
+      const data = $rubric.getGameData($('#rubric-plain'), 0);
+
+      expect(data.isScorm).toBe(0);
+      expect(data.textButtonScorm).toBe('');
+      expect(data.repeatActivity).toBe(true);
+      expect(data.weighted).toBe(100);
+    });
+});

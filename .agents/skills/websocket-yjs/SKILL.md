@@ -1,6 +1,6 @@
 ---
 name: websocket-yjs
-description: Modifying real-time collaboration features including WebSocket handlers, Yjs documents, and room lifecycle.
+description: Modifying real-time collaboration features including WebSocket handlers, Yjs documents, and room lifecycle. Every change must ship with colocated tests (`*.spec.ts` server-side, `*.test.js` client-side), keep patch coverage ≥ 90% on changed lines, include or update a multi-user Playwright spec using the `collaboration.fixture`, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
 ---
 
 # Skill: WebSocket & Yjs Collaboration

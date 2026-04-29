@@ -85,7 +85,7 @@ iDevice icons by…</description>
 You can add other useful folders such as:
 
 - `fonts/` → Fonts (`.woff`, `.woff2`, etc.)  
-- `img/` → Additional images.
+- `img/` → Additional images. If this folder contains `favicon.png` or `favicon.ico`, exports will use it instead of the default eXeLearning favicon.
 
 Example usage in CSS:
 
