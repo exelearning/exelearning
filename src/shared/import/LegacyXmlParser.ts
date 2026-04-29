@@ -349,8 +349,25 @@ export class LegacyXmlParser {
         let xml = xmlContent;
 
         // 1. Remove indentations (5 spaces, tabs)
+        const protectedPreBlocks: string[] = [];
+        const protectPreBlock = (match: string): string => {
+            const token = `__LEGACY_PRE_BLOCK_${protectedPreBlocks.length}__`;
+            protectedPreBlocks.push(match);
+            return token;
+        };
+        xml = xml.replace(/<unicode\b[^>]*>/gi, tag => {
+            return tag.replace(/\bvalue=(['"])([\s\S]*?)\1/i, (_match, quote, value) => {
+                const protectedValue = value.replace(/&lt;pre\b[\s\S]*?&lt;\/pre&gt;/gi, encodedPre => {
+                    return protectPreBlock(encodedPre);
+                });
+                return `value=${quote}${protectedValue}${quote}`;
+            });
+        });
         xml = xml.replace(/ {5}/g, '');
         xml = xml.replace(/\t/g, '');
+        xml = xml.replace(/__LEGACY_PRE_BLOCK_(\d+)__/g, (_match, index) => {
+            return protectedPreBlocks[Number(index)] || '';
+        });
 
         // 2. Unify newlines to Unix LF
         xml = xml.replace(/\r/g, '\n');
