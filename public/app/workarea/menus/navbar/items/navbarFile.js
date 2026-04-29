@@ -1,9 +1,10 @@
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
+
 import ImportProgress from '../../../interface/importProgress.js';
 
-const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
+const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml', '.h5p']);
 
 export default class NavbarFile {
     constructor(menu) {
@@ -93,6 +94,12 @@ export default class NavbarFile {
         this.exportEPUB3AsButton = this.menu.navbar.querySelector(
             '#navbar-button-exportas-epub3'
         );
+        this.exportH5PButton = this.menu.navbar.querySelector(
+            '#navbar-button-export-h5p'
+        );
+        this.exportH5PAsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-h5p'
+        );
         this.exportXmlPropertiesButton = this.menu.navbar.querySelector(
             '#navbar-button-export-xml-properties'
         );
@@ -145,6 +152,8 @@ export default class NavbarFile {
         this.setExportIMSAsEvent();
         this.setExportEPUB3Event();
         this.setExportEPUB3AsEvent();
+        this.setExportH5PEvent();
+        this.setExportH5PAsEvent();
         this.setExportXmlPropertiesEvent();
         this.setExportXmlPropertiesAsEvent();
         this.setImportXmlPropertiesEvent();
@@ -2085,7 +2094,7 @@ export default class NavbarFile {
         }
 
         // For formats not yet implemented client-side, fall back to server
-        const supportedFormats = ['HTML5', 'ELPX', 'ELP', 'SCORM12', 'SCORM2004', 'PAGE', 'HTML5SP', 'IMS', 'EPUB3', 'EPUB'];
+        const supportedFormats = ['HTML5', 'ELPX', 'ELP', 'SCORM12', 'SCORM2004', 'PAGE', 'HTML5SP', 'IMS', 'EPUB3', 'EPUB', 'H5P'];
         const normalizedFormat = format.toUpperCase().replace('-', '');
         if (!supportedFormats.includes(normalizedFormat)) {
             Logger.log(`[NavbarFile] Format ${format} not yet supported client-side, using server`);
@@ -3101,6 +3110,147 @@ export default class NavbarFile {
     }
 
     /**
+     * Download the project to H5P (Experimental)
+     * File -> Export as -> H5P
+     *
+     */
+    setExportH5PEvent() {
+        if (!this.exportH5PButton) return;
+        this.exportH5PButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportH5PEvent();
+        });
+    }
+
+    setExportH5PAsEvent() {
+        if (!this.exportH5PAsButton) return;
+        this.exportH5PAsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportH5PAsEvent();
+        });
+    }
+
+    /**
+     * Export the ode as H5P and download it
+     *
+     */
+    async exportH5PEvent() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('H5P', 'h5p');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fallback to server-side export
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'h5p'
+        );
+        if (response['responseMessage'] == 'OK') {
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.saveFile === 'function'
+            ) {
+                this.electronSave(
+                    response['urlZipFile'],
+                    'export-h5p',
+                    response['exportProjectName']
+                );
+            } else {
+                this.downloadLink(
+                    response['urlZipFile'],
+                    response['exportProjectName']
+                );
+            }
+            toast.toastBody.innerHTML = _('The project has been exported.');
+        } else {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage']
+                    ? response['responseMessage']
+                    : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Export H5P (Save As...)
+     */
+    async exportH5PAsEvent() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('H5P', 'h5p', { saveAs: true });
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fallback to server-side export
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'h5p'
+        );
+        if (response['responseMessage'] == 'OK') {
+            const url = response['urlZipFile'];
+            const suggested = this.normalizeSuggestedName(
+                response['exportProjectName'],
+                'export-h5p'
+            );
+            const keyBase = window.__currentProjectId || 'default';
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.saveAs === 'function'
+            ) {
+                await window.electronAPI.saveAs(
+                    url,
+                    `${keyBase}:export-h5p`,
+                    suggested
+                );
+            } else {
+                this.downloadLink(url, suggested);
+            }
+            toast.toastBody.innerHTML = _('The project has been exported.');
+        } else {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage']
+                    ? response['responseMessage']
+                    : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
      * Export the properties as xml and download it
      *
      */
@@ -3296,6 +3446,8 @@ export default class NavbarFile {
                             typeKey = 'export-ims';
                         else if (/export-epub3/i.test(suggested))
                             typeKey = 'export-epub3';
+                        else if (/export-h5p/i.test(suggested))
+                            typeKey = 'export-h5p';
                         else if (/xml/i.test(suggested))
                             typeKey = 'export-xml-properties';
                         else if (/\.zip$/i.test(suggested)) typeKey = 'export';
@@ -3376,6 +3528,7 @@ export default class NavbarFile {
             const lower = (typeKey || '').toLowerCase();
             let ext = '';
             if (lower.endsWith('epub3')) ext = '.epub';
+            else if (lower.endsWith('h5p')) ext = '.h5p';
             else if (lower.endsWith(eXeLearning.extension))
                 ext = '.' + eXeLearning.extension;
             else if (lower.includes('xml')) ext = '.xml';

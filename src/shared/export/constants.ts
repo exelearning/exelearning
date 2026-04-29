@@ -25,6 +25,7 @@ export enum ExportFormat {
     IMS = 'ims',
     EPUB3 = 'epub3',
     ELPX = 'elpx',
+    H5P = 'h5p',
 }
 
 /**
@@ -75,6 +76,12 @@ export const EXPORT_FORMAT_INFO: Record<
         extension: '.elpx',
         suffix: '',
         description: 'Native eXeLearning project format',
+    },
+    [ExportFormat.H5P]: {
+        name: 'H5P (Experimental)',
+        extension: '.h5p',
+        suffix: '_h5p',
+        description: 'H5P interactive content package (experimental)',
     },
 };
 

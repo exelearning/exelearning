@@ -32,6 +32,8 @@ import { Scorm2004Exporter } from '../exporters/Scorm2004Exporter';
 import { ImsExporter } from '../exporters/ImsExporter';
 import { Epub3Exporter } from '../exporters/Epub3Exporter';
 import { ElpxExporter } from '../exporters/ElpxExporter';
+import { H5pExporter } from '../exporters/H5pExporter';
+import type { PreviewOptions, PreviewResult } from '../exporters/WebsitePreviewExporter';
 import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
@@ -98,7 +100,17 @@ interface ResourceFetcherLike {
 /**
  * Export format type
  */
-type ExportFormat = 'html5' | 'html5-sp' | 'page' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elpx' | 'component';
+type ExportFormat =
+    | 'html5'
+    | 'html5-sp'
+    | 'page'
+    | 'scorm12'
+    | 'scorm2004'
+    | 'ims'
+    | 'epub3'
+    | 'elpx'
+    | 'h5p'
+    | 'component';
 
 /**
  * Create a null-safe resource provider that returns empty results
@@ -223,6 +235,8 @@ export function createExporter(
         case 'elp':
             return new ElpxExporter(document, resources, assets, zip);
 
+        case 'h5p':
+            return new H5pExporter(document, resources, assets, zip);
         case 'pageelpx':
         case 'pageelp':
             return new PageElpxExporter(document, resources, assets, zip);
@@ -820,6 +834,7 @@ export {
     ImsExporter,
     Epub3Exporter,
     ElpxExporter,
+    H5pExporter,
     PrintPreviewExporter,
     ComponentExporter,
     PageElpxExporter,
@@ -865,6 +880,7 @@ if (typeof window !== 'undefined') {
         ImsExporter,
         Epub3Exporter,
         ElpxExporter,
+        H5pExporter,
         PrintPreviewExporter,
         ComponentExporter,
         PageElpxExporter,

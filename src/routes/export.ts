@@ -32,6 +32,7 @@ import {
     ImsExporter as ImsExporterDefault,
     Epub3Exporter as Epub3ExporterDefault,
     ElpxExporter as ElpxExporterDefault,
+    H5pExporter as H5pExporterDefault,
     PageElpxExporter as PageElpxExporterDefault,
     YjsDocumentAdapter as YjsDocumentAdapterDefault,
     ServerYjsDocumentWrapper as ServerYjsDocumentWrapperDefault,
@@ -96,6 +97,7 @@ export interface ExportSystemDeps {
     ImsExporter: typeof ImsExporterDefault;
     Epub3Exporter: typeof Epub3ExporterDefault;
     ElpxExporter: typeof ElpxExporterDefault;
+    H5pExporter: typeof H5pExporterDefault;
     PageElpxExporter: typeof PageElpxExporterDefault;
     YjsDocumentAdapter: typeof YjsDocumentAdapterDefault;
     ServerYjsDocumentWrapper: typeof ServerYjsDocumentWrapperDefault;
@@ -158,6 +160,7 @@ const defaultExportSystem: ExportSystemDeps = {
     ImsExporter: ImsExporterDefault,
     Epub3Exporter: Epub3ExporterDefault,
     ElpxExporter: ElpxExporterDefault,
+    H5pExporter: H5pExporterDefault,
     PageElpxExporter: PageElpxExporterDefault,
     YjsDocumentAdapter: YjsDocumentAdapterDefault,
     ServerYjsDocumentWrapper: ServerYjsDocumentWrapperDefault,
@@ -186,6 +189,7 @@ const EXPORT_FORMATS = [
     { id: 'scorm2004', name: 'SCORM 2004', extension: 'zip', mimeType: 'application/zip' },
     { id: 'ims', name: 'IMS Content Package', extension: 'zip', mimeType: 'application/zip' },
     { id: 'epub3', name: 'EPUB3', extension: 'epub', mimeType: 'application/epub+zip' },
+    { id: 'h5p', name: 'H5P (Experimental)', extension: 'h5p', mimeType: 'application/zip' },
     { id: 'elp', name: 'eXeLearning Project', extension: 'elp', mimeType: 'application/zip' },
     { id: 'elpx-page', name: 'eXeLearning Page Package', extension: 'elpx', mimeType: 'application/zip' },
 ];
@@ -310,6 +314,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         ImsExporter,
         Epub3Exporter,
         ElpxExporter,
+        H5pExporter,
         PageElpxExporter,
         YjsDocumentAdapter,
         ServerYjsDocumentWrapper,
@@ -559,6 +564,9 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 case 'elp':
                 case 'elpx':
                     exporter = new ElpxExporter(document, resources, assets, zip);
+                    break;
+                case 'h5p':
+                    exporter = new H5pExporter(document, resources, assets, zip);
                     break;
                 case 'elpx-page':
                     exporter = new PageElpxExporter(document, resources, assets, zip);
