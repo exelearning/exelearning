@@ -450,10 +450,13 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             })
 
             // =====================================================
-            // Root - Redirect to workarea (which redirects to login if no session)
+            // Root - Redirect to projects page (which redirects to login if no session)
             // =====================================================
             .get('/', () => {
-                return Response.redirect(prefixPath('/workarea') || '/workarea', 302);
+                if (isOfflineMode()) {
+                    return Response.redirect(prefixPath('/workarea') || '/workarea', 302);
+                }
+                return Response.redirect(prefixPath('/projects') || '/projects', 302);
             })
 
             // =====================================================
@@ -534,7 +537,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     email: trans('Email', {}, locale),
                     password: trans('Password', {}, locale),
                     logout: trans('Logout', {}, locale),
-                    work_area: trans('Work area', {}, locale),
+                    projects: trans('Projects', {}, locale),
                     logged_in_as: trans('Logged in as', {}, locale),
                     close: trans('Close', {}, locale),
                     version: trans('Version:', {}, locale),
@@ -569,6 +572,67 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 };
 
                 const html = renderTemplate('security/login', viewModel);
+                return new Response(html, {
+                    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                });
+            })
+
+            // =====================================================
+            // Projects Page - Landing page after login (online mode only)
+            // =====================================================
+            .get('/projects', async ({ currentUser, query, request, impersonation }) => {
+                // Offline mode: redirect to workarea (auto-creates ephemeral session)
+                if (isOfflineMode()) {
+                    return Response.redirect(prefixPath('/workarea') || '/workarea', 302);
+                }
+
+                // Not authenticated: redirect to login
+                if (!currentUser) {
+                    const loginUrl = prefixPath('/login');
+                    return Response.redirect(`${loginUrl}?returnUrl=${encodeURIComponent('/projects')}`, 302);
+                }
+
+                // Determine locale
+                const userLocale = await getUserLocalePreference(currentUser.id);
+                const appLocale = process.env.APP_LOCALE || null;
+                const acceptLanguage = request.headers.get('accept-language');
+                const browserLocale = detectLocaleFromHeader(acceptLanguage);
+                const locale = userLocale || appLocale || browserLocale || DEFAULT_LOCALE;
+
+                const basePath = getBasePath();
+                const email = currentUser.email || 'user@exelearning.net';
+
+                const t = {
+                    logout: trans('Logout', {}, locale),
+                    new_project: trans('New Project', {}, locale),
+                    open_file: trans('Open from file...', {}, locale),
+                    my_projects: trans('My Projects', {}, locale),
+                    shared_with_me: trans('Shared with me', {}, locale),
+                    search_projects: trans('Search saved projects...', {}, locale),
+                    search: trans('Search', {}, locale),
+                    loading: trans('Loading...', {}, locale),
+                    no_projects: trans('No projects yet. Create a new one to get started!', {}, locale),
+                    no_shared: trans('No projects have been shared with you yet.', {}, locale),
+                    untitled: trans('Untitled', {}, locale),
+                    confirm_delete: trans('Delete this project?', {}, locale),
+                    private_label: trans('Private', {}, locale),
+                    public_label: trans('Public', {}, locale),
+                    manual: trans('Manual', {}, locale),
+                    autosaved: trans('Autosaved', {}, locale),
+                    duplicate: trans('Duplicate', {}, locale),
+                    clone_to_my: trans('Clone to my projects', {}, locale),
+                    delete_label: trans('Delete', {}, locale),
+                    shared_by: trans('Shared by', {}, locale),
+                };
+
+                const html = renderTemplate('projects/index', {
+                    basePath,
+                    locale,
+                    user: { username: email },
+                    t,
+                    impersonation,
+                });
+
                 return new Response(html, {
                     headers: { 'Content-Type': 'text/html; charset=utf-8' },
                 });
@@ -762,19 +826,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     }
                 }
 
-                // If no project UUID, create a new project and redirect
+                // If no project UUID, redirect appropriately
                 if (!projectUuid) {
-                    // Helper function to build redirect URL with preserved jwt_token
-                    // Helper function to build redirect URL with preserved jwt_token
-                    const buildRedirectUrl = (sessionId: string): string => {
-                        const basePath = getBasePath();
-                        let url = `${basePath}/workarea?project=${sessionId}`;
-                        if (jwtTokenParam) {
-                            url += `&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`;
-                        }
-                        return url;
-                    };
-
                     // Offline mode: create in-memory session only (no DB persistence)
                     if (isOfflineMode()) {
                         const newSessionId = crypto.randomUUID();
@@ -791,36 +844,16 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                         console.log(`[Pages] Created ephemeral session ${newSessionId} for offline mode`);
 
-                        return Response.redirect(buildRedirectUrl(newSessionId), 302);
+                        const basePath = getBasePath();
+                        let url = `${basePath}/workarea?project=${newSessionId}`;
+                        if (jwtTokenParam) {
+                            url += `&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`;
+                        }
+                        return Response.redirect(url, 302);
                     }
 
-                    // Online mode: create project in DB (ensures persistence across reloads)
-                    try {
-                        const projectRecord = await createProject(db, {
-                            title: 'New Project',
-                            owner_id: currentUser.id,
-                            saved_once: 0,
-                        });
-
-                        const newSessionId = projectRecord.uuid;
-
-                        createSession({
-                            sessionId: newSessionId,
-                            fileName: 'New Project.elp',
-                            filePath: '',
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            structure: null,
-                            userId: currentUser.id,
-                        });
-
-                        console.log(`[Pages] Created new project ${newSessionId} for user ${currentUser.id}`);
-
-                        return Response.redirect(buildRedirectUrl(newSessionId), 302);
-                    } catch (error) {
-                        console.error('[Pages] Failed to create new project:', error);
-                        // Continue without project if creation fails
-                    }
+                    // Online mode: redirect to projects page instead of auto-creating
+                    return Response.redirect(prefixPath('/projects') || '/projects', 302);
                 }
 
                 const userId = currentUser.id;

@@ -1,0 +1,538 @@
+{% extends "base.njk" %}
+
+{% block stylesheets %}
+    <link class="exe" rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
+    <style>
+        .projects-page {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background: var(--exe-bg, #f5f6fa);
+        }
+
+        .projects-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .projects-header .logo {
+            height: 36px;
+        }
+
+        .projects-header .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .projects-container {
+            max-width: 960px;
+            width: 100%;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .projects-actions-bar {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .projects-actions-bar .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.25rem;
+            font-weight: 500;
+            border-radius: 8px;
+        }
+
+        .projects-panel {
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            overflow: hidden;
+        }
+
+        /* Reuse modal's tab/list styles in standalone context */
+        .projects-panel .ode-project-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 0 1.25rem;
+        }
+
+        .projects-panel .ode-project-tab {
+            border: none;
+            background: none;
+            padding: 0.8rem 1rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .projects-panel .ode-project-tab.active {
+            color: var(--exe-primary, #2bb5a0);
+            border-bottom-color: var(--exe-primary, #2bb5a0);
+        }
+
+        .projects-panel .ode-project-tab .ode-tab-count {
+            font-weight: 400;
+            color: #999;
+        }
+
+        .projects-panel .ode-filter-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .projects-panel .ode-filter-input {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .projects-panel .ode-files-list {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .projects-panel .ode-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .projects-panel .ode-row:last-child {
+            border-bottom: none;
+        }
+
+        .projects-panel .ode-row:hover {
+            background: #f5f7fa;
+        }
+
+        .projects-panel .ode-row .exe-logo {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .projects-panel .ode-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .projects-panel .ode-title {
+            font-weight: 500;
+            color: #222;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .projects-panel .ode-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.82rem;
+            color: #888;
+            margin-top: 0.15rem;
+            flex-wrap: wrap;
+        }
+
+        .projects-panel .ode-badge {
+            display: inline-block;
+            padding: 0.1rem 0.45rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #e0f7f4;
+            color: #2bb5a0;
+        }
+
+        .projects-panel .ode-badge-private {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .projects-panel .ode-badge-public {
+            background: #e0f7f4;
+            color: #2bb5a0;
+        }
+
+        .projects-panel .ode-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            flex-shrink: 0;
+        }
+
+        .projects-panel .ode-actions button {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 0.35rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+        }
+
+        .projects-panel .ode-actions button:hover {
+            background: #f0f0f0;
+        }
+
+        .projects-panel .ode-actions .open-user-ode-file-action-delete:hover {
+            background: #fee;
+        }
+
+        .projects-panel .ode-owner-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+
+        .projects-panel .dot {
+            color: #ccc;
+        }
+
+        .projects-empty {
+            padding: 3rem 1.25rem;
+            text-align: center;
+            color: #888;
+        }
+
+        .projects-loading {
+            padding: 3rem 1.25rem;
+            text-align: center;
+            color: #aaa;
+        }
+    </style>
+{% endblock %}
+
+{% block class %}projects-page{% endblock %}
+{% block title %}eXeLearning{% endblock %}
+
+{% block body %}
+<header class="projects-header">
+    <img src="{{ '/images/logo.svg' | asset }}" alt="eXeLearning" class="logo">
+    <div class="user-info">
+        <span>{{ user.username }}</span>
+        <a href="{{ basePath }}/logout" class="btn button-secondary">{{ t.logout or 'Logout' }}</a>
+    </div>
+</header>
+
+<div class="projects-container">
+    <div class="projects-actions-bar">
+        <button type="button" class="btn button-primary" id="btn-new-project">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
+            {{ t.new_project or 'New Project' }}
+        </button>
+        <button type="button" class="btn button-secondary" id="btn-open-file">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 3l.04.87a2 2 0 0 0-.342 1.311l.637 7A2 2 0 0 0 2.826 14H13.174a2 2 0 0 0 1.991-1.819l.637-7A2 2 0 0 0 13.81 3H9.828a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 6.172 1H2.5a2 2 0 0 0-2 2m.694 1a1 1 0 0 1 .994-.878h3.478a1 1 0 0 0 .707-.293L7.2 2.002a2 2 0 0 1 .628-.39V2.5h5.982a1 1 0 0 1 .995 1.09l-.637 7A1 1 0 0 1 13.174 13H2.826a1 1 0 0 1-.995-.91l-.637-7A1 1 0 0 1 1.194 4"/></svg>
+            {{ t.open_file or 'Open from file...' }}
+        </button>
+        <input type="file" id="file-input" accept=".elp,.elpx" class="d-none">
+    </div>
+
+    <div class="projects-panel" id="projects-panel">
+        <div class="ode-project-tabs">
+            <button type="button" class="ode-project-tab active" data-tab="my-projects">
+                {{ t.my_projects or 'My Projects' }} <span class="ode-tab-count" id="count-owned">(0)</span>
+            </button>
+            <button type="button" class="ode-project-tab" data-tab="shared-with-me">
+                {{ t.shared_with_me or 'Shared with me' }} <span class="ode-tab-count" id="count-shared">(0)</span>
+            </button>
+        </div>
+
+        <div class="ode-filter-wrap">
+            <input type="text" class="form-control ode-filter-input" id="search-input"
+                   placeholder="{{ t.search_projects or 'Search saved projects...' }}"
+                   aria-label="{{ t.search or 'Search' }}">
+        </div>
+
+        <div id="project-list-container">
+            <div class="projects-loading">{{ t.loading or 'Loading...' }}</div>
+        </div>
+    </div>
+</div>
+
+<script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
+<script>
+(function() {
+    const basePath = '{{ basePath }}';
+    const locale = '{{ locale or "en" }}';
+    const t = {
+        untitled: '{{ t.untitled or "Untitled" }}',
+        no_projects: '{{ t.no_projects or "No projects yet. Create a new one to get started!" }}',
+        no_shared: '{{ t.no_shared or "No projects have been shared with you yet." }}',
+        confirm_delete: '{{ t.confirm_delete or "Delete this project?" }}',
+        private_label: '{{ t.private_label or "Private" }}',
+        public_label: '{{ t.public_label or "Public" }}',
+        manual: '{{ t.manual or "Manual" }}',
+        autosaved: '{{ t.autosaved or "Autosaved" }}',
+        duplicate: '{{ t.duplicate or "Duplicate" }}',
+        clone_to_my: '{{ t.clone_to_my or "Clone to my projects" }}',
+        delete_label: '{{ t.delete_label or "Delete" }}',
+        shared_by: '{{ t.shared_by or "Shared by" }}',
+    };
+
+    let allProjects = [];
+    let currentTab = 'my-projects';
+
+    const docIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M14 2.26953V6.40007C14 6.96012 14 7.24015 14.109 7.45406C14.2049 7.64222 14.3578 7.7952 14.546 7.89108C14.7599 8.00007 15.0399 8.00007 15.6 8.00007H19.7305M14 17H8M16 13H8M20 9.98823V17.2C20 18.8802 20 19.7202 19.673 20.362C19.3854 20.9265 18.9265 21.3854 18.362 21.673C17.7202 22 16.8802 22 15.2 22H8.8C7.11984 22 6.27976 22 5.63803 21.673C5.07354 21.3854 4.6146 20.9265 4.32698 20.362C4 19.7202 4 18.8802 4 17.2V6.8C4 5.11984 4 4.27976 4.32698 3.63803C4.6146 3.07354 5.07354 2.6146 5.63803 2.32698C6.27976 2 7.11984 2 8.8 2H12.0118C12.7455 2 13.1124 2 13.4577 2.08289C13.7638 2.15638 14.0564 2.27759 14.3249 2.44208C14.6276 2.6276 14.887 2.88703 15.4059 3.40589L18.5941 6.59411C19.113 7.11297 19.3724 7.3724 19.5579 7.67515C19.7224 7.94356 19.8436 8.2362 19.9171 8.54231C20 8.88757 20 9.25445 20 9.98823Z" stroke="#1D1D1D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5.33333 5.33333V3.46667C5.33333 2.71993 5.33333 2.34656 5.47866 2.06135C5.60649 1.81047 5.81047 1.60649 6.06135 1.47866C6.34656 1.33333 6.71993 1.33333 7.46667 1.33333H12.5333C13.2801 1.33333 13.6534 1.33333 13.9387 1.47866C14.1895 1.60649 14.3935 1.81047 14.5213 2.06135C14.6667 2.34656 14.6667 2.71993 14.6667 3.46667V8.53333C14.6667 9.28007 14.6667 9.65344 14.5213 9.93865C14.3935 10.1895 14.1895 10.3935 13.9387 10.5213C13.6534 10.6667 13.2801 10.6667 12.5333 10.6667H10.6667M3.46667 14.6667H8.53333C9.28007 14.6667 9.65344 14.6667 9.93865 14.5213C10.1895 14.3935 10.3935 14.1895 10.5213 13.9387C10.6667 13.6534 10.6667 13.2801 10.6667 12.5333V7.46667C10.6667 6.71993 10.6667 6.34656 10.5213 6.06135C10.3935 5.81047 10.1895 5.60649 9.93865 5.47866C9.65344 5.33333 9.28007 5.33333 8.53333 5.33333H3.46667C2.71993 5.33333 2.34656 5.33333 2.06135 5.47866C1.81047 5.60649 1.60649 5.81047 1.47866 6.06135C1.33333 6.34656 1.33333 6.71993 1.33333 7.46667V12.5333C1.33333 13.2801 1.33333 13.6534 1.47866 13.9387C1.60649 14.1895 1.81047 14.3935 2.06135 14.5213C2.34656 14.6667 2.71993 14.6667 3.46667 14.6667Z" stroke="#1D1D1D" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const deleteIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2H10M2 4H14M12.6667 4L12.1991 11.0129C12.129 12.065 12.0939 12.5911 11.8667 12.99C11.6666 13.3412 11.3648 13.6235 11.0011 13.7998C10.588 14 10.0607 14 9.00623 14H6.99377C5.93927 14 5.41202 14 4.99889 13.7998C4.63517 13.6235 4.33339 13.3412 4.13332 12.99C3.90607 12.5911 3.871 12.065 3.80086 11.0129L3.33333 4M6.66667 7V10.3333M9.33333 7V10.3333" stroke="#C64143" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    function formatDate(isoDate) {
+        try {
+            const ts = typeof isoDate === 'number' ? isoDate : Number(isoDate);
+            const date = isNaN(ts) ? new Date(isoDate) : new Date(ts);
+            return date.toLocaleString(locale, {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', hour12: false,
+            }).replace(',', '');
+        } catch { return ''; }
+    }
+
+    function renderProjectList() {
+        const container = document.getElementById('project-list-container');
+        const searchTerm = (document.getElementById('search-input')?.value || '').toLowerCase();
+
+        const filtered = allProjects.filter(p => {
+            const isOwner = p.role === 'owner';
+            const tabMatch = currentTab === 'my-projects' ? isOwner : !isOwner;
+            const searchMatch = !searchTerm || (p.title || '').toLowerCase().includes(searchTerm);
+            return tabMatch && searchMatch;
+        });
+
+        if (filtered.length === 0) {
+            const msg = currentTab === 'my-projects' ? t.no_projects : t.no_shared;
+            container.innerHTML = '<div class="projects-empty">' + msg + '</div>';
+            return;
+        }
+
+        let html = '<div class="ode-files-list">';
+        for (const p of filtered) {
+            const isPublic = p.visibility === 'public';
+            const visLabel = isPublic ? t.public_label : t.private_label;
+            const visClass = isPublic ? 'ode-badge-public' : 'ode-badge-private';
+            const isShared = p.role && p.role !== 'owner';
+            const title = p.title || t.untitled;
+            const date = formatDate(p.updatedAt);
+            const version = p.versionName || '1';
+            const size = p.sizeFormatted || '--';
+
+            let metaExtra = '';
+            if (isShared && p.ownerEmail) {
+                metaExtra = '<span class="dot">&bull;</span><span class="ode-owner-info" title="' + t.shared_by + ' ' + p.ownerEmail + '">' + p.ownerEmail + '</span>';
+            } else {
+                metaExtra = '<span class="dot">&bull;</span><span>' + (p.isManualSave ? t.manual : t.autosaved) + '</span>';
+            }
+
+            html += '<article class="ode-row" data-uuid="' + p.odeId + '">' +
+                '<span class="exe-logo">' + docIcon + '</span>' +
+                '<div class="ode-info">' +
+                    '<div class="ode-title">' + title + '</div>' +
+                    '<div class="ode-meta">' +
+                        '<span class="ode-badge">v' + version + '</span>' +
+                        '<span class="ode-badge ' + visClass + '">' + visLabel + '</span>' +
+                        '<span class="dot">&bull;</span><span>' + size + '</span>' +
+                        '<span class="dot">&bull;</span><span>' + date + '</span>' +
+                        metaExtra +
+                    '</div>' +
+                '</div>' +
+                '<div class="ode-actions">' +
+                    '<button type="button" class="action-copy" title="' + (isShared ? t.clone_to_my : t.duplicate) + '">' + copyIcon + '</button>' +
+                    (!isShared ? '<button type="button" class="open-user-ode-file-action-delete action-delete" title="' + t.delete_label + '">' + deleteIcon + '</button>' : '') +
+                '</div>' +
+            '</article>';
+        }
+        html += '</div>';
+        container.innerHTML = html;
+
+        // Bind click events
+        container.querySelectorAll('.ode-row').forEach(row => {
+            const uuid = row.dataset.uuid;
+            row.addEventListener('click', (ev) => {
+                if (ev.target.closest('.ode-actions')) return;
+                window.location.href = basePath + '/workarea?project=' + uuid;
+            });
+            row.addEventListener('dblclick', () => {
+                window.location.href = basePath + '/workarea?project=' + uuid;
+            });
+        });
+
+        container.querySelectorAll('.action-delete').forEach(btn => {
+            btn.addEventListener('click', async (ev) => {
+                ev.stopPropagation();
+                const row = btn.closest('.ode-row');
+                const uuid = row.dataset.uuid;
+                const title = row.querySelector('.ode-title')?.textContent?.trim() || '';
+                if (!confirm(t.confirm_delete + '\n\n' + title)) return;
+                try {
+                    const resp = await fetch(basePath + '/api/projects/uuid/' + uuid, {
+                        method: 'DELETE', credentials: 'include'
+                    });
+                    if (resp.ok) {
+                        allProjects = allProjects.filter(p => p.odeId !== uuid);
+                        updateCounts();
+                        renderProjectList();
+                    }
+                } catch (err) { console.error('Delete failed:', err); }
+            });
+        });
+
+        container.querySelectorAll('.action-copy').forEach(btn => {
+            btn.addEventListener('click', async (ev) => {
+                ev.stopPropagation();
+                const row = btn.closest('.ode-row');
+                const uuid = row.dataset.uuid;
+                try {
+                    const resp = await fetch(basePath + '/api/projects/uuid/' + uuid + '/duplicate', {
+                        method: 'POST', credentials: 'include'
+                    });
+                    if (resp.ok) {
+                        loadProjects(); // Refresh the list
+                    }
+                } catch (err) { console.error('Duplicate failed:', err); }
+            });
+        });
+    }
+
+    function updateCounts() {
+        const owned = allProjects.filter(p => p.role === 'owner').length;
+        const shared = allProjects.filter(p => p.role !== 'owner').length;
+        document.getElementById('count-owned').textContent = '(' + owned + ')';
+        document.getElementById('count-shared').textContent = '(' + shared + ')';
+    }
+
+    async function loadProjects() {
+        try {
+            const resp = await fetch(basePath + '/api/projects/user/list', {
+                credentials: 'include'
+            });
+            if (!resp.ok) throw new Error('Failed to load');
+            const data = await resp.json();
+            const sync = data.odeFiles?.odeFilesSync;
+            allProjects = Array.isArray(sync) ? sync : Object.values(sync || {});
+            updateCounts();
+            renderProjectList();
+        } catch (err) {
+            console.error('Failed to load projects:', err);
+            document.getElementById('project-list-container').innerHTML =
+                '<div class="projects-empty">' + t.no_projects + '</div>';
+        }
+    }
+
+    // Tab switching
+    document.querySelectorAll('.ode-project-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            currentTab = tab.dataset.tab;
+            document.querySelectorAll('.ode-project-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderProjectList();
+        });
+    });
+
+    // Search
+    document.getElementById('search-input')?.addEventListener('input', () => {
+        renderProjectList();
+    });
+
+    // New Project button
+    document.getElementById('btn-new-project')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btn-new-project');
+        btn.disabled = true;
+        try {
+            const resp = await fetch(basePath + '/api/project/create-quick', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ title: t.untitled })
+            });
+            if (!resp.ok) throw new Error('Failed to create project');
+            const data = await resp.json();
+            window.location.href = basePath + '/workarea?project=' + data.uuid + '&new=1';
+        } catch (err) {
+            console.error('Failed to create project:', err);
+            btn.disabled = false;
+        }
+    });
+
+    // Open file button
+    document.getElementById('btn-open-file')?.addEventListener('click', () => {
+        document.getElementById('file-input')?.click();
+    });
+
+    // File input change
+    document.getElementById('file-input')?.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const CHUNK_SIZE = 15 * 1024 * 1024;
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const uploadId = crypto.randomUUID();
+
+        try {
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = file.slice(start, end);
+                const formData = new FormData();
+                formData.append('file', chunk, file.name);
+                formData.append('chunkIndex', String(i));
+                formData.append('totalChunks', String(totalChunks));
+                formData.append('uploadId', uploadId);
+                formData.append('fileName', file.name);
+                const resp = await fetch(basePath + '/api/project/upload-chunk', {
+                    method: 'POST', credentials: 'include', body: formData
+                });
+                if (!resp.ok) throw new Error('Chunk upload failed');
+            }
+
+            const openResp = await fetch(basePath + '/api/odes/local/elp/open', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ uploadId, fileName: file.name })
+            });
+            if (!openResp.ok) throw new Error('Failed to open file');
+            const openData = await openResp.json();
+            const projectUuid = openData.projectUuid || openData.uuid;
+            const importPath = openData.elpImportPath || '';
+            let url = basePath + '/workarea?project=' + projectUuid;
+            if (importPath) url += '&import=' + encodeURIComponent(importPath);
+            window.location.href = url;
+        } catch (err) {
+            console.error('Failed to open file:', err);
+            e.target.value = '';
+        }
+    });
+
+    // Load projects on page load
+    loadProjects();
+})();
+</script>
+{% endblock %}
