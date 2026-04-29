@@ -62,6 +62,10 @@ export default class NavbarFile {
     /**
      * Hide the "Imported" tab and its pane, and force-activate the
      * "System" tab if the "Imported" one was the default in the HTML.
+     * Also hides the entire tablist <ul>: with imports blocked there is
+     * only one tab left ("System") and rendering a single-tab nav is
+     * visually pointless — the workarea.njk template already does this
+     * with `{% if config.userStyles == false %} d-none{% endif %}`.
      * @private
      */
     _hideImportedStylesTab() {
@@ -82,6 +86,10 @@ export default class NavbarFile {
         }
         if (systemPane && !systemPane.classList.contains('show')) {
             systemPane.classList.add('show', 'active');
+        }
+        const tablist = document.getElementById('styleslist');
+        if (tablist) {
+            tablist.classList.add('d-none');
         }
     }
 

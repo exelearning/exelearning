@@ -1000,7 +1000,7 @@ describe('NavbarStyles', () => {
         // Minimal DOM scaffolding matching the bootstrap HTML structure.
         function scaffoldTabs() {
             document.body.innerHTML = `
-                <ul class="nav">
+                <ul class="nav nav-tabs" id="styleslist" role="tablist">
                     <li class="nav-item"><button id="exestylescontent-tab">System</button></li>
                     <li class="nav-item"><button id="importedstylescontent-tab" class="active">Imported</button></li>
                 </ul>
@@ -1049,6 +1049,19 @@ describe('NavbarStyles', () => {
             expect(systemTab.classList.contains('active')).toBe(true);
             const systemPane = document.getElementById('exestylescontent');
             expect(systemPane.classList.contains('show')).toBe(true);
+            const tablist = document.getElementById('styleslist');
+            expect(tablist.classList.contains('d-none')).toBe(true);
+        });
+
+        it('_hideImportedStylesTab tolerates a missing tablist <ul>', () => {
+            // Tab + pane present but no <ul id="styleslist"> wrapper.
+            document.body.innerHTML = `
+                <li class="nav-item"><button id="importedstylescontent-tab" class="active">Imported</button></li>
+                <div id="importedstylescontent" class="show active"></div>
+            `;
+            const ns = Object.create(NavbarStyles.prototype);
+            expect(() => ns._hideImportedStylesTab()).not.toThrow();
+            expect(document.getElementById('styleslist')).toBeNull();
         });
 
         it('_hideImportedStylesTab falls back to the tab element when no nav-item wrapper exists', () => {
