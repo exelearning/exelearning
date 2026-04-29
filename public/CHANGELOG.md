@@ -28,7 +28,7 @@ The File Manager has been improved in both usability and functionality. New feat
 
 ### LMS and platform integration
 
-Compatibility with the latest Moodle plugins has been improved. The editor can be embedded in platforms such as WordPress, Moodle, Omeka-S, or Drupal via iframe and postMessage, with a well-defined integration API. Host platforms can inject admin-approved custom styles, override themes or block style imports without rebuilding the editor bundle.
+Compatibility with the latest Moodle plugins has been improved. The editor can be embedded in platforms such as WordPress, Moodle, Omeka-S or Drupal using iframe and postMessage, with a well-defined integration API. Host platforms can inject admin-approved custom styles, override themes or block style imports without rebuilding the editor bundle.
 
 ### iDevices
 
