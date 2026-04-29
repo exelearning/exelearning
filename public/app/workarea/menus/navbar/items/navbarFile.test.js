@@ -2212,6 +2212,196 @@ describe('NavbarFile', () => {
 
             expect(global.eXe.app.alert).toHaveBeenCalled();
         });
+
+        // Regression coverage for the missing-images symptom on Moodle
+        // (mod_exeweb#42 / mod_exescorm#55): when the browser has the Yjs
+        // bridge and SharedExporters available, uploadPlatformEvent must
+        // generate the package locally and POST it as multipart to the
+        // browser-forwarder endpoint instead of relying on the server-side
+        // generation that was producing ZIPs without content/resources/.
+        it('uploadPlatformEvent generates the package client-side and forwards to the browser endpoint', async () => {
+            window.location.search = '?jwt_token=ignored';
+            const exportData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+            const quickExport = vi
+                .fn()
+                .mockResolvedValue({ success: true, data: exportData, filename: 'project.zip' });
+            window.SharedExporters = { quickExport };
+
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: () => ({ saveToServer: vi.fn().mockResolvedValue() }),
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+                assetCache: null,
+                resourceFetcher: null,
+            };
+
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: async () => ({ responseMessage: 'OK', returnUrl: 'http://platform/return' }),
+            });
+            const originalFetch = global.fetch;
+            global.fetch = fetchMock;
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            expect(quickExport).toHaveBeenCalled();
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            const [calledUrl, init] = fetchMock.mock.calls[0];
+            expect(String(calledUrl)).toContain('/api/platform/integration/set_platform_new_ode_browser');
+            expect(init.method).toBe('POST');
+            expect(init.body).toBeInstanceOf(FormData);
+            // Legacy server-side endpoint must NOT be hit when the browser flow handled it.
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
+            expect(window.location.replace).toHaveBeenCalledWith('http://platform/return');
+        });
+
+        it('uploadPlatformEvent surfaces export failures from SharedExporters', async () => {
+            window.location.search = '?jwt_token=ignored';
+            const quickExport = vi.fn().mockResolvedValue({ success: false, error: 'no document' });
+            window.SharedExporters = { quickExport };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+            };
+
+            const originalFetch = global.fetch;
+            global.fetch = vi.fn();
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            // No upload happens when the export fails to produce a package.
+            expect(global.eXe.app.alert).toHaveBeenCalled();
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
+        });
+
+        it('uploadPlatformEvent falls back to the legacy server endpoint when SharedExporters is unavailable', async () => {
+            window.location.search = '?jwt_token=ignored';
+            // No SharedExporters in window: client-side path is unavailable.
+            eXeLearning.app.project._yjsBridge = null;
+            eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mockResolvedValue({
+                responseMessage: 'OK',
+                returnUrl: 'http://return',
+            });
+
+            await navbarFile.uploadPlatformEvent();
+
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).toHaveBeenCalled();
+            expect(window.location.replace).toHaveBeenCalledWith('http://return');
+        });
+
+        it('_decodePlatformJwtPayload returns null for malformed tokens', () => {
+            expect(navbarFile._decodePlatformJwtPayload(null)).toBeNull();
+            expect(navbarFile._decodePlatformJwtPayload('')).toBeNull();
+            expect(navbarFile._decodePlatformJwtPayload('not-a-jwt')).toBeNull();
+            expect(navbarFile._decodePlatformJwtPayload('a.b.c')).toBeNull();
+        });
+
+        it('_decodePlatformJwtPayload extracts the payload from a well-formed JWT', () => {
+            const payload = { pkgtype: 'scorm', cmid: '99' };
+            const encoded = btoa(JSON.stringify(payload)).replace(/=+$/, '');
+            const token = `header.${encoded}.signature`;
+
+            const decoded = navbarFile._decodePlatformJwtPayload(token);
+            expect(decoded).toEqual(payload);
+        });
+
+        it('uploadPlatformEvent surfaces forwarder transport errors via alert', async () => {
+            window.location.search = '?jwt_token=ignored';
+            const exportData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+            window.SharedExporters = {
+                quickExport: vi
+                    .fn()
+                    .mockResolvedValue({ success: true, data: exportData, filename: 'project.zip' }),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+            };
+
+            const fetchMock = vi.fn().mockRejectedValue(new Error('network down'));
+            const originalFetch = global.fetch;
+            global.fetch = fetchMock;
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            // The transport failure must surface to the user; we must not silently
+            // drop the upload or fall back to the stale server-side path.
+            expect(global.eXe.app.alert).toHaveBeenCalled();
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
+            expect(window.location.replace).not.toHaveBeenCalled();
+        });
+
+        it('uploadPlatformEvent alerts when the platform returns a non-OK response', async () => {
+            window.location.search = '?jwt_token=ignored';
+            const exportData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+            window.SharedExporters = {
+                quickExport: vi
+                    .fn()
+                    .mockResolvedValue({ success: true, data: exportData, filename: 'project.zip' }),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+            };
+
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                json: async () => ({ responseMessage: 'Server exploded' }),
+            });
+            const originalFetch = global.fetch;
+            global.fetch = fetchMock;
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            expect(global.eXe.app.alert).toHaveBeenCalled();
+            expect(window.location.replace).not.toHaveBeenCalled();
+        });
+
+        it('uploadPlatformEvent alerts when SharedExporters.quickExport throws', async () => {
+            window.location.search = '?jwt_token=ignored';
+            window.SharedExporters = {
+                quickExport: vi.fn().mockRejectedValue(new Error('worker died')),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+            };
+
+            const originalFetch = global.fetch;
+            global.fetch = vi.fn();
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            expect(global.eXe.app.alert).toHaveBeenCalled();
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
+        });
     });
 
     describe('importXmlPropertiesEvent', () => {

@@ -7,6 +7,7 @@ import {
     buildGetOdeUrl,
     platformPetitionGet,
     platformPetitionSet,
+    platformPetitionSetForward,
     configure,
     resetDependencies,
 } from './platform-integration';
@@ -527,6 +528,173 @@ describe('Platform Integration Service', () => {
 
             expect(result.success).toBe(false);
             // updateProjectByUuid should NOT be called on failure
+            expect(updateCalled).toBe(false);
+        });
+    });
+
+    describe('platformPetitionSetForward', () => {
+        const forwardPayload: PlatformJWTPayload = {
+            userid: '7',
+            cmid: '42',
+            returnurl: 'https://moodle.example.com/mod/exeweb/view.php?id=1',
+            pkgtype: 'webzip',
+            exp: Math.floor(Date.now() / 1000) + 3600,
+            iat: Math.floor(Date.now() / 1000),
+        };
+
+        const samplePackage = Buffer.from('PK\x03\x04demo-zip-bytes');
+
+        it('returns error when the platform URL cannot be derived from the JWT', async () => {
+            const result = await platformPetitionSetForward(
+                { ...forwardPayload, returnurl: 'https://example.com/elsewhere' },
+                'jwt-token',
+                'project-uuid',
+                samplePackage,
+                'package.zip',
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Could not build platform integration URL');
+        });
+
+        it('returns error when no package payload is provided', async () => {
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt-token',
+                'project-uuid',
+                undefined as unknown as Buffer,
+                'package.zip',
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Missing package payload');
+        });
+
+        it('forwards a base64-encoded ode_data payload to the platform set_ode URL', async () => {
+            let capturedUrl: string | null = null;
+            let capturedBody: FormData | null = null;
+
+            globalThis.fetch = async (url, init) => {
+                capturedUrl = url as string;
+                capturedBody = init?.body as FormData;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            // Spy on updateProjectByUuid via configure() so we can assert the
+            // platform_id linkage is performed only when the upload succeeds.
+            let linkedCmid: string | null = null;
+            configure({
+                updateProjectByUuid: async (_db, _uuid, updates) => {
+                    linkedCmid = (updates.platform_id as string) ?? null;
+                    return undefined;
+                },
+            });
+
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt-token-xyz',
+                'project-uuid',
+                samplePackage,
+                'photo-album.zip',
+            );
+
+            expect(result.success).toBe(true);
+            expect(capturedUrl).toBe('https://moodle.example.com/mod/exeweb/set_ode.php');
+
+            const odeDataString = (capturedBody as FormData).get('ode_data') as string;
+            const odeData = JSON.parse(odeDataString);
+            expect(odeData.ode_id).toBe('42');
+            expect(odeData.ode_filename).toBe('photo-album.zip');
+            expect(odeData.ode_user).toBe('7');
+            expect(odeData.jwt_token).toBe('jwt-token-xyz');
+            expect(odeData.ode_file).toBe(samplePackage.toString('base64'));
+
+            // platform_id is the cmid from the JWT, persisted only when the
+            // forward call succeeds.
+            expect(linkedCmid).toBe('42');
+        });
+
+        it('falls back to a default filename when none is provided', async () => {
+            let capturedBody: FormData | null = null;
+
+            globalThis.fetch = async (_url, init) => {
+                capturedBody = init?.body as FormData;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            configure({ updateProjectByUuid: async () => undefined });
+
+            const result = await platformPetitionSetForward(forwardPayload, 'jwt-token', '', samplePackage, '');
+
+            expect(result.success).toBe(true);
+            const odeData = JSON.parse((capturedBody as FormData).get('ode_data') as string);
+            expect(odeData.ode_filename).toBe('package.zip');
+        });
+
+        it('returns the platform error description when the platform replies with status 1', async () => {
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify({ status: '1', description: 'Quota exceeded' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt-token',
+                'project-uuid',
+                samplePackage,
+                'package.zip',
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Quota exceeded');
+        });
+
+        it('returns error when the HTTP response is not OK', async () => {
+            globalThis.fetch = async () => new Response(null, { status: 503 });
+
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt-token',
+                'project-uuid',
+                samplePackage,
+                'package.zip',
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Platform responded with status 503');
+        });
+
+        it('does not link platform_id when projectUuid is empty', async () => {
+            let updateCalled = false;
+            configure({
+                updateProjectByUuid: async () => {
+                    updateCalled = true;
+                    return undefined;
+                },
+            });
+
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt-token',
+                '',
+                samplePackage,
+                'package.zip',
+            );
+
+            expect(result.success).toBe(true);
             expect(updateCalled).toBe(false);
         });
     });
