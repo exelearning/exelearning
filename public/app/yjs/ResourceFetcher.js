@@ -38,6 +38,7 @@
 const THIRD_PARTY_LIBS = new Set([
   'abcjs',
   'bootstrap',
+  'bootstrap-icons',
   'exe_atools',
   'exe_elpx_download',
   'fflate',
@@ -859,9 +860,10 @@ class ResourceFetcher {
       try {
         const cached = await this.resourceCache.get('libs', 'base', cacheVersion);
         if (cached) {
-          this.cache.set(cacheKey, cached);
+          const filteredCached = this.filterDeprecatedBootstrapIconBaseLibs(cached);
+          this.cache.set(cacheKey, filteredCached);
           Logger.log('[ResourceFetcher] Base libraries loaded from IndexedDB cache');
-          return cached;
+          return filteredCached;
         }
       } catch (e) {
         console.warn('[ResourceFetcher] IndexedDB cache read failed:', e);
@@ -889,6 +891,7 @@ class ResourceFetcher {
     }
 
     // 5. Cache the result (cache even if empty to avoid repeated fetches)
+    libFiles = this.filterDeprecatedBootstrapIconBaseLibs(libFiles);
     this.cache.set(cacheKey, libFiles);
 
     if (libFiles.size > 0 && this.resourceCache) {
@@ -901,6 +904,21 @@ class ResourceFetcher {
 
     Logger.log(`[ResourceFetcher] Base libraries loaded (${libFiles.size} files)`);
     return libFiles;
+  }
+
+  filterDeprecatedBootstrapIconBaseLibs(libFiles) {
+    if (!libFiles || typeof libFiles.entries !== 'function') {
+      return libFiles || new Map();
+    }
+
+    const filtered = new Map();
+    for (const [filePath, blob] of libFiles.entries()) {
+      if (typeof filePath === 'string' && filePath.startsWith('bootstrap-icons/')) {
+        continue;
+      }
+      filtered.set(filePath, blob);
+    }
+    return filtered;
   }
 
   /**

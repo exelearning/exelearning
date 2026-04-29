@@ -62,7 +62,13 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        for (const file of _files) {
+            if (file.startsWith('bootstrap-icons/icons/')) {
+                files.set(file, Buffer.from(`<svg data-icon="${file}"></svg>`));
+            }
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -333,6 +339,43 @@ describe('Scorm2004Exporter', () => {
             const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('made-with-eXe');
+        });
+
+        it('should inline bootstrap icon SVGs as data URIs in SCORM 2004 HTML', () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'bi-lightbulb',
+                            icon: { source: 'bootstrap', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            const html = exporter.generateScorm2004PageHtml(
+                pagesWithBootstrapIcon[0],
+                pagesWithBootstrapIcon,
+                document.getMetadata(),
+                true,
+                [],
+                0,
+                null,
+                undefined,
+                undefined,
+                new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            );
+
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('libs/bootstrap-icons/icons/lightbulb.svg');
         });
     });
 

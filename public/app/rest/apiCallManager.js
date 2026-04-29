@@ -2062,6 +2062,13 @@ export default class ApiCallManager {
                 if (params.blockName !== undefined && params.blockName !== currentBlock?.blockName) {
                     updates.blockName = params.blockName;
                 }
+                if (params.icon !== undefined) {
+                    const currentIcon = currentBlock?.icon ?? null;
+                    const nextIcon = params.icon ?? null;
+                    if (JSON.stringify(nextIcon) !== JSON.stringify(currentIcon)) {
+                        updates.icon = nextIcon;
+                    }
+                }
                 if (params.iconName !== undefined && params.iconName !== currentBlock?.iconName) {
                     updates.iconName = params.iconName;
                 }
@@ -2082,6 +2089,7 @@ export default class ApiCallManager {
                         id: blockId,
                         odePagId: blockId,
                         blockName: params.blockName,
+                        icon: params.icon,
                         iconName: params.iconName,
                         order: params.order
                     }

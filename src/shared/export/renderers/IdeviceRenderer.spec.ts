@@ -966,6 +966,40 @@ describe('IdeviceRenderer', () => {
     });
 
     describe('renderBlock with icon', () => {
+        it('should render bootstrap icon SVG when iconName uses bi- prefix', () => {
+            const block: ExportBlock = {
+                id: 'block-bootstrap',
+                name: 'Bootstrap Block',
+                order: 0,
+                components: [],
+                iconName: 'bi-lightbulb',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('libs/bootstrap-icons/icons/lightbulb.svg');
+            expect(html).not.toContain('theme/icons/');
+        });
+
+        it('should inline bootstrap icon mask as data URI when provided', () => {
+            const block: ExportBlock = {
+                id: 'block-bootstrap-inline',
+                name: 'Bootstrap Block Inline',
+                order: 0,
+                components: [],
+                iconName: 'bi-lightbulb',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                bootstrapIconDataUris: new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            });
+
+            expect(html).toContain('data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E');
+            expect(html).not.toContain('libs/bootstrap-icons/icons/lightbulb.svg');
+        });
+
         it('should render block header with icon when iconName is provided', () => {
             const block: ExportBlock = {
                 id: 'block-1',
@@ -979,6 +1013,29 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('box-icon');
             expect(html).toContain('theme/icons/lightbulb.png');
+        });
+
+        it('should resolve custom asset icons to exported resources path', () => {
+            const block: ExportBlock = {
+                id: 'block-asset',
+                name: 'Asset Block',
+                order: 0,
+                components: [],
+                icon: {
+                    source: 'asset',
+                    value: 'asset://12345678-1234-1234-1234-123456789012/dogs/black-dog.jpg',
+                } as any,
+                iconName: 'asset://12345678-1234-1234-1234-123456789012/dogs/black-dog.jpg',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                assetExportPathMap: new Map([['12345678-1234-1234-1234-123456789012', 'dogs/black-dog.jpg']]),
+            });
+
+            expect(html).toContain('content/resources/dogs/black-dog.jpg');
+            expect(html).not.toContain('asset://12345678-1234-1234-1234-123456789012');
         });
 
         it('should use themeIconBasePath when provided for icon (preview mode)', () => {

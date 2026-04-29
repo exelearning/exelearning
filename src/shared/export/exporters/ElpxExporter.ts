@@ -148,6 +148,10 @@ export class ElpxExporter extends Html5Exporter {
                 language: meta.language || 'en',
             });
 
+            // Resolve bootstrap icon data URIs for inline SVG embedding
+            const { files: bootstrapIconFiles, dataUris: bootstrapIconDataUris } =
+                await this.resolveBootstrapIconDataUris(pages);
+
             // 1.1 Generate HTML pages with optional Mermaid pre-rendering, store for later — manifest script tag injection happens after manifest is created)
             const pageHtmlMap = new Map<string, string>();
             let mermaidWasRendered = false;
@@ -167,6 +171,7 @@ export class ElpxExporter extends Html5Exporter {
                     faviconInfo,
                     pageFilenameMap,
                     undefined,
+                    bootstrapIconDataUris,
                     navLabels,
                 );
 
@@ -256,6 +261,11 @@ export class ElpxExporter extends Html5Exporter {
             } catch {
                 // Base libraries not available - continue anyway
             }
+
+            // 1.6.1 Add bootstrap icon SVG files
+            this.addPrefixedFiles(bootstrapIconFiles, 'libs/', (path, content) => {
+                addFile(path, content);
+            });
 
             // 1.6.5 Generate localized i18n file
             const i18nContent = await this.generateI18nContent(meta.language || 'en');

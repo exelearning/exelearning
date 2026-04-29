@@ -112,6 +112,7 @@ export class PageRenderer {
             hideNavButtons = false,
             // Asset URL transformation map
             assetExportPathMap,
+            bootstrapIconDataUris,
             // Application version for generator meta tag
             version,
         } = options;
@@ -124,13 +125,20 @@ export class PageRenderer {
         const detectedLibraries = providedDetectedLibraries ?? this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, {
-            author: options.author,
-            description: options.description,
-            license: options.license,
-            language: options.language,
-            translatedLicense: options.navLabels?.license,
-        });
+        const pageContent = this.renderPageContent(
+            page,
+            basePath,
+            projectTitle,
+            assetExportPathMap,
+            {
+                author: options.author,
+                description: options.description,
+                license: options.license,
+                language: options.language,
+                translatedLicense: options.navLabels?.license,
+            },
+            bootstrapIconDataUris,
+        );
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -631,6 +639,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             language?: string;
             translatedLicense?: string;
         },
+        bootstrapIconDataUris?: Map<string, string>,
     ): string {
         let html = '';
 
@@ -639,6 +648,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 basePath,
                 includeDataAttributes: true,
                 assetExportPathMap,
+                bootstrapIconDataUris,
             });
         }
 
@@ -1002,6 +1012,7 @@ ${userFooterHtml}</div></footer>`;
             addExeLink?: boolean;
             userFooterContent?: string;
             navLabels?: { previous?: string; next?: string; page?: string; license?: string };
+            bootstrapIconDataUris?: Map<string, string>;
         } = {},
     ): string {
         const {
@@ -1022,6 +1033,7 @@ ${userFooterHtml}</div></footer>`;
             addMathJax = false,
             addAccessibilityToolbar = false,
             navLabels,
+            bootstrapIconDataUris,
         } = options;
 
         let contentHtml = '';
@@ -1045,13 +1057,20 @@ ${userFooterHtml}</div></footer>`;
 </div>
 </header>
 <div class="page-content">
-${this.renderPageContent(page, '', projectTitle, undefined, {
-    author: options.author,
-    description: options.description,
-    license: options.license,
-    language: options.language,
-    translatedLicense: navLabels?.license,
-})}
+${this.renderPageContent(
+    page,
+    '',
+    projectTitle,
+    undefined,
+    {
+        author: options.author,
+        description: options.description,
+        license: options.license,
+        language: options.language,
+        translatedLicense: navLabels?.license,
+    },
+    bootstrapIconDataUris,
+)}
 </div>
 </section>\n`;
         }

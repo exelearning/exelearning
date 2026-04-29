@@ -54,6 +54,8 @@ export class PageExporter extends Html5Exporter {
 
             // Get all iDevice types used in the project
             const usedIdevices = this.getUsedIdevices(pages);
+            const { files: bootstrapIconFiles, dataUris: bootstrapIconDataUris } =
+                await this.resolveBootstrapIconDataUris(pages);
 
             // 4. Fetch and add theme
             const { themeFilesMap, faviconInfo } = await this.prepareThemeData(themeName);
@@ -105,7 +107,16 @@ export class PageExporter extends Html5Exporter {
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
 
             // 1. Generate single-page HTML with all content
-            const html = this.generateSinglePageHtml(pages, meta, usedIdevices, faviconInfo, [], false, navLabels);
+            const html = this.generateSinglePageHtml(
+                pages,
+                meta,
+                usedIdevices,
+                faviconInfo,
+                [],
+                false,
+                navLabels,
+                bootstrapIconDataUris,
+            );
             this.zip.addFile('index.html', html);
 
             // 2. Add base CSS (fetch from content/css)
@@ -145,6 +156,10 @@ export class PageExporter extends Html5Exporter {
                 // No base libraries available
             }
 
+            this.addPrefixedFiles(bootstrapIconFiles, 'libs/', (path, content) => {
+                this.zip.addFile(path, content);
+            });
+
             // 5.b Detect and fetch additional required libraries based on content
             // This is crucial for things like MathJax, Tooltips, etc.
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
@@ -183,6 +198,7 @@ export class PageExporter extends Html5Exporter {
                 patterns.map(p => p.name),
                 meta.addMathJax === true,
                 navLabels,
+                bootstrapIconDataUris,
             );
             this.zip.addFile(options?.filename || 'index.html', singlePageHtml);
 
@@ -229,6 +245,7 @@ export class PageExporter extends Html5Exporter {
         detectedLibraries: string[] = [],
         addMathJax = false,
         navLabels?: { previous: string; next: string; page: string; license?: string },
+        bootstrapIconDataUris?: Map<string, string>,
     ): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',
@@ -248,6 +265,7 @@ export class PageExporter extends Html5Exporter {
             addExeLink: meta.addExeLink ?? true,
             // Pre-translated nav labels (resolved from XLF at export time)
             navLabels,
+            bootstrapIconDataUris,
         });
     }
 

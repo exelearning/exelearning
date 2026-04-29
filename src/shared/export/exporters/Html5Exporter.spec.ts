@@ -85,7 +85,13 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        for (const file of _files) {
+            if (file.startsWith('bootstrap-icons/icons/')) {
+                files.set(file, Buffer.from(`<svg data-icon="${file}"></svg>`));
+            }
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -383,6 +389,35 @@ describe('Html5Exporter', () => {
             const indexHtml = zip.files.get('index.html') as string;
             expect(indexHtml).toContain('libs/jquery');
             expect(indexHtml).toContain('libs/common.js');
+        });
+
+        it('should inline bootstrap icon SVGs as data URIs in exported HTML', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'bi-lightbulb',
+                            icon: { source: 'bootstrap', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('data:image/svg+xml;utf8,');
+            expect(indexHtml).not.toContain('libs/bootstrap-icons/icons/lightbulb.svg');
+            expect(zip.files.has('libs/bootstrap-icons/icons/lightbulb.svg')).toBe(true);
         });
 
         it('should use custom filename when provided', async () => {
@@ -1812,6 +1847,60 @@ describe('Html5Exporter', () => {
             expect(files.has('libs/common.js')).toBe(true);
         });
 
+        it('should include used bootstrap icon SVGs in preview files', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'bi-5-circle-fill',
+                            icon: { source: 'bootstrap', value: '5-circle-fill' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('libs/bootstrap-icons/icons/5-circle-fill.svg')).toBe(true);
+        });
+
+        it('should inline bootstrap icon SVGs as data URIs in preview HTML', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'bi-lightbulb',
+                            icon: { source: 'bootstrap', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+            const html = new TextDecoder().decode(files.get('index.html') as Uint8Array);
+
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('libs/bootstrap-icons/icons/lightbulb.svg');
+        });
+
         it('should return ArrayBuffer content for all files', async () => {
             const files = await exporter.generateForPreview();
 
@@ -1942,6 +2031,102 @@ describe('Html5Exporter', () => {
             const files = await exporter.generateForPreview();
 
             expect(files.has('content/resources/images/image.png')).toBe(true);
+        });
+
+        it('should include custom block icon assets in preview files and HTML', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/black-dog.jpg')).toBe(true);
+            const html = new TextDecoder().decode(files.get('index.html') as Uint8Array);
+            expect(html).toContain('content/resources/black-dog.jpg');
+        });
+
+        it('should only include referenced assets in preview files', async () => {
+            document = new MockDocument({}, [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'asset://custom-asset-id.jpg',
+                            icon: { source: 'asset', value: 'asset://custom-asset-id.jpg' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'custom-asset-id',
+                            filename: 'black-dog.jpg',
+                            originalPath: 'custom-asset-id/black-dog.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('JPG data'),
+                        },
+                        {
+                            id: 'unused-asset-id',
+                            filename: 'unused.jpg',
+                            originalPath: 'unused-asset-id/unused.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            mimeType: 'image/jpeg',
+                            data: Buffer.from('unused JPG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/black-dog.jpg')).toBe(true);
+            expect(files.has('content/resources/unused.jpg')).toBe(false);
         });
 
         it('should handle asset fetch failure gracefully', async () => {

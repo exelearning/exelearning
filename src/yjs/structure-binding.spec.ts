@@ -637,6 +637,15 @@ describe('structure-binding', () => {
                 expect(block?.iconName).toBe('icon-test');
             });
 
+            it('should reconstruct asset icon when only asset iconName is provided', () => {
+                const created = createBlock(ydoc, { pageId });
+                updateBlock(ydoc, created.data!.id, { iconName: 'asset://uuid-123/icon.jpg' });
+
+                const block = getBlock(ydoc, created.data!.id);
+                expect(block?.iconName).toBe('asset://uuid-123/icon.jpg');
+                expect(block?.icon).toEqual({ source: 'asset', value: 'asset://uuid-123/icon.jpg' });
+            });
+
             it('should update block properties', () => {
                 const created = createBlock(ydoc, { pageId });
                 updateBlock(ydoc, created.data!.id, {

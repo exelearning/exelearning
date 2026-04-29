@@ -1758,13 +1758,38 @@ export async function editTextIdevice(page: Page, content: string): Promise<void
  *
  * @param page - Playwright page
  * @param blockIndex - Index of the block on the page (0-based)
- * @returns The src attribute of the icon image, or null if no image
+ * @returns The image src or bootstrap mask/image reference, or null if no icon
  */
 export async function getBlockIconSrc(page: Page, blockIndex: number = 0): Promise<string | null> {
     const block = page.locator('#node-content article.box').nth(blockIndex);
-    const iconImg = block.locator('header.box-head button.box-icon img').first();
-    if ((await iconImg.count()) === 0) return null;
-    return await iconImg.getAttribute('src');
+    const iconBtn = block.locator('header.box-head button.box-icon').first();
+
+    try {
+        await iconBtn.waitFor({ state: 'attached', timeout: 10000 });
+    } catch {
+        return null;
+    }
+
+    return await iconBtn.evaluate(el => {
+        const img = el.querySelector('img') as HTMLImageElement | null;
+        if (img?.getAttribute('src')) {
+            return img.getAttribute('src');
+        }
+
+        const bootstrapIcon = el.querySelector('.exe-bootstrap-icon') as HTMLElement | null;
+        if (!bootstrapIcon) {
+            return null;
+        }
+
+        const inlineMask =
+            bootstrapIcon.style.webkitMaskImage || bootstrapIcon.style.maskImage || bootstrapIcon.style.backgroundImage;
+        if (inlineMask) {
+            return inlineMask;
+        }
+
+        const computed = window.getComputedStyle(bootstrapIcon);
+        return computed.webkitMaskImage || computed.maskImage || computed.backgroundImage || null;
+    });
 }
 
 /**
@@ -1804,15 +1829,17 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
     await iconBtn.click();
 
     // 2. Wait for icon picker modal to be shown and icons to be loaded
-    await page.locator('.modal.show').waitFor({ state: 'visible', timeout: 10000 });
-    // Wait for icons to be attached (using waitForSelector which waits for DOM attachment by default)
-    await page.waitForSelector('.option-block-icon', { state: 'attached', timeout: 10000 });
+    const modalBody = page.locator('#change-block-icon-modal-content').last();
+    await modalBody.waitFor({ state: 'visible', timeout: 10000 });
+    await modalBody.locator('.option-block-icon').first().waitFor({ state: 'attached', timeout: 10000 });
+    const modal = page.locator('.modal.show').filter({ has: modalBody }).last();
 
     // 3. Verify the icon at the requested index exists
-    const iconCount = await page.locator('.option-block-icon').count();
+    const iconOptions = modalBody.locator('.option-block-icon');
+    const iconCount = await iconOptions.count();
     if (iconIndex >= iconCount) {
         // Close the modal before throwing
-        const closeBtn = page.locator('.modal.show button[data-bs-dismiss="modal"], .modal.show .btn-close').first();
+        const closeBtn = modal.locator('button[data-bs-dismiss="modal"], .btn-close').first();
         if ((await closeBtn.count()) > 0) {
             await closeBtn.click().catch(() => {});
         }
@@ -1822,11 +1849,12 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
     }
 
     // 4. Click desired icon (iconIndex 0 = empty, 1+ = theme icons)
-    const iconOption = page.locator('.option-block-icon').nth(iconIndex);
-    await iconOption.click();
+    const iconOption = iconOptions.nth(iconIndex);
+    await iconOption.waitFor({ state: 'visible', timeout: 10000 });
+    await iconOption.click({ force: true });
 
     // 5. Click Save button (confirm button in modal)
-    const saveBtn = page.locator('.modal.show button.btn.button-primary').first();
+    const saveBtn = modal.locator('button.btn.button-primary').first();
     await saveBtn.click();
 
     // 6. Wait for modal to close completely
@@ -1848,13 +1876,28 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
             { timeout: 5000 },
         );
     } else {
-        // Wait for icon image to be loaded
+        // Wait for the selected icon to be rendered.
+        // Bootstrap icons render as a mask span, while theme/custom icons render as img.
         await page.waitForFunction(
             idx => {
                 const block = document.querySelectorAll('#node-content article.box')[idx] as HTMLElement;
                 if (!block) return false;
-                const img = block.querySelector('header.box-head button.box-icon img') as HTMLImageElement;
-                return img?.complete && img.naturalWidth > 0;
+                const iconBtn = block.querySelector('header.box-head button.box-icon');
+                if (!iconBtn || iconBtn.classList.contains('exe-no-icon')) return false;
+
+                const bootstrapIcon = iconBtn.querySelector('.exe-bootstrap-icon') as HTMLElement | null;
+                if (bootstrapIcon) {
+                    const computed = window.getComputedStyle(bootstrapIcon);
+                    return !!(
+                        bootstrapIcon.style.webkitMaskImage ||
+                        bootstrapIcon.style.maskImage ||
+                        computed.webkitMaskImage ||
+                        computed.maskImage
+                    );
+                }
+
+                const img = iconBtn.querySelector('img') as HTMLImageElement | null;
+                return !!img && img.complete && img.naturalWidth > 0;
             },
             blockIndex,
             { timeout: 5000 },

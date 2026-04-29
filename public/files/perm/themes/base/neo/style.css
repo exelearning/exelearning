@@ -279,10 +279,19 @@ body#tinymce {
     border-bottom: 1px solid #e4e4e4;
 }
 
-.exe-content .box-head .box-title {
+.exe-content .box-head .box-title,
+.exe-content .box-head .box-icon {
     color: #002702;
     font-size: 1.65rem !important;
     font-weight: 700;
+}
+
+.exe-content {
+    --exe-icon-color: #e3ac3b;
+}
+
+.exe-content .box-head .box-icon {
+    color: var(--exe-icon-color, #e3ac3b);
 }
 
 /* Teacher mode visual indicator */
@@ -668,9 +677,29 @@ body.siteNav-off button#siteNavToggler .sr-av {
     margin-right: 10px;
 }
 
+.exe-export .box-icon .exe-bootstrap-icon {
+    display: block;
+    float: left;
+    margin-right: 10px;
+    background-color: currentColor;
+    -webkit-mask-image: var(--exe-bootstrap-icon-url);
+    mask-image: var(--exe-bootstrap-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
+
 .exe-export .box-icon img {
     width: 40px;
     height: auto;
+}
+
+.exe-export .box-icon .exe-bootstrap-icon {
+    width: 40px;
+    height: 40px;
 }
 
 .exe-export .box-title {

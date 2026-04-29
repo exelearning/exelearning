@@ -4,14 +4,96 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     #change-block-icon-modal-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--margin-m);
+
+        .icon-picker-toolbar {
+            display: flex;
+            align-items: stretch;
+            gap: var(--margin-s);
+
+            #block-icon-search-input {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+        }
+
         .option-block-icon.exe-icon {
-            content: "select_all";
-            font-family: var(--icons-ff);
             border-radius: var(--radius);
             transition: var(--tr-02);
             opacity: .5;
+            width: 40px;
+            height: 40px;
+            padding: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--modal-icon-color, var(--icon-primary));
+            cursor: pointer;
+            background-color: var(--main-background-color);
+            border: 1px solid var(--gray-border-light);
         }
 
+        .icon-options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+            gap: var(--margin-s);
+            max-height: min(60vh, 540px);
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .icon-picker-custom-button {
+            flex: 0 0 auto;
+            min-width: 132px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--modal-icon-color, var(--icon-primary));
+            border: 1px solid var(--gray-border-light);
+            background: var(--main-background-color);
+
+            svg, img {
+                width: 24px;
+                height: 24px;
+                flex: 0 0 auto;
+                object-fit: contain;
+            }
+
+            &.selected {
+                border-color: var(--modal-icon-color, var(--icon-primary));
+                box-shadow: 0 0 0 2px color-mix(in srgb, var(--modal-icon-color, var(--icon-primary)) 18%, transparent);
+            }
+        }
+
+        .option-block-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .option-block-icon .exe-bootstrap-icon {
+            width: 100%;
+            height: 100%;
+            background-color: currentColor;
+            -webkit-mask-image: var(--exe-bootstrap-icon-url);
+            mask-image: var(--exe-bootstrap-icon-url);
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+            -webkit-mask-size: contain;
+            mask-size: contain;
+        }
+
+        .option-block-icon .exe-bootstrap-icon-sprite {
+            width: 100%;
+            height: 100%;
+            display: block;
+            fill: currentColor;
+        }
         .box-icon-value {
             height: 100%;
             width: 100%;
@@ -58,6 +140,24 @@
         .progress-bar{
             background-color:var(--brand-primary);
         }
+    }
+}
+
+#modalConfirm:has(.modal-body[modal-content-id="block-icon-picker"]) {
+    .modal-dialog,
+    .modal-dialog.modal-dialog-centered {
+        max-width: min(1320px, calc(100vw - 24px));
+        width: min(1320px, calc(100vw - 24px));
+    }
+
+    .modal-content {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .modal-body {
+        width: 100%;
     }
 }
 
@@ -387,30 +487,6 @@
 .modal-open {
     #modalConfirm .modal-content {
         width: 400px;
-    }
-
-    #change-block-icon-modal-content {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-        gap: var(--margin-m);
-        grid-auto-flow: dense;
-
-        > .exe-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 30px;
-            line-height: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--icon-gray);
-            transition: var(--tr-02);
-            cursor: pointer;
-
-            &:hover {
-                transition: var(--tr-02);
-            }
-        }
     }
 
     #change-block-title-input {

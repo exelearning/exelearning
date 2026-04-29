@@ -62,7 +62,13 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        for (const file of _files) {
+            if (file.startsWith('bootstrap-icons/icons/')) {
+                files.set(file, Buffer.from(`<svg data-icon="${file}"></svg>`));
+            }
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -354,6 +360,74 @@ describe('PageExporter', () => {
 
             expect(zip.files.has('content/css/single-page.css')).toBe(true);
         });
+
+        it('should add only used bootstrap icon SVGs to the ZIP and inline them in HTML', async () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'bi-lightbulb',
+                            icon: { source: 'bootstrap', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+            document = new MockDocument({}, pagesWithBootstrapIcon);
+            exporter = new PageExporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('libs/bootstrap-icons/icons/lightbulb.svg')).toBe(true);
+            expect(zip.files.has('libs/bootstrap-icons/icons/alarm.svg')).toBe(false);
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('data:image/svg+xml;utf8,');
+            expect(indexHtml).not.toContain('libs/bootstrap-icons/icons/lightbulb.svg');
+        });
+
+        it('should fall back to library paths when bootstrap icon files cannot be fetched', async () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'bi-lightbulb',
+                            icon: { source: 'bootstrap', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+            document = new MockDocument({}, pagesWithBootstrapIcon);
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                if (files.some(file => file.startsWith('bootstrap-icons/icons/'))) {
+                    throw new Error('bootstrap icon fetch failed');
+                }
+                return new Map();
+            };
+            exporter = new PageExporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('libs/bootstrap-icons/icons/lightbulb.svg')).toBe(false);
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('libs/bootstrap-icons/icons/lightbulb.svg');
+        });
     });
 
     describe('Single Page HTML Generation', () => {
@@ -377,6 +451,41 @@ describe('PageExporter', () => {
             const html = exporter.generateSinglePageHtml(samplePages, document.getMetadata(), []);
 
             expect(html).toContain('exe-single-page');
+        });
+
+        it('should inline bootstrap icon SVGs as data URIs in single-page HTML', () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'bi-lightbulb',
+                            icon: { source: 'bootstrap', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            const html = exporter.generateSinglePageHtml(
+                pagesWithBootstrapIcon,
+                document.getMetadata(),
+                [],
+                null,
+                [],
+                false,
+                undefined,
+                new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            );
+
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('libs/bootstrap-icons/icons/lightbulb.svg');
         });
     });
 
