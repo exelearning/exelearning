@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" style="height: 100%; margin: 0; padding: 0;">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+
+    <!-- Using existing eXeLearning styles just for the loading screen -->
+    <link rel="stylesheet" href="{{ basePath }}/style/workarea/main.css">
+
+    <!-- Load fflate from the lib folder -->
+    <script src="{{ basePath }}/libs/fflate/fflate.umd.js"></script>
+
+    <style>
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #viewer-iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+            display: none;
+        }
+        #loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #555;
+            background: #f8f9fa;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            margin-bottom: 1rem;
+        }
+        #error-message {
+            display: none;
+            color: #dc3545;
+            padding: 2rem;
+            text-align: center;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+        <p id="loader-text">{{ 'Loading preview...' | trans }}</p>
+    </div>
+
+    <div id="error-message">
+        <h3 class="text-danger">{{ 'Error loading preview' | trans }}</h3>
+        <p id="error-details"></p>
+        <button class="btn btn-primary mt-3" onclick="window.location.reload()">{{ 'Try again' | trans }}</button>
+    </div>
+
+    <iframe id="viewer-iframe" src="" allowfullscreen></iframe>
+
+    <script>
+        (async function() {
+            const uuid = '{{ uuid }}';
+            // Fallback for basePath if empty so that we don't end up with /viewer/ being parsed as absolute domain root
+            const basePath = '{{ basePath }}';
+            const loader = document.getElementById('loader');
+            const loaderText = document.getElementById('loader-text');
+            const errorMessage = document.getElementById('error-message');
+            const errorDetails = document.getElementById('error-details');
+            const iframe = document.getElementById('viewer-iframe');
+
+            function showError(msg) {
+                console.error('[Viewer] Showing error:', msg);
+                loader.style.display = 'none';
+                errorMessage.style.display = 'block';
+                errorDetails.textContent = msg;
+            }
+
+            try {
+                // 1. Fetch the zip file
+                console.log(`[Viewer] Fetching project data for UUID: ${uuid}`);
+                loaderText.textContent = "{{ 'Downloading project...' | trans }}";
+                const response = await fetch(`${basePath}/api/v1/export/projects/${uuid}/export-preview`);
+
+                console.log(`[Viewer] Fetch response status: ${response.status}`);
+                if (!response.ok) {
+                    if (response.status === 403 || response.status === 401) {
+                        throw new Error("{{ 'You do not have permission to view this project.' | trans }}");
+                    } else if (response.status === 404) {
+                        throw new Error("{{ 'Project not found.' | trans }}");
+                    }
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+
+                const arrayBuffer = await response.arrayBuffer();
+                console.log(`[Viewer] Downloaded zip size: ${arrayBuffer.byteLength} bytes`);
+
+                // 2. Unzip using fflate
+                loaderText.textContent = "{{ 'Extracting files...' | trans }}";
+                const zipData = new Uint8Array(arrayBuffer);
+                const unzipped = fflate.unzipSync(zipData);
+
+                // Convert fflate output to what the ServiceWorker expects
+                const files = {};
+                let fileCount = 0;
+                for (const [path, data] of Object.entries(unzipped)) {
+                    if (data.length > 0 || !path.endsWith('/')) {
+                        files[path] = data;
+                        fileCount++;
+                    }
+                }
+                console.log(`[Viewer] Extracted ${fileCount} files`);
+
+                // 3. Register Service Worker and send files
+                loaderText.textContent = "{{ 'Starting viewer...' | trans }}";
+
+                // Ensure SW is registered
+                let registration;
+                if ('serviceWorker' in navigator) {
+                    console.log(`[Viewer] Registering Service Worker at ${basePath}/preview-sw.js`);
+                    // Register SW with the /viewer/ scope
+                    registration = await navigator.serviceWorker.register(`${basePath}/preview-sw.js`, {
+                        scope: `${basePath}/viewer/`
+                    });
+                    console.log(`[Viewer] Registration successful. Scope: ${registration.scope}`);
+                } else {
+                    throw new Error("{{ 'Service Workers are not supported in this browser. Please use a modern browser.' | trans }}");
+                }
+
+                // Wait for the active worker to be ready to receive messages
+                let sw = registration.active;
+
+                if (!sw) {
+                    sw = registration.installing || registration.waiting;
+                    if (sw) {
+                        console.log(`[Viewer] SW is ${sw.state}, waiting for state change...`);
+                        await new Promise(resolve => {
+                            const stateListener = () => {
+                                console.log(`[Viewer] SW state changed to: ${sw.state}`);
+                                if (sw.state === 'activated') {
+                                    sw.removeEventListener('statechange', stateListener);
+                                    resolve();
+                                }
+                            };
+                            sw.addEventListener('statechange', stateListener);
+                        });
+                    }
+                }
+
+                // Double check it's active
+                sw = registration.active || navigator.serviceWorker.controller;
+
+                if (!sw) {
+                    throw new Error('Service Worker is registered but no active worker found.');
+                }
+
+                console.log(`[Viewer] Using SW:`, sw.state);
+
+                // Send content via MessageChannel to ensure it's received before iframe loads
+                const channel = new MessageChannel();
+
+                channel.port1.onmessage = (event) => {
+                    console.log('[Viewer] Message from SW:', event.data);
+                    if (event.data && event.data.type === 'CONTENT_READY') {
+                        console.log('[Viewer] Content is ready, loading iframe.');
+                        // 4. Load the iframe
+                        loader.style.display = 'none';
+                        iframe.style.display = 'block';
+                        // Add a timestamp to bypass any caching
+                        iframe.src = `${basePath}/viewer/index.html?t=${Date.now()}`;
+                    }
+                };
+
+                // NOTE: Do not pass ArrayBuffers in transferables here because fflate
+                // might share the underlying buffer across multiple files or we might
+                // need to clone it correctly. The SW handles cloning natively if we just
+                // pass the port.
+                const transferables = [channel.port2];
+
+                console.log(`[Viewer] Sending SET_CONTENT to SW with ${Object.keys(files).length} files.`);
+                sw.postMessage({
+                    type: 'SET_CONTENT',
+                    data: { files, options: { openExternalLinksInNewWindow: false } }
+                }, transferables);
+
+                // Fallback in case CONTENT_READY is not received within 2 seconds
+                setTimeout(() => {
+                    if (loader.style.display !== 'none') {
+                        console.warn('[Viewer] Timeout waiting for CONTENT_READY, forcing iframe load');
+                        loader.style.display = 'none';
+                        iframe.style.display = 'block';
+                        // Add a timestamp to bypass any caching
+                        iframe.src = `${basePath}/viewer/index.html?t=${Date.now()}`;
+                    }
+                }, 2500);
+
+            } catch (err) {
+                console.error('[Viewer] Caught exception:', err);
+                showError(err.message || "{{ 'An unexpected error occurred.' | trans }}");
+            }
+        })();
+    </script>
+</body>
+</html>

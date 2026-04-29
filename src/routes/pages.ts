@@ -577,6 +577,79 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Workarea Page
             // =====================================================
+            .get('/view/:uuid', async ({ params, currentUser, isGuest, query, set, request, impersonation }) => {
+                const { uuid } = params;
+
+                // Load project
+                const project = await findProjectByUuid(db, uuid);
+                if (!project) {
+                    set.status = 404;
+                    const html = renderTemplate('workarea/error', {
+                        basePath: getBasePath(),
+                        locale: 'en',
+                        impersonation,
+                        error: 'Project not found.',
+                    });
+                    set.headers['Content-Type'] = 'text/html';
+                    return html;
+                }
+
+                // Check access
+                let hasAccess = false;
+                if (project.visibility === 'public') {
+                    hasAccess = true;
+                } else if (currentUser) {
+                    if (project.owner_id === currentUser.id || currentUser.is_admin) {
+                        hasAccess = true;
+                    } else {
+                        const access = await checkProjectAccess(db, currentUser.id, project.id);
+                        if (access?.role) {
+                            hasAccess = true;
+                        }
+                    }
+                }
+
+                if (!hasAccess) {
+                    set.status = 403;
+                    const html = renderTemplate('workarea/access-denied', {
+                        basePath: getBasePath(),
+                        locale: 'en',
+                        impersonation,
+                    });
+                    set.headers['Content-Type'] = 'text/html';
+                    return html;
+                }
+
+                // Get preferred locale
+                let userLocale = null;
+                if (currentUser) {
+                    const pref = await findPreference(db, currentUser.id, 'locale');
+                    if (pref) userLocale = pref.value;
+                }
+
+                const appLocale = process.env.APP_LOCALE;
+                const acceptLanguage = request.headers.get('accept-language');
+                const browserLocale = detectLocaleFromHeader(acceptLanguage);
+                const locale = userLocale || appLocale || browserLocale || DEFAULT_LOCALE;
+
+                setRenderLocale(locale);
+
+                const viewModel = {
+                    basePath: getBasePath(),
+                    uuid,
+                    title: project.title || 'Untitled Project',
+                    lang: locale,
+                    impersonation,
+                };
+
+                const html = renderTemplate('viewer/viewer', viewModel);
+                set.headers['Content-Type'] = 'text/html';
+                return html;
+            })
+
+            // =====================================================
+            // Workarea Page
+            // =====================================================
             .get('/workarea', async ({ currentUser, isGuest, query, set, jwt, request, impersonation }) => {
                 // Check if user is authenticated
                 if (!currentUser) {

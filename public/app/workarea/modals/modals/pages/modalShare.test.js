@@ -173,7 +173,7 @@ describe('ModalShare', () => {
     it('should copy link to clipboard and show success feedback', async () => {
       vi.useFakeTimers();
       modal.linkInput.value = 'http://link.to/project';
-      await modal.handleCopyLink();
+      await modal.handleCopyLink(modal.linkInput, modal.copyButton);
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://link.to/project');
       expect(modal.copyButton.classList.contains('copied')).toBe(true);
       vi.useRealTimers();
@@ -188,7 +188,7 @@ describe('ModalShare', () => {
       const execSpy = vi.spyOn(document, 'execCommand').mockReturnValue(true);
 
       modal.linkInput.value = 'http://link.to/project';
-      await modal.handleCopyLink();
+      await modal.handleCopyLink(modal.linkInput, modal.copyButton);
 
       expect(execSpy).toHaveBeenCalledWith('copy');
       navigator.clipboard = clipboardBackup;
@@ -775,7 +775,7 @@ describe('ModalShare', () => {
   describe('handleCopyLink - additional branches', () => {
     it('should return early when linkInput has no value', async () => {
       modal.linkInput.value = '';
-      await modal.handleCopyLink();
+      await modal.handleCopyLink(modal.linkInput, modal.copyButton);
       expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
     });
 
@@ -784,7 +784,7 @@ describe('ModalShare', () => {
       navigator.clipboard.writeText = vi.fn().mockRejectedValueOnce(new Error('denied'));
       const errorSpy = vi.spyOn(modal, 'showError');
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      await modal.handleCopyLink();
+      await modal.handleCopyLink(modal.linkInput, modal.copyButton);
       expect(errorSpy).toHaveBeenCalled();
       consoleErrorSpy.mockRestore();
     });
@@ -794,7 +794,7 @@ describe('ModalShare', () => {
     it('should revert button HTML after 2 seconds', () => {
       vi.useFakeTimers();
       const originalHTML = modal.copyButton.innerHTML;
-      modal.showCopySuccess();
+      modal.showCopySuccess(modal.copyButton);
       expect(modal.copyButton.classList.contains('copied')).toBe(true);
       vi.advanceTimersByTime(2000);
       expect(modal.copyButton.classList.contains('copied')).toBe(false);

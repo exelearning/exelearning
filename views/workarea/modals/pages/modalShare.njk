@@ -59,13 +59,13 @@
 
                 {# Link Section #}
                 <div id="share-link-section">
-                    <h6>{{ 'Link' | trans }}</h6>
-                    <div class="input-group">
+                    <h6>{{ 'Editor Link' | trans }}</h6>
+                    <div class="input-group mb-3">
                         <input type="text"
                                id="share-link-input"
                                class="form-control"
                                readonly
-                               aria-label="{{ 'Share link' | trans }}">
+                               aria-label="{{ 'Editor link' | trans }}">
                         <button id="share-copy-button"
                                 class="btn btn-outline-secondary"
                                 type="button"
@@ -73,6 +73,24 @@
                             <div class="auto-icon" aria-hidden="true">content_copy</div>
                             <span>{{ 'Copy link' | trans }}</span>
                         </button>
+                    </div>
+
+                    <div id="public-link-section" class="d-none">
+                        <h6>{{ 'Viewer Link (Public Read-Only)' | trans }}</h6>
+                        <div class="input-group">
+                            <input type="text"
+                                   id="public-link-input"
+                                   class="form-control"
+                                   readonly
+                                   aria-label="{{ 'Public viewer link' | trans }}">
+                            <button id="public-copy-button"
+                                    class="btn btn-outline-secondary"
+                                    type="button"
+                                    aria-label="{{ 'Copy link' | trans }}">
+                                <div class="auto-icon" aria-hidden="true">content_copy</div>
+                                <span>{{ 'Copy link' | trans }}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

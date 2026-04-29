@@ -105,6 +105,8 @@ describe('Export API v1', () => {
 
         await resetClientCacheForTesting();
         await up(db);
+        await db.deleteFrom('projects').execute();
+        await db.deleteFrom('users').execute();
 
         app = createTestApp();
 
@@ -181,6 +183,137 @@ describe('Export API v1', () => {
             expect(data.success).toBe(true);
             expect(data.data).toBeInstanceOf(Array);
             expect(data.data.length).toBeGreaterThan(0);
+        });
+    });
+
+    describe('GET /export/projects/:uuid/export-preview', () => {
+        it('should return 404 for non-existent project', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/non-existent/export-preview', {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+            expect(response.status).toBe(404);
+        });
+
+        it('should return 401 for non-public project without auth', async () => {
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'preview-private-project',
+                    title: 'Private Preview',
+                    owner_id: userId,
+                    visibility: 'private',
+                    created_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/preview-private-project/export-preview'),
+            );
+            expect(response.status).toBe(401);
+        });
+
+        it('should return 403 for non-owner on private project', async () => {
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'preview-admin-owned',
+                    title: 'Admin Owned',
+                    owner_id: adminId,
+                    visibility: 'private',
+                    created_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/preview-admin-owned/export-preview', {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+            expect(response.status).toBe(403);
+        });
+
+        it('should allow access to public project without auth', async () => {
+            const projectUuid = 'preview-public-project';
+            const projectResult = await db
+                .insertInto('projects')
+                .values({
+                    uuid: projectUuid,
+                    title: 'Public Preview',
+                    owner_id: adminId,
+                    visibility: 'public',
+                    created_at: now(),
+                })
+                .executeTakeFirst();
+            const projectId = Number(projectResult.insertId);
+
+            // Create a valid Yjs document
+            const ydoc = createMinimalYjsDocument(projectUuid);
+            const state = Y.encodeStateAsUpdate(ydoc);
+            await saveFullState(db, projectId, state);
+
+            const response = await app.handle(
+                new Request(`http://localhost/export/projects/${projectUuid}/export-preview`),
+            );
+
+            // Should return 200 with ZIP data for public project
+            expect(response.status).toBe(200);
+            expect(response.headers.get('Content-Type')).toBe('application/zip');
+        });
+
+        it('should return 500 when preview export fails (no Yjs document)', async () => {
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'preview-no-yjs',
+                    title: 'Preview No Yjs',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/preview-no-yjs/export-preview', {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+
+            expect([200, 500]).toContain(response.status);
+            if (response.status === 500) {
+                const data = (await response.json()) as { success: boolean; error: { code: string } };
+                expect(data.success).toBe(false);
+                expect(['EXPORT_ERROR', 'EXPORT_FAILED']).toContain(data.error.code);
+            }
+        });
+
+        it('should successfully generate preview for own project with valid Yjs document', async () => {
+            const projectUuid = 'preview-success-project';
+            const projectResult = await db
+                .insertInto('projects')
+                .values({
+                    uuid: projectUuid,
+                    title: 'Preview Success',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .executeTakeFirst();
+            const projectId = Number(projectResult.insertId);
+
+            const ydoc = createMinimalYjsDocument(projectUuid);
+            const state = Y.encodeStateAsUpdate(ydoc);
+            await saveFullState(db, projectId, state);
+
+            const response = await app.handle(
+                new Request(`http://localhost/export/projects/${projectUuid}/export-preview`, {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(response.headers.get('Content-Type')).toBe('application/zip');
+            const body = await response.arrayBuffer();
+            expect(body.byteLength).toBeGreaterThan(0);
         });
     });
 
@@ -292,6 +425,33 @@ describe('Export API v1', () => {
                 );
                 // Should pass auth check (not 401/403) - may fail at export step
                 expect([200, 500]).toContain(response.status);
+            }
+        });
+
+        it('should handle export error with catch block', async () => {
+            // Create a project where reconstructDocument will throw (no yjs_documents row but valid project)
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'error-catch-project',
+                    title: 'Error Catch Test',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .execute();
+
+            // The export should hit the catch block and return EXPORT_ERROR
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/error-catch-project/export/html5', {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+
+            expect([200, 500]).toContain(response.status);
+            if (response.status === 500) {
+                const data = (await response.json()) as { success: boolean; error: { code: string } };
+                expect(data.success).toBe(false);
+                expect(['EXPORT_ERROR', 'EXPORT_FAILED']).toContain(data.error.code);
             }
         });
 

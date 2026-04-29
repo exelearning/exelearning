@@ -108,12 +108,21 @@ const EXPORT_FORMATS: Record<
 
 async function checkProjectAccess(
     uuid: string,
-    auth: AuthenticatedUser,
+    auth: AuthenticatedUser | null,
+    allowPublic: boolean = false,
 ): Promise<{ project: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
     const project = await findProjectByUuid(db, uuid);
 
     if (!project) {
         return { project: null, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
+    }
+
+    if (allowPublic && project.visibility === 'public') {
+        return { project };
+    }
+
+    if (!auth) {
+        return { project: null, error: errorResponse('UNAUTHORIZED', 'Authentication required') };
     }
 
     if (project.owner_id !== auth.userId && !isAdmin(auth)) {
@@ -150,160 +159,256 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
     )
     // Register under /projects prefix for project-specific exports
     .group('/projects', app =>
-        app.get(
-            '/:uuid/export/:format',
-            async ({ headers, params, set }) => {
-                const authResult = await authenticateRequest(headers);
-                if (!authResult.success) {
-                    set.status = authResult.status;
-                    return authResult.response;
-                }
-                const auth = authResult.user;
+        app
+            .get(
+                '/:uuid/export-preview',
+                async ({ headers, params, set }) => {
+                    // Try to authenticate, but don't fail if no auth
+                    const authResult = await authenticateRequest(headers);
+                    const auth = authResult.success ? authResult.user : null;
 
-                const { project, error } = await checkProjectAccess(params.uuid, auth);
-                if (error) {
-                    set.status = error.error.code === 'NOT_FOUND' ? 404 : 403;
-                    return error;
-                }
-
-                const format = params.format;
-                const formatInfo = EXPORT_FORMATS[format];
-                if (!formatInfo) {
-                    set.status = 400;
-                    return errorResponse('INVALID_FORMAT', `Invalid export format: ${format}`);
-                }
-
-                try {
-                    // Load the Yjs document
-                    const ydoc = await reconstructDocument(project!.id);
-
-                    // Create document adapter
-                    const wrapper = new ServerYjsDocumentWrapper(ydoc, params.uuid);
-                    const documentAdapter = new YjsDocumentAdapter(wrapper);
-
-                    // Create asset providers
-                    const filesDir = getFilesDir();
-                    const assetsPath = path.join(filesDir, 'assets', params.uuid);
-
-                    const fsAssetProvider = new FileSystemAssetProvider(assetsPath);
-                    const dbAssetProvider = new DatabaseAssetProvider(db, project!.id);
-                    const assetProvider = new CombinedAssetProvider([fsAssetProvider, dbAssetProvider]);
-
-                    // Create resource provider (themes, idevices, base CSS)
-                    // Note: ResourceProvider expects the public/ directory as root
-                    // since it accesses multiple subdirectories (style/, files/perm/, app/, libs/)
-                    const resourceProvider = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
-
-                    // Create ZIP provider
-                    const zipProvider = new FflateZipProvider();
-
-                    // Create temp directory for export
-                    const tempDir = path.join(os.tmpdir(), 'exelearning-export', crypto.randomUUID());
-                    fs.mkdirSync(tempDir, { recursive: true });
-
-                    // Create the appropriate exporter
-                    let exporter;
-                    switch (format) {
-                        case 'html5':
-                            exporter = new Html5Exporter(
-                                documentAdapter,
-                                resourceProvider,
-                                assetProvider,
-                                zipProvider,
-                                {
-                                    singlePage: false,
-                                },
-                            );
-                            break;
-                        case 'html5-sp':
-                            exporter = new Html5Exporter(
-                                documentAdapter,
-                                resourceProvider,
-                                assetProvider,
-                                zipProvider,
-                                {
-                                    singlePage: true,
-                                },
-                            );
-                            break;
-                        case 'scorm12':
-                            exporter = new Scorm12Exporter(
-                                documentAdapter,
-                                resourceProvider,
-                                assetProvider,
-                                zipProvider,
-                            );
-                            break;
-                        case 'scorm2004':
-                            exporter = new Scorm2004Exporter(
-                                documentAdapter,
-                                resourceProvider,
-                                assetProvider,
-                                zipProvider,
-                            );
-                            break;
-                        case 'ims':
-                            exporter = new ImsExporter(documentAdapter, resourceProvider, assetProvider, zipProvider);
-                            break;
-                        case 'epub3':
-                            exporter = new Epub3Exporter(documentAdapter, resourceProvider, assetProvider, zipProvider);
-                            break;
-                        case 'elpx':
-                        case 'elp':
-                            exporter = new ElpxExporter(documentAdapter, resourceProvider, assetProvider, zipProvider);
-                            break;
-                        default:
-                            set.status = 400;
-                            return errorResponse('INVALID_FORMAT', `Unsupported format: ${format}`);
+                    // Check access: must be authenticated owner/collab OR visibility='public'
+                    const { project, error } = await checkProjectAccess(params.uuid, auth, true);
+                    if (error) {
+                        set.status = error.error.code === 'NOT_FOUND' ? 404 : auth ? 403 : 401;
+                        return error;
                     }
 
-                    // Run the export with server-side LaTeX pre-render hooks.
-                    // This keeps behavior consistent with the main export routes.
-                    const latexRenderer = new ServerLatexPreRenderer();
-                    const result = await exporter.export({
-                        preRenderLatex: async (html: string) => latexRenderer.preRender(html),
-                        preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
-                    });
+                    try {
+                        // Load the Yjs document
+                        const ydoc = await reconstructDocument(project!.id);
 
-                    if (!result.success || !result.data) {
+                        // Create document adapter
+                        const wrapper = new ServerYjsDocumentWrapper(ydoc, params.uuid);
+                        const documentAdapter = new YjsDocumentAdapter(wrapper);
+
+                        // Create asset providers
+                        const filesDir = getFilesDir();
+                        const assetsPath = path.join(filesDir, 'assets', params.uuid);
+
+                        const fsAssetProvider = new FileSystemAssetProvider(assetsPath);
+                        const dbAssetProvider = new DatabaseAssetProvider(db, project!.id);
+                        const assetProvider = new CombinedAssetProvider([fsAssetProvider, dbAssetProvider]);
+
+                        // Create resource provider
+                        const resourceProvider = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+
+                        // Create ZIP provider
+                        const zipProvider = new FflateZipProvider();
+
+                        // Create the HTML5 exporter for preview
+                        const exporter = new Html5Exporter(
+                            documentAdapter,
+                            resourceProvider,
+                            assetProvider,
+                            zipProvider,
+                            {
+                                singlePage: false,
+                            },
+                        );
+
+                        // Run the export with server-side LaTeX pre-render hooks.
+                        const latexRenderer = new ServerLatexPreRenderer();
+                        const result = await exporter.export({
+                            preRenderLatex: async (html: string) => latexRenderer.preRender(html),
+                            preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+                        });
+
+                        if (!result.success || !result.data) {
+                            set.status = 500;
+                            return errorResponse('EXPORT_FAILED', result.error || 'Export failed');
+                        }
+
+                        // Return the ZIP data
+                        return new Response(result.data, {
+                            headers: {
+                                'Content-Type': 'application/zip',
+                                'Content-Length': result.data.length.toString(),
+                            },
+                        });
+                    } catch (err) {
+                        console.error('[Export API Preview] Error:', err);
                         set.status = 500;
-                        return errorResponse('EXPORT_FAILED', result.error || 'Export failed');
+                        return errorResponse('EXPORT_ERROR', err instanceof Error ? err.message : 'Export failed');
+                    }
+                },
+                {
+                    detail: {
+                        summary: 'Export Project Preview',
+                        description: 'Get an HTML5 zip export of the project for the preview viewer',
+                        tags: ['Export'],
+                    },
+                },
+            )
+            .get(
+                '/:uuid/export/:format',
+                async ({ headers, params, set }) => {
+                    const authResult = await authenticateRequest(headers);
+                    if (!authResult.success) {
+                        set.status = authResult.status;
+                        return authResult.response;
+                    }
+                    const auth = authResult.user;
+
+                    const { project, error } = await checkProjectAccess(params.uuid, auth);
+                    if (error) {
+                        set.status = error.error.code === 'NOT_FOUND' ? 404 : 403;
+                        return error;
                     }
 
-                    // Set response headers for file download
-                    const title = documentAdapter.getMetadata().title || 'untitled';
-                    const safeTitle = title.replace(/[^a-zA-Z0-9-_]/g, '_');
-                    const filename = `${safeTitle}${formatInfo.extension}`;
+                    const format = params.format;
+                    const formatInfo = EXPORT_FORMATS[format];
+                    if (!formatInfo) {
+                        set.status = 400;
+                        return errorResponse('INVALID_FORMAT', `Invalid export format: ${format}`);
+                    }
 
-                    const contentDisposition = buildContentDisposition(filename);
-                    set.headers['Content-Type'] = formatInfo.mimeType;
-                    set.headers['Content-Disposition'] = contentDisposition;
-                    set.headers['Content-Length'] = result.data.length.toString();
+                    try {
+                        // Load the Yjs document
+                        const ydoc = await reconstructDocument(project!.id);
 
-                    // Clean up temp directory
-                    fs.rmSync(tempDir, { recursive: true, force: true });
+                        // Create document adapter
+                        const wrapper = new ServerYjsDocumentWrapper(ydoc, params.uuid);
+                        const documentAdapter = new YjsDocumentAdapter(wrapper);
 
-                    // Return the ZIP/export data
-                    return new Response(result.data, {
-                        headers: {
-                            'Content-Type': formatInfo.mimeType,
-                            'Content-Disposition': contentDisposition,
-                            'Content-Length': result.data.length.toString(),
-                        },
-                    });
-                } catch (err) {
-                    console.error('[Export API] Error:', err);
-                    set.status = 500;
-                    return errorResponse('EXPORT_ERROR', err instanceof Error ? err.message : 'Export failed');
-                }
-            },
-            {
-                params: ExportFormatParam,
-                detail: {
-                    summary: 'Export Project',
-                    description: 'Export a project to the specified format',
-                    tags: ['Export'],
+                        // Create asset providers
+                        const filesDir = getFilesDir();
+                        const assetsPath = path.join(filesDir, 'assets', params.uuid);
+
+                        const fsAssetProvider = new FileSystemAssetProvider(assetsPath);
+                        const dbAssetProvider = new DatabaseAssetProvider(db, project!.id);
+                        const assetProvider = new CombinedAssetProvider([fsAssetProvider, dbAssetProvider]);
+
+                        // Create resource provider (themes, idevices, base CSS)
+                        // Note: ResourceProvider expects the public/ directory as root
+                        // since it accesses multiple subdirectories (style/, files/perm/, app/, libs/)
+                        const resourceProvider = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+
+                        // Create ZIP provider
+                        const zipProvider = new FflateZipProvider();
+
+                        // Create temp directory for export
+                        const tempDir = path.join(os.tmpdir(), 'exelearning-export', crypto.randomUUID());
+                        fs.mkdirSync(tempDir, { recursive: true });
+
+                        // Create the appropriate exporter
+                        let exporter;
+                        switch (format) {
+                            case 'html5':
+                                exporter = new Html5Exporter(
+                                    documentAdapter,
+                                    resourceProvider,
+                                    assetProvider,
+                                    zipProvider,
+                                    {
+                                        singlePage: false,
+                                    },
+                                );
+                                break;
+                            case 'html5-sp':
+                                exporter = new Html5Exporter(
+                                    documentAdapter,
+                                    resourceProvider,
+                                    assetProvider,
+                                    zipProvider,
+                                    {
+                                        singlePage: true,
+                                    },
+                                );
+                                break;
+                            case 'scorm12':
+                                exporter = new Scorm12Exporter(
+                                    documentAdapter,
+                                    resourceProvider,
+                                    assetProvider,
+                                    zipProvider,
+                                );
+                                break;
+                            case 'scorm2004':
+                                exporter = new Scorm2004Exporter(
+                                    documentAdapter,
+                                    resourceProvider,
+                                    assetProvider,
+                                    zipProvider,
+                                );
+                                break;
+                            case 'ims':
+                                exporter = new ImsExporter(
+                                    documentAdapter,
+                                    resourceProvider,
+                                    assetProvider,
+                                    zipProvider,
+                                );
+                                break;
+                            case 'epub3':
+                                exporter = new Epub3Exporter(
+                                    documentAdapter,
+                                    resourceProvider,
+                                    assetProvider,
+                                    zipProvider,
+                                );
+                                break;
+                            case 'elpx':
+                            case 'elp':
+                                exporter = new ElpxExporter(
+                                    documentAdapter,
+                                    resourceProvider,
+                                    assetProvider,
+                                    zipProvider,
+                                );
+                                break;
+                            default:
+                                set.status = 400;
+                                return errorResponse('INVALID_FORMAT', `Unsupported format: ${format}`);
+                        }
+
+                        // Run the export with server-side LaTeX pre-render hooks.
+                        // This keeps behavior consistent with the main export routes.
+                        const latexRenderer = new ServerLatexPreRenderer();
+                        const result = await exporter.export({
+                            preRenderLatex: async (html: string) => latexRenderer.preRender(html),
+                            preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+                        });
+
+                        if (!result.success || !result.data) {
+                            set.status = 500;
+                            return errorResponse('EXPORT_FAILED', result.error || 'Export failed');
+                        }
+
+                        // Set response headers for file download
+                        const title = documentAdapter.getMetadata().title || 'untitled';
+                        const safeTitle = title.replace(/[^a-zA-Z0-9-_]/g, '_');
+                        const filename = `${safeTitle}${formatInfo.extension}`;
+
+                        const contentDisposition = buildContentDisposition(filename);
+                        set.headers['Content-Type'] = formatInfo.mimeType;
+                        set.headers['Content-Disposition'] = contentDisposition;
+                        set.headers['Content-Length'] = result.data.length.toString();
+
+                        // Clean up temp directory
+                        fs.rmSync(tempDir, { recursive: true, force: true });
+
+                        // Return the ZIP/export data
+                        return new Response(result.data, {
+                            headers: {
+                                'Content-Type': formatInfo.mimeType,
+                                'Content-Disposition': contentDisposition,
+                                'Content-Length': result.data.length.toString(),
+                            },
+                        });
+                    } catch (err) {
+                        console.error('[Export API] Error:', err);
+                        set.status = 500;
+                        return errorResponse('EXPORT_ERROR', err instanceof Error ? err.message : 'Export failed');
+                    }
                 },
-            },
-        ),
+                {
+                    params: ExportFormatParam,
+                    detail: {
+                        summary: 'Export Project',
+                        description: 'Export a project to the specified format',
+                        tags: ['Export'],
+                    },
+                },
+            ),
     );

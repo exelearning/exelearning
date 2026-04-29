@@ -35,6 +35,10 @@ export default class ModalShare extends Modal {
         this.linkInput = this.modalElement.querySelector('#share-link-input');
         this.copyButton = this.modalElement.querySelector('#share-copy-button');
 
+        this.publicLinkSection = this.modalElement.querySelector('#public-link-section');
+        this.publicLinkInput = this.modalElement.querySelector('#public-link-input');
+        this.publicCopyButton = this.modalElement.querySelector('#public-copy-button');
+
         this.ariaLive = this.modalElement.querySelector('#share-aria-live');
     }
 
@@ -60,8 +64,17 @@ export default class ModalShare extends Modal {
             this.handleVisibilityChange(e.target.value)
         );
 
-        // Copy link button
-        this.copyButton?.addEventListener('click', () => this.handleCopyLink());
+        // Copy link buttons
+        this.copyButton?.addEventListener('click', () => this.handleCopyLink(this.linkInput, this.copyButton));
+        this.publicCopyButton?.addEventListener('click', () => this.handleCopyLink(this.publicLinkInput, this.publicCopyButton));
+
+        // Select link text on click for easier manual copying
+        this.linkInput?.addEventListener('click', () => {
+            this.linkInput.select();
+        });
+        this.publicLinkInput?.addEventListener('click', () => {
+            this.publicLinkInput.select();
+        });
 
         // ESC key to close
         this.modalElement.addEventListener('keydown', (e) => {
@@ -354,15 +367,17 @@ export default class ModalShare extends Modal {
     }
 
     /**
-     * Update visibility help text
+     * Update visibility help text and public link
      */
     updateVisibilityHelp(visibility) {
         if (!this.visibilityHelp) return;
 
         if (visibility === 'public') {
             this.visibilityHelp.classList.remove('d-none');
+            this.publicLinkSection?.classList.remove('d-none');
         } else {
             this.visibilityHelp.classList.add('d-none');
+            this.publicLinkSection?.classList.add('d-none');
         }
     }
 
@@ -378,6 +393,11 @@ export default class ModalShare extends Modal {
             : this.buildShareUrl();
 
         this.linkInput.value = url;
+
+        // Render the public viewer link
+        if (this.publicLinkInput) {
+            this.publicLinkInput.value = this.buildPublicViewerUrl();
+        }
     }
 
     /**
@@ -399,6 +419,20 @@ export default class ModalShare extends Modal {
         }
 
         return url.toString();
+    }
+
+    /**
+     * Build public viewer URL
+     */
+    buildPublicViewerUrl() {
+        const projectUuid =
+            eXeLearning.app.project?.odeId ||
+            eXeLearning.app.project?.requestedProjectId ||
+            new URL(window.location.href).searchParams.get('project');
+
+        // Assuming base path is root or uses window.location.origin
+        const basePath = eXeLearning.app.runtimeConfig?.basePath || '';
+        return `${window.location.origin}${basePath}/view/${projectUuid}`;
     }
 
     /**
@@ -627,19 +661,20 @@ export default class ModalShare extends Modal {
     /**
      * Handle copy link action
      */
-    async handleCopyLink() {
-        const url = this.linkInput?.value;
+    async handleCopyLink(inputElement, buttonElement) {
+        if (!inputElement || !buttonElement) return;
+        const url = inputElement.value;
 
         if (!url) return;
 
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 await navigator.clipboard.writeText(url);
-                this.showCopySuccess();
+                this.showCopySuccess(buttonElement);
             } else {
-                this.linkInput.select();
+                inputElement.select();
                 document.execCommand('copy');
-                this.showCopySuccess();
+                this.showCopySuccess(buttonElement);
             }
 
             this.announce(_('Link copied to clipboard'));
@@ -652,20 +687,20 @@ export default class ModalShare extends Modal {
     /**
      * Show copy success feedback
      */
-    showCopySuccess() {
-        if (!this.copyButton) return;
+    showCopySuccess(buttonElement) {
+        if (!buttonElement) return;
 
-        const originalHTML = this.copyButton.innerHTML;
+        const originalHTML = buttonElement.innerHTML;
 
-        this.copyButton.classList.add('copied');
-        this.copyButton.innerHTML = `
+        buttonElement.classList.add('copied');
+        buttonElement.innerHTML = `
             <div class="auto-icon">check</div>
             <span>${_('Copied!')}</span>
         `;
 
         setTimeout(() => {
-            this.copyButton.classList.remove('copied');
-            this.copyButton.innerHTML = originalHTML;
+            buttonElement.classList.remove('copied');
+            buttonElement.innerHTML = originalHTML;
         }, 2000);
     }
 
