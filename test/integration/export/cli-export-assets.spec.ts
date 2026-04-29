@@ -4,9 +4,11 @@
  * Tests that CLI export correctly includes assets (images, audio, etc.)
  * from the content/resources/ directory of ELP files.
  *
- * This test validates that the FileSystemAssetProvider correctly
- * extracts asset UUIDs from paths like content/resources/{uuid}/{filename}
- * so they can be mapped and included in the export.
+ * Since the v4 fixture layout, every asset lives directly under
+ * `content/resources/<filename>` (no per-asset UUID subfolder). The
+ * `FileSystemAssetProvider` therefore exposes each asset with `id` ==
+ * `filename` and an empty `folderPath`. This test validates that flat
+ * structure round-trips correctly through the export pipeline.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
@@ -29,12 +31,16 @@ const FIXTURE_PATH = path.join(
     '../../fixtures/un-contenido-de-ejemplo-para-probar-estilos-y-catalogacion.elpx',
 );
 
-// Expected assets in the fixture (based on structure analysis)
-const EXPECTED_ASSETS = [
-    { id: '20251009090601DKVACR', files: ['01.jpg', 'colegio.mp3'] },
-    { id: '20251009090601IYVTRY', files: ['image001.jpg'] },
-    { id: '20251009090601ROYVYO', files: ['sq01.jpg', 'sq02.jpg', 'sq03.jpg'] },
-    { id: '20251009090601SQPBIF', files: ['00.jpg'] },
+// Expected assets in the fixture, flattened under content/resources/.
+// Sourced by listing the fixture's `content/resources/` directory.
+const EXPECTED_ASSETS: string[] = [
+    '01.jpg',
+    'colegio.mp3',
+    'image001.jpg',
+    'sq01.jpg',
+    'sq02.jpg',
+    'sq03.jpg',
+    '00.jpg',
 ];
 
 // Reference export fixture path
@@ -74,61 +80,44 @@ describe('CLI Export Assets', () => {
             console.log(`[Test] Found ${assets.length} assets`);
         });
 
-        it('should extract folderPath from content/resources/{folder}/{filename}', async () => {
+        it('should expose flat asset id/filename for each resource', async () => {
             const assetProvider = new FileSystemAssetProvider(extractedPath);
             const assets = await assetProvider.getAllAssets();
 
-            // Find an asset from the expected list
-            const expectedFolder = EXPECTED_ASSETS[0].id; // 20251009090601DKVACR (just a folder name)
-            const expectedFile = EXPECTED_ASSETS[0].files[0]; // 01.jpg
+            const expectedFile = EXPECTED_ASSETS[0]; // '01.jpg'
+            const foundAsset = assets.find(a => a.id === expectedFile);
 
-            // Asset ID should be folder/filename for uniqueness
-            const foundAsset = assets.find(a => a.id === `${expectedFolder}/${expectedFile}`);
-
-            // The asset should have folderPath set to the folder name
+            // v4 assets are flat: id == filename, no folderPath
             expect(foundAsset).toBeDefined();
-            expect(foundAsset?.folderPath).toBe(expectedFolder);
             expect(foundAsset?.filename).toBe(expectedFile);
-            // ID should not contain the full 'content/resources/' prefix
+            expect(foundAsset?.folderPath ?? '').toBe('');
             expect(foundAsset?.id).not.toContain('content/resources/');
+            expect(foundAsset?.id).not.toContain('/');
 
             console.log(`[Test] Asset ID: ${foundAsset?.id}`);
-            console.log(`[Test] Asset folderPath: ${foundAsset?.folderPath}`);
             console.log(`[Test] Asset filename: ${foundAsset?.filename}`);
         });
 
-        it('should find all expected asset files', async () => {
+        it('should find every expected asset file by flat id', async () => {
             const assetProvider = new FileSystemAssetProvider(extractedPath);
             const assets = await assetProvider.getAllAssets();
 
-            // For each expected folder, check that all files are found
-            for (const expected of EXPECTED_ASSETS) {
-                for (const filename of expected.files) {
-                    // Asset ID format: folder/filename
-                    const expectedId = `${expected.id}/${filename}`;
-                    const foundAsset = assets.find(a => a.id === expectedId);
-
-                    expect(foundAsset).toBeDefined();
-                    if (!foundAsset) {
-                        console.error(`[Test] Missing asset: ${expectedId}`);
-                    }
+            for (const filename of EXPECTED_ASSETS) {
+                const foundAsset = assets.find(a => a.id === filename);
+                expect(foundAsset).toBeDefined();
+                if (!foundAsset) {
+                    console.error(`[Test] Missing asset: ${filename}`);
                 }
             }
         });
 
-        it('should have unique IDs for files in same folder', async () => {
+        it('should yield unique ids across the resources directory', async () => {
             const assetProvider = new FileSystemAssetProvider(extractedPath);
             const assets = await assetProvider.getAllAssets();
 
-            // The folder 20251009090601DKVACR has two files: 01.jpg and colegio.mp3
-            // They should have different IDs
-            const folder = '20251009090601DKVACR';
-            const jpg = assets.find(a => a.id === `${folder}/01.jpg`);
-            const mp3 = assets.find(a => a.id === `${folder}/colegio.mp3`);
-
-            expect(jpg).toBeDefined();
-            expect(mp3).toBeDefined();
-            expect(jpg?.id).not.toBe(mp3?.id);
+            const ids = assets.map(a => a.id);
+            const unique = new Set(ids);
+            expect(unique.size).toBe(ids.length);
         });
     });
 
@@ -151,21 +140,18 @@ describe('CLI Export Assets', () => {
 
             const zipFiles = Object.keys(unzipped);
 
-            // Check that asset files are included
-            // Expected paths: content/resources/{uuid}/{filename}
-            for (const expected of EXPECTED_ASSETS) {
-                for (const filename of expected.files) {
-                    const expectedPath = `content/resources/${expected.id}/${filename}`;
-                    const found = zipFiles.some(f => f === expectedPath);
+            // Expected paths are flat: content/resources/{filename}
+            for (const filename of EXPECTED_ASSETS) {
+                const expectedPath = `content/resources/${filename}`;
+                const found = zipFiles.some(f => f === expectedPath);
 
-                    expect(found).toBe(true);
-                    if (!found) {
-                        console.error(`[Test] Missing asset: ${expectedPath}`);
-                        console.error(
-                            `[Test] Available paths with resources:`,
-                            zipFiles.filter(f => f.includes('resources')),
-                        );
-                    }
+                expect(found).toBe(true);
+                if (!found) {
+                    console.error(`[Test] Missing asset: ${expectedPath}`);
+                    console.error(
+                        `[Test] Available paths with resources:`,
+                        zipFiles.filter(f => f.includes('resources')),
+                    );
                 }
             }
         });
@@ -188,31 +174,36 @@ describe('CLI Export Assets', () => {
 
             expect(result.success).toBe(true);
 
-            // Extract and compare asset structure
+            // Extract and compare asset filenames (the reference export may still
+            // use the legacy UUID-folder layout, so compare by filename only).
             const zipBuffer = result.data!;
             const unzipped = fflate.unzipSync(new Uint8Array(zipBuffer));
-            const zipFiles = Object.keys(unzipped);
+            const zipFilenames = new Set(
+                Object.keys(unzipped)
+                    .filter(p => p.startsWith('content/resources/'))
+                    .map(p => path.basename(p)),
+            );
 
-            // Get expected asset files from reference
             const expectedAssetsDir = path.join(EXPECTED_EXPORT_DIR, 'content/resources');
             if (await fs.pathExists(expectedAssetsDir)) {
-                const expectedDirs = await fs.readdir(expectedAssetsDir);
-
-                for (const assetId of expectedDirs) {
-                    const assetDir = path.join(expectedAssetsDir, assetId);
-                    const stat = await fs.stat(assetDir);
-
-                    if (stat.isDirectory()) {
-                        const files = await fs.readdir(assetDir);
-                        for (const file of files) {
-                            const expectedPath = `content/resources/${assetId}/${file}`;
-                            const found = zipFiles.includes(expectedPath);
-
-                            expect(found).toBe(true);
-                            if (!found) {
-                                console.error(`[Test] Reference asset missing in export: ${expectedPath}`);
-                            }
+                const referenceFilenames = new Set<string>();
+                const walk = async (dir: string) => {
+                    for (const entry of await fs.readdir(dir)) {
+                        const full = path.join(dir, entry);
+                        const stat = await fs.stat(full);
+                        if (stat.isDirectory()) {
+                            await walk(full);
+                        } else {
+                            referenceFilenames.add(entry);
                         }
+                    }
+                };
+                await walk(expectedAssetsDir);
+
+                for (const filename of referenceFilenames) {
+                    expect(zipFilenames.has(filename)).toBe(true);
+                    if (!zipFilenames.has(filename)) {
+                        console.error(`[Test] Reference filename missing in export: ${filename}`);
                     }
                 }
             }
