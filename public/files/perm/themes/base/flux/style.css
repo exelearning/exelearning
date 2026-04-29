@@ -283,6 +283,14 @@ body#tinymce {
     font-weight: 400;
 }
 
+.exe-content {
+    --exe-icon-color: #e3ac3b;
+}
+
+.exe-content .box-head .box-icon {
+    color: var(--exe-icon-color, #e3ac3b);
+}
+
 /* Teacher mode visual indicator */
 .exe-content article.box.teacher-only {
     border: 3px solid #FC0;
@@ -676,9 +684,29 @@ body.siteNav-off button#siteNavToggler .sr-av {
     margin-right: 10px;
 }
 
+.exe-export .box-icon .exe-material-icon {
+    display: block;
+    float: left;
+    margin-right: 10px;
+    background-color: currentColor;
+    -webkit-mask-image: var(--exe-material-icon-url);
+    mask-image: var(--exe-material-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
+
 .exe-export .box-icon img {
     width: 40px;
     height: auto;
+}
+
+.exe-export .box-icon .exe-material-icon {
+    width: 40px;
+    height: 40px;
 }
 
 .exe-export .box-title {

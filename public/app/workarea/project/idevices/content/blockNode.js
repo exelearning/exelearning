@@ -3,9 +3,72 @@ import {
     buildComponentFileName,
     buildComponentStorageKey,
 } from './componentDownloadHelper.js';
+import { MATERIAL_ICON_CATALOG } from './materialIconCatalog.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
+
+const LEGACY_ICON_MAP = {
+    info: 'info',
+    warning: 'warning',
+    alert: 'warning',
+    tip: 'lightbulb',
+    activity: 'checklist',
+    read: 'menu_book',
+    reflection: 'chat',
+    objectives: 'target',
+    keypoints: 'bookmark',
+};
+
+const THEME_ICON_COLOR_MAP = {
+    base: '#cb744c',
+    flux: '#e3ac3b',
+    nova: '#e3ac3b',
+    neo: '#e3ac3b',
+    zen: '#c32957',
+    universal: '#0d2953',
+};
+
+const localBlockIconRuntime = {
+    resolveAppAssetUrl(path, options = {}) {
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        const app = options.app || window.eXeLearning?.app;
+        const composeUrl = app?.composeUrl;
+        if (typeof composeUrl === 'function') {
+            return composeUrl.call(app, normalizedPath);
+        }
+
+        let config = options.config ?? window.eXeLearning?.config;
+        if (typeof config === 'string') {
+            try {
+                config = JSON.parse(config);
+            } catch (e) {
+                config = null;
+            }
+        }
+
+        const basePath = config?.basePath || window.eXeLearning?.symfony?.basePath || '';
+        const cleanBasePath = !basePath || basePath === '/' ? '' : basePath.replace(/\/+$/, '');
+        return cleanBasePath ? `${cleanBasePath}${normalizedPath}` : normalizedPath;
+    },
+
+    getMaterialIconPath(iconName, options = {}) {
+        const catalog = options.catalog;
+        const safeIconName = !iconName
+            ? 'help'
+            : (!Array.isArray(catalog) || catalog.includes(iconName))
+                ? iconName
+                : 'help';
+        return this.resolveAppAssetUrl(`/libs/material-icons/icons/${safeIconName}.svg`, options);
+    },
+
+    renderMaterialMaskIcon(iconName, options = {}) {
+        const iconPath = this.getMaterialIconPath(iconName, options);
+        return `<span class="exe-material-icon" style="--exe-material-icon-url:url('${iconPath}');" aria-hidden="true"></span>`;
+    },
+};
+
+const blockIconRuntime = window.eXeBlockIconRuntime || localBlockIconRuntime;
 /**
  * eXeLearning
  *
@@ -82,6 +145,7 @@ export default class IdeviceBlockNode {
         'mode',
         'blockName',
         'iconName',
+        'icon',
         'order',
     ];
 
@@ -90,8 +154,9 @@ export default class IdeviceBlockNode {
      */
     default = {
         mode: 'export',
-        blockName: '',
-        iconName: '',
+        blockName: null,
+        iconName: null,
+        icon: null,
         order: 0,
     };
 
@@ -102,8 +167,12 @@ export default class IdeviceBlockNode {
      */
     setParams(data) {
         for (let [i, param] of Object.entries(this.params)) {
-            let defaultValue = this.default[param] ? this.default[param] : null;
-            this[param] = data[param] ? data[param] : defaultValue;
+            let defaultValue = this.default[param] !== undefined ? this.default[param] : null;
+            this[param] = data[param] !== undefined ? data[param] : defaultValue;
+        }
+        this.icon = this.normalizeIconDescriptor(this.icon || data.icon, this.iconName);
+        if (this.iconName === undefined) {
+            this.iconName = this.icon?.name || null;
         }
         if (data.odePagStructureSyncProperties) {
             this.setProperties(data.odePagStructureSyncProperties);
@@ -116,6 +185,252 @@ export default class IdeviceBlockNode {
      */
     isYjsEnabled() {
         return eXeLearning.app?.project?._yjsEnabled === true;
+    }
+
+
+    normalizeIconDescriptor(iconData, legacyIconName = '') {
+        if (iconData && typeof iconData === 'object' && iconData.source) {
+            if (iconData.source === 'none') return { source: 'none', value: '' };
+            return {
+                source: iconData.source,
+                value: iconData.value || '',
+                name: iconData.name || iconData.value || '',
+            };
+        }
+
+        const legacy = legacyIconName || '';
+        if (!legacy) return { source: 'none', value: '' };
+
+        if (legacy.startsWith('mi-')) {
+            const value = legacy.replace(/^mi-/, '');
+            return { source: 'material', value, name: value };
+        }
+        if (legacy.startsWith('asset://') || legacy.startsWith('/')) {
+            return { source: 'asset', value: legacy, name: legacy };
+        }
+        if (LEGACY_ICON_MAP[legacy]) {
+            const mapped = LEGACY_ICON_MAP[legacy];
+            return { source: 'material', value: mapped, name: mapped };
+        }
+        return { source: 'theme', value: legacy, name: legacy };
+    }
+
+    getEffectiveIcon() {
+        this.icon = this.normalizeIconDescriptor(this.icon, this.iconName);
+        return this.icon;
+    }
+
+    getEmptyIconSvg() {
+        return `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="0.5" y="0.5" width="39" height="39" rx="5.5" stroke="#9ca3af" stroke-dasharray="5 5"/>
+<path d="M20 13V27M13 20H27" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+    }
+
+    getModalNoIconSvg() {
+        return `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="20" cy="20" r="13" stroke="currentColor" stroke-width="2.5"/>
+<path d="M28.5 11.5L11.5 28.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+</svg>`;
+    }
+
+    getMaterialIconPath(iconName) {
+        return blockIconRuntime.getMaterialIconPath(iconName, {
+            app: window.eXeLearning?.app,
+            config: window.eXeLearning?.config,
+            catalog: MATERIAL_ICON_CATALOG,
+        });
+    }
+
+    getMaterialSpritePath() {
+        return this.resolveAppAssetUrl('/libs/material-icons/material-icons.svg');
+    }
+
+    getAssetManager() {
+        return eXeLearning?.app?.project?._yjsBridge?.assetManager || null;
+    }
+
+    getCanonicalAssetUrl(assetInfo) {
+        if (!assetInfo) return '';
+
+        const selected = Array.isArray(assetInfo) ? assetInfo[0] : assetInfo;
+        const assetManager = this.getAssetManager();
+        const assetId = selected?.asset?.id;
+        const assetFilename = selected?.asset?.filename;
+
+        if (assetManager?.getAssetUrl && assetId) {
+            const canonicalUrl = assetManager.getAssetUrl(assetId, assetFilename);
+            if (canonicalUrl?.startsWith('asset://')) {
+                return canonicalUrl;
+            }
+        }
+
+        if (typeof selected?.assetUrl === 'string' && selected.assetUrl.startsWith('asset://')) {
+            return selected.assetUrl;
+        }
+
+        return '';
+    }
+
+    getRenderableAssetUrl(assetUrl) {
+        if (!assetUrl) return '';
+        if (assetUrl.startsWith('asset://')) {
+            const assetManager = this.getAssetManager();
+            const resolvedUrl = assetManager?.resolveAssetURLSync?.(assetUrl);
+            if (resolvedUrl) return resolvedUrl;
+            const assetId = assetManager?.extractAssetId?.(assetUrl);
+            const loadingPlaceholder = assetId ? assetManager?.generateLoadingPlaceholder?.(assetId) : '';
+            return loadingPlaceholder || '';
+        }
+        if (assetUrl.startsWith('/')) {
+            return this.resolveAppAssetUrl(assetUrl);
+        }
+        return assetUrl;
+    }
+
+    resolveThemeIconData(iconValue) {
+        const themeIcons = eXeLearning.app.themes.getThemeIcons() || {};
+        if (themeIcons[iconValue]) {
+            return themeIcons[iconValue];
+        }
+
+        return Object.values(themeIcons).find(
+            (themeIcon) => themeIcon.id === iconValue || themeIcon.value === iconValue
+        );
+    }
+
+    getAssetPreviewDescriptor(iconDescriptor) {
+        const icon = this.normalizeIconDescriptor(iconDescriptor);
+        return {
+            ...icon,
+            previewUrl: icon.previewUrl || this.getRenderableAssetUrl(icon.value),
+        };
+    }
+
+    async refreshAssetIconPreview(iconDescriptor = this.getEffectiveIcon()) {
+        const icon = this.normalizeIconDescriptor(iconDescriptor);
+        if (icon.source !== 'asset' || !icon.value || !this.iconElement) return;
+
+        const assetManager = this.getAssetManager();
+        if (!assetManager?.resolveAssetURL) return;
+
+        const resolvedUrl = await assetManager.resolveAssetURL(icon.value);
+        if (!resolvedUrl) return;
+
+        const currentIcon = this.getEffectiveIcon();
+        if (currentIcon.source !== 'asset' || currentIcon.value !== icon.value || !this.iconElement) {
+            return;
+        }
+
+        const img = this.iconElement.querySelector('img');
+        if (img) {
+            img.src = resolvedUrl;
+        } else {
+            this.iconElement.innerHTML = this.renderIconPreviewHtml({
+                ...icon,
+                previewUrl: resolvedUrl,
+            });
+        }
+    }
+
+    renderMaterialMaskIcon(iconName) {
+        return blockIconRuntime.renderMaterialMaskIcon(iconName, {
+            app: window.eXeLearning?.app,
+            config: window.eXeLearning?.config,
+            catalog: MATERIAL_ICON_CATALOG,
+        });
+    }
+
+    renderMaterialSpriteIcon(iconName) {
+        const safeIconName = MATERIAL_ICON_CATALOG.includes(iconName) ? iconName : 'help';
+        const spritePath = this.getMaterialSpritePath();
+        const spriteHref = `${spritePath}#${safeIconName}`;
+        return `<svg class="exe-material-icon-sprite" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+<use href="${spriteHref}" xlink:href="${spriteHref}"></use>
+</svg>`;
+    }
+
+    renderIconPreviewHtml(iconDescriptor) {
+        const icon = this.normalizeIconDescriptor(iconDescriptor);
+        if (!icon || icon.source === 'none' || !icon.value) {
+            return this.getEmptyIconSvg();
+        }
+
+        if (icon.source === 'material') {
+            return this.renderMaterialMaskIcon(icon.value);
+        }
+
+        if (icon.source === 'asset') {
+            const assetIcon = this.getAssetPreviewDescriptor(icon);
+            return `<img src="${assetIcon.previewUrl}" alt="${assetIcon.name || assetIcon.value}">`;
+        }
+
+        const iconData = this.resolveThemeIconData(icon.value);
+        if (iconData?.value) {
+            const imageNode = this.makeIconValueElement(iconData);
+            return imageNode.outerHTML;
+        }
+        return this.getEmptyIconSvg();
+    }
+
+    getCustomIconSvg() {
+        return `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<rect x="0.5" y="0.5" width="39" height="39" rx="7.5" stroke="currentColor" stroke-dasharray="4 4"/>
+<path d="M20 12V28M12 20H28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>`;
+    }
+
+    getCurrentThemeIconColor() {
+        const colorCandidates = [
+            this.headElement,
+            this.blockNameElementText,
+            this.iconElement,
+        ].filter(Boolean);
+
+        for (const colorSource of colorCandidates) {
+            if (!window.getComputedStyle) break;
+            const styles = window.getComputedStyle(colorSource);
+            const customColor = styles.getPropertyValue('--exe-icon-color').trim()
+                || styles.getPropertyValue('--icon-primary').trim();
+            if (customColor) {
+                return customColor;
+            }
+
+            const color = styles.color;
+            if (color && color !== 'rgba(0, 0, 0, 0)') {
+                return color;
+            }
+        }
+
+        const selectedThemeId = eXeLearning.app?.themes?.selected?.id;
+        if (selectedThemeId && THEME_ICON_COLOR_MAP[selectedThemeId]) {
+            return THEME_ICON_COLOR_MAP[selectedThemeId];
+        }
+
+        return '#6E9F41';
+    }
+
+    resolveAppAssetUrl(path) {
+        return blockIconRuntime.resolveAppAssetUrl(path, {
+            app: window.eXeLearning?.app,
+            config: window.eXeLearning?.config,
+        });
+    }
+
+    applyIconElementState(iconDescriptor) {
+        if (!this.iconElement) return;
+
+        const icon = this.normalizeIconDescriptor(iconDescriptor);
+        this.iconElement.innerHTML = this.renderIconPreviewHtml(icon);
+        this.iconElement.style.removeProperty('color');
+
+        const hasIcon = icon.source !== 'none' && !!icon.value;
+        this.iconElement.classList.toggle('exe-no-icon', !hasIcon);
+        this.iconElement.setAttribute('title', hasIcon ? _('Select an icon') : _('No icon'));
+
+        if (icon.source === 'asset' && hasIcon) {
+            this.refreshAssetIconPreview(icon);
+        }
     }
 
     /**
@@ -455,49 +770,20 @@ export default class IdeviceBlockNode {
         this.iconElement.classList.add('exe-icon');
         this.iconElement.classList.add('box-icon', 'exe-app-tooltip');
         this.iconElement.setAttribute('data-bs-toggle', 'tooltip');
-        this.iconElement.setAttribute(
-            'data-bs-original-title',
-            _('Select an icon')
-        );
+        this.iconElement.setAttribute('data-bs-original-title', _('Select an icon'));
         this.iconElement.setAttribute('aria-label', _('Select an icon'));
         this.iconElement.setAttribute('type', 'button');
-        // Get actual theme icon based in icon-id
-        let iconData = false;
-        // Get icon id
-        if (this.iconName) {
-            // Get theme icons object
-            const themeIcons = eXeLearning.app.themes.getThemeIcons() || {};
-            // First try direct lookup (iconName is the key in themeIcons)
-            iconData = themeIcons[this.iconName];
-            // If not found, search by icon.id or icon.value (same fallback as _syncBlockIcon)
-            if (!iconData) {
-                for (const icon of Object.values(themeIcons)) {
-                    if (icon.id === this.iconName || icon.value === this.iconName) {
-                        iconData = icon;
-                        break;
-                    }
-                }
-            }
-            if (iconData) {
-                // Icon exists in actual theme
-                let newIconValue = this.makeIconValueElement(iconData);
-                this.iconElement.innerHTML = newIconValue.outerHTML;
-                this.iconElement.classList.remove('exe-no-icon');
 
-                this.iconElement.setAttribute('title', _('Select an icon'));
-            }
+        if (!this.iconName) {
+            this.icon = { source: 'none', value: '' };
         }
-        // Check if icon is valid
-        if (!iconData) {
-            this.iconElement.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect x="0.5" y="0.5" width="39" height="39" rx="5.5" stroke="#9ca3af" stroke-dasharray="5 5"/>
-<path d="M20 13V27M13 20H27" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-            this.iconElement.classList.add('exe-no-icon');
-            this.iconElement.setAttribute('title', _('No icon'));
-        }
+        this.applyIconElementState(this.getEffectiveIcon());
 
         return this.iconElement;
+    }
+
+    previewIconElement(iconDescriptor) {
+        this.applyIconElementState(iconDescriptor);
     }
 
     /**
@@ -508,16 +794,8 @@ export default class IdeviceBlockNode {
     makeIconValueElement(icon) {
         let iconValue = document.createElement('img');
         let iconSrc = icon.value;
-        // In static mode, convert absolute paths to relative for subdirectory support
-        if (iconSrc.startsWith('/') && window.eXeLearning?.config) {
-            let config = window.eXeLearning.config;
-            if (typeof config === 'string') {
-                try { config = JSON.parse(config); } catch(e) { config = null; }
-            }
-            if (config?.isStaticMode || config?.isOfflineInstallation) {
-                // Remove leading slash to make path relative to current location
-                iconSrc = '.' + iconSrc;
-            }
+        if (iconSrc.startsWith('/')) {
+            iconSrc = this.resolveAppAssetUrl(iconSrc);
         }
         iconValue.setAttribute('src', iconSrc);
         iconValue.setAttribute('alt', icon.title);
@@ -1240,10 +1518,14 @@ export default class IdeviceBlockNode {
         eXeLearning.app.modals.confirm.show({
             title: _('Select icon'),
             body: this.makeModalChangeIconBody().outerHTML,
+            contentId: 'block-icon-picker',
             confirmButtonText: _('Save'),
             cancelButtonText: _('Cancel'),
             confirmExec: () => {
                 this.saveIconAction();
+            },
+            cancelExec: () => {
+                this.makeIconNameElement();
             },
             behaviour: () => {
                 this.addBehaviourToModalChangeIconBody();
@@ -1256,23 +1538,181 @@ export default class IdeviceBlockNode {
      *
      */
     saveIconAction() {
-        let modalBody = eXeLearning.app.modals.confirm.modalElementBody;
-        let iconElement = modalBody.querySelector(
-            '.option-block-icon[selected="true"]'
-        );
-        // Get icon value
-        let iconValue = '';
-        if (iconElement) {
-            let iconId = iconElement.getAttribute('icon-id');
-            iconValue = iconId ? iconId : iconElement.innerHTML;
+        const modalBody = eXeLearning.app.modals.confirm.modalElementBody;
+        this.apiUpdateIcon(this.getModalSelectedIconDescriptor(modalBody));
+    }
+
+    createModalIconSearchInput() {
+        const search = document.createElement('input');
+        search.type = 'text';
+        search.className = 'form-control form-control-sm';
+        search.placeholder = _('Search icon');
+        search.id = 'block-icon-search-input';
+        return search;
+    }
+
+    createModalIconCustomButton() {
+        const customButton = document.createElement('button');
+        customButton.type = 'button';
+        customButton.id = 'block-icon-custom-button';
+        customButton.className = 'btn btn-light btn-sm icon-picker-custom-button';
+        customButton.innerHTML = `${this.getCustomIconSvg()}<span>${_('Image')}</span>`;
+        customButton.setAttribute('title', _('Choose image from file manager'));
+        return customButton;
+    }
+
+    createModalIconOption(iconConfig, title, currentIcon, options = {}) {
+        const iconElement = document.createElement('div');
+        iconElement.classList.add('exe-icon', 'option-block-icon');
+        if (options.className) {
+            iconElement.classList.add(...options.className.split(' ').filter(Boolean));
         }
-        // No icon
-        if (iconValue == '0' || iconValue == this.emptyIcon) {
-            iconValue = '';
+        iconElement.setAttribute('tabindex', 0);
+        iconElement.setAttribute('data-icon-source', iconConfig.source);
+        iconElement.setAttribute('data-icon-value', iconConfig.value || '');
+        iconElement.setAttribute('title', title || iconConfig.value || _('Icon'));
+        const modalPreviewHtml =
+            iconConfig.source === 'material'
+                ? this.renderMaterialSpriteIcon(iconConfig.value)
+                : this.renderIconPreviewHtml(iconConfig);
+        iconElement.innerHTML = options.innerHtml || modalPreviewHtml;
+        if (options.iconId) {
+            iconElement.setAttribute('icon-id', options.iconId);
         }
-        // Note: Yjs sync is handled by apiUpdateIcon -> putSaveBlock -> apiCallManager
-        // Do not sync here to avoid duplicate undo entries
-        this.apiUpdateIcon(iconValue);
+        if (currentIcon.source === iconConfig.source && (currentIcon.value || '') === (iconConfig.value || '')) {
+            iconElement.setAttribute('selected', 'true');
+        }
+        return iconElement;
+    }
+
+    clearModalCustomSelection(modalBody, customButton) {
+        modalBody.removeAttribute('data-custom-icon-source');
+        modalBody.removeAttribute('data-custom-icon-value');
+        modalBody.removeAttribute('data-custom-icon-name');
+        customButton?.classList.remove('selected');
+    }
+
+    getModalCustomSelection(modalBody) {
+        return {
+            source: modalBody.getAttribute('data-custom-icon-source') || '',
+            value: modalBody.getAttribute('data-custom-icon-value') || '',
+            name: modalBody.getAttribute('data-custom-icon-name') || '',
+        };
+    }
+
+    createCustomAssetIconDescriptor(value, name = '') {
+        return this.normalizeIconDescriptor({
+            source: 'asset',
+            value,
+            name: name || value,
+        });
+    }
+
+    getModalOptionIconDescriptor(iconElement) {
+        if (!iconElement) {
+            return { source: 'none', value: '' };
+        }
+
+        const source = iconElement.getAttribute('data-icon-source');
+        const value = iconElement.getAttribute('data-icon-value');
+        if (source !== null || value !== null) {
+            return this.normalizeIconDescriptor({
+                source: source || 'none',
+                value: value || '',
+                name: value || '',
+            });
+        }
+
+        const legacyIconId = iconElement.getAttribute('icon-id') || '';
+        return this.normalizeIconDescriptor(legacyIconId === '0' ? '' : legacyIconId, legacyIconId);
+    }
+
+    getModalSelectedIconDescriptor(modalBody) {
+        const customButton = modalBody.querySelector('#block-icon-custom-button');
+        const customSelection = this.getModalCustomSelection(modalBody);
+
+        if (customButton?.classList.contains('selected') && customSelection.source === 'asset' && customSelection.value) {
+            return this.createCustomAssetIconDescriptor(customSelection.value, customSelection.name);
+        }
+
+        const iconElement = modalBody.querySelector('.option-block-icon[selected="true"]');
+        return this.getModalOptionIconDescriptor(iconElement);
+    }
+
+    setModalCustomSelection(modalBody, customButton, iconDescriptor) {
+        modalBody.setAttribute('data-custom-icon-source', 'asset');
+        modalBody.setAttribute('data-custom-icon-value', iconDescriptor.value);
+        modalBody.setAttribute('data-custom-icon-name', iconDescriptor.name || iconDescriptor.value);
+        customButton?.classList.add('selected');
+        customButton?.replaceChildren();
+        customButton?.insertAdjacentHTML('afterbegin', this.renderIconPreviewHtml(iconDescriptor));
+        if (customButton) {
+            const label = document.createElement('span');
+            label.textContent = _('Image');
+            customButton.appendChild(label);
+        }
+    }
+
+    selectModalIconOption(modalBody, iconsElements, customButton, icon) {
+        iconsElements.forEach((option) => option.setAttribute('selected', 'false'));
+        icon.setAttribute('selected', 'true');
+        this.clearModalCustomSelection(modalBody, customButton);
+    }
+
+    filterModalMaterialIcons(iconsElements, query) {
+        const normalizedQuery = query.trim().toLowerCase();
+        iconsElements.forEach((icon) => {
+            const source = icon.getAttribute('data-icon-source');
+            if (source !== 'material') {
+                icon.style.display = '';
+                return;
+            }
+            const val = (icon.getAttribute('data-icon-value') || '').toLowerCase();
+            icon.style.display = !normalizedQuery || val.includes(normalizedQuery) ? '' : 'none';
+        });
+    }
+
+    async handleModalCustomIconSelection(modalBody, iconsElements, customButton, assetInfo) {
+        if (!assetInfo) return;
+
+        const selected = Array.isArray(assetInfo) ? assetInfo[0] : assetInfo;
+        const value = this.getCanonicalAssetUrl(selected) || selected.assetUrl || '';
+        if (!value) return;
+
+        const iconDescriptor = this.createCustomAssetIconDescriptor(value, selected.asset?.filename || 'asset');
+        const previewUrl = selected.blobUrl
+            || (value.startsWith('asset://') ? await this.getAssetManager()?.resolveAssetURL?.(value) : value)
+            || this.getRenderableAssetUrl(value);
+
+        // Opening the file manager closes the confirm modal via closeModals().
+        // Persist the custom icon immediately so the asset reference reaches Yjs.
+        this.apiUpdateIcon(iconDescriptor);
+        this.setModalCustomSelection(modalBody, customButton, {
+            ...iconDescriptor,
+            previewUrl,
+        });
+        iconsElements.forEach((option) => option.setAttribute('selected', 'false'));
+        this.previewIconElement({
+            ...iconDescriptor,
+            previewUrl,
+        });
+    }
+
+    openModalCustomIconFileManager(modalBody, iconsElements, customButton) {
+        eXeLearning.app.modals.filemanager.show({
+            accept: 'image',
+            onSelect: async (assetInfo) => {
+                await this.handleModalCustomIconSelection(modalBody, iconsElements, customButton, assetInfo);
+            },
+        });
+    }
+
+    setModalIconDialogWidth(modalBody) {
+        const dialog = modalBody.closest('.modal-dialog');
+        if (dialog) {
+            dialog.style.maxWidth = '1320px';
+            dialog.style.width = 'min(1320px, calc(100vw - 24px))';
+        }
     }
 
     /**
@@ -1282,32 +1722,44 @@ export default class IdeviceBlockNode {
     makeModalChangeIconBody() {
         let modalBody = document.createElement('div');
         modalBody.id = 'change-block-icon-modal-content';
-        // Add empty block icon element to content
-        modalBody.appendChild(this.makeEmptyIcon());
-        // Add icons
-        for (let [id, icon] of Object.entries(
-            eXeLearning.app.themes.getThemeIcons()
-        )) {
-            let iconElement = document.createElement('div');
-            iconElement.classList.add('exe-icon');
-            iconElement.classList.add('option-block-icon');
-            iconElement.setAttribute('tabindex', 0);
-            iconElement.setAttribute('icon-id', icon.id);
-            let iconValue = this.makeIconValueElement(icon);
-            iconElement.append(iconValue);
-            // Check if selected
-            if (
-                this.iconName == icon.value ||
-                this.iconName == iconValue.getAttribute('icon-id')
-            ) {
-                iconElement.setAttribute('selected', true);
-                if (this.iconName == icon.value) {
-                    iconElement.classList.add('selected-provisional');
-                }
-            }
-            // Add icon element to content
-            modalBody.appendChild(iconElement);
+        modalBody.style.setProperty('--modal-icon-color', this.getCurrentThemeIconColor());
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'icon-picker-toolbar';
+        modalBody.appendChild(toolbar);
+
+        const search = this.createModalIconSearchInput();
+        toolbar.appendChild(search);
+
+        const customButton = this.createModalIconCustomButton();
+        toolbar.appendChild(customButton);
+
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'icon-options-grid';
+        optionsContainer.id = 'block-icon-options-grid';
+        modalBody.appendChild(optionsContainer);
+
+        const currentIcon = this.getEffectiveIcon();
+        const appendOption = (iconConfig, title, options) => {
+            const iconElement = this.createModalIconOption(iconConfig, title, currentIcon, options);
+            optionsContainer.appendChild(iconElement);
+            return iconElement;
+        };
+
+        appendOption(
+            { source: 'none', value: '' },
+            _('No icon'),
+            { className: 'empty-block-icon', iconId: '0', innerHtml: this.getModalNoIconSvg() }
+        );
+
+        for (const iconName of MATERIAL_ICON_CATALOG) {
+            const option = appendOption({ source: 'material', value: iconName, name: iconName }, iconName);
+            option.setAttribute('icon-id', `mi-${iconName}`);
         }
+        if (currentIcon.source === 'asset' && currentIcon.value) {
+            this.setModalCustomSelection(modalBody, customButton, currentIcon);
+        }
+
         return modalBody;
     }
 
@@ -1317,17 +1769,14 @@ export default class IdeviceBlockNode {
      */
     makeEmptyIcon() {
         let emptyIconElement = document.createElement('div');
-        let emptyIconValue = this.emptyIcon;
-        let emptyIconTitle = _('Empty');
-        emptyIconElement.classList.add('exe-icon');
-        emptyIconElement.classList.add('option-block-icon');
-        emptyIconElement.classList.add('empty-block-icon');
+        emptyIconElement.classList.add('exe-icon', 'option-block-icon', 'empty-block-icon');
         emptyIconElement.setAttribute('tabindex', 0);
-        emptyIconElement.setAttribute('icon-id', 0);
-        emptyIconElement.title = emptyIconTitle;
-        emptyIconElement.innerHTML = emptyIconValue;
-        // Check if selected
-        emptyIconElement.setAttribute('selected', !this.iconName);
+        emptyIconElement.setAttribute('icon-id', '0');
+        emptyIconElement.setAttribute('data-icon-source', 'none');
+        emptyIconElement.setAttribute('data-icon-value', '');
+        emptyIconElement.title = _('Empty');
+        emptyIconElement.innerHTML = this.getEmptyIconSvg();
+        emptyIconElement.setAttribute('selected', !this.iconName ? 'true' : 'false');
         return emptyIconElement;
     }
 
@@ -1337,39 +1786,39 @@ export default class IdeviceBlockNode {
      */
     addBehaviourToModalChangeIconBody() {
         let modalBody = eXeLearning.app.modals.confirm.modalElementBody;
-        let iconsElements = modalBody.querySelectorAll(
-            '#change-block-icon-modal-content .option-block-icon'
-        );
+        let iconsElements = modalBody.querySelectorAll('#change-block-icon-modal-content .option-block-icon');
+        const searchInput = modalBody.querySelector('#block-icon-search-input');
+        const customButton = modalBody.querySelector('#block-icon-custom-button');
+
         iconsElements.forEach((icon) => {
-            // One click to select (visual only, no Yjs sync yet)
-            // The actual Yjs sync happens in saveIconAction() when modal is confirmed
-            icon.addEventListener('click', (event) => {
-                iconsElements.forEach((option) => {
-                    option.setAttribute('selected', 'false');
-                });
-                icon.setAttribute('selected', true);
+            icon.addEventListener('click', () => {
+                this.selectModalIconOption(modalBody, iconsElements, customButton, icon);
             });
-            // Double click to select and save
-            icon.addEventListener('dblclick', (event) => {
-                iconsElements.forEach((option) => {
-                    option.setAttribute('selected', 'false');
-                });
-                icon.setAttribute('selected', true);
+            icon.addEventListener('dblclick', () => {
+                this.selectModalIconOption(modalBody, iconsElements, customButton, icon);
                 this.saveIconAction();
                 eXeLearning.app.modals.confirm.close();
             });
-            // Press enter
             icon.addEventListener('keyup', (event) => {
                 if (event.key == 'Enter') {
-                    iconsElements.forEach((option) => {
-                        option.setAttribute('selected', 'false');
-                    });
-                    icon.setAttribute('selected', true);
+                    this.selectModalIconOption(modalBody, iconsElements, customButton, icon);
                     this.saveIconAction();
                     eXeLearning.app.modals.confirm.close();
                 }
             });
         });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                this.filterModalMaterialIcons(iconsElements, searchInput.value);
+            });
+        }
+
+        customButton?.addEventListener('click', () => {
+            this.openModalCustomIconFileManager(modalBody, iconsElements, customButton);
+        });
+
+        this.setModalIconDialogWidth(modalBody);
     }
 
     /*******************************************************************************
@@ -1439,16 +1888,32 @@ export default class IdeviceBlockNode {
      * @param {*} icon
      */
     apiUpdateIcon(icon) {
-        let params = ['odePagStructureSyncId', 'iconName'];
-        // Save new icon text
-        this.iconName = icon;
-        // If block exist save in bbdd
+        const normalized = this.normalizeIconDescriptor(icon, typeof icon === 'string' ? icon : '');
+        let params = ['odePagStructureSyncId', 'iconName', 'icon'];
+        this.icon = normalized;
+        this.iconName = normalized.source === 'material' ? `mi-${normalized.value}` : (normalized.value || '');
+
+        const blockId = this.blockId || this.id;
+        const yjsBinding = eXeLearning?.app?.project?._yjsBridge?.structureBinding;
+
+        if (this.isYjsEnabled() && yjsBinding && blockId) {
+            yjsBinding.updateBlock(blockId, {
+                icon: this.getEffectiveIcon(),
+                iconName: this.iconName,
+            });
+            this.makeIconNameElement();
+            return Promise.resolve(true);
+        }
+
         if (this.id) {
-            this.apiSendDataService('putSaveBlock', params).then((response) => {
-                // Generate icon from theme icons
+            return this.apiSendDataService('putSaveBlock', params).then(() => {
                 this.makeIconNameElement();
+                return true;
             });
         }
+
+        this.makeIconNameElement();
+        return Promise.resolve(false);
     }
 
     /**
@@ -1988,8 +2453,9 @@ export default class IdeviceBlockNode {
             eXeLearning.app.project.structure.getSelectNodeNavId();
         let defaultOdePageId =
             eXeLearning.app.project.structure.getSelectNodePageId();
+        const syncBlockId = this.blockId || this.id;
         return {
-            odePagStructureSyncId: this.id,
+            odePagStructureSyncId: syncBlockId,
             odeVersionId: defaultVersion,
             odeSessionId: defaultSession,
             odeNavStructureSyncId: this.odeNavStructureSyncId
@@ -1997,6 +2463,7 @@ export default class IdeviceBlockNode {
                 : defaultOdeNavStructureSyncId,
             odePageId: this.pageId ? this.pageId : defaultOdePageId,
             iconName: this.iconName,
+            icon: this.getEffectiveIcon(),
             blockName: this.blockName,
             order: this.order,
         };

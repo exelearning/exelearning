@@ -124,6 +124,7 @@ export class Epub3Exporter extends BaseExporter {
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
+            const { dataUris: materialIconDataUris } = await this.resolveMaterialIconDataUris(pages);
 
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
@@ -160,6 +161,7 @@ export class Epub3Exporter extends BaseExporter {
                     themeRootFiles,
                     faviconInfo,
                     navLabels,
+                    materialIconDataUris,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -632,6 +634,7 @@ export class Epub3Exporter extends BaseExporter {
         themeFiles?: string[],
         faviconInfo?: FaviconInfo | null,
         navLabels?: { license?: string },
+        materialIconDataUris?: Map<string, string>,
     ): string {
         const lang = meta.language || 'en';
         const basePath = isIndex ? '' : '../';
@@ -688,6 +691,7 @@ export class Epub3Exporter extends BaseExporter {
             version: meta.exelearningVersion,
             // EPUB-specific: load guard script for duplicate execution protection
             isEpub: true,
+            materialIconDataUris,
         });
 
         // Convert HTML to XHTML

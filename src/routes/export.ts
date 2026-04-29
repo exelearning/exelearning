@@ -244,6 +244,15 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStruc
             blockMap.set('id', block.id);
             blockMap.set('blockName', block.blockName || '');
             blockMap.set('iconName', block.iconName || '');
+            blockMap.set(
+                'icon',
+                block.icon ||
+                    (block.iconName
+                        ? String(block.iconName).startsWith('mi-')
+                            ? { source: 'material', value: String(block.iconName).replace(/^mi-/, '') }
+                            : { source: 'theme', value: block.iconName }
+                        : { source: 'none', value: '' }),
+            );
 
             // Block properties
             if (block.properties) {

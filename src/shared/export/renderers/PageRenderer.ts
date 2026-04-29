@@ -104,7 +104,7 @@ export class PageRenderer {
             extraHeadScripts = '',
             onLoadScript = '',
             onUnloadScript = '',
-            detectedLibraries: providedDetectedLibraries,
+            detectedLibraries: providedDetectedLibraries = [],
             // Theme files (CSS/JS from theme root directory)
             themeFiles = [],
             // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
@@ -112,6 +112,7 @@ export class PageRenderer {
             hideNavButtons = false,
             // Asset URL transformation map
             assetExportPathMap,
+            materialIconDataUris,
             // Application version for generator meta tag
             version,
         } = options;
@@ -121,16 +122,26 @@ export class PageRenderer {
         // Detect libraries from ORIGINAL content (before transformation)
         // This is important for exe-package:elp links which get transformed during rendering
         const originalContent = this.collectPageContent(page);
-        const detectedLibraries = providedDetectedLibraries ?? this.detectContentLibraries(originalContent);
+        const detectedLibraries =
+            providedDetectedLibraries.length > 0
+                ? providedDetectedLibraries
+                : this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, {
-            author: options.author,
-            description: options.description,
-            license: options.license,
-            language: options.language,
-            translatedLicense: options.navLabels?.license,
-        });
+        const pageContent = this.renderPageContent(
+            page,
+            basePath,
+            projectTitle,
+            assetExportPathMap,
+            {
+                author: options.author,
+                description: options.description,
+                license: options.license,
+                language: options.language,
+                translatedLicense: options.navLabels?.license,
+            },
+            materialIconDataUris,
+        );
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -631,6 +642,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             language?: string;
             translatedLicense?: string;
         },
+        materialIconDataUris?: Map<string, string>,
     ): string {
         let html = '';
 
@@ -639,6 +651,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 basePath,
                 includeDataAttributes: true,
                 assetExportPathMap,
+                materialIconDataUris,
             });
         }
 
@@ -1002,6 +1015,7 @@ ${userFooterHtml}</div></footer>`;
             addExeLink?: boolean;
             userFooterContent?: string;
             navLabels?: { previous?: string; next?: string; page?: string; license?: string };
+            materialIconDataUris?: Map<string, string>;
         } = {},
     ): string {
         const {
@@ -1022,6 +1036,7 @@ ${userFooterHtml}</div></footer>`;
             addMathJax = false,
             addAccessibilityToolbar = false,
             navLabels,
+            materialIconDataUris,
         } = options;
 
         let contentHtml = '';
@@ -1045,13 +1060,20 @@ ${userFooterHtml}</div></footer>`;
 </div>
 </header>
 <div class="page-content">
-${this.renderPageContent(page, '', projectTitle, undefined, {
-    author: options.author,
-    description: options.description,
-    license: options.license,
-    language: options.language,
-    translatedLicense: navLabels?.license,
-})}
+${this.renderPageContent(
+    page,
+    '',
+    projectTitle,
+    undefined,
+    {
+        author: options.author,
+        description: options.description,
+        license: options.license,
+        language: options.language,
+        translatedLicense: navLabels?.license,
+    },
+    materialIconDataUris,
+)}
 </div>
 </section>\n`;
         }
@@ -1098,7 +1120,7 @@ ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 <header class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
-${this.renderFooterSection({ license, licenseUrl, userFooterContent, navLabels })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels })}
 </div>
 ${addExeLink ? this.renderMadeWithEXe() : ''}
 </body>

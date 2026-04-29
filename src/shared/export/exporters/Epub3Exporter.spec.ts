@@ -70,7 +70,13 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        for (const file of _files) {
+            if (file.startsWith('material-icons/icons/')) {
+                files.set(file, Buffer.from(`<svg data-icon="${file}"></svg>`));
+            }
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -335,6 +341,37 @@ describe('Epub3Exporter', () => {
 
             expect(result.filename).toContain('test-epub-project');
             expect(result.filename).toContain('.epub');
+        });
+
+        it('should inline material icon SVGs in EPUB XHTML output', async () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithBootstrapIcon);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('data:image/svg+xml;utf8,');
+            expect(indexXhtml).not.toContain('libs/material-icons/icons/lightbulb.svg');
         });
     });
 

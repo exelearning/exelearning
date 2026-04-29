@@ -1497,6 +1497,7 @@ class YjsStructureBinding {
       blockMap.set('blockId', blockId);
       blockMap.set('blockName', blockName);
       blockMap.set('iconName', '');
+      blockMap.set('icon', { source: 'none', value: '' });
       blockMap.set('blockType', 'default');
       blockMap.set('order', targetOrder);
       blockMap.set('components', new this.Y.Array());
@@ -1744,6 +1745,21 @@ class YjsStructureBinding {
                     }
                     propsMap.set(propKey, finalValue);
                   });
+                } else if (key === 'icon') {
+                  blockMap.set('icon', value);
+                  const legacy = value?.source === 'material' ? `mi-${value.value}` : (value?.value || '');
+                  blockMap.set('iconName', legacy);
+                } else if (key === 'iconName') {
+                  blockMap.set('iconName', value);
+                  if (!blockMap.get('icon')) {
+                    const isMaterial = typeof value === 'string' && value.startsWith('mi-');
+                    const isAsset = typeof value === 'string' && (value.startsWith('asset://') || value.startsWith('/'));
+                    blockMap.set('icon', isMaterial
+                      ? { source: 'material', value: value.replace(/^mi-/, '') }
+                      : (isAsset
+                        ? { source: 'asset', value }
+                        : (value ? { source: 'theme', value } : { source: 'none', value: '' })));
+                  }
                 } else {
                   blockMap.set(key, value);
                 }
@@ -2728,6 +2744,7 @@ class YjsStructureBinding {
       blockId: blockMap.get('blockId'),
       blockName: blockMap.get('blockName'),
       iconName: blockMap.get('iconName'),
+      icon: blockMap.get('icon'),
       blockType: blockMap.get('blockType'),
       order: blockMap.get('order') ?? index,
       componentCount: blockMap.get('components')?.length || 0,
@@ -2947,6 +2964,9 @@ class YjsStructureBinding {
     blockMap.set('id', blockId);
     blockMap.set('blockId', blockId);
     blockMap.set('blockName', apiBlock.blockName ?? '');  // Preserve empty string
+    const importedIconName = apiBlock.iconName || '';
+    blockMap.set('iconName', importedIconName);
+    blockMap.set('icon', importedIconName ? (importedIconName.startsWith('mi-') ? { source: 'material', value: importedIconName.replace(/^mi-/, '') } : { source: 'theme', value: importedIconName }) : { source: 'none', value: '' });
     blockMap.set('blockType', apiBlock.blockType || 'default');
     blockMap.set('order', apiBlock.order ?? 0);
     blockMap.set('createdAt', new Date().toISOString());

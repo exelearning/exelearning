@@ -697,14 +697,33 @@ describe('IdeviceBlockNode', () => {
             expect(block.iconName).toBe('new-icon');
         });
 
+        it('updates Yjs directly when collaborative mode is enabled', async () => {
+            const mockUpdateBlock = vi.fn();
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    updateBlock: mockUpdateBlock,
+                },
+            };
+
+            await block.apiUpdateIcon({ source: 'material', value: 'alarm' });
+
+            expect(mockUpdateBlock).toHaveBeenCalledWith(block.blockId, {
+                icon: { source: 'material', value: 'alarm', name: 'alarm' },
+                iconName: 'mi-alarm',
+            });
+        });
+
         it('calls apiSendDataService when id exists', async () => {
             const spy = vi
                 .spyOn(block, 'apiSendDataService')
                 .mockResolvedValue({ responseMessage: 'OK' });
+            eXeLearning.app.project._yjsEnabled = false;
             await block.apiUpdateIcon('new-icon');
             expect(spy).toHaveBeenCalledWith('putSaveBlock', [
                 'odePagStructureSyncId',
                 'iconName',
+                'icon',
             ]);
         });
     });
@@ -745,13 +764,25 @@ describe('IdeviceBlockNode', () => {
 
             expect(body.id).toBe('change-block-icon-modal-content');
             expect(body.querySelector('.empty-block-icon')).not.toBeNull();
+            expect(body.querySelector('#block-icon-custom-button')).not.toBeNull();
         });
 
-        it('includes theme icons', () => {
+        it('includes material icons and no theme icon entries', () => {
             const body = block.makeModalChangeIconBody();
-            const icons = body.querySelectorAll('.option-block-icon');
+            const icons = body.querySelectorAll('.option-block-icon[data-icon-source="material"]');
+            const legacyThemeIcons = body.querySelectorAll('.option-block-icon[data-icon-source="theme"]');
 
             expect(icons.length).toBeGreaterThan(1);
+            expect(legacyThemeIcons.length).toBe(0);
+        });
+
+        it('renders material modal options from the sprite', () => {
+            const body = block.makeModalChangeIconBody();
+            const firstMaterialIcon = body.querySelector('.option-block-icon[data-icon-source="material"]');
+            const spriteUse = firstMaterialIcon.querySelector('.exe-material-icon-sprite use');
+
+            expect(spriteUse).not.toBeNull();
+            expect(spriteUse.getAttribute('href')).toContain('/libs/material-icons/material-icons.svg#');
         });
     });
 
@@ -764,6 +795,7 @@ describe('IdeviceBlockNode', () => {
             expect(callArgs.title).toBe('Select icon');
             expect(callArgs.confirmButtonText).toBe('Save');
             expect(callArgs.cancelButtonText).toBe('Cancel');
+            expect(typeof callArgs.cancelExec).toBe('function');
         });
     });
 
@@ -1323,7 +1355,8 @@ describe('IdeviceBlockNode', () => {
             const iconElement = document.createElement('div');
             iconElement.classList.add('option-block-icon');
             iconElement.setAttribute('selected', 'true');
-            iconElement.setAttribute('icon-id', 'test-icon');
+            iconElement.setAttribute('data-icon-source', 'material');
+            iconElement.setAttribute('data-icon-value', 'alarm');
             modalBody.appendChild(iconElement);
             eXeLearning.app.modals.confirm.modalElementBody = modalBody;
 
@@ -1332,29 +1365,157 @@ describe('IdeviceBlockNode', () => {
 
         it('gets icon value from selected element', () => {
             block.saveIconAction();
-            expect(block.apiUpdateIcon).toHaveBeenCalledWith('test-icon');
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith({
+                source: 'material',
+                value: 'alarm',
+                name: 'alarm',
+            });
         });
 
         it('uses empty string when icon is 0', () => {
             const modalBody = eXeLearning.app.modals.confirm.modalElementBody;
-            modalBody.querySelector('.option-block-icon').setAttribute('icon-id', '0');
+            modalBody.querySelector('.option-block-icon').setAttribute('data-icon-source', 'none');
+            modalBody.querySelector('.option-block-icon').setAttribute('data-icon-value', '');
 
             block.saveIconAction();
-            expect(block.apiUpdateIcon).toHaveBeenCalledWith('');
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith({
+                source: 'none',
+                value: '',
+            });
         });
 
-        it('does not sync to Yjs directly (handled by apiCallManager)', () => {
-            // Yjs sync is now handled by apiUpdateIcon -> putSaveBlock -> apiCallManager
-            // to avoid duplicate undo entries
-            const mockUpdateBlock = vi.fn();
-            eXeLearning.app.project._yjsBridge = {
-                structureBinding: { updateBlock: mockUpdateBlock },
-            };
+        it('uses custom asset selected via toolbar button', () => {
+            const modalBody = eXeLearning.app.modals.confirm.modalElementBody;
+            const customButton = document.createElement('button');
+            customButton.id = 'block-icon-custom-button';
+            customButton.className = 'selected';
+            modalBody.appendChild(customButton);
+            modalBody.setAttribute('data-custom-icon-source', 'asset');
+            modalBody.setAttribute('data-custom-icon-value', 'asset://uuid-123/dog.jpg');
+            modalBody.setAttribute('data-custom-icon-name', 'dog.jpg');
+            modalBody.querySelector('.option-block-icon').setAttribute('selected', 'false');
 
             block.saveIconAction();
 
-            // Should NOT be called here - apiCallManager handles it
-            expect(mockUpdateBlock).not.toHaveBeenCalled();
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith({
+                source: 'asset',
+                value: 'asset://uuid-123/dog.jpg',
+                name: 'dog.jpg',
+            });
+        });
+
+        it('derives canonical asset:// URL from asset metadata', () => {
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    getAssetUrl: vi.fn(() => 'asset://uuid-999/black-dog.jpg'),
+                },
+            };
+
+            expect(block.getCanonicalAssetUrl({
+                assetUrl: 'blob:should-not-be-used',
+                asset: { id: 'uuid-999', filename: 'black-dog.jpg' },
+            })).toBe('asset://uuid-999/black-dog.jpg');
+        });
+
+        it('delegates selected icon to apiUpdateIcon', () => {
+            block.saveIconAction();
+
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith({
+                source: 'material',
+                value: 'alarm',
+                name: 'alarm',
+            });
+        });
+    });
+
+    describe('icon helpers', () => {
+        it('normalizes legacy icon names into structured descriptors', () => {
+            expect(block.normalizeIconDescriptor(null, '')).toEqual({ source: 'none', value: '' });
+            expect(block.normalizeIconDescriptor(null, 'mi-alarm')).toEqual({
+                source: 'material',
+                value: 'alarm',
+                name: 'alarm',
+            });
+            expect(block.normalizeIconDescriptor(null, 'activity')).toEqual({
+                source: 'material',
+                value: 'checklist',
+                name: 'checklist',
+            });
+            expect(block.normalizeIconDescriptor(null, 'asset://uuid/icon.jpg')).toEqual({
+                source: 'asset',
+                value: 'asset://uuid/icon.jpg',
+                name: 'asset://uuid/icon.jpg',
+            });
+            expect(block.normalizeIconDescriptor(null, 'legacy-theme')).toEqual({
+                source: 'theme',
+                value: 'legacy-theme',
+                name: 'legacy-theme',
+            });
+        });
+
+        it('resolves app asset URLs using composeUrl and basePath fallbacks', () => {
+            eXeLearning.app.composeUrl = vi.fn((path) => `/composed${path}`);
+            expect(block.resolveAppAssetUrl('/libs/material-icons/icons/alarm.svg')).toBe(
+                '/composed/libs/material-icons/icons/alarm.svg'
+            );
+
+            delete eXeLearning.app.composeUrl;
+            window.eXeLearning.config = JSON.stringify({ basePath: '/exe' });
+            expect(block.resolveAppAssetUrl('/libs/material-icons/icons/alarm.svg')).toBe(
+                '/exe/libs/material-icons/icons/alarm.svg'
+            );
+        });
+
+        it('returns renderable asset URL for asset refs, public paths and passthrough values', () => {
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    resolveAssetURLSync: vi.fn(() => 'blob:asset-ref'),
+                    extractAssetId: vi.fn(() => 'uuid-123'),
+                    generateLoadingPlaceholder: vi.fn(() => 'data:image/svg+xml,loading'),
+                },
+            };
+
+            expect(block.getRenderableAssetUrl('asset://uuid-123/icon.jpg')).toBe('blob:asset-ref');
+            expect(block.getRenderableAssetUrl('/icons/theme.svg')).toContain('/icons/theme.svg');
+            expect(block.getRenderableAssetUrl('https://example.com/icon.svg')).toBe('https://example.com/icon.svg');
+        });
+
+        it('renders material sprite icon with fallback symbol for invalid names', () => {
+            const html = block.renderMaterialSpriteIcon('not-in-catalog');
+            expect(html).toContain('exe-material-icon-sprite');
+            expect(html).toContain('/libs/material-icons/material-icons.svg#help');
+        });
+
+        it('filters only material icon tiles from the search query', () => {
+            const body = block.makeModalChangeIconBody();
+            const icons = body.querySelectorAll('.option-block-icon');
+            block.filterModalMaterialIcons(icons, 'alarm');
+
+            const alarm = body.querySelector('.option-block-icon[data-icon-value="alarm"]');
+            const book = body.querySelector('.option-block-icon[data-icon-value="book"]');
+            const empty = body.querySelector('.empty-block-icon');
+
+            expect(alarm.style.display).toBe('');
+            expect(book.style.display).toBe('none');
+            expect(empty.style.display).toBe('');
+        });
+
+        it('prefers theme css variables and known theme colors when resolving modal icon color', () => {
+            block.headElement = document.createElement('div');
+            document.body.appendChild(block.headElement);
+            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+            expect(block.getCurrentThemeIconColor()).toBe('#123456');
+
+            block.headElement.style.removeProperty('--exe-icon-color');
+            block.blockNameElementText = document.createElement('h1');
+            document.body.appendChild(block.blockNameElementText);
+            block.blockNameElementText.style.color = 'rgb(1, 2, 3)';
+            expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
+
+            block.headElement = null;
+            block.blockNameElementText = null;
+            eXeLearning.app.themes.selected = { id: 'flux' };
+            expect(block.getCurrentThemeIconColor()).toBe('#e3ac3b');
         });
     });
 
@@ -1518,27 +1679,121 @@ describe('IdeviceBlockNode', () => {
             const iconEl = block.makeIconNameElement();
             expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
         });
+
+        it('resolves asset icons through AssetManager cache for preview', () => {
+            block.iconName = 'asset://asset-123/icon.jpg';
+            block.icon = { source: 'asset', value: 'asset://asset-123/icon.jpg', name: 'icon.jpg' };
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    resolveAssetURLSync: vi.fn(() => 'blob:test-icon'),
+                    resolveAssetURL: vi.fn().mockResolvedValue('blob:test-icon'),
+                },
+            };
+
+            const iconEl = block.makeIconNameElement();
+            const img = iconEl.querySelector('img');
+
+            expect(img).not.toBeNull();
+            expect(img.getAttribute('src')).toBe('blob:test-icon');
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
+        });
+
+        it('uses a loading placeholder instead of empty src when asset blob is not cached yet', () => {
+            block.iconName = 'asset://12345678-1234-1234-1234-123456789012/icon.jpg';
+            block.icon = {
+                source: 'asset',
+                value: 'asset://12345678-1234-1234-1234-123456789012/icon.jpg',
+                name: 'icon.jpg',
+            };
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    resolveAssetURLSync: vi.fn(() => null),
+                    extractAssetId: vi.fn(() => '12345678-1234-1234-1234-123456789012'),
+                    generateLoadingPlaceholder: vi.fn(() => 'data:image/svg+xml,placeholder'),
+                    resolveAssetURL: vi.fn().mockResolvedValue('blob:test-icon'),
+                },
+            };
+
+            const iconEl = block.makeIconNameElement();
+            const img = iconEl.querySelector('img');
+
+            expect(img).not.toBeNull();
+            expect(img.getAttribute('src')).toBe('data:image/svg+xml,placeholder');
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
+        });
+
+        it('previewIconElement updates button preview for selected custom asset', () => {
+            block.iconElement = document.createElement('button');
+            block.iconElement.className = 'exe-icon box-icon exe-app-tooltip exe-no-icon';
+            eXeLearning.app.project._yjsBridge = {
+                assetManager: {
+                    resolveAssetURLSync: vi.fn(() => 'blob:preview-icon'),
+                    resolveAssetURL: vi.fn().mockResolvedValue('blob:preview-icon'),
+                },
+            };
+
+            block.previewIconElement({
+                source: 'asset',
+                value: 'asset://asset-123/icon.jpg',
+                name: 'icon.jpg',
+                previewUrl: 'blob:preview-icon',
+            });
+
+            const img = block.iconElement.querySelector('img');
+            expect(img).not.toBeNull();
+            expect(img.getAttribute('src')).toBe('blob:preview-icon');
+            expect(block.iconElement.classList.contains('exe-no-icon')).toBe(false);
+        });
     });
 
     describe('makeModalChangeIconBody', () => {
-        it('sets icon-id attribute to icon.id (without extension)', () => {
-            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
-                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
-                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
-            }));
-
+        it('sets icon-id attribute to material icon ids', () => {
             const body = block.makeModalChangeIconBody();
             const iconElements = body.querySelectorAll('.option-block-icon:not(.empty-block-icon)');
 
-            // icon-id uses icon.id which does NOT include the extension (consistent with themes.ts)
             const iconIds = Array.from(iconElements).map(el => el.getAttribute('icon-id'));
-            expect(iconIds).toContain('share');
-            expect(iconIds).toContain('download');
+            expect(iconIds).toContain('mi-alarm');
+            expect(iconIds).toContain('mi-lightbulb');
+        });
+
+        it('persists custom asset icon immediately when selected from file manager', async () => {
+            const body = block.makeModalChangeIconBody();
+            eXeLearning.app.modals.confirm.modalElementBody = body;
+            const apiUpdateIconSpy = vi.spyOn(block, 'apiUpdateIcon').mockResolvedValue(true);
+            const previewSpy = vi.spyOn(block, 'previewIconElement').mockImplementation(() => {});
+            eXeLearning.app.modals.filemanager = eXeLearning.app.modals.filemanager || {};
+
+            let onSelectCallback;
+            eXeLearning.app.modals.filemanager.show = vi.fn(({ onSelect }) => {
+                onSelectCallback = onSelect;
+            });
+
+            block.addBehaviourToModalChangeIconBody();
+            body.querySelector('#block-icon-custom-button').click();
+
+            await onSelectCallback({
+                assetUrl: 'asset://uuid-123/black-dog.jpg',
+                blobUrl: 'blob:black-dog',
+                asset: { id: 'uuid-123', filename: 'black-dog.jpg' },
+            });
+
+            expect(apiUpdateIconSpy).toHaveBeenCalledWith({
+                source: 'asset',
+                value: 'asset://uuid-123/black-dog.jpg',
+                name: 'black-dog.jpg',
+            });
+            expect(previewSpy).toHaveBeenCalledWith({
+                source: 'asset',
+                value: 'asset://uuid-123/black-dog.jpg',
+                name: 'black-dog.jpg',
+                previewUrl: 'blob:black-dog',
+            });
         });
     });
 
     describe('makeIconValueElement', () => {
         it('creates img element with src and alt', () => {
+            window.eXeLearning.config = {};
             const icon = { value: '/path/to/icon.svg', title: 'Test Icon' };
             const iconValue = block.makeIconValueElement(icon);
             expect(iconValue.tagName).toBe('IMG');

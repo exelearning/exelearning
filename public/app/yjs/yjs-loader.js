@@ -97,6 +97,7 @@
     ],
     // Group 4: Bridge components (depend on exporters)
     [
+      '/app/common/blockIconRuntime.js',
       'SaveManager.js',
       'YjsTinyMCEBinding.js',
       'YjsStructureTreeAdapter.js',

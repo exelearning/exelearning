@@ -25,6 +25,74 @@ import { generateOdeXml } from '../generators/OdeXmlGenerator';
 import { formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 
+function collectUsedMaterialIconPaths(pages: ExportPage[]): string[] {
+    const iconPaths = new Set<string>();
+
+    for (const page of pages) {
+        for (const block of page.blocks || []) {
+            const icon = block.icon;
+            const iconName = block.iconName || '';
+
+            if (icon?.source === 'material' && icon.value) {
+                iconPaths.add(`material-icons/icons/${icon.value}.svg`);
+                continue;
+            }
+
+            if (iconName.startsWith('mi-')) {
+                iconPaths.add(`material-icons/icons/${iconName.replace(/^mi-/, '')}.svg`);
+            }
+        }
+    }
+
+    return Array.from(iconPaths);
+}
+
+function buildMaterialIconDataUriMapFromFiles(iconFiles: Map<string, Uint8Array>): Map<string, string> {
+    const decoder = new TextDecoder();
+    const dataUris = new Map<string, string>();
+
+    for (const [libPath, content] of iconFiles) {
+        const match = libPath.match(/^material-icons\/icons\/(.+)\.svg$/);
+        if (!match) continue;
+        dataUris.set(match[1], `data:image/svg+xml;utf8,${encodeURIComponent(decoder.decode(content))}`);
+    }
+
+    return dataUris;
+}
+
+export async function resolveMaterialIconDataUris(
+    resources: ResourceProvider,
+    pages: ExportPage[],
+): Promise<{
+    paths: string[];
+    files: Map<string, Uint8Array>;
+    dataUris: Map<string, string>;
+}> {
+    const paths = collectUsedMaterialIconPaths(pages);
+    if (paths.length === 0) {
+        return {
+            paths,
+            files: new Map<string, Uint8Array>(),
+            dataUris: new Map<string, string>(),
+        };
+    }
+
+    try {
+        const files = await resources.fetchLibraryFiles(paths);
+        return {
+            paths,
+            files,
+            dataUris: buildMaterialIconDataUriMapFromFiles(files),
+        };
+    } catch {
+        return {
+            paths,
+            files: new Map<string, Uint8Array>(),
+            dataUris: new Map<string, string>(),
+        };
+    }
+}
+
 /**
  * Abstract base class for exporters
  *
@@ -230,6 +298,36 @@ export abstract class BaseExporter {
         }
 
         return Array.from(types);
+    }
+
+    protected getUsedMaterialIconPaths(pages: ExportPage[]): string[] {
+        return collectUsedMaterialIconPaths(pages);
+    }
+
+    protected buildMaterialIconDataUriMap(iconFiles: Map<string, Uint8Array>): Map<string, string> {
+        return buildMaterialIconDataUriMapFromFiles(iconFiles);
+    }
+
+    protected async resolveMaterialIconDataUris(pages: ExportPage[]): Promise<{
+        paths: string[];
+        files: Map<string, Uint8Array>;
+        dataUris: Map<string, string>;
+    }> {
+        return resolveMaterialIconDataUris(this.resources, pages);
+    }
+
+    protected addPrefixedFiles(
+        files: Map<string, Uint8Array>,
+        prefix: string,
+        addFile: (path: string, content: Uint8Array) => void,
+        hasFile: (path: string) => boolean = path => this.zip.hasFile(path),
+    ): void {
+        for (const [relativePath, content] of files) {
+            const targetPath = `${prefix}${relativePath}`;
+            if (!hasFile(targetPath)) {
+                addFile(targetPath, content);
+            }
+        }
     }
 
     /**
