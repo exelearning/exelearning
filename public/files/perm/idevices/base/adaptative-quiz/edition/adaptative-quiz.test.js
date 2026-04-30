@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('adaptative-quiz edition', () => {
     let idevice;
@@ -22,72 +22,199 @@ describe('adaptative-quiz edition', () => {
     });
 
     describe('parseAIQuestionLine', () => {
-        it('parses a full 4-option line and maps level 0 to difficulty 1', () => {
-            const q = idevice.parseAIQuestionLine('0@1#Q?#A#B#C#D');
-            expect(q).not.toBeNull();
-            expect(q.question).toBe('Q?');
-            expect(q.numberOptions).toBe(4);
-            expect(q.options.map(o => o.text)).toEqual(['A', 'B', 'C', 'D']);
-            expect(q.solutionMulti).toEqual([1]);
-            expect(q.difficulty).toBe(1);
-        });
-
-        it('maps level 1 to difficulty 2 and keeps 3 options', () => {
-            const q = idevice.parseAIQuestionLine('1@0#Q?#A#B#C');
-            expect(q.numberOptions).toBe(3);
-            expect(q.difficulty).toBe(2);
-            expect(q.solutionMulti).toEqual([0]);
-            expect(q.options[3].text).toBe('');
-        });
-
-        it('maps level 2 to difficulty 3 and keeps 2 options', () => {
-            const q = idevice.parseAIQuestionLine('2@1#Q?#A#B');
-            expect(q.numberOptions).toBe(2);
-            expect(q.difficulty).toBe(3);
-            expect(q.solutionMulti).toEqual([1]);
-        });
-
-        it('rejects lines without @ separator', () => {
-            expect(idevice.parseAIQuestionLine('1#Q?#A#B#C#D')).toBeNull();
-        });
-
-        it('rejects out-of-range level and solution', () => {
-            expect(idevice.parseAIQuestionLine('3@1#Q?#A#B')).toBeNull();
-            expect(idevice.parseAIQuestionLine('0@4#Q?#A#B')).toBeNull();
-        });
-
-        it('accepts level 3 when numLevels is 4 and maps it to difficulty 4', () => {
-            const originalNumLevels = idevice.numLevels;
-            idevice.numLevels = 4;
-            try {
-                const q = idevice.parseAIQuestionLine('3@2#Q?#A#B#C#D');
+        describe('type 0 (select / multiple-choice)', () => {
+            it('parses a 4-option line with single-letter solution and maps level 0 to difficulty 1', () => {
+                const q = idevice.parseAIQuestionLine('0@0#B#Q?#A#B#C#D');
                 expect(q).not.toBeNull();
-                expect(q.difficulty).toBe(4);
-                expect(q.solutionMulti).toEqual([2]);
-                // Level 4 is still out of range even with 4 levels configured.
-                expect(idevice.parseAIQuestionLine('4@0#Q?#A#B')).toBeNull();
-            } finally {
-                idevice.numLevels = originalNumLevels;
-            }
+                expect(q.typeSelect).toBe(0);
+                expect(q.question).toBe('Q?');
+                expect(q.numberOptions).toBe(4);
+                expect(q.options.map(o => o.text)).toEqual(['A', 'B', 'C', 'D', '', '']);
+                expect(q.solutionMulti).toEqual([1]);
+                expect(q.difficulty).toBe(1);
+            });
+
+            it('parses a multi-letter solution (case-insensitive) into sorted indices', () => {
+                const q = idevice.parseAIQuestionLine('0@1#ac#Pick prime numbers#2#4#5#9');
+                expect(q).not.toBeNull();
+                expect(q.typeSelect).toBe(0);
+                expect(q.solutionMulti).toEqual([0, 2]);
+                expect(q.difficulty).toBe(2);
+            });
+
+            it('accepts an empty solution (no correct option) and keeps numberOptions', () => {
+                const q = idevice.parseAIQuestionLine('0@2##Question?#A#B#C');
+                expect(q).not.toBeNull();
+                expect(q.typeSelect).toBe(0);
+                expect(q.solutionMulti).toEqual([]);
+                expect(q.numberOptions).toBe(3);
+                expect(q.options[3].text).toBe('');
+                expect(q.difficulty).toBe(3);
+            });
+
+            it('keeps 3 options when only 3 are provided', () => {
+                const q = idevice.parseAIQuestionLine('0@1#A#Q?#A#B#C');
+                expect(q.numberOptions).toBe(3);
+                expect(q.solutionMulti).toEqual([0]);
+                expect(q.options[3].text).toBe('');
+            });
+
+            it('rejects letters outside A-F', () => {
+                expect(idevice.parseAIQuestionLine('0@0#G#Q#A#B#C#D#E#F')).toBeNull();
+            });
+
+            it('parses a 5-option line with multi-letter solution including E', () => {
+                const q = idevice.parseAIQuestionLine('0@0#AE#Q?#A#B#C#D#E');
+                expect(q).not.toBeNull();
+                expect(q.numberOptions).toBe(5);
+                expect(q.solutionMulti).toEqual([0, 4]);
+                expect(q.options.map(o => o.text)).toEqual(['A', 'B', 'C', 'D', 'E', '']);
+            });
+
+            it('parses a 6-option line with all letters as solution', () => {
+                const q = idevice.parseAIQuestionLine('0@1#ABCDEF#Q?#A#B#C#D#E#F');
+                expect(q).not.toBeNull();
+                expect(q.numberOptions).toBe(6);
+                expect(q.solutionMulti).toEqual([0, 1, 2, 3, 4, 5]);
+                expect(q.options.map(o => o.text)).toEqual(['A', 'B', 'C', 'D', 'E', 'F']);
+            });
+
+            it('rejects a letter beyond the number of options', () => {
+                expect(idevice.parseAIQuestionLine('0@0#C#Q#A#B')).toBeNull();
+            });
+
+            it('rejects duplicated letters in the solution', () => {
+                expect(idevice.parseAIQuestionLine('0@0#AA#Q#A#B#C#D')).toBeNull();
+            });
+
+            it('rejects fewer than MIN_OPTIONS options', () => {
+                expect(idevice.parseAIQuestionLine('0@0#A#Q?#A')).toBeNull();
+            });
         });
 
-        it('still rejects level 3 when numLevels defaults to 3', () => {
-            expect(idevice.numLevels).toBe(3);
-            expect(idevice.parseAIQuestionLine('3@0#Q?#A#B')).toBeNull();
+        describe('type 1 (sort / order)', () => {
+            it('parses a 4-item sort line and sets sequential solutionOrder', () => {
+                const q = idevice.parseAIQuestionLine('1@2#Sort largest to smallest#Elephant#Tiger#Cat#Mouse');
+                expect(q).not.toBeNull();
+                expect(q.typeSelect).toBe(1);
+                expect(q.question).toBe('Sort largest to smallest');
+                expect(q.numberOptions).toBe(4);
+                expect(q.options.map(o => o.text)).toEqual(['Elephant', 'Tiger', 'Cat', 'Mouse', '', '']);
+                expect(q.solutionOrder).toEqual([1, 2, 3, 4]);
+                expect(q.solutionMulti).toEqual([]);
+                expect(q.difficulty).toBe(3);
+            });
+
+            it('parses a 3-item sort line', () => {
+                const q = idevice.parseAIQuestionLine('1@0#Order them#One#Two#Three');
+                expect(q.typeSelect).toBe(1);
+                expect(q.numberOptions).toBe(3);
+                expect(q.solutionOrder).toEqual([1, 2, 3]);
+            });
+
+            it('rejects sort with fewer than 3 items', () => {
+                expect(idevice.parseAIQuestionLine('1@0#Order them#One#Two')).toBeNull();
+            });
+
+            it('rejects sort with more than 6 items', () => {
+                expect(
+                    idevice.parseAIQuestionLine('1@0#Q#A#B#C#D#E#F#G'),
+                ).toBeNull();
+            });
         });
 
-        it('rejects lines with fewer than MIN_OPTIONS options', () => {
-            expect(idevice.parseAIQuestionLine('0@0#Q?#A')).toBeNull();
+        describe('type 2 (word / definition)', () => {
+            it('parses a word/definition line and stores word in question and definition in solutionWord', () => {
+                const q = idevice.parseAIQuestionLine('2@0#Heart#Pumps blood through the body');
+                expect(q).not.toBeNull();
+                expect(q.typeSelect).toBe(2);
+                // Legacy data model: q.question = the word the learner types,
+                // q.solutionWord = the definition shown as the prompt.
+                expect(q.question).toBe('Heart');
+                expect(q.solutionWord).toBe('Pumps blood through the body');
+                expect(q.solutionMulti).toEqual([]);
+                expect(q.solutionOrder).toEqual([]);
+                expect(q.difficulty).toBe(1);
+            });
+
+            it('rejects word/definition lines missing the definition', () => {
+                expect(idevice.parseAIQuestionLine('2@0#OnlyWord')).toBeNull();
+            });
         });
 
-        it('rejects when solution index is out of range for the provided options', () => {
-            expect(idevice.parseAIQuestionLine('0@3#Q?#A#B')).toBeNull();
-        });
+        describe('common rejections', () => {
+            it('rejects lines without @ separator', () => {
+                expect(idevice.parseAIQuestionLine('0#1#Q?#A#B#C#D')).toBeNull();
+            });
 
-        it('rejects empty or non-string input', () => {
-            expect(idevice.parseAIQuestionLine('')).toBeNull();
-            expect(idevice.parseAIQuestionLine(null)).toBeNull();
-            expect(idevice.parseAIQuestionLine(undefined)).toBeNull();
+            it('rejects lines without any # separator', () => {
+                expect(idevice.parseAIQuestionLine('0@1')).toBeNull();
+            });
+
+            it('rejects unknown type token', () => {
+                expect(idevice.parseAIQuestionLine('3@0#A#Q?#A#B')).toBeNull();
+            });
+
+            it('rejects out-of-range level for the configured numLevels', () => {
+                expect(idevice.parseAIQuestionLine('0@3#A#Q?#A#B')).toBeNull();
+                expect(idevice.parseAIQuestionLine('0@-1#A#Q?#A#B')).toBeNull();
+            });
+
+            it('accepts level 3 when numLevels is 4 and maps it to difficulty 4', () => {
+                const originalNumLevels = idevice.numLevels;
+                idevice.numLevels = 4;
+                try {
+                    const q = idevice.parseAIQuestionLine('0@3#C#Q?#A#B#C#D');
+                    expect(q).not.toBeNull();
+                    expect(q.difficulty).toBe(4);
+                    expect(q.solutionMulti).toEqual([2]);
+                    // Level 4 is still out of range even with 4 levels configured.
+                    expect(idevice.parseAIQuestionLine('0@4#A#Q?#A#B')).toBeNull();
+                } finally {
+                    idevice.numLevels = originalNumLevels;
+                }
+            });
+
+            it('still rejects level 3 when numLevels defaults to 3', () => {
+                expect(idevice.numLevels).toBe(3);
+                expect(idevice.parseAIQuestionLine('0@3#A#Q?#A#B')).toBeNull();
+            });
+
+            it('accepts level 4 when numLevels is 5 and maps it to difficulty 5', () => {
+                const originalNumLevels = idevice.numLevels;
+                idevice.numLevels = 5;
+                try {
+                    const q = idevice.parseAIQuestionLine('0@4#A#Master question?#A#B#C#D');
+                    expect(q).not.toBeNull();
+                    expect(q.difficulty).toBe(5);
+                    expect(q.solutionMulti).toEqual([0]);
+                    // Word/definition at master level still works.
+                    const w = idevice.parseAIQuestionLine('2@4#Heart#Pumps blood');
+                    expect(w).not.toBeNull();
+                    expect(w.difficulty).toBe(5);
+                    // Level 5 remains out of range even with 5 levels configured.
+                    expect(idevice.parseAIQuestionLine('0@5#A#Q?#A#B')).toBeNull();
+                } finally {
+                    idevice.numLevels = originalNumLevels;
+                }
+            });
+
+            it('LEVELS_BY_COUNT exposes 5-level mode as [1..5]', () => {
+                expect(idevice.LEVELS_BY_COUNT[5]).toEqual([1, 2, 3, 4, 5]);
+                const original = idevice.numLevels;
+                idevice.numLevels = 5;
+                try {
+                    expect(idevice.LEVELS).toEqual([1, 2, 3, 4, 5]);
+                } finally {
+                    idevice.numLevels = original;
+                }
+            });
+
+            it('rejects empty or non-string input', () => {
+                expect(idevice.parseAIQuestionLine('')).toBeNull();
+                expect(idevice.parseAIQuestionLine(null)).toBeNull();
+                expect(idevice.parseAIQuestionLine(undefined)).toBeNull();
+            });
         });
     });
 
@@ -98,14 +225,50 @@ describe('adaptative-quiz edition', () => {
             idevice.showQuestion = () => {};
         });
 
-        it('loads valid lines and skips invalid ones', () => {
-            idevice.insertAIContent(['0@1#Q1#A#B#C#D', 'garbage', '1@0#Q2#A#B']);
-            expect(idevice.questionsGame).toHaveLength(2);
-            expect(idevice.questionsGame[0].question).toBe('Q1');
-            expect(idevice.questionsGame[0].difficulty).toBe(1);
-            expect(idevice.questionsGame[1].question).toBe('Q2');
-            expect(idevice.questionsGame[1].difficulty).toBe(2);
+        it('loads a mix of valid type-0/1/2 lines and skips invalid ones', () => {
+            idevice.insertAIContent([
+                '0@1#AB#Multi correct?#A#B#C#D',
+                'garbage',
+                '1@0#Order#One#Two#Three',
+                '2@2#Heart#Pumps blood',
+            ]);
+            expect(idevice.questionsGame).toHaveLength(3);
+            expect(idevice.questionsGame[0].typeSelect).toBe(0);
+            expect(idevice.questionsGame[0].solutionMulti).toEqual([0, 1]);
+            expect(idevice.questionsGame[1].typeSelect).toBe(1);
+            expect(idevice.questionsGame[1].solutionOrder).toEqual([1, 2, 3]);
+            expect(idevice.questionsGame[2].typeSelect).toBe(2);
+            expect(idevice.questionsGame[2].question).toBe('Heart');
+            expect(idevice.questionsGame[2].solutionWord).toBe('Pumps blood');
             expect(idevice.active).toBe(0);
+        });
+
+        it('drops the auto-created empty placeholder when importing into a fresh iDevice', () => {
+            idevice.questionsGame = [idevice.getCuestionDefault()];
+            idevice.active = 0;
+            idevice.insertAIContent(['0@0#A#Q?#A#B']);
+            expect(idevice.questionsGame).toHaveLength(1);
+            expect(idevice.questionsGame[0].question).toBe('Q?');
+            expect(idevice.active).toBe(0);
+        });
+
+        it('appends imported questions to the existing non-empty list', () => {
+            const existing = idevice.getCuestionDefault();
+            existing.question = 'Already there';
+            existing.options[0].text = 'A';
+            existing.options[1].text = 'B';
+            existing.solutionMulti = [0];
+            idevice.questionsGame = [existing];
+            idevice.active = 0;
+
+            idevice.insertAIContent(['0@0#A#Imported?#A#B', '2@1#Word#Definition']);
+
+            expect(idevice.questionsGame).toHaveLength(3);
+            expect(idevice.questionsGame[0].question).toBe('Already there');
+            expect(idevice.questionsGame[1].question).toBe('Imported?');
+            expect(idevice.questionsGame[2].typeSelect).toBe(2);
+            // Active jumps to the first newly imported question.
+            expect(idevice.active).toBe(1);
         });
 
         it('alerts and leaves state untouched when no valid lines are provided', () => {
@@ -122,6 +285,36 @@ describe('adaptative-quiz edition', () => {
             }
             expect(alerted).toBe(true);
             expect(idevice.questionsGame).toBe(original);
+        });
+    });
+
+    describe('isEmptyQuestion', () => {
+        it('treats null/undefined/non-objects as empty', () => {
+            expect(idevice.isEmptyQuestion(null)).toBe(true);
+            expect(idevice.isEmptyQuestion(undefined)).toBe(true);
+            expect(idevice.isEmptyQuestion('nope')).toBe(true);
+        });
+
+        it('returns true for the default placeholder question', () => {
+            expect(idevice.isEmptyQuestion(idevice.getCuestionDefault())).toBe(true);
+        });
+
+        it('returns false when the statement is filled', () => {
+            const q = idevice.getCuestionDefault();
+            q.question = 'Q?';
+            expect(idevice.isEmptyQuestion(q)).toBe(false);
+        });
+
+        it('returns false when any option text is filled', () => {
+            const q = idevice.getCuestionDefault();
+            q.options[2].text = 'C';
+            expect(idevice.isEmptyQuestion(q)).toBe(false);
+        });
+
+        it('returns false when solutionWord is filled', () => {
+            const q = idevice.getCuestionDefault();
+            q.solutionWord = 'Heart';
+            expect(idevice.isEmptyQuestion(q)).toBe(false);
         });
     });
 
@@ -871,6 +1064,533 @@ describe('adaptative-quiz edition', () => {
             document.querySelector('#adaptativeQuizESolutionWord').value = 'answer';
             const res = idevice.validateQuestion();
             expect(res).toBe(true);
+        });
+    });
+
+    describe('formatQuestionAsAILine', () => {
+        it('formats a multi-choice (typeSelect 0) with single correct letter', () => {
+            const q = {
+                typeSelect: 0,
+                question: 'Largest planet?',
+                numberOptions: 4,
+                options: [
+                    { text: 'Earth' }, { text: 'Jupiter' }, { text: 'Mars' }, { text: 'Venus' },
+                ],
+                solutionMulti: [1],
+                difficulty: 1,
+            };
+            expect(idevice.formatQuestionAsAILine(q)).toBe('0@0#B#Largest planet?#Earth#Jupiter#Mars#Venus');
+        });
+
+        it('formats multi-choice with multi-letter solution sorted alphabetically', () => {
+            const q = {
+                typeSelect: 0,
+                question: 'Pick primes',
+                numberOptions: 4,
+                options: [{ text: '2' }, { text: '4' }, { text: '5' }, { text: '9' }],
+                solutionMulti: [2, 0],
+                difficulty: 2,
+            };
+            expect(idevice.formatQuestionAsAILine(q)).toBe('0@1#AC#Pick primes#2#4#5#9');
+        });
+
+        it('formats multi-choice with empty solution', () => {
+            const q = {
+                typeSelect: 0,
+                question: 'No correct?',
+                numberOptions: 3,
+                options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }, { text: '' }],
+                solutionMulti: [],
+                difficulty: 3,
+            };
+            expect(idevice.formatQuestionAsAILine(q)).toBe('0@2##No correct?#A#B#C');
+        });
+
+        it('formats sort (typeSelect 1) using saved option order', () => {
+            const q = {
+                typeSelect: 1,
+                question: 'Largest to smallest',
+                numberOptions: 4,
+                options: [{ text: 'Elephant' }, { text: 'Tiger' }, { text: 'Cat' }, { text: 'Mouse' }],
+                solutionOrder: [1, 2, 3, 4],
+                difficulty: 3,
+            };
+            expect(idevice.formatQuestionAsAILine(q)).toBe('1@2#Largest to smallest#Elephant#Tiger#Cat#Mouse');
+        });
+
+        it('formats word/definition (typeSelect 2) preserving the legacy mapping', () => {
+            const q = {
+                typeSelect: 2,
+                question: 'Heart',
+                solutionWord: 'A muscular organ that pumps blood',
+                difficulty: 1,
+            };
+            expect(idevice.formatQuestionAsAILine(q)).toBe('2@0#Heart#A muscular organ that pumps blood');
+        });
+
+        it('returns "" for placeholder/empty questions', () => {
+            expect(idevice.formatQuestionAsAILine(null)).toBe('');
+            expect(idevice.formatQuestionAsAILine(idevice.getCuestionDefault())).toBe('');
+        });
+
+        it('returns "" when a multi-choice option text is empty', () => {
+            const q = {
+                typeSelect: 0,
+                question: 'Q?',
+                numberOptions: 4,
+                options: [{ text: 'A' }, { text: 'B' }, { text: '' }, { text: 'D' }],
+                solutionMulti: [0],
+                difficulty: 2,
+            };
+            expect(idevice.formatQuestionAsAILine(q)).toBe('');
+        });
+
+        it('strips stray # characters from fields so the output round-trips', () => {
+            const q = {
+                typeSelect: 2,
+                question: 'Heart#shape',
+                solutionWord: 'Pumps#blood',
+                difficulty: 1,
+            };
+            const line = idevice.formatQuestionAsAILine(q);
+            expect(line).toBe('2@0#Heart shape#Pumps blood');
+        });
+
+        it('clamps an out-of-range difficulty to LEVELS bounds', () => {
+            const q = {
+                typeSelect: 2,
+                question: 'X',
+                solutionWord: 'Y',
+                difficulty: 99,
+            };
+            // numLevels defaults to 3 -> max difficulty is 3 -> level 2.
+            expect(idevice.formatQuestionAsAILine(q)).toBe('2@2#X#Y');
+        });
+
+        it('rejects sort (typeSelect 1) when there are fewer than 3 items', () => {
+            const q = {
+                typeSelect: 1,
+                question: 'Order',
+                numberOptions: 2,
+                options: [{ text: 'A' }, { text: 'B' }],
+                solutionOrder: [1, 2],
+                difficulty: 2,
+            };
+            expect(idevice.formatQuestionAsAILine(q)).toBe('');
+        });
+    });
+
+    describe('buildExportLines', () => {
+        it('skips empty placeholder questions and emits one line per filled question', () => {
+            idevice.questionsGame = [
+                idevice.getCuestionDefault(),
+                {
+                    typeSelect: 0,
+                    question: 'Q1',
+                    numberOptions: 2,
+                    options: [{ text: 'A' }, { text: 'B' }],
+                    solutionMulti: [0],
+                    difficulty: 1,
+                },
+                {
+                    typeSelect: 2,
+                    question: 'Heart',
+                    solutionWord: 'Organ',
+                    difficulty: 2,
+                },
+            ];
+            expect(idevice.buildExportLines()).toEqual([
+                '0@0#A#Q1#A#B',
+                '2@1#Heart#Organ',
+            ]);
+        });
+
+        it('round-trips through parseAIQuestionLine for all three types', () => {
+            idevice.questionsGame = [
+                {
+                    typeSelect: 0,
+                    question: 'Multi?',
+                    numberOptions: 3,
+                    options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }, { text: '' }],
+                    solutionMulti: [0, 2],
+                    difficulty: 2,
+                },
+                {
+                    typeSelect: 1,
+                    question: 'Sort',
+                    numberOptions: 3,
+                    options: [{ text: 'One' }, { text: 'Two' }, { text: 'Three' }, { text: '' }],
+                    solutionOrder: [1, 2, 3],
+                    difficulty: 1,
+                },
+                {
+                    typeSelect: 2,
+                    question: 'Heart',
+                    solutionWord: 'Pumps blood',
+                    difficulty: 3,
+                },
+            ];
+            const lines = idevice.buildExportLines();
+            expect(lines).toHaveLength(3);
+            for (const line of lines) {
+                expect(idevice.parseAIQuestionLine(line)).not.toBeNull();
+            }
+            const parsedSort = idevice.parseAIQuestionLine(lines[1]);
+            expect(parsedSort.typeSelect).toBe(1);
+            expect(parsedSort.numberOptions).toBe(3);
+            expect(parsedSort.options.slice(0, 3).map(o => o.text)).toEqual(['One', 'Two', 'Three']);
+        });
+    });
+
+    describe('importGame', () => {
+        let alerts;
+        let originalAlert;
+
+        beforeEach(() => {
+            alerts = [];
+            originalAlert = global.eXe?.app?.alert;
+            if (!global.eXe) global.eXe = { app: {} };
+            if (!global.eXe.app) global.eXe.app = {};
+            global.eXe.app.alert = msg => alerts.push(msg);
+            // Insulate the test from DOM-only methods invoked by insertAIContent.
+            idevice.showQuestion = () => {};
+        });
+
+        afterEach(() => {
+            if (originalAlert) global.eXe.app.alert = originalAlert;
+        });
+
+        it('alerts and bails on null bytes (binary content)', () => {
+            idevice.questionsGame = [];
+            idevice.importGame('foo\u0000bar', 'text/plain');
+            expect(alerts.length).toBe(1);
+            expect(idevice.questionsGame).toEqual([]);
+        });
+
+        it('alerts when filetype is not text/plain', () => {
+            idevice.questionsGame = [];
+            idevice.importGame('0@0#A#Q?#A#B', 'application/xml');
+            expect(alerts.length).toBe(1);
+            expect(idevice.questionsGame).toEqual([]);
+        });
+
+        it('alerts when content has no usable lines', () => {
+            idevice.questionsGame = [];
+            idevice.importGame('   \n   \n', 'text/plain');
+            expect(alerts.length).toBe(1);
+        });
+
+        it('appends parsed questions to the existing list and skips empty lines', () => {
+            idevice.questionsGame = [];
+            idevice.importGame('0@0#A#Q1?#A#B\n\n2@1#Heart#Pumps blood\n', 'text/plain');
+            expect(alerts.length).toBe(0);
+            expect(idevice.questionsGame).toHaveLength(2);
+            expect(idevice.questionsGame[0].typeSelect).toBe(0);
+            expect(idevice.questionsGame[0].question).toBe('Q1?');
+            expect(idevice.questionsGame[1].typeSelect).toBe(2);
+            expect(idevice.questionsGame[1].question).toBe('Heart');
+            expect(idevice.questionsGame[1].solutionWord).toBe('Pumps blood');
+        });
+
+        it('alerts and keeps the original list when no line is valid', () => {
+            const original = [{ typeSelect: 0, question: 'keep me' }];
+            idevice.questionsGame = original;
+            idevice.importGame('not a valid line\nalso bad\n', 'text/plain');
+            expect(alerts.length).toBe(1);
+            expect(idevice.questionsGame).toBe(original);
+        });
+
+        it('handles a CRLF-terminated file', () => {
+            idevice.questionsGame = [];
+            idevice.importGame('2@0#Heart#Organ\r\n2@1#Brain#Neural\r\n', 'text/plain');
+            expect(idevice.questionsGame).toHaveLength(2);
+        });
+
+        it('accepts shorthand word#definition lines (e.g. az-quiz-game export)', () => {
+            idevice.questionsGame = [];
+            idevice.importGame('Heart#Pumps blood\nBrain#Neural organ\n', 'text/plain');
+            expect(idevice.questionsGame).toHaveLength(2);
+            expect(idevice.questionsGame[0].typeSelect).toBe(2);
+            expect(idevice.questionsGame[0].question).toBe('Heart');
+            expect(idevice.questionsGame[0].solutionWord).toBe('Pumps blood');
+            expect(idevice.questionsGame[1].question).toBe('Brain');
+        });
+
+        it('accepts shorthand multi-choice lines without type@level prefix', () => {
+            idevice.questionsGame = [];
+            idevice.importGame('AC#Pick primes#2#3#4#5\nB#Pick one#A#B#C\n', 'text/plain');
+            expect(idevice.questionsGame).toHaveLength(2);
+            expect(idevice.questionsGame[0].typeSelect).toBe(0);
+            expect(idevice.questionsGame[0].question).toBe('Pick primes');
+            expect(idevice.questionsGame[0].solutionMulti).toEqual([0, 2]);
+            expect(idevice.questionsGame[0].numberOptions).toBe(4);
+            expect(idevice.questionsGame[1].solutionMulti).toEqual([1]);
+            expect(idevice.questionsGame[1].numberOptions).toBe(3);
+        });
+
+        it('mixes canonical and shorthand lines in the same file', () => {
+            idevice.questionsGame = [];
+            idevice.importGame('Heart#Organ\n0@2#A#Q?#X#Y#Z\n', 'text/plain');
+            expect(idevice.questionsGame).toHaveLength(2);
+            expect(idevice.questionsGame[0].typeSelect).toBe(2);
+            expect(idevice.questionsGame[1].typeSelect).toBe(0);
+            expect(idevice.questionsGame[1].difficulty).toBe(3);
+        });
+    });
+
+    describe('normalizeImportLine', () => {
+        it('returns canonical lines unchanged', () => {
+            expect(idevice.normalizeImportLine('0@1#A#Q?#X#Y')).toBe('0@1#A#Q?#X#Y');
+            expect(idevice.normalizeImportLine('2@0#word#def')).toBe('2@0#word#def');
+            expect(idevice.normalizeImportLine('1@2#Sort#a#b#c')).toBe('1@2#Sort#a#b#c');
+        });
+
+        it('rewrites word#definition shorthand to 2@1', () => {
+            expect(idevice.normalizeImportLine('Heart#Pumps blood'))
+                .toBe('2@1#Heart#Pumps blood');
+        });
+
+        it('rewrites multi-choice shorthand to 0@1 (uppercases letters)', () => {
+            expect(idevice.normalizeImportLine('ac#Pick primes#2#3#4#5'))
+                .toBe('0@1#AC#Pick primes#2#3#4#5');
+            expect(idevice.normalizeImportLine('B#Q?#X#Y'))
+                .toBe('0@1#B#Q?#X#Y');
+        });
+
+        it('rewrites multi-choice shorthand with empty letters (no correct answer)', () => {
+            expect(idevice.normalizeImportLine('#Q?#X#Y#Z'))
+                .toBe('0@1##Q?#X#Y#Z');
+        });
+
+        it('does not rewrite lines that do not match a known shorthand', () => {
+            expect(idevice.normalizeImportLine('only one field')).toBe('only one field');
+            expect(idevice.normalizeImportLine('not letters#Q?#X#Y'))
+                .toBe('not letters#Q?#X#Y');
+            // Only one option after the question -> not enough.
+            expect(idevice.normalizeImportLine('A#Q?#X')).toBe('A#Q?#X');
+        });
+
+        it('returns empty string for empty input', () => {
+            expect(idevice.normalizeImportLine('')).toBe('');
+        });
+    });
+
+    describe('level filter', () => {
+        beforeEach(() => {
+            idevice.numLevels = 3;
+            idevice.levelFilter = 0;
+            idevice.questionsGame = [
+                { ...idevice.getCuestionDefault(), question: 'Q1', difficulty: 1 },
+                { ...idevice.getCuestionDefault(), question: 'Q2', difficulty: 2 },
+                { ...idevice.getCuestionDefault(), question: 'Q3', difficulty: 1 },
+                { ...idevice.getCuestionDefault(), question: 'Q4', difficulty: 3 },
+                { ...idevice.getCuestionDefault(), question: 'Q5', difficulty: 1 },
+            ];
+            idevice.active = 0;
+            idevice.showQuestion = () => {};
+            idevice.validateQuestion = () => true;
+        });
+
+        it('getFilteredIndices returns all indices when the filter is "All"', () => {
+            expect(idevice.getFilteredIndices()).toEqual([0, 1, 2, 3, 4]);
+        });
+
+        it('getFilteredIndices returns only indices whose difficulty matches the filter', () => {
+            idevice.levelFilter = 1;
+            expect(idevice.getFilteredIndices()).toEqual([0, 2, 4]);
+            idevice.levelFilter = 3;
+            expect(idevice.getFilteredIndices()).toEqual([3]);
+            idevice.levelFilter = 2;
+            expect(idevice.getFilteredIndices()).toEqual([1]);
+        });
+
+        it('findNeighborIndex skips questions of other levels', () => {
+            idevice.levelFilter = 1;
+            idevice.active = 0;
+            expect(idevice.findNeighborIndex('next')).toBe(2);
+            idevice.active = 2;
+            expect(idevice.findNeighborIndex('next')).toBe(4);
+            idevice.active = 4;
+            expect(idevice.findNeighborIndex('next')).toBe(-1);
+            idevice.active = 4;
+            expect(idevice.findNeighborIndex('prev')).toBe(2);
+            expect(idevice.findNeighborIndex('first')).toBe(0);
+            expect(idevice.findNeighborIndex('last')).toBe(4);
+        });
+
+        it('nextQuestion / previousQuestion move only across the filtered level', () => {
+            idevice.levelFilter = 1;
+            idevice.active = 0;
+            idevice.nextQuestion();
+            expect(idevice.active).toBe(2);
+            idevice.nextQuestion();
+            expect(idevice.active).toBe(4);
+            idevice.nextQuestion();
+            expect(idevice.active).toBe(4);
+            idevice.previousQuestion();
+            expect(idevice.active).toBe(2);
+            idevice.firstQuestion();
+            expect(idevice.active).toBe(0);
+            idevice.lastQuestion();
+            expect(idevice.active).toBe(4);
+        });
+
+        it('addQuestion forces the new question to the filtered difficulty', () => {
+            idevice.levelFilter = 3;
+            idevice.active = 3;
+            idevice.addQuestion();
+            const last = idevice.questionsGame[idevice.questionsGame.length - 1];
+            expect(last.difficulty).toBe(3);
+            expect(idevice.active).toBe(idevice.questionsGame.length - 1);
+        });
+
+        it('removeQuestion appends an empty question of the filtered level when none remain', () => {
+            idevice.questionsGame = [
+                { ...idevice.getCuestionDefault(), question: 'Q1', difficulty: 1 },
+                { ...idevice.getCuestionDefault(), question: 'Q2', difficulty: 2 },
+            ];
+            idevice.levelFilter = 1;
+            idevice.active = 0;
+            idevice.removeQuestion();
+            expect(idevice.questionsGame).toHaveLength(2);
+            expect(idevice.questionsGame[idevice.questionsGame.length - 1].difficulty).toBe(1);
+            expect(idevice.questionsGame[idevice.questionsGame.length - 1].question).toBe('');
+        });
+
+        it('removeQuestion jumps to the first matching question when the active one was removed', () => {
+            idevice.levelFilter = 1;
+            idevice.active = 2;
+            idevice.removeQuestion();
+            // Original Q3 (index 2, difficulty 1) is gone; remaining matching
+            // questions are at indices 0 and 3 (Q5 shifted from 4 to 3).
+            expect(idevice.getFilteredIndices()).toContain(idevice.active);
+            expect(idevice.questionsGame[idevice.active].difficulty).toBe(1);
+        });
+    });
+
+    describe('applyLevelFilter and populateLevelFilter', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <input id="adaptativeQuizLevelName1" value="Easy" />
+                <input id="adaptativeQuizLevelName2" value="Medium" />
+                <input id="adaptativeQuizLevelName3" value="Hard" />
+                <input id="adaptativeQuizLevelName4" value="Expert" />
+                <input id="adaptativeQuizLevelName5" value="Master" />
+                <select id="adaptativeQuizELevelFilter"></select>
+                <select id="adaptativeQuizDifficulty">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+                <input id="adaptativeQuizENumberQuestion" />
+                <span id="adaptativeQuizENumQuestions"></span>
+            `;
+            idevice.numLevels = 3;
+            idevice.levelFilter = 0;
+            idevice.msgs = {
+                msgLevelEasy: 'Easy',
+                msgLevelMedium: 'Medium',
+                msgLevelHard: 'Hard',
+                msgLevelExpert: 'Expert',
+                msgLevelMaster: 'Master',
+            };
+            idevice.questionsGame = [
+                { ...idevice.getCuestionDefault(), difficulty: 2 },
+            ];
+            idevice.active = 0;
+            idevice.showQuestion = () => {};
+            idevice.validateQuestion = () => true;
+            // Avoid overwriting questionsGame from the (mostly empty) DOM
+            // inputs so each test can drive behaviour from in-memory fixtures.
+            idevice.readQuestionFromDom = () => idevice.questionsGame[idevice.active];
+        });
+
+        it('populateLevelFilter renders one option per active level plus "All"', () => {
+            idevice.populateLevelFilter();
+            const options = Array.from(document.querySelectorAll('#adaptativeQuizELevelFilter option'));
+            expect(options).toHaveLength(4);
+            expect(options[0].value).toBe('0');
+            expect(options[1].value).toBe('1');
+            expect(options[1].textContent).toBe('Easy');
+            expect(options[3].textContent).toBe('Hard');
+        });
+
+        it('populateLevelFilter resets the filter to "All" when its level no longer exists', () => {
+            idevice.numLevels = 5;
+            idevice.populateLevelFilter();
+            idevice.levelFilter = 5;
+            document.querySelector('#adaptativeQuizELevelFilter').value = '5';
+            idevice.numLevels = 3;
+            idevice.populateLevelFilter();
+            expect(idevice.levelFilter).toBe(0);
+            expect(document.querySelector('#adaptativeQuizELevelFilter').value).toBe('0');
+        });
+
+        it('applyLevelFilter repurposes the lone empty question to the chosen level', () => {
+            // The starter question is empty, so switching levels must NOT
+            // stack another empty placeholder; it just changes the level of
+            // the one that already exists.
+            idevice.applyLevelFilter('3');
+            expect(idevice.levelFilter).toBe(3);
+            expect(idevice.questionsGame).toHaveLength(1);
+            expect(idevice.questionsGame[idevice.active].difficulty).toBe(3);
+            expect(document.querySelector('#adaptativeQuizDifficulty').disabled).toBe(true);
+            expect(document.querySelector('#adaptativeQuizDifficulty').value).toBe('3');
+        });
+
+        it('applyLevelFilter appends an empty question only when no real question of the chosen level exists', () => {
+            idevice.questionsGame = [
+                { ...idevice.getCuestionDefault(), difficulty: 1, question: 'Q1', options: [
+                    { text: 'a' }, { text: 'b' }, { text: 'c' }, { text: 'd' },
+                    { text: '' }, { text: '' },
+                ] },
+            ];
+            idevice.active = 0;
+            idevice.applyLevelFilter('3');
+            expect(idevice.questionsGame).toHaveLength(2);
+            expect(idevice.questionsGame[1].difficulty).toBe(3);
+            expect(idevice.active).toBe(1);
+        });
+
+        it('applyLevelFilter drops empty placeholders left over from previous switches', () => {
+            // Simulate a chain of level changes that left empty placeholders.
+            idevice.questionsGame = [
+                { ...idevice.getCuestionDefault(), difficulty: 1, question: 'Q1', options: [
+                    { text: 'a' }, { text: 'b' }, { text: 'c' }, { text: 'd' },
+                    { text: '' }, { text: '' },
+                ] },
+                { ...idevice.getCuestionDefault(), difficulty: 2 }, // empty placeholder
+                { ...idevice.getCuestionDefault(), difficulty: 3 }, // empty placeholder
+            ];
+            idevice.active = 2;
+            idevice.applyLevelFilter('1');
+            expect(idevice.questionsGame).toHaveLength(1);
+            expect(idevice.active).toBe(0);
+            expect(idevice.questionsGame[0].question).toBe('Q1');
+        });
+
+        it('applyLevelFilter("0") restores "All" and re-enables the difficulty selector', () => {
+            idevice.applyLevelFilter('2');
+            expect(document.querySelector('#adaptativeQuizDifficulty').disabled).toBe(true);
+            idevice.applyLevelFilter('0');
+            expect(idevice.levelFilter).toBe(0);
+            expect(document.querySelector('#adaptativeQuizDifficulty').disabled).toBe(false);
+        });
+
+        it('applyLevelFilter switches even when the current question is invalid', () => {
+            // The author should be able to change the level filter at any
+            // moment without being blocked by a half-finished question. The
+            // partial state is just persisted to questionsGame and the new
+            // filter takes effect immediately.
+            let validateCalls = 0;
+            idevice.validateQuestion = () => {
+                validateCalls++;
+                return false;
+            };
+            idevice.readQuestionFromDom = () => idevice.questionsGame[idevice.active];
+            idevice.applyLevelFilter('3');
+            expect(idevice.levelFilter).toBe(3);
+            expect(validateCalls).toBe(0);
         });
     });
 });

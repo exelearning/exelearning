@@ -4,8 +4,8 @@
  *
  * Paginated multiple-choice quiz inspired by the quick-questions form:
  *  - One question is edited at a time.
- *  - Each question has: difficulty (1/2/3), optional image, optional audio,
- *    2-4 answer options (each with its own optional audio) and optional
+ *  - Each question has: difficulty (1/2/3/4/5), optional image, optional audio,
+ *    2-6 answer options (each with its own optional audio) and optional
  *    feedback strings (with optional audio) for correct/incorrect answers.
  *  - Runtime adaptation rules live in the export code.
  */
@@ -22,11 +22,12 @@ var $exeDevice = {
     typeEdit: -1,
     numberCutCuestion: -1,
     clipBoard: '',
+    levelFilter: 0,
     MIN_OPTIONS: 2,
-    MAX_OPTIONS: 4,
+    MAX_OPTIONS: 6,
     MIN_QUESTIONS: 1,
     DEFAULT_MIN_PLAY: 5,
-    LEVELS_BY_COUNT: { 3: [1, 2, 3], 4: [1, 2, 3, 4] },
+    LEVELS_BY_COUNT: { 3: [1, 2, 3], 4: [1, 2, 3, 4], 5: [1, 2, 3, 4, 5] },
     DEFAULT_NUM_LEVELS: 3,
     AI_TOTAL_QUESTIONS: 60,
     numLevels: 3,
@@ -88,6 +89,7 @@ var $exeDevice = {
             msgLevelMedium: c_('Medium'),
             msgLevelHard: c_('Hard'),
             msgLevelExpert: c_('Expert'),
+            msgLevelMaster: c_('Master'),
             msgLevelUp: c_('Level up!'),
             msgLevelDown: c_('Level down'),
             msgReportTitle: c_('Final report'),
@@ -135,6 +137,8 @@ var $exeDevice = {
             msgInitialLevelEmpty: _(
                 'Warning: the selected initial level has no questions. The quiz will start using the fallback level.',
             ),
+            msgLevelNameEmpty: _('Please provide a name for every level.'),
+            msgLevelTooFewQuestions: _('Level "%s" must have at least 2 questions.'),
             msgProvideTimeSolution: _('Please indicate the time the solution will be displayed.'),
             msgESelectAtLeastOne: _('Question %s: please mark at least one correct answer.'),
             msgEProvideWord: _('Question %s: please provide the solution word or phrase.'),
@@ -188,7 +192,7 @@ var $exeDevice = {
             <div id="adaptativeQuizIdeviceForm">
                 ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
                     _(
-                        'Create a multiple-choice quiz whose difficulty adapts to the learner. Assign a level (1/2/3) to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.',
+                        'Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.',
                     ),
                     null,
                 )}
@@ -207,6 +211,10 @@ var $exeDevice = {
                                     <div class="form-check form-check-inline m-0">
                                         <input class="form-check-input" id="adaptativeQuizNumLevels4" type="radio" name="adqnumlevels" value="4" />
                                         <label for="adaptativeQuizNumLevels4">4</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="form-check-input" id="adaptativeQuizNumLevels5" type="radio" name="adqnumlevels" value="5" />
+                                        <label for="adaptativeQuizNumLevels5">5</label>
                                     </div>
                                 </span>
                             </div>
@@ -227,6 +235,10 @@ var $exeDevice = {
                                     <label for="adaptativeQuizLevelName4">${_('Level 4 name')}:</label>
                                     <input type="text" id="adaptativeQuizLevelName4" class="form-control form-control-sm" value="${_('Expert')}" />
                                 </div>
+                                <div id="adaptativeQuizLevelName5Wrap" style="display:none">
+                                    <label for="adaptativeQuizLevelName5">${_('Level 5 name')}:</label>
+                                    <input type="text" id="adaptativeQuizLevelName5" class="form-control form-control-sm" value="${_('Master')}" />
+                                </div>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="adaptativeQuizInitialLevel" class="mb-0">${_('Initial level')}:</label>
@@ -235,6 +247,7 @@ var $exeDevice = {
                                     <option value="2" selected>2</option>
                                     <option value="3">3</option>
                                     <option value="4" data-level-extra="4" style="display:none">4</option>
+                                    <option value="5" data-level-extra="5" style="display:none">5</option>
                                 </select>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
@@ -295,6 +308,12 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset">
                         <legend><a href="#">${_('Questions')}</a></legend>
                         <div class="ADQ-EPanel" id="adaptativeQuizEPanel">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizELevelFilterDiv">
+                                <label for="adaptativeQuizELevelFilter" class="mb-0">${_('Level filter')}:</label>
+                                <select id="adaptativeQuizELevelFilter" class="form-control form-control-sm ADQ-ELevelFilter" style="width:auto">
+                                    <option value="0" selected>${_('All')}</option>
+                                </select>
+                            </div>
                             <div class="ADQ-EOptionsMedia">
                                 <div class="ADQ-EOptionsGame">
                                     <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
@@ -327,6 +346,10 @@ var $exeDevice = {
                                             </div>
                                         </span>
                                     </div>
+                                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizInputImage">
+                                        <label class="sr-av" for="adaptativeQuizEURLImage">${_('Image URL')}</label>
+                                        <input type="text" class="exe-image-picker w-100 form-control me-0 ADQ-EImageInput" id="adaptativeQuizEURLImage"/>
+                                    </div>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizEOptionsNumberDiv">
                                         <span>${_('Options Number')}:</span>
                                         <span class="ADQ-EInputNumbers d-flex align-items-center gap-2 flex-nowrap">
@@ -342,6 +365,14 @@ var $exeDevice = {
                                                 <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ4" type="radio" name="adqnumber" value="4" checked="checked" />
                                                 <label for="adaptativeQuizNumQ4">4</label>
                                             </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ5" type="radio" name="adqnumber" value="5" />
+                                                <label for="adaptativeQuizNumQ5">5</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="ADQ-ENumber form-check-input" id="adaptativeQuizNumQ6" type="radio" name="adqnumber" value="6" />
+                                                <label for="adaptativeQuizNumQ6">6</label>
+                                            </div>
                                         </span>
                                     </div>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3 d-none" id="adaptativeQuizEPercentageShowDiv">
@@ -355,13 +386,10 @@ var $exeDevice = {
                                             <option value="2" selected>2</option>
                                             <option value="3">3</option>
                                             <option value="4" data-level-extra="4" style="display:none">4</option>
+                                            <option value="5" data-level-extra="5" style="display:none">5</option>
                                         </select>
                                     </div>
                                     <span id="adaptativeQuizTitleImage" style="display:none">${_('Image URL')}</span>
-                                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizInputImage">
-                                        <label class="sr-av" for="adaptativeQuizEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-image-picker w-100 form-control me-0 ADQ-EImageInput" id="adaptativeQuizEURLImage"/>
-                                    </div>                                  
                                 </div>
                                 <div class="ADQ-EMultiMediaOption">
                                     <div class="ADQ-EMultimedia" id="adaptativeQuizMultimedia">
@@ -396,7 +424,7 @@ var $exeDevice = {
                                     <div class="ADQ-EWordRow">
                                         <div class="ADQ-EInputWithToggle d-flex align-items-center gap-2 flex-nowrap mb-2">
                                             <label for="adaptativeQuizESolutionWord" class="m-0">${_('Definition')}:</label>
-                                            <input type="text" class="ADQ-ESolutionWord form-control" id="adaptativeQuizESolutionWord" placeholder="${_('Solution word or phrase')}" />
+                                            <input type="text" class="ADQ-ESolutionWord form-control" id="adaptativeQuizESolutionWord" placeholder="${_('Definition')}" />
                                             ${this.audioToggleButton('solutionWord')}
                                         </div>
                                         ${this.audioField('solutionWord')}
@@ -442,6 +470,7 @@ var $exeDevice = {
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 10, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(10, { numLevels: this.numLevels })}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
@@ -522,6 +551,8 @@ var $exeDevice = {
         question: '',
         numberOptions: 4,
         options: [
+            { text: '', audio: '' },
+            { text: '', audio: '' },
             { text: '', audio: '' },
             { text: '', audio: '' },
             { text: '', audio: '' },
@@ -641,8 +672,166 @@ var $exeDevice = {
         $('#adaptativeQuizAudio-msgError').val(q.msgErrorAudio || '');
 
         this.showOptions(q.numberOptions || 4);
-        $('#adaptativeQuizENumberQuestion').val(idx + 1);
-        $('#adaptativeQuizENumQuestions').text(this.questionsGame.length);
+        this.applyLevelFilterToForm(q);
+        const filtered = this.getFilteredIndices();
+        const pos = filtered.indexOf(idx);
+        if (this.levelFilter > 0 && pos !== -1) {
+            $('#adaptativeQuizENumberQuestion').val(pos + 1);
+            $('#adaptativeQuizENumQuestions').text(filtered.length);
+        } else {
+            $('#adaptativeQuizENumberQuestion').val(idx + 1);
+            $('#adaptativeQuizENumQuestions').text(this.questionsGame.length);
+        }
+    },
+
+    /**
+     * Build the list of question-array indices that satisfy the current
+     * `levelFilter`. When the filter is 0 (“All”) every index is returned.
+     */
+    getFilteredIndices: function () {
+        if (!this.levelFilter) return this.questionsGame.map((_q, i) => i);
+        const lvl = this.levelFilter;
+        const out = [];
+        for (let i = 0; i < this.questionsGame.length; i++) {
+            if (this.questionsGame[i] && this.questionsGame[i].difficulty === lvl) out.push(i);
+        }
+        return out;
+    },
+
+    /**
+     * Reflect the current level filter on the form: when a specific level is
+     * selected, the difficulty selector is forced to that level and disabled
+     * so any new or edited question stays in the filtered level.
+     */
+    applyLevelFilterToForm: function (q) {
+        const $diff = $('#adaptativeQuizDifficulty');
+        if (this.levelFilter > 0) {
+            $diff.val(String(this.levelFilter)).prop('disabled', true);
+            if (q && q.difficulty !== this.levelFilter) q.difficulty = this.levelFilter;
+        } else {
+            $diff.prop('disabled', false);
+        }
+    },
+
+    /**
+     * Rebuild the level-filter `<select>` options based on the current
+     * `numLevels` and the user-defined level names. Preserves the current
+     * `levelFilter` value when still valid; otherwise resets to “All”.
+     */
+    populateLevelFilter: function () {
+        const $sel = $('#adaptativeQuizELevelFilter');
+        if (!$sel.length) return;
+        const names = [];
+        for (let i = 1; i <= this.numLevels; i++) {
+            const $input = $('#adaptativeQuizLevelName' + i);
+            const fallback = i === 1
+                ? this.msgs.msgLevelEasy
+                : i === 2
+                    ? this.msgs.msgLevelMedium
+                    : i === 3
+                        ? this.msgs.msgLevelHard
+                        : i === 4
+                            ? this.msgs.msgLevelExpert
+                            : this.msgs.msgLevelMaster;
+            const name = ($input.val() || fallback || ('Level ' + i)).toString();
+            names.push(name);
+        }
+        const previous = this.levelFilter;
+        let html = `<option value="0">${_('All')}</option>`;
+        for (let i = 0; i < names.length; i++) {
+            html += `<option value="${i + 1}">${names[i]}</option>`;
+        }
+        $sel.html(html);
+        if (previous > 0 && previous <= this.numLevels) {
+            $sel.val(String(previous));
+        } else {
+            $sel.val('0');
+            this.levelFilter = 0;
+        }
+    },
+
+    /**
+     * Apply a new value of the level-filter dropdown. When set to a
+     * specific level, navigate to the first question that matches that
+     * level; if none exists, append a new empty question with that
+     * difficulty so the author always has somewhere to type. The
+     * difficulty selector is also disabled while a level filter is active.
+     */
+    applyLevelFilter: function (level) {
+        const parsed = parseInt(level, 10);
+        const lvl = Number.isInteger(parsed) && parsed >= 1 && parsed <= this.numLevels ? parsed : 0;
+        // Persist any in-progress edit so switching the filter never loses
+        // text the author has typed (validation is intentionally skipped so
+        // the dropdown always responds).
+        if (this.questionsGame && this.questionsGame[this.active]) {
+            this.readQuestionFromDom();
+        }
+        // Drop empty placeholder questions left behind by previous filter
+        // switches so we do not stack one empty question per visited level.
+        // Always keep at least one question in the game.
+        for (let i = this.questionsGame.length - 1; i >= 0 && this.questionsGame.length > 1; i--) {
+            if (this.isEmptyQuestion(this.questionsGame[i])) {
+                this.questionsGame.splice(i, 1);
+            }
+        }
+        if (this.active >= this.questionsGame.length) {
+            this.active = this.questionsGame.length - 1;
+        }
+        this.levelFilter = lvl;
+        if (lvl === 0) {
+            // "All" always lands on the very first question.
+            this.active = 0;
+            this.applyLevelFilterToForm(this.questionsGame[this.active]);
+            this.showQuestion(this.active);
+            return;
+        }
+        const filtered = this.getFilteredIndices();
+        if (filtered.length === 0) {
+            // No question of this level exists: if the sole existing
+            // question is empty, repurpose it (just change its difficulty)
+            // instead of stacking another empty placeholder.
+            if (this.questionsGame.length === 1 && this.isEmptyQuestion(this.questionsGame[0])) {
+                this.questionsGame[0].difficulty = lvl;
+                this.active = 0;
+            } else {
+                const empty = this.getCuestionDefault();
+                empty.difficulty = lvl;
+                this.questionsGame.push(empty);
+                this.active = this.questionsGame.length - 1;
+            }
+        } else {
+            // Always show the first question of the chosen level.
+            this.active = filtered[0];
+        }
+        this.applyLevelFilterToForm(this.questionsGame[this.active]);
+        this.showQuestion(this.active);
+    },
+
+    /**
+     * Find the next or previous question index matching the current filter.
+     * Returns -1 when no other matching question exists in that direction.
+     */
+    findNeighborIndex: function (direction) {
+        const filtered = this.getFilteredIndices();
+        if (filtered.length === 0) return -1;
+        const pos = filtered.indexOf(this.active);
+        if (direction === 'next') {
+            if (pos === -1) return filtered.find(i => i > this.active) ?? -1;
+            return pos < filtered.length - 1 ? filtered[pos + 1] : -1;
+        }
+        if (direction === 'prev') {
+            if (pos === -1) {
+                let last = -1;
+                for (const i of filtered) {
+                    if (i < this.active) last = i;
+                }
+                return last;
+            }
+            return pos > 0 ? filtered[pos - 1] : -1;
+        }
+        if (direction === 'first') return filtered[0];
+        if (direction === 'last') return filtered[filtered.length - 1];
+        return -1;
     },
 
     /**
@@ -688,26 +877,34 @@ var $exeDevice = {
      * switching from 4 levels back to 3, and refreshes the AI hint.
      */
     applyNumLevels: function (n) {
-        const value = parseInt(n, 10) === 4 ? 4 : 3;
+        const parsed = parseInt(n, 10);
+        const value = parsed === 5 ? 5 : parsed === 4 ? 4 : 3;
         this.numLevels = value;
-        const showFour = value === 4;
+        const showFour = value >= 4;
+        const showFive = value >= 5;
 
         $('#adaptativeQuizLevelName4Wrap').toggle(showFour);
+        $('#adaptativeQuizLevelName5Wrap').toggle(showFive);
         $('#adaptativeQuizInitialLevel option[data-level-extra="4"]').toggle(showFour);
+        $('#adaptativeQuizInitialLevel option[data-level-extra="5"]').toggle(showFive);
         $('#adaptativeQuizDifficulty option[data-level-extra="4"]').toggle(showFour);
+        $('#adaptativeQuizDifficulty option[data-level-extra="5"]').toggle(showFive);
         $('input[name="adqnumlevels"][value="' + value + '"]').prop('checked', true);
 
-        if (!showFour) {
-            if (parseInt($('#adaptativeQuizInitialLevel').val(), 10) === 4) {
-                $('#adaptativeQuizInitialLevel').val('3');
-            }
-            if (parseInt($('#adaptativeQuizDifficulty').val(), 10) === 4) {
-                $('#adaptativeQuizDifficulty').val('3');
-            }
-            for (const q of this.questionsGame) {
-                if (q && q.difficulty === 4) q.difficulty = 3;
+        const maxLevel = this.LEVELS[this.LEVELS.length - 1];
+        if (parseInt($('#adaptativeQuizInitialLevel').val(), 10) > maxLevel) {
+            $('#adaptativeQuizInitialLevel').val(String(maxLevel));
+        }
+        if (parseInt($('#adaptativeQuizDifficulty').val(), 10) > maxLevel) {
+            $('#adaptativeQuizDifficulty').val(String(maxLevel));
+        }
+        for (const q of this.questionsGame) {
+            if (q && Number.isInteger(q.difficulty) && q.difficulty > maxLevel) {
+                q.difficulty = maxLevel;
             }
         }
+        if (this.levelFilter > maxLevel) this.levelFilter = 0;
+        this.populateLevelFilter();
         this.updateAIHint();
     },
 
@@ -820,18 +1017,24 @@ var $exeDevice = {
         const tSel = Number.isInteger(q.typeSelect) ? q.typeSelect : 0;
 
         if (!q.question || this.removeTags(q.question).length === 0) {
+            // For type 2 (word/definition) q.question stores the WORD the
+            // learner has to type, so the matching error message is
+            // "please provide the solution word" rather than
+            // "the question text cannot be empty".
             const msg =
                 tSel === 2
-                    ? this.msgs.msgEDefinition.replace('%s', human)
+                    ? this.msgs.msgEProvideWord.replace('%s', human)
                     : this.msgs.msgQuestionEmpty.replace('%s', human);
             this.showMessage(msg);
             return false;
         }
 
         if (tSel === 2) {
-            // Word: only the solution word is needed beyond the definition.
+            // For type 2, q.solutionWord stores the DEFINITION (the prompt
+            // shown to the learner), so a missing value here is reported as
+            // a missing definition.
             if (!q.solutionWord || this.removeTags(q.solutionWord).length === 0) {
-                this.showMessage(this.msgs.msgEProvideWord.replace('%s', human));
+                this.showMessage(this.msgs.msgEDefinition.replace('%s', human));
                 return false;
             }
             return true;
@@ -865,7 +1068,9 @@ var $exeDevice = {
 
     addQuestion: () => {
         if (!$exeDevice.validateQuestion()) return;
-        $exeDevice.questionsGame.push($exeDevice.getCuestionDefault());
+        const fresh = $exeDevice.getCuestionDefault();
+        if ($exeDevice.levelFilter > 0) fresh.difficulty = $exeDevice.levelFilter;
+        $exeDevice.questionsGame.push(fresh);
         $exeDevice.active = $exeDevice.questionsGame.length - 1;
         $exeDevice.typeEdit = -1;
         $('#adaptativeQuizEPaste').hide();
@@ -880,6 +1085,17 @@ var $exeDevice = {
         $exeDevice.questionsGame.splice($exeDevice.active, 1);
         if ($exeDevice.active >= $exeDevice.questionsGame.length) {
             $exeDevice.active = $exeDevice.questionsGame.length - 1;
+        }
+        if ($exeDevice.levelFilter > 0) {
+            const filtered = $exeDevice.getFilteredIndices();
+            if (filtered.length === 0) {
+                const empty = $exeDevice.getCuestionDefault();
+                empty.difficulty = $exeDevice.levelFilter;
+                $exeDevice.questionsGame.push(empty);
+                $exeDevice.active = $exeDevice.questionsGame.length - 1;
+            } else if (filtered.indexOf($exeDevice.active) === -1) {
+                $exeDevice.active = filtered[0];
+            }
         }
         $exeDevice.showQuestion($exeDevice.active);
     },
@@ -915,28 +1131,64 @@ var $exeDevice = {
     },
 
     nextQuestion: () => {
-        if ($exeDevice.validateQuestion() && $exeDevice.active < $exeDevice.questionsGame.length - 1) {
+        if (!$exeDevice.validateQuestion()) return;
+        if ($exeDevice.levelFilter > 0) {
+            const target = $exeDevice.findNeighborIndex('next');
+            if (target !== -1) {
+                $exeDevice.active = target;
+                $exeDevice.showQuestion(target);
+            }
+            return;
+        }
+        if ($exeDevice.active < $exeDevice.questionsGame.length - 1) {
             $exeDevice.active++;
             $exeDevice.showQuestion($exeDevice.active);
         }
     },
 
     previousQuestion: () => {
-        if ($exeDevice.validateQuestion() && $exeDevice.active > 0) {
+        if (!$exeDevice.validateQuestion()) return;
+        if ($exeDevice.levelFilter > 0) {
+            const target = $exeDevice.findNeighborIndex('prev');
+            if (target !== -1) {
+                $exeDevice.active = target;
+                $exeDevice.showQuestion(target);
+            }
+            return;
+        }
+        if ($exeDevice.active > 0) {
             $exeDevice.active--;
             $exeDevice.showQuestion($exeDevice.active);
         }
     },
 
     firstQuestion: () => {
-        if ($exeDevice.validateQuestion() && $exeDevice.active > 0) {
+        if (!$exeDevice.validateQuestion()) return;
+        if ($exeDevice.levelFilter > 0) {
+            const target = $exeDevice.findNeighborIndex('first');
+            if (target !== -1 && target !== $exeDevice.active) {
+                $exeDevice.active = target;
+                $exeDevice.showQuestion(target);
+            }
+            return;
+        }
+        if ($exeDevice.active > 0) {
             $exeDevice.active = 0;
             $exeDevice.showQuestion(0);
         }
     },
 
     lastQuestion: () => {
-        if ($exeDevice.validateQuestion() && $exeDevice.active < $exeDevice.questionsGame.length - 1) {
+        if (!$exeDevice.validateQuestion()) return;
+        if ($exeDevice.levelFilter > 0) {
+            const target = $exeDevice.findNeighborIndex('last');
+            if (target !== -1 && target !== $exeDevice.active) {
+                $exeDevice.active = target;
+                $exeDevice.showQuestion(target);
+            }
+            return;
+        }
+        if ($exeDevice.active < $exeDevice.questionsGame.length - 1) {
             $exeDevice.active = $exeDevice.questionsGame.length - 1;
             $exeDevice.showQuestion($exeDevice.active);
         }
@@ -945,7 +1197,18 @@ var $exeDevice = {
     goToQuestion: () => {
         const input = parseInt($('#adaptativeQuizENumberQuestion').val());
         if (Number.isNaN(input)) {
-            $('#adaptativeQuizENumberQuestion').val($exeDevice.active + 1);
+            $exeDevice.showQuestion($exeDevice.active);
+            return;
+        }
+        if ($exeDevice.levelFilter > 0) {
+            const filtered = $exeDevice.getFilteredIndices();
+            const target = filtered[Math.max(1, Math.min(input, filtered.length)) - 1];
+            if (target !== undefined && target !== $exeDevice.active && $exeDevice.validateQuestion()) {
+                $exeDevice.active = target;
+                $exeDevice.showQuestion(target);
+            } else {
+                $exeDevice.showQuestion($exeDevice.active);
+            }
             return;
         }
         const target = Math.max(1, Math.min(input, $exeDevice.questionsGame.length)) - 1;
@@ -995,7 +1258,8 @@ var $exeDevice = {
         $('#adaptativeQuizTimeShowSolution').prop('disabled', !showSolution);
         $('#adaptativeQuizECustomMessages').prop('checked', !!dataGame.customMessages);
         this.showSelectOrder(!!dataGame.customMessages);
-        const storedLevels = parseInt(dataGame.numLevels, 10) === 4 ? 4 : this.DEFAULT_NUM_LEVELS;
+        const storedLevelsRaw = parseInt(dataGame.numLevels, 10);
+        const storedLevels = storedLevelsRaw === 5 ? 5 : storedLevelsRaw === 4 ? 4 : this.DEFAULT_NUM_LEVELS;
         this.applyNumLevels(storedLevels);
         $('#adaptativeQuizInitialLevel').val(
             this.LEVELS.indexOf(dataGame.initialLevel) !== -1 ? String(dataGame.initialLevel) : '2',
@@ -1005,6 +1269,7 @@ var $exeDevice = {
             $('#adaptativeQuizLevelName2').val(dataGame.levelNames[1] || _('Medium'));
             $('#adaptativeQuizLevelName3').val(dataGame.levelNames[2] || _('Hard'));
             if (dataGame.levelNames[3]) $('#adaptativeQuizLevelName4').val(dataGame.levelNames[3]);
+            if (dataGame.levelNames[4]) $('#adaptativeQuizLevelName5').val(dataGame.levelNames[4]);
         }
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: dataGame.evaluation,
@@ -1159,22 +1424,39 @@ var $exeDevice = {
             return false;
         }
         const customMessages = $('#adaptativeQuizECustomMessages').is(':checked');
-        const numLevels = parseInt($('input[name="adqnumlevels"]:checked').val(), 10) === 4 ? 4 : 3;
+        const numLevelsRaw = parseInt($('input[name="adqnumlevels"]:checked').val(), 10);
+        const numLevels = numLevelsRaw === 5 ? 5 : numLevelsRaw === 4 ? 4 : 3;
         let initialLevel = parseInt($('#adaptativeQuizInitialLevel').val()) || 2;
         if (this.LEVELS.indexOf(initialLevel) === -1) initialLevel = 2;
-        const levelNames = [
-            ($('#adaptativeQuizLevelName1').val() || '').trim() || _('Easy'),
-            ($('#adaptativeQuizLevelName2').val() || '').trim() || _('Medium'),
-            ($('#adaptativeQuizLevelName3').val() || '').trim() || _('Hard'),
+        const rawLevelNames = [
+            ($('#adaptativeQuizLevelName1').val() || '').trim(),
+            ($('#adaptativeQuizLevelName2').val() || '').trim(),
+            ($('#adaptativeQuizLevelName3').val() || '').trim(),
         ];
-        if (numLevels === 4) {
-            levelNames.push(($('#adaptativeQuizLevelName4').val() || '').trim() || _('Expert'));
+        if (numLevels >= 4) {
+            rawLevelNames.push(($('#adaptativeQuizLevelName4').val() || '').trim());
         }
+        if (numLevels === 5) {
+            rawLevelNames.push(($('#adaptativeQuizLevelName5').val() || '').trim());
+        }
+        if (rawLevelNames.some(name => name === '')) {
+            this.showMessage(this.msgs.msgLevelNameEmpty);
+            return false;
+        }
+        const levelNames = rawLevelNames.slice();
 
         const countByLevel = {};
         for (const level of this.LEVELS) countByLevel[level] = 0;
         for (const q of this.questionsGame) {
             if (countByLevel[q.difficulty] !== undefined) countByLevel[q.difficulty] += 1;
+        }
+        const activeLevels = this.LEVELS_BY_COUNT[numLevels] || this.LEVELS_BY_COUNT[this.DEFAULT_NUM_LEVELS];
+        for (const level of activeLevels) {
+            if ((countByLevel[level] || 0) < 2) {
+                const name = levelNames[level - 1] || String(level);
+                this.showMessage((this.msgs.msgLevelTooFewQuestions || '').replace('%s', name));
+                return false;
+            }
         }
         if (countByLevel[initialLevel] === 0) {
             this.showMessage(this.msgs.msgInitialLevelEmpty);
@@ -1246,13 +1528,24 @@ var $exeDevice = {
 
     /**
      * Parse a single AI-generated line in the format expected by
-     * `getAllowedFormats(10)`:
-     *   `Level@Solution#Question#OptionA#OptionB[#OptionC[#OptionD]]`
+     * `getAllowedFormats(10)`. Three line shapes are accepted, all sharing
+     * the prefix `Type@Level#...`:
      *
-     * - `Level`:    0 (low), 1 (medium), 2 (high). Mapped to internal
-     *               difficulty 1/2/3 via the same legacy map used by
-     *               `normalizeQuestion`.
-     * - `Solution`: 0..3 index of the correct option.
+     *   Type 0 — Multiple-choice (select):
+     *     `0@Level#Solution#Question#OptionA#OptionB[#OptionC[#OptionD]]`
+     *     - Solution: empty or any combination (1-4) of letters A, B, C, D
+     *       identifying the correct options. Letters are case-insensitive.
+     *
+     *   Type 1 — Sort/order:
+     *     `1@Level#Question#Item1#Item2#Item3[#Item4[#Item5[#Item6]]]`
+     *     - Items must already be in the correct order (3 to 6 items).
+     *
+     *   Type 2 — Word/definition:
+     *     `2@Level#Word#Definition`
+     *
+     * Level: 0 (low), 1 (medium), 2 (high) — and 3 (expert) when
+     * `numLevels` is 4. Mapped to internal difficulty 1/2/3/4 via the same
+     * legacy map used by `normalizeQuestion`.
      *
      * Returns a question object shaped like `getCuestionDefault()`, or
      * `null` if the line cannot be parsed.
@@ -1263,54 +1556,124 @@ var $exeDevice = {
 
         const atIdx = raw.indexOf('@');
         const firstHash = raw.indexOf('#');
-        if (atIdx === -1 || firstHash === -1 || atIdx > firstHash) return null;
+        if (atIdx <= 0 || firstHash === -1 || atIdx > firstHash) return null;
 
-        const levelToken = raw.slice(0, atIdx).trim();
-        const solutionToken = raw.slice(atIdx + 1, firstHash).trim();
+        const typeToken = raw.slice(0, atIdx).trim();
+        const levelToken = raw.slice(atIdx + 1, firstHash).trim();
         const rest = raw.slice(firstHash + 1);
 
+        const type = parseInt(typeToken, 10);
         const level = parseInt(levelToken, 10);
-        const solution = parseInt(solutionToken, 10);
         const maxLevel = $exeDevice.numLevels - 1;
+        if (!Number.isInteger(type) || type < 0 || type > 2) return null;
         if (!Number.isInteger(level) || level < 0 || level > maxLevel) return null;
-        if (!Number.isInteger(solution) || solution < 0 || solution > 3) return null;
 
-        const parts = rest
-            .split('#')
-            .map(p => p.trim())
-            .filter(p => p.length > 0);
-        if (parts.length < 1 + $exeDevice.MIN_OPTIONS) return null;
+        const parts = rest.split('#').map(p => p.trim());
+        const legacyMap = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 5 };
+        const difficulty = legacyMap[level];
 
-        const question = parts[0];
-        const texts = parts.slice(1, 1 + $exeDevice.MAX_OPTIONS);
-        if (texts.length < $exeDevice.MIN_OPTIONS) return null;
-        if (solution >= texts.length) return null;
-
-        const legacyMap = { 0: 1, 1: 2, 2: 3, 3: 4 };
-        const options = [];
-        for (let k = 0; k < $exeDevice.MAX_OPTIONS; k++) {
-            options.push({ text: texts[k] || '', audio: '' });
-        }
-
-        return {
+        const baseQuestion = () => ({
             type: 0,
             typeSelect: 0,
             url: '',
             audio: '',
-            question: question,
-            numberOptions: texts.length,
-            options: options,
-            solutionMulti: [solution],
+            question: '',
+            numberOptions: $exeDevice.MAX_OPTIONS,
+            options: Array.from({ length: $exeDevice.MAX_OPTIONS }, () => ({ text: '', audio: '' })),
+            solutionMulti: [],
             solutionOrder: [],
             solutionWord: '',
             solutionWordAudio: '',
             percentageShow: 35,
-            difficulty: legacyMap[level],
+            difficulty: difficulty,
             msgHit: '',
             msgHitAudio: '',
             msgError: '',
             msgErrorAudio: '',
-        };
+        });
+
+        if (type === 0) {
+            // 0@level#solution#question#opt1#opt2[#opt3][#opt4]
+            if (parts.length < 1 + 1 + $exeDevice.MIN_OPTIONS) return null;
+            const solutionToken = parts[0];
+            const question = parts[1];
+            const texts = parts.slice(2, 2 + $exeDevice.MAX_OPTIONS).filter(t => t.length > 0);
+            if (question.length === 0) return null;
+            if (texts.length < $exeDevice.MIN_OPTIONS) return null;
+
+            const letters = solutionToken.toUpperCase();
+            const solutionMulti = [];
+            if (letters.length > 0) {
+                if (!/^[A-F]+$/.test(letters)) return null;
+                if (letters.length > $exeDevice.MAX_OPTIONS) return null;
+                const seen = new Set();
+                for (const ch of letters) {
+                    const idx = ch.charCodeAt(0) - 'A'.charCodeAt(0);
+                    if (seen.has(idx)) return null;
+                    if (idx >= texts.length) return null;
+                    seen.add(idx);
+                    solutionMulti.push(idx);
+                }
+            }
+
+            const q = baseQuestion();
+            q.typeSelect = 0;
+            q.question = question;
+            q.numberOptions = texts.length;
+            for (let k = 0; k < texts.length; k++) {
+                q.options[k].text = texts[k];
+            }
+            q.solutionMulti = solutionMulti;
+            return q;
+        }
+
+        if (type === 1) {
+            // 1@level#question#item1#item2#item3[#item4][#item5][#item6]
+            if (parts.length < 1 + 3) return null;
+            const question = parts[0];
+            const items = parts.slice(1, 1 + 6).filter(t => t.length > 0);
+            if (question.length === 0) return null;
+            if (items.length < 3 || items.length > 6) return null;
+            // Reject if there are extra non-empty parts beyond the 6-item cap.
+            const extra = parts.slice(1 + 6).some(t => t.length > 0);
+            if (extra) return null;
+
+            const q = baseQuestion();
+            q.typeSelect = 1;
+            q.question = question;
+            // Order iDevice supports up to MAX_OPTIONS (4) items; truncate if needed.
+            const cap = Math.min(items.length, $exeDevice.MAX_OPTIONS);
+            q.numberOptions = cap;
+            q.options = [];
+            for (let k = 0; k < $exeDevice.MAX_OPTIONS; k++) {
+                q.options.push({ text: items[k] || '', audio: '' });
+            }
+            // solutionOrder uses 1-based indices in saved data (see normalizeQuestion).
+            q.solutionOrder = [];
+            for (let k = 0; k < cap; k++) q.solutionOrder.push(k + 1);
+            return q;
+        }
+
+        // type === 2: word/definition
+        // 2@level#word#definition
+        //
+        // Legacy data model (kept for compatibility with the export side):
+        //   q.question     -> the WORD the learner has to type
+        //   q.solutionWord -> the DEFINITION shown to the learner as a prompt
+        // The HTML form binds the "Word:" input to q.question and the
+        // "Definition:" input to q.solutionWord, so we must respect that
+        // mapping here, otherwise the imported question shows up with the
+        // word and the definition swapped in the editor.
+        if (parts.length < 2) return null;
+        const word = parts[0];
+        const definition = parts[1];
+        if (word.length === 0 || definition.length === 0) return null;
+
+        const q = baseQuestion();
+        q.typeSelect = 2;
+        q.question = word;
+        q.solutionWord = definition;
+        return q;
     },
 
     insertAIContent: content => {
@@ -1327,9 +1690,224 @@ var $exeDevice = {
             return;
         }
 
-        $exeDevice.questionsGame = parsed;
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion(0);
+        // Persist any in-progress edits from the form before mutating the
+        // questions array, so the user does not lose work when the AI tab
+        // is invoked while editing a question.
+        if (
+            typeof $exeDevice.readQuestionFromDom === 'function'
+            && Number.isInteger($exeDevice.active)
+            && $exeDevice.active >= 0
+            && $exeDevice.questionsGame
+            && $exeDevice.questionsGame[$exeDevice.active]
+            && $('#adaptativeQuizEQuestion').length
+        ) {
+            try { $exeDevice.readQuestionFromDom(); } catch (_e) { /* ignore */ }
+        }
+
+        const existing = Array.isArray($exeDevice.questionsGame) ? $exeDevice.questionsGame : [];
+        // Drop placeholder questions that the user has not filled in yet so a
+        // brand-new iDevice does not keep the auto-created blank question
+        // ahead of the imported ones.
+        const meaningful = existing.filter(q => !$exeDevice.isEmptyQuestion(q));
+        const merged = meaningful.concat(parsed);
+        const firstNewIdx = meaningful.length;
+
+        $exeDevice.questionsGame = merged;
+        $exeDevice.active = firstNewIdx;
+        $exeDevice.showQuestion(firstNewIdx);
+    },
+
+    /**
+     * Returns true when a question carries no user content: no statement,
+     * no solution word, and every option text is empty. Used by
+     * `insertAIContent` to decide whether to append imported questions
+     * after the current ones or to replace the empty placeholders.
+     */
+    isEmptyQuestion: q => {
+        if (!q || typeof q !== 'object') return true;
+        const question = typeof q.question === 'string' ? q.question.trim() : '';
+        const solutionWord = typeof q.solutionWord === 'string' ? q.solutionWord.trim() : '';
+        const options = Array.isArray(q.options) ? q.options : [];
+        const anyOption = options.some(o => o && typeof o.text === 'string' && o.text.trim().length > 0);
+        return question.length === 0 && solutionWord.length === 0 && !anyOption;
+    },
+
+    /**
+     * Convert a single normalized question into the AI-format line
+     * accepted by `parseAIQuestionLine` / `getAllowedFormats(10)`. Returns
+     * an empty string when the question lacks the minimal data required
+     * by the format (so callers can drop placeholder questions silently).
+     *
+     * Difficulty is stored 1..N internally; AI format uses 0..N-1, so we
+     * subtract 1 when building the level token. Lines must never contain
+     * a literal `#` inside any field; we replace stray `#` with a space.
+     */
+    formatQuestionAsAILine: function (q) {
+        if (!q || typeof q !== 'object') return '';
+        const sanitize = s => String(s == null ? '' : s).replace(/#/g, ' ').trim();
+        const maxLevel = this.LEVELS[this.LEVELS.length - 1];
+        const difficulty = Number.isInteger(q.difficulty)
+            ? Math.min(Math.max(q.difficulty, 1), maxLevel)
+            : 2;
+        const level = difficulty - 1;
+        const tSelRaw = Number.isInteger(q.typeSelect) ? q.typeSelect : 0;
+        const typeSelect = tSelRaw === 1 || tSelRaw === 2 ? tSelRaw : 0;
+
+        if (typeSelect === 2) {
+            const word = sanitize(q.question);
+            const definition = sanitize(q.solutionWord);
+            if (!word || !definition) return '';
+            return `2@${level}#${word}#${definition}`;
+        }
+
+        const options = Array.isArray(q.options) ? q.options : [];
+        const numberOptions = Math.max(
+            this.MIN_OPTIONS,
+            Math.min(parseInt(q.numberOptions, 10) || options.length, this.MAX_OPTIONS),
+        );
+        const texts = [];
+        for (let i = 0; i < numberOptions; i++) {
+            const t = sanitize(options[i] && options[i].text);
+            if (!t) return '';
+            texts.push(t);
+        }
+        const question = sanitize(q.question);
+        if (!question) return '';
+
+        if (typeSelect === 1) {
+            // Sort: option order in the saved data IS the correct order
+            // (solutionOrder is always [1,2,...,n] after normalization).
+            // The AI format only supports 3..6 items; the editor caps at 4.
+            if (texts.length < 3) return '';
+            return `1@${level}#${question}#${texts.join('#')}`;
+        }
+
+        // typeSelect === 0: multi-choice. Convert solutionMulti indices to
+        // sorted unique uppercase letters A..D.
+        const solutionMulti = Array.isArray(q.solutionMulti) ? q.solutionMulti : [];
+        const seen = new Set();
+        const letters = [];
+        for (const idx of solutionMulti) {
+            const n = parseInt(idx, 10);
+            if (!Number.isInteger(n) || n < 0 || n >= texts.length) continue;
+            if (seen.has(n)) continue;
+            seen.add(n);
+            letters.push(String.fromCharCode('A'.charCodeAt(0) + n));
+        }
+        letters.sort();
+        const solution = letters.join('');
+        return `0@${level}#${solution}#${question}#${texts.join('#')}`;
+    },
+
+    /**
+     * Build the txt content for the export: one valid AI-format line per
+     * question. Empty/placeholder questions are silently skipped.
+     */
+    buildExportLines: function () {
+        const out = [];
+        const questions = Array.isArray(this.questionsGame) ? this.questionsGame : [];
+        for (const q of questions) {
+            const line = this.formatQuestionAsAILine(q);
+            if (line) out.push(line);
+        }
+        return out;
+    },
+
+    /**
+     * Persist any in-progress edits, then download the questions as a txt
+     * file with one AI-format line per question. Mirrors az-quiz-game's
+     * exportQuestions but produces the adaptative-quiz line shapes.
+     */
+    exportQuestions: function () {
+        if (
+            typeof this.readQuestionFromDom === 'function'
+            && Number.isInteger(this.active)
+            && this.active >= 0
+            && Array.isArray(this.questionsGame)
+            && this.questionsGame[this.active]
+            && $('#adaptativeQuizEQuestion').length
+        ) {
+            try { this.readQuestionFromDom(); } catch (_e) { /* ignore */ }
+        }
+        const lines = this.buildExportLines();
+        if (lines.length === 0) {
+            eXe.app.alert(this.msgs.msgNoQuestions || _('You must add at least one question.'));
+            return false;
+        }
+        const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            blob,
+            `${_('Adaptative Quiz')}.txt`,
+            'adaptativeQuizIdeviceForm',
+        );
+    },
+
+    /**
+     * Normalize a single imported line so we can also accept the simpler
+     * formats produced by other iDevices (for example the `word#definition`
+     * lines exported by az-quiz-game, or bare multi-choice lines that omit
+     * the leading `type@level#` prefix). Lines that already start with the
+     * canonical `\d+@\d+#` prefix are returned unchanged.
+     *
+     * Supported shorthand inputs (default level is 1):
+     *   - `word#definition`                         -> `2@1#word#definition`
+     *   - `LETTERS#question#opt1#opt2[#opt3...]`    -> `0@1#LETTERS#question#opt1#opt2[...]`
+     *     where `LETTERS` is any combination of A-F (or empty), and there
+     *     are at least two options after the question.
+     *
+     * Returns the (possibly rewritten) line, or `null` if no transformation
+     * applies and the original line is left for `parseAIQuestionLine` to
+     * accept or reject.
+     */
+    normalizeImportLine: rawLine => {
+        const line = String(rawLine || '').trim();
+        if (line.length === 0) return line;
+        if (/^\d+@\d+#/.test(line)) return line;
+
+        const parts = line.split('#').map(p => p.trim());
+        if (parts.length === 2 && parts[0].length > 0 && parts[1].length > 0) {
+            // word/definition (e.g. az-quiz-game export).
+            return `2@1#${parts[0]}#${parts[1]}`;
+        }
+        if (parts.length >= 4) {
+            const letters = parts[0].toUpperCase();
+            const question = parts[1];
+            const options = parts.slice(2).filter(p => p.length > 0);
+            if (/^[A-F]*$/.test(letters) && question.length > 0 && options.length >= 2) {
+                return `0@1#${letters}#${question}#${options.join('#')}`;
+            }
+        }
+        return line;
+    },
+
+    /**
+     * Handle a file picked by the user. Only plain-text imports are
+     * accepted. Each non-empty line is normalized via
+     * `normalizeImportLine` (which lets us also ingest the shorthand
+     * formats produced by other iDevices) and then fed to
+     * `parseAIQuestionLine` through `insertAIContent`, which appends
+     * valid questions to the existing list and reports a single error
+     * otherwise.
+     */
+    importGame: function (content, filetype) {
+        if (typeof content !== 'string' || content.includes('\u0000')) {
+            eXe.app.alert(_('Sorry, wrong file format'));
+            return;
+        }
+        if (filetype && !filetype.match('text/plain')) {
+            eXe.app.alert(_('Please select a text file (.txt)'));
+            return;
+        }
+        const lines = content
+            .split(/\r?\n/)
+            .map(l => l.trim())
+            .filter(l => l.length > 0)
+            .map(l => $exeDevice.normalizeImportLine(l));
+        if (lines.length === 0) {
+            eXe.app.alert(_('Sorry, wrong file format'));
+            return;
+        }
+        this.insertAIContent(lines);
     },
 
     addEvents: function () {
@@ -1441,10 +2019,51 @@ var $exeDevice = {
         });
         $('#adaptativeQuizENumberQuestion').on('change', () => $exeDevice.goToQuestion());
 
+        // Level-filter dropdown: refresh its options when level names change
+        // and apply the new filter when the value is changed.
+        $exeDevice.populateLevelFilter();
+        $('#adaptativeQuizLevelName1, #adaptativeQuizLevelName2, #adaptativeQuizLevelName3, #adaptativeQuizLevelName4, #adaptativeQuizLevelName5').on(
+            'change',
+            () => $exeDevice.populateLevelFilter(),
+        );
+        $('#adaptativeQuizELevelFilter').on('change', function () {
+            $exeDevice.applyLevelFilter($(this).val());
+        });
+
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(10, $exeDevice.insertAIContent, () => ({
             numLevels: $exeDevice.numLevels,
         }));
+
+        // Import / Export tab wiring. Only plain-text (.txt) is supported:
+        // the file is parsed as one AI-format line per question. Mirrors
+        // the pattern used by az-quiz-game.
+        if (window.File && window.FileReader && window.FileList && window.Blob) {
+            $('#eXeGameExportImport .exe-field-instructions').eq(0).text(_('Supported formats') + ': txt');
+            $('#eXeGameExportImport').show();
+            $('#eXeGameImportGame').attr('accept', '.txt');
+            $('#eXeGameImportGame').on('change', function (e) {
+                const file = e.target.files && e.target.files[0];
+                if (!file) {
+                    eXe.app.alert(_('Please select a text file (.txt)'));
+                    return;
+                }
+                if (!file.type || !file.type.match('text/plain')) {
+                    eXe.app.alert(_('Please select a text file (.txt)'));
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    $exeDevice.importGame(ev.target.result, file.type);
+                };
+                reader.readAsText(file);
+            });
+            $('#eXeGameExportQuestions').on('click', () => {
+                $exeDevice.exportQuestions();
+            });
+        } else {
+            $('#eXeGameExportImport').hide();
+        }
 
         // Audio toggle: reveal/hide the .ADQ-EAudioField linked to each text
         // input. Uses delegated binding on the form root so it survives

@@ -27,7 +27,7 @@ var $adaptativequiz = {
     previousScores: {},
     userName: '',
     isInExe: false,
-    LEVELS_BY_COUNT: { 3: [1, 2, 3], 4: [1, 2, 3, 4] },
+    LEVELS_BY_COUNT: { 3: [1, 2, 3], 4: [1, 2, 3, 4], 5: [1, 2, 3, 4, 5] },
     DEFAULT_NUM_LEVELS: 3,
     CONSEC_THRESHOLD: 2,
     getLevels: function (numLevels) {
@@ -55,6 +55,7 @@ var $adaptativequiz = {
         msgLevelMedium: 'Medium',
         msgLevelHard: 'Hard',
         msgLevelExpert: 'Expert',
+        msgLevelMaster: 'Master',
         msgLevelUp: 'Level up!',
         msgLevelDown: 'Level down',
         msgReportTitle: 'Final report',
@@ -163,7 +164,7 @@ var $adaptativequiz = {
         return questions.map(q => {
             const source = q || {};
             const rawOptions = Array.isArray(source.options) ? source.options : [];
-            const numberOptions = Math.max(2, Math.min(parseInt(source.numberOptions) || rawOptions.length || 4, 4));
+            const numberOptions = Math.max(2, Math.min(parseInt(source.numberOptions) || rawOptions.length || 4, 6));
             const options = [];
             for (let i = 0; i < numberOptions; i++) {
                 const o = rawOptions[i];
@@ -263,7 +264,8 @@ var $adaptativequiz = {
         data.ideviceId = data.id;
         data.msgs = this.mergeFields(data.msgs, this.msgs);
 
-        data.numLevels = parseInt(data.numLevels, 10) === 4 ? 4 : this.DEFAULT_NUM_LEVELS;
+        const numLevelsRaw = parseInt(data.numLevels, 10);
+        data.numLevels = numLevelsRaw === 5 ? 5 : numLevelsRaw === 4 ? 4 : this.DEFAULT_NUM_LEVELS;
         const levels = this.getLevels(data.numLevels);
         const maxLevel = levels[levels.length - 1];
 
@@ -290,7 +292,8 @@ var $adaptativequiz = {
                 data.msgs.msgLevelMedium || 'Medium',
                 data.msgs.msgLevelHard || 'Hard',
             ];
-            if (data.numLevels === 4) data.levelNames.push(data.msgs.msgLevelExpert || 'Expert');
+            if (data.numLevels >= 4) data.levelNames.push(data.msgs.msgLevelExpert || 'Expert');
+            if (data.numLevels === 5) data.levelNames.push(data.msgs.msgLevelMaster || 'Master');
         }
         data.maxLevel = maxLevel;
 
@@ -477,7 +480,7 @@ var $adaptativequiz = {
         if (level >= 1 && level <= 4) {
             $el.addClass('ADAPTATIVEQUIZ-LevelValue--' + level);
         }
-        $el.text(this.levelName(opts, opts.currentLevel) + ' (' + opts.currentLevel + ')');
+        $el.text(this.levelName(opts, opts.currentLevel));
     },
 
     /**
@@ -797,6 +800,25 @@ var $adaptativequiz = {
         if (question.audio) {
             const $stem = $('#adaptativeQuizQuestionContainer-' + id).find('.ADAPTATIVEQUIZ-AudioToggle--stem');
             if ($stem.length) $stem.trigger('click');
+        }
+        // For word-type questions, pressing Enter inside the answer input
+        // submits the answer (same as clicking the Check button). Auto-focus
+        // the input from the second question onwards so keyboard users can
+        // keep typing without re-clicking; the first question is left
+        // unfocused to avoid stealing focus on initial render.
+        if (tSel === 2) {
+            const $wordInput = $('#adaptativeQuizWord-' + id);
+            if ($wordInput.length) {
+                $wordInput.off('keydown.adaptativeQuiz').on('keydown.adaptativeQuiz', event => {
+                    if (event.which === 13 || event.keyCode === 13) {
+                        event.preventDefault();
+                        $('#adaptativeQuizBtnCheck-' + id).trigger('click');
+                        return false;
+                    }
+                    return true;
+                });
+                if (opts.roundCount > 0) $wordInput.trigger('focus');
+            }
         }
         this.setMessage(id, '', 'info');
         $('#adaptativeQuizReport-' + id)
