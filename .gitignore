@@ -81,6 +81,13 @@ yarn.lock
 public/style/workarea/main.css
 public/style/workarea/main.css.map
 
+# Slide iDevice — tldraw build artifacts (run `make bundle-slide` to generate)
+public/files/perm/idevices/base/slide/edition/slide-editor.bundle.js
+public/files/perm/idevices/base/slide/edition/tldraw.css
+# Slide iDevice — local npm install
+public/files/perm/idevices/base/slide/node_modules/
+public/files/perm/idevices/base/slide/bun.lock
+
 # Ignore SQLite database
 exelearning.db
 

@@ -1,0 +1,136 @@
+/**
+ * Slide iDevice — edition styles for tldraw container.
+ *
+ * tldraw requires an explicit height on its parent element.
+ * The host class is applied dynamically by slide.js on init.
+ */
+
+/* ── Size config panel ───────────────────────────────────────────────────────
+ * Rendered above the tldraw host to let authors set canvas width/height. */
+
+.slide-config-panel {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.4rem 0.75rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    font-family: Inter, Arial, sans-serif;
+    font-size: 0.85rem;
+    color: #374151;
+}
+
+.slide-config-panel label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: default;
+    margin: 0;
+    font-weight: normal;
+}
+
+.slide-config-panel input[type="number"] {
+    width: 5rem;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #374151;
+    background: #fff;
+    text-align: right;
+}
+
+/* ── Editor host ─────────────────────────────────────────────────────────────
+ * Height is set via JS (defaulting to 600 px). The border-radius connects
+ * visually to the config panel above it. */
+
+.slide-editor-tldraw-host {
+    position: relative;
+    width: 100%;
+    min-height: 400px;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+}
+
+.slide-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: #64748b;
+    font-size: 0.95rem;
+    font-family: Inter, Arial, sans-serif;
+}
+
+.slide-error {
+    color: #dc2626;
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    font-family: Inter, Arial, sans-serif;
+}
+
+/* Reset Bootstrap's kbd styles so tldraw's keyboard shortcut badges render correctly.
+ * Bootstrap sets kbd { background-color: var(--bs-body-color) } which makes the
+ * tldraw <kbd class="tlui-kbd"> element dark, while tldraw forces color: currentColor
+ * (inheriting the dark text colour) → invisible dark-on-dark text. */
+.tl-container kbd {
+    background-color: transparent;
+    color: currentColor;
+    padding: 0;
+    font-size: inherit;
+    border-radius: 0;
+}
+
+/* Bootstrap's [role=button] { cursor: pointer } (specificity 0,1,0) overrides
+ * tldraw's SVG presentation-attribute cursor on rotation and resize handles
+ * (specificity 0,0,0). Fix: inherit the cursor from the .tl-canvas parent
+ * which tldraw updates dynamically via --tl-cursor when hovering handles,
+ * so the custom rotation/resize SVG cursors are shown correctly. */
+.tl-container .tl-rotate-corner,
+.tl-container .tl-resize-handle {
+    cursor: inherit;
+}
+
+/* ── Fullscreen button (rendered via InFrontOfTheCanvas) ─────────────────────
+ * Positioned in the bottom-right corner of the tldraw canvas.
+ * Uses tldraw CSS tokens for consistent visual integration. */
+.slide-fullscreen-btn {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--color-panel-contrast, rgba(0, 0, 0, 0.1));
+    border-radius: 6px;
+    background: var(--color-panel, #ffffff);
+    color: var(--color-text, #1d1d1f);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.slide-fullscreen-btn:hover,
+.slide-fullscreen-btn:focus-visible {
+    opacity: 1;
+    outline: none;
+}
+
+.slide-fullscreen-btn svg {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+}
+
+/* Ensure the host div fills the viewport when fullscreen is active */
+.slide-editor-tldraw-host:fullscreen {
+    height: 100vh;
+}

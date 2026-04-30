@@ -1,0 +1,12 @@
+{
+  "name": "slide-idevice-bundle",
+  "private": true,
+  "scripts": {
+    "build": "bun run src/build.ts"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tldraw": "^3.15.5"
+  }
+}

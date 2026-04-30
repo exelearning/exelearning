@@ -1,0 +1,187 @@
+/* ── Version 2 — tldraw SVG export ─────────────────────────────────────────── */
+
+.slide-export-tldraw {
+    position: relative;
+    width: 100%;
+    max-width: 960px;
+    margin: 1.5rem auto;
+    border-radius: 10px;
+    border: 1px solid #d0d7e2;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+    overflow: hidden;
+}
+
+.slide-export-tldraw svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ── Fullscreen button ───────────────────────────────────────────────────────
+ * Revealed on hover; the button toggles fullscreen for the slide wrapper. */
+
+.slide-export-tldraw .slide-fullscreen-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #1d1d1f;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.slide-export-tldraw:hover .slide-fullscreen-btn,
+.slide-export-tldraw .slide-fullscreen-btn:focus-visible {
+    opacity: 1;
+}
+
+.slide-export-tldraw .slide-fullscreen-btn svg {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+}
+
+/* ── Fullscreen state (native Fullscreen API) ────────────────────────────────
+ * When the slide wrapper is the fullscreen element, fill the viewport. */
+
+.slide-export-tldraw:fullscreen {
+    max-width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.slide-export-tldraw:fullscreen svg {
+    width: auto;
+    max-width: 100vw;
+    max-height: 100vh;
+}
+
+.slide-export-tldraw:fullscreen .slide-fullscreen-btn {
+    opacity: 1;
+    position: fixed;
+    top: 12px;
+    right: 12px;
+}
+
+/* ── CSS fullscreen simulation (.slide-fs-active) ────────────────────────────
+ * Fallback when the Fullscreen API is unavailable (e.g. iframe without
+ * allowfullscreen). Covers the entire viewport using position:fixed. */
+
+.slide-export-tldraw.slide-fs-active {
+    position: fixed !important;
+    inset: 0 !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
+}
+
+.slide-export-tldraw.slide-fs-active svg {
+    width: auto !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+}
+
+.slide-export-tldraw.slide-fs-active .slide-fullscreen-btn {
+    opacity: 1;
+    position: fixed;
+    top: 12px;
+    right: 12px;
+}
+
+/* ── Version 1 — Fabric.js legacy HTML export ──────────────────────────────── */
+
+.slide-export-canvas {
+    position: relative;
+    width: 100%;
+    max-width: 960px;
+    margin: 1.5rem auto;
+    border-radius: 10px;
+    border: 1px solid #d0d7e2;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+}
+
+.slide-export-layer {
+    position: absolute;
+    inset: 0;
+}
+
+.slide-export-item {
+    position: absolute;
+    box-sizing: border-box;
+}
+
+.slide-export-text {
+    display: flex;
+    border-radius: 8px;
+}
+
+.slide-export-text-content {
+    width: 100%;
+    height: 100%;
+    padding: 0.875rem;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.slide-export-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.slide-export-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.slide-export-shape {
+    /* shapes rendered as pure CSS divs */
+}
+
+@media (max-width: 768px) {
+    .slide-export-tldraw,
+    .slide-export-canvas {
+        max-width: 100%;
+        border-radius: 8px;
+    }
+
+    .slide-export-text-content {
+        padding: 0.65rem;
+    }
+}

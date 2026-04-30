@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Slide</title>
+  <rect x="8" y="12" width="48" height="36" rx="4" ry="4" fill="#2f80ed"/>
+  <rect x="13" y="18" width="38" height="18" rx="2" ry="2" fill="#ffffff"/>
+  <rect x="13" y="39" width="24" height="5" rx="1" ry="1" fill="#56ccf2"/>
+  <circle cx="43" cy="41" r="3" fill="#ffffff"/>
+</svg>
