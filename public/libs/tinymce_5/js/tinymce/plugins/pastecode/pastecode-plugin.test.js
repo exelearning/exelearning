@@ -1,0 +1,67 @@
+/**
+ * Unit tests for the pastecode TinyMCE plugin language list.
+ *
+ * The plugin defines the syntax-highlighting languages offered to the user
+ * when wrapping a snippet of code with Prism. These tests guard the dropdown
+ * entries so accidental removals during refactors are caught.
+ */
+
+/* eslint-disable no-undef */
+
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const PLUGIN_PATH = join(__dirname, 'plugin.min.js');
+const pluginSource = readFileSync(PLUGIN_PATH, 'utf-8');
+
+function hasLanguageEntry(value) {
+    const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`value:\\s*'${escaped}'`);
+    return regex.test(pluginSource);
+}
+
+describe('pastecode plugin - syntax highlighting language list', () => {
+    it('keeps the previously supported languages', () => {
+        const previous = [
+            'markup', 'aspnet', 'clike', 'c', 'cpp', 'css', 'java', 'js',
+            'json', 'latex', 'pascal', 'perl', 'php', 'processing', 'python',
+            'r', 'ruby', 'sql',
+        ];
+        for (const lang of previous) {
+            expect(hasLanguageEntry(lang)).toBe(true);
+        }
+    });
+
+    it('exposes Bash as a selectable language', () => {
+        expect(hasLanguageEntry('bash')).toBe(true);
+        expect(pluginSource).toContain("text: 'Bash'");
+    });
+
+    it('exposes PowerShell as a selectable language', () => {
+        expect(hasLanguageEntry('powershell')).toBe(true);
+        expect(pluginSource).toContain("text: 'PowerShell'");
+    });
+
+    it('exposes CMD (Batch) as a selectable language', () => {
+        expect(hasLanguageEntry('batch')).toBe(true);
+        expect(pluginSource).toContain("text: 'CMD (Batch)'");
+    });
+
+    it('places the new entries after the C type anchor', () => {
+        // Sanity check: bash/batch/powershell should appear after the "C type"
+        // dropdown anchor so the list stays roughly alphabetical for the user.
+        const cTypeIndex = pluginSource.indexOf("value: 'clike'");
+        const bashIndex = pluginSource.indexOf("value: 'bash'");
+        const batchIndex = pluginSource.indexOf("value: 'batch'");
+        const powershellIndex = pluginSource.indexOf("value: 'powershell'");
+
+        expect(cTypeIndex).toBeGreaterThan(-1);
+        expect(bashIndex).toBeGreaterThan(cTypeIndex);
+        expect(batchIndex).toBeGreaterThan(bashIndex);
+        expect(powershellIndex).toBeGreaterThan(batchIndex);
+    });
+});
