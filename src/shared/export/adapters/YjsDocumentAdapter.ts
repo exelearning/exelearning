@@ -94,7 +94,8 @@ export class YjsDocumentAdapter implements ExportDocument {
             theme: (meta.get('theme') as string) || 'base',
             exelearningVersion:
                 (meta.get('exelearning_version') as string) ||
-                (typeof window !== 'undefined' ? window.eXeLearning?.version : undefined),
+                (typeof window !== 'undefined' ? window.eXeLearning?.version : undefined) ||
+                (typeof process !== 'undefined' ? process.env?.APP_VERSION : undefined),
             createdAt: (meta.get('createdAt') as string) || new Date().toISOString(),
             modified: (meta.get('modifiedAt') as string) || new Date().toISOString(),
             // Custom styles support
@@ -112,6 +113,9 @@ export class YjsDocumentAdapter implements ExportDocument {
             // Custom content
             extraHeadContent: (meta.get('extraHeadContent') as string) || undefined,
             footer: (meta.get('footer') as string) || undefined,
+
+            // Project screenshot/thumbnail
+            screenshot: (meta.get('screenshot') as string) || undefined,
         };
     }
 

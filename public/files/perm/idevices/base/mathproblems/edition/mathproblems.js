@@ -54,9 +54,6 @@ var $exeDevice = {
             'Your browser is not compatible with this tool.'
         );
         msgs.msgProvideFB = _('Message to display when passing the game');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
     },
 
     refreshTranslations: function () {
@@ -93,7 +90,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -145,10 +142,10 @@ var $exeDevice = {
     createForm: function () {
         const html = `
             <div id="gameQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">${_('Create random basic math problems.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/problemas_de_matemticas.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create random basic math problems.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/problemas-matematicos.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following math problems.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -216,7 +213,7 @@ var $exeDevice = {
                                 <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="eCQPercentajeFB" class="mb-0">%FB</label>
                                     <input type="number" name="eCQPercentajeFB" id="eCQPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
-                                    <span>${_('&percnt; right to see the feedback')}.</span>
+                                    <span>${_('% right to see the feedback')}.</span>
                                 </div>
                             </div>
                             <div id="eCQFeedbackP" class="MTOE-EFeedbackP mb-3" style="display:none">
@@ -237,25 +234,8 @@ var $exeDevice = {
                                 </span>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="eCQEEvaluation" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="eCQEEvaluation" class="toggle-label">${_('Progress report')}.</label>
-                                </span>
-                                <span class="d-flex align-items-center gap-1 flex-nowrap">
-                                    <label for="eCQEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="eCQEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </span>
-                                <a href="#eCQEEvaluationHelp" id="eCQEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                </a>
-
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                             </div>
-                            <p id="eCQEEvaluationHelp" class="MTOE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset" style="position:relative">
@@ -764,13 +744,14 @@ var $exeDevice = {
             errorRelative = parseFloat(
                 clear($('#eCQPercentajeRelative').val())
             ),
-            evaluation = $('#eCQEEvaluation').is(':checked'),
-            evaluationID = $('#eCQEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         let errorType = 0;
 
         if (!itinerary) return;
+        if (!progressBar) return false;
 
         if ($('#eCQRelative').is(':checked')) {
             errorType = 1;
@@ -809,11 +790,6 @@ var $exeDevice = {
             return false;
         }
 
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
-
         const questions = $exeDevice.questions;
         if (questions.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
@@ -844,8 +820,8 @@ var $exeDevice = {
             errorAbsolute: errorAbsolute,
             errorRelative: errorRelative,
             errorType: errorType,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
         };
     },
@@ -1058,7 +1034,7 @@ var $exeDevice = {
                 };
                 reader.readAsText(file);
             });
-            $('#eXeGameExportGame').on('click', function () {
+            $('#eXeGameExportQuestions').on('click', function () {
                 $exeDevice.exportGame();
             });
         } else {
@@ -1218,15 +1194,7 @@ var $exeDevice = {
             this.value = this.value < 0 ? 0 : this.value;
         });
 
-        $('#eCQEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#eCQEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#eCQEEvaluationHelpLnk').click(function () {
-            $('#eCQEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#eQCVariablesContainer').on(
             'input',
@@ -1331,9 +1299,10 @@ var $exeDevice = {
         $('#eCQModeBoard').prop('checked', game.modeBoard);
         $('#eCQPercentajeFB').prop('disabled', !game.feedBack);
         $('#eCQHasFeedBack').prop('checked', game.feedBack);
-        $('#eCQEEvaluation').prop('checked', game.evaluation);
-        $('#eCQEEvaluationID').val(game.evaluationID);
-        $('#eCQEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
 
         $exeDevice.setErrorType(game.errorType);
         if (game.feedBack) {
@@ -1361,25 +1330,14 @@ var $exeDevice = {
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
-        let blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], {
-                type: 'text/plain',
-            });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-
-        const data = window.URL.createObjectURL(newBlob);
-        let link = document.createElement('a');
-        link.href = data;
-        link.download = _('Activity') + '-MathProblems.json';
-        document.getElementById('gameQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(function () {
-            document.getElementById('gameQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([JSON.stringify(dataGame)], {
+            type: 'text/plain',
+        });
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            _('Activity') + '-MathProblems.json',
+            'gameQEIdeviceForm'
+        );
     },
 
     importGame: function (content) {

@@ -208,13 +208,13 @@ export function parseXlfContent(content: string): Record<string, string> {
                 const source = unit.source;
                 const target = unit.target;
                 if (source && target) {
-                    translations[source] = target;
+                    translations[source] = stripFuzzyMarker(target);
                 }
             }
         } else if (transUnits) {
             // Single translation
             if (transUnits.source && transUnits.target) {
-                translations[transUnits.source] = transUnits.target;
+                translations[transUnits.source] = stripFuzzyMarker(transUnits.target);
             }
         }
     } catch {
@@ -222,6 +222,17 @@ export function parseXlfContent(content: string): Record<string, string> {
     }
 
     return translations;
+}
+
+/**
+ * Strip the leading "~" fuzzy marker used to flag machine-translated
+ * placeholder entries in the XLF files. The marker must never reach
+ * the static bundle — it is kept only on disk so translators can spot
+ * entries that still need review.
+ */
+function stripFuzzyMarker(target: string): string {
+    if (typeof target !== 'string') return target;
+    return target.startsWith('~') ? target.slice(1) : target;
 }
 
 /**

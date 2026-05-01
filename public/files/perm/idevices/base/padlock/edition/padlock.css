@@ -200,11 +200,6 @@ article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoTog
     outline-offset: .45rem;
 }
 
-#candadoIdeviceForm .candado-TypeGameHelp {
-    display: none;
-    font-size: .95em
-}
-
 .Games-Reportdiv {
     display: flex;
     justify-content: flex-start;

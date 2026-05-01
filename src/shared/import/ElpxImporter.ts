@@ -104,6 +104,39 @@ export class ElpxImporter {
     }
 
     /**
+     * If the ZIP's entries all live under a single top-level directory (and
+     * there are no files at root), strip that prefix. GitHub's repo archive
+     * downloads have this shape: "<repo>-<branch>/…".
+     * Returns the original zip unchanged when the pattern does not match.
+     */
+    private unwrapSingleTopLevelDirectory(zip: Record<string, Uint8Array>): Record<string, Uint8Array> {
+        const keys = Object.keys(zip);
+        if (keys.length === 0) return zip;
+
+        let singlePrefix: string | null = null;
+        for (const key of keys) {
+            const slashIdx = key.indexOf('/');
+            if (slashIdx === -1) return zip;
+            const prefix = key.slice(0, slashIdx);
+            if (singlePrefix === null) {
+                singlePrefix = prefix;
+            } else if (singlePrefix !== prefix) {
+                return zip;
+            }
+        }
+        if (!singlePrefix) return zip;
+
+        const prefixWithSlash = `${singlePrefix}/`;
+        const stripped: Record<string, Uint8Array> = {};
+        for (const [path, data] of Object.entries(zip)) {
+            const newPath = path.slice(prefixWithSlash.length);
+            if (newPath) stripped[newPath] = data;
+        }
+        this.logger.log(`[ElpxImporter] Stripped top-level directory wrapper '${prefixWithSlash}'`);
+        return stripped;
+    }
+
+    /**
      * Get the navigation Y.Array from the document
      */
     private getNavigation(): Y.Array<unknown> {
@@ -142,11 +175,12 @@ export class ElpxImporter {
         // Report decompression complete (10%)
         this.reportProgress('decompress', 10, 'File decompressed');
 
-        // Check for nested ELP file
-        let workingZip = zip;
+        // Strip a single top-level directory wrapper (GitHub-style archives)
+        // before running the nested-ELP / content.xml detection below.
+        let workingZip = this.unwrapSingleTopLevelDirectory(zip);
 
-        if (!zip['content.xml'] && !zip['contentv3.xml']) {
-            const elpFiles = Object.keys(zip).filter(
+        if (!workingZip['content.xml'] && !workingZip['contentv3.xml']) {
+            const elpFiles = Object.keys(workingZip).filter(
                 name =>
                     !name.includes('/') &&
                     (name.toLowerCase().endsWith('.elp') || name.toLowerCase().endsWith('.elpx')),
@@ -154,7 +188,7 @@ export class ElpxImporter {
 
             if (elpFiles.length === 1) {
                 this.logger.log(`[ElpxImporter] Found nested ELP file: ${elpFiles[0]}, extracting...`);
-                const nestedElpData = zip[elpFiles[0]];
+                const nestedElpData = workingZip[elpFiles[0]];
                 workingZip = fflate.unzipSync(nestedElpData);
             } else if (elpFiles.length > 1) {
                 throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
@@ -252,6 +286,9 @@ export class ElpxImporter {
 
         // Skip decompression phase since contents are already extracted
         this.reportProgress('decompress', 10, 'Files ready');
+
+        // Strip a single top-level directory wrapper (GitHub-style archives).
+        zipContents = this.unwrapSingleTopLevelDirectory(zipContents);
 
         // Find content.xml
         let contentFile = zipContents['content.xml'];
@@ -381,6 +418,12 @@ export class ElpxImporter {
         // Extract metadata
         const odeProperties = this.getElement(xmlDoc, 'odeProperties');
         const metadataValues = this.extractMetadata(xmlDoc, odeProperties);
+
+        // Extract screenshot.png from archive root if present
+        const screenshot = this.extractScreenshotFromZip(zip);
+        if (screenshot) {
+            metadataValues.screenshot = screenshot;
+        }
 
         // Calculate order offset for imported pages
         let orderOffset = 0;
@@ -543,6 +586,11 @@ export class ElpxImporter {
                 if (clearExisting) {
                     this.logger.log('[ElpxImporter] Setting legacy metadata...');
                     this.setLegacyMetadata(metadata, parsedData.meta);
+                    // Extract screenshot.png from archive root if present
+                    const legacyScreenshot = this.extractScreenshotFromZip(zip);
+                    if (legacyScreenshot) {
+                        metadata.set('screenshot', legacyScreenshot);
+                    }
                     this.logger.log('[ElpxImporter] Legacy metadata set');
                 }
 
@@ -767,6 +815,18 @@ export class ElpxImporter {
     }
 
     /**
+     * Convert Uint8Array to base64 string
+     */
+    private uint8ArrayToBase64(bytes: Uint8Array): string {
+        const CHUNK = 0x8000;
+        const parts: string[] = [];
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+            parts.push(String.fromCharCode(...bytes.subarray(i, i + CHUNK)));
+        }
+        return btoa(parts.join(''));
+    }
+
+    /**
      * Escape HTML special characters for attribute values
      */
     private escapeHtmlAttr(str: string): string {
@@ -798,6 +858,21 @@ export class ElpxImporter {
             html.includes('iDevice_buttons feedback-button') ||
             html.includes('class="feedback-button')
         );
+    }
+
+    /**
+     * Extract screenshot.png from archive root and return as data URL, or undefined.
+     */
+    private extractScreenshotFromZip(zip: Record<string, Uint8Array>): string | undefined {
+        if (!zip['screenshot.png']) return undefined;
+        try {
+            const base64 = this.uint8ArrayToBase64(zip['screenshot.png']);
+            this.logger.log('[ElpxImporter] Extracted screenshot.png from archive');
+            return `data:image/png;base64,${base64}`;
+        } catch (error) {
+            this.logger.warn('[ElpxImporter] Failed to read screenshot.png:', error);
+            return undefined;
+        }
     }
 
     /**
@@ -868,6 +943,10 @@ export class ElpxImporter {
         metadata.set('globalFont', values.globalFont);
         metadata.set('extraHeadContent', values.extraHeadContent);
         metadata.set('footer', values.footer);
+        // Screenshot (optional, extracted from archive root)
+        if (values.screenshot) {
+            metadata.set('screenshot', values.screenshot);
+        }
     }
 
     /**

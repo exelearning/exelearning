@@ -1447,7 +1447,7 @@ var $eXeCrucigrama = {
         const html = $('#ccgmDetails-' + instance).html(),
             latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
-            $exeDevices.iDevice.gamification.math.updateLatex('#ccgmDetails');
+            $exeDevices.iDevice.gamification.math.updateLatex('#ccgmDetails-' + instance);
         }
     },
 

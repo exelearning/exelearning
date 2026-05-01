@@ -245,6 +245,18 @@ describe('TinyMCE 5 Settings', () => {
       expect(wrapper.classList.contains('hidden-editor')).toBe(true);
     });
 
+    it('init disables images_replace_blob_uris so TinyMCE does not overwrite data-mce-src after upload (issue #1664)', () => {
+      // With the default `images_replace_blob_uris: true`, TinyMCE's upload
+      // pipeline overwrites both `src` and `data-mce-src` with whatever the
+      // handler returns via success(). Because our handler returns the blob
+      // URI for cache hits, that clobbers the canonical asset:// value we
+      // previously set in resolveAssetUrlsInEditor — corrupting the first
+      // image whenever a second asset image is inserted.
+      globalThis.$exeTinyMCE.init('multiple', '#editor', true);
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      expect(config.images_replace_blob_uris).toBe(false);
+    });
+
     it('init instance callback triggers toggler and editor hook', () => {
       globalThis.$exeTinyMCEToggler.documentWidth = 1000;
       const initSpy = vi.spyOn(globalThis.$exeTinyMCEToggler, 'init').mockImplementation(() => {});

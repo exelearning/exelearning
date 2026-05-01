@@ -293,3 +293,65 @@
     color: var(--system-red, #dc3545) !important;
     border-color: var(--system-red, #dc3545) !important;
 }
+
+/* ========================================================================
+   Screenshot Panel (Project Properties modal)
+   ======================================================================== */
+
+/* TO DO: screenshot tab (show after v4.0.0 is released) */
+.project-properties-tabs #props-tab-screenshot {
+    display: none;
+}
+
+.screenshot-panel {
+    .btn .auto-icon {
+        font-size: 1.1em;
+    }
+
+    .btn-primary .auto-icon,
+    .btn-danger .auto-icon {
+        color: #fff;
+    }
+
+    .card {
+        border-radius: var(--radius);
+        border: 1px solid var(--gray-100);
+    }
+
+    .card-body {
+        background: none !important;
+        min-height: 332px;
+        img {
+            margin: 0 auto;
+        }
+    }
+
+    button.btn {
+        padding-left: .5em !important;
+        padding-right: 1em;
+
+        span {
+            margin-left: 0;
+        }
+    }
+
+    button.btn-outline-secondary {
+        opacity: .8;
+
+        span {
+            margin-right: .3em;
+        }
+
+        &:hover,
+        &:focus {
+            background-color: var(--brand-primary-50);
+            color: var(--brand-primary-600);
+            border-color: var(--brand-primary-600);
+            opacity: 1;
+
+            span {
+                color: var(--brand-primary-600);
+            }
+        }
+    }
+}

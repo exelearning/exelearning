@@ -144,7 +144,7 @@ var $scrambledlist = {
         data.scorerp = 0;
         data.main = 'sl' + data.id;
 
-        data.idevice = 'idevice_node';
+        data.idevice = 'scrambled-listIdevice';
 
         return data;
     },

@@ -135,6 +135,7 @@ export default class FormProperties {
             { key: 'properties_package', title: _('Content metadata') },
             { key: 'export', title: _('Export options') },
             { key: 'custom_code', title: _('Custom code') },
+            { key: 'screenshot', title: _('Screenshot'), custom: true },
         ];
 
         // Create tabs navigation
@@ -183,8 +184,12 @@ export default class FormProperties {
             tabPane.id = paneId;
 
             // Add properties for this group
-            const groupProperties = groupedProperties.get(tab.key) || [];
-            this.addPropertiesToPane(groupProperties, tabPane);
+            if (tab.custom && tab.key === 'screenshot') {
+                this.buildScreenshotPane(tabPane);
+            } else {
+                const groupProperties = groupedProperties.get(tab.key) || [];
+                this.addPropertiesToPane(groupProperties, tabPane);
+            }
 
             tabContent.appendChild(tabPane);
         });
@@ -891,6 +896,291 @@ export default class FormProperties {
         }
 
         return cloneRow;
+    }
+
+    /*******************************************************************************
+     * SCREENSHOT TAB
+     *******************************************************************************/
+
+    /**
+     * Build the screenshot tab pane content
+     * @param {HTMLElement} pane - The tab pane container
+     */
+    buildScreenshotPane(pane) {
+        const container = document.createElement('div');
+        container.classList.add('screenshot-panel', 'p-4');
+
+        // === ROW: Preview (col-lg-7) + Info (col-lg-5) ===
+        const row = document.createElement('div');
+        row.classList.add('row', 'g-4');
+
+        // --- Left column: preview card + buttons ---
+        const leftCol = document.createElement('div');
+        leftCol.classList.add('col-12', 'col-lg-7', 'd-flex', 'flex-column', 'align-items-center');
+
+        // Preview card
+        const previewCard = document.createElement('div');
+        previewCard.classList.add('card', 'w-100', 'mb-3', 'shadow-sm');
+
+        const previewCardBody = document.createElement('div');
+        previewCardBody.classList.add('card-body', 'text-center', 'bg-light');
+
+        const previewImg = document.createElement('img');
+        previewImg.classList.add('img-fluid', 'border');
+        previewImg.alt = _('Current project screenshot preview');
+        previewImg.style.cssText = 'max-height:300px;object-fit:contain;display:none;';
+
+        const noScreenshotText = document.createElement('p');
+        noScreenshotText.classList.add('text-muted', 'fst-italic', 'py-5', 'mb-0');
+        noScreenshotText.textContent = _('No screenshot yet. It will be auto-generated when you save or export.');
+
+        previewCardBody.append(previewImg);
+        previewCardBody.append(noScreenshotText);
+        previewCard.append(previewCardBody);
+
+        // Helper to update preview visibility consistently
+        let removeBtn;
+        const updatePreview = (screenshot) => {
+            if (screenshot) {
+                previewImg.src = screenshot;
+                previewImg.style.display = 'block';
+                noScreenshotText.style.display = 'none';
+                if (removeBtn) removeBtn.style.display = '';
+            } else {
+                previewImg.src = '';
+                previewImg.style.display = 'none';
+                noScreenshotText.style.display = '';
+                if (removeBtn) removeBtn.style.display = 'none';
+            }
+        };
+
+        // Clean up previous observer if pane is rebuilt
+        if (this._screenshotMetadata && this._screenshotObserver) {
+            this._screenshotMetadata.unobserve(this._screenshotObserver);
+            this._screenshotMetadata = null;
+            this._screenshotObserver = null;
+        }
+
+        // Load current screenshot from Yjs and observe live changes
+        const documentManager = this.properties.project?._yjsBridge?.getDocumentManager();
+        if (documentManager) {
+            const metadata = documentManager.getMetadata();
+            updatePreview(metadata?.get('screenshot') || null);
+
+            const observer = (event) => {
+                if (event.keysChanged.has('screenshot')) {
+                    updatePreview(metadata.get('screenshot') || null);
+                }
+            };
+            metadata.observe(observer);
+            this._screenshotMetadata = metadata;
+            this._screenshotObserver = observer;
+        }
+
+        // Buttons row
+        const buttonsRow = document.createElement('div');
+        buttonsRow.classList.add('d-flex', 'flex-wrap', 'justify-content-center', 'gap-2', 'w-100');
+
+        // Upload button
+        const uploadBtn = document.createElement('button');
+        uploadBtn.type = 'button';
+        uploadBtn.classList.add('btn', 'btn-primary', 'd-flex', 'align-items-center');
+        uploadBtn.setAttribute('aria-describedby', 'screenshot-help-text');
+        uploadBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">upload</span> ${_('Upload custom image')}`;
+
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/png,image/jpeg,image/webp';
+        fileInput.style.display = 'none';
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 2 * 1024 * 1024) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('File too large'),
+                    body: _('Screenshot must be smaller than 2 MB.'),
+                    contentId: 'warning',
+                });
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const ratio = img.naturalWidth / img.naturalHeight;
+                    const is16x9 = Math.abs(ratio - 16 / 9) < 0.05;
+                    const hasMinWidth = img.naturalWidth >= 600;
+                    if (!is16x9 || !hasMinWidth) {
+                        eXeLearning.app.modals.alert.show({
+                            title: _('Invalid image'),
+                            body: _('The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.'),
+                            contentId: 'warning',
+                        });
+                        fileInput.value = '';
+                        return;
+                    }
+                    const pngDataUrl = this.resizeAndConvertToPng(img);
+                    this.setScreenshot(pngDataUrl);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            fileInput.value = '';
+        });
+
+        // Regenerate button
+        const regenerateBtn = document.createElement('button');
+        regenerateBtn.type = 'button';
+        regenerateBtn.classList.add('btn', 'btn-outline-secondary', 'd-flex', 'align-items-center');
+        regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generate from content')}`;
+
+        regenerateBtn.addEventListener('click', async () => {
+            const bridge = this.properties.project?._yjsBridge;
+            if (!bridge?.generateScreenshotFromFirstPage) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Not available'),
+                    body: _('Screenshot generation is not available.'),
+                    contentId: 'warning',
+                });
+                return;
+            }
+
+            const doRegenerate = async () => {
+                // Clear existing screenshot so auto-generation runs
+                const dm = bridge.getDocumentManager();
+                if (dm) {
+                    dm.getMetadata().delete('screenshot');
+                }
+
+                regenerateBtn.disabled = true;
+                regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generating...')}`;
+
+                try {
+                    await bridge.generateScreenshotFromFirstPage();
+                } catch (error) {
+                    console.error('[FormProperties] Screenshot regeneration failed:', error);
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Generation failed'),
+                        body: _('Could not generate screenshot from content. Try uploading an image instead.'),
+                        contentId: 'warning',
+                    });
+                } finally {
+                    regenerateBtn.disabled = false;
+                    regenerateBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">refresh</span> ${_('Generate from content')}`;
+                }
+            };
+
+            const hasScreenshot = previewImg.style.display !== 'none' && previewImg.src;
+            if (hasScreenshot) {
+                eXeLearning.app.modals.confirm.show({
+                    title: _('Replace screenshot'),
+                    body: _('This will delete the current image. Do you want to continue?'),
+                    confirmButtonText: _('Continue'),
+                    cancelButtonText: _('Cancel'),
+                    confirmExec: doRegenerate,
+                });
+            } else {
+                await doRegenerate();
+            }
+        });
+
+        // Remove button
+        removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.classList.add('btn', 'btn-outline-secondary', 'd-flex', 'align-items-center');
+        removeBtn.innerHTML = `<span class="auto-icon notranslate" aria-hidden="true">delete</span> ${_('Delete')}`;
+        if (!previewImg.src || previewImg.style.display === 'none') {
+            removeBtn.style.display = 'none';
+        }
+
+        removeBtn.addEventListener('click', () => {
+            eXeLearning.app.modals.confirm.show({
+                title: _('Delete screenshot'),
+                body: _('Delete the current image? This action cannot be undone.'),
+                confirmButtonText: _('Delete'),
+                cancelButtonText: _('Cancel'),
+                confirmExec: () => {
+                    updatePreview(null);
+                    const dm = this.properties.project?._yjsBridge?.getDocumentManager();
+                    if (dm) {
+                        dm.getMetadata().delete('screenshot');
+                    }
+                },
+            });
+        });
+
+        buttonsRow.append(fileInput);
+        buttonsRow.append(uploadBtn);
+        buttonsRow.append(regenerateBtn);
+        buttonsRow.append(removeBtn);
+
+        leftCol.append(previewCard);
+        leftCol.append(buttonsRow);
+
+        // --- Right column: info panel ---
+        const rightCol = document.createElement('div');
+        rightCol.classList.add('col-12', 'col-lg-5');
+
+        const infoAlert = document.createElement('div');
+        infoAlert.classList.add('alert', 'alert-light', 'd-flex');
+        infoAlert.id = 'screenshot-help-text';
+        infoAlert.setAttribute('role', 'note');
+        infoAlert.innerHTML = `
+            <div>
+                <h5 class="alert-heading lead mb-3">${_('Recommendations')}</h5>
+                <p class="mb-2 small">
+                    ${_('Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.')}
+                </p>
+                <p class="mb-0 small text-muted">
+                    ${_('The image will be used as a preview of this educational resource across different platforms.')}
+                </p>
+            </div>
+        `;
+
+        rightCol.append(infoAlert);
+
+        row.append(leftCol);
+        row.append(rightCol);
+        container.append(row);
+
+        pane.appendChild(container);
+    }
+
+    /**
+     * Resize image and convert to PNG data URL (max 1280x720)
+     */
+    resizeAndConvertToPng(img) {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxWidth = 1280;
+        const maxHeight = 720;
+        if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        return canvas.toDataURL('image/png');
+    }
+
+    /**
+     * Set screenshot in preview and Yjs metadata
+     */
+    setScreenshot(pngDataUrl) {
+        // Setting Yjs metadata triggers the observer which updates the UI
+        const dm = this.properties.project?._yjsBridge?.getDocumentManager();
+        if (dm) {
+            dm.getMetadata().set('screenshot', pngDataUrl);
+        }
     }
 
     /*******************************************************************************

@@ -5517,9 +5517,9 @@
         <source>Cool!</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target><![CDATA[__You need at least %s&percnt; of correct answers to get the information. Please try again.]]></target>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
+        <target></target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5637,9 +5637,9 @@
         <source>Percent</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[__&percnt; right to see the feedback]]></target>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
+        <target></target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5757,9 +5757,9 @@
         <source>Allow errors in typed words</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target><![CDATA[__Incorrect letters allowed (&percnt;)]]></target>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
+        <target></target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -8793,14 +8793,6 @@
         <source>Apply</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target></target>
@@ -8841,10 +8833,6 @@
         <source>CEDEC's rubrics</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="4FHSdXr" resname="Rubric use instructions (optional)">
-        <source>Rubric use instructions (optional)</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="WRV28cD" resname="Maximum score:">
         <source>Maximum score:</source>
         <target></target>
@@ -8859,10 +8847,6 @@
       </trans-unit>
       <trans-unit id="EXqwPw9" resname="New row">
         <source>New row</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="GYFdP4l" resname="Rubric information">
-        <source>Rubric information</source>
         <target></target>
       </trans-unit>
       <trans-unit id="vrJHk5H" resname="Show rubric information">
@@ -8931,10 +8915,6 @@
       </trans-unit>
       <trans-unit id="YxuvdUc" resname="Delete the column?">
         <source>Delete the column?</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="1WTTY.L" resname="Please export the content to apply the rubric.">
-        <source>Please export the content to apply the rubric.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="0fyNG8V" resname="Add at least 3 elements.">
@@ -9491,7 +9471,7 @@
       </trans-unit>
       <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
         <source>Action &amp; Expression</source>
-        <target><![CDATA[__Action & Expression]]></target>
+        <target></target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>
@@ -12129,8 +12109,8 @@
         <source>Line highlight</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
@@ -13937,18 +13917,6 @@
         <source>DigCompEdu settings</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="1r1rs01" resname="Español (MRCDD detallado)">
-        <source>Español (MRCDD detallado)</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="8vulf2m" resname="Galego (MRCDD completo)">
-        <source>Galego (MRCDD completo)</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="3lrupiu" resname="English (DigCompEdu core)">
-        <source>English (DigCompEdu core)</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="ami2isy" resname="Display options">
         <source>Display options</source>
         <target></target>
@@ -14085,10 +14053,6 @@
         <source>Import (.elpx…)</source>
         <target>Import (.elpx…)</target>
       </trans-unit>
-      <trans-unit id="hhaxeze" resname="Download as">
-        <source>Download as</source>
-        <target>Download as</target>
-      </trans-unit>
       <trans-unit id="sd586e9" resname="0 iDevices">
         <source>0 iDevices</source>
         <target>0 iDevices</target>
@@ -14163,6 +14127,102 @@
       </trans-unit>
       <trans-unit id="i7odfbn" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
         <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mrlo6kg" resname="You can only add one Rubric iDevice per page.">
+        <source>You can only add one Rubric iDevice per page.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gbvo08g" resname="CSV import/export">
+        <source>CSV import/export</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="21a5dku" resname="You can import rubric data from CSV files.">
+        <source>You can import rubric data from CSV files.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="aegh964" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
+        <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ldxaqg7" resname="Export CSV">
+        <source>Export CSV</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r6z239p" resname="Only CSV files are allowed.">
+        <source>Only CSV files are allowed.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ldmyo0z" resname="Could not read the selected CSV file.">
+        <source>Could not read the selected CSV file.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cl1h7u3" resname="Invalid CSV format.">
+        <source>Invalid CSV format.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2wtwbdp" resname="CSV imported successfully.">
+        <source>CSV imported successfully.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="oz0j0cx" resname="There is no rubric to export.">
+        <source>There is no rubric to export.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mpr6ggn" resname="Please provide CSV content.">
+        <source>Please provide CSV content.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="eh5k1ry" resname="The CSV must include a header row and at least one data row.">
+        <source>The CSV must include a header row and at least one data row.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3b6vbco" resname="The CSV must include at least one score column.">
+        <source>The CSV must include at least one score column.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d2g4ezn" resname="No rubric rows could be imported from the CSV.">
+        <source>No rubric rows could be imported from the CSV.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ll6lr9z" resname="Assessment criteria">
+        <source>Assessment criteria</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fprsu7z" resname="Performance level">
+        <source>Performance level</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7wlhct6" resname="There are unsaved changes in this row. Close and lose them?">
+        <source>There are unsaved changes in this row. Close and lose them?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3xqhxgk" resname="First row">
+        <source>First row</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0y29xjx" resname="There are unsaved changes in this column. Close and lose them?">
+        <source>There are unsaved changes in this column. Close and lose them?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5vqy7e6" resname="Complete the following rubric">
+        <source>Complete the following rubric</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ucz1uk3" resname="Imported rubric">
+        <source>Imported rubric</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ekboded" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kty2woh" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fdgncjm" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
         <target></target>
       </trans-unit>
     </body>

@@ -754,6 +754,75 @@ describe('ProjectManager', () => {
         });
     });
 
+    describe('checkAndImportElp', () => {
+        let originalLocation;
+        
+        beforeEach(() => {
+            global.fetch = vi.fn();
+            projectManager.importFromElpxViaYjs = vi.fn().mockResolvedValue('stats');
+            projectManager._yjsBridge = {
+                documentManager: {
+                    saveToServer: vi.fn().mockResolvedValue()
+                }
+            };
+            mockApp.modals.loader = {
+                show: vi.fn(),
+                hide: vi.fn(),
+            };
+            vi.stubGlobal('history', { replaceState: vi.fn() });
+        });
+        
+        afterEach(() => {
+            vi.unstubAllGlobals();
+        });
+
+        it('does nothing if no fetchPlatformElp param', async () => {
+            vi.stubGlobal('location', { href: 'http://localhost:8080/', search: '' });
+            await projectManager.checkAndImportElp();
+            expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('openPlatformElp'), expect.anything());
+        });
+
+        it('fetches platform ELP when jwt_token and fetchPlatformElp are present', async () => {
+            vi.stubGlobal('location', { 
+                href: 'http://localhost:8080/?jwt_token=12345&fetchPlatformElp=1',
+                search: '?jwt_token=12345&fetchPlatformElp=1' 
+            });
+            global.fetch.mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ responseMessage: 'OK', elpFile: btoa('test data'), elpFileName: 'test.elpx' })
+            });
+
+            await projectManager.checkAndImportElp();
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/api/platform/integration/openPlatformElp'),
+                expect.objectContaining({ method: 'POST' })
+            );
+            expect(projectManager.importFromElpxViaYjs).toHaveBeenCalled();
+            expect(projectManager._yjsBridge.documentManager.saveToServer).toHaveBeenCalled();
+            expect(mockApp.modals.loader.show).toHaveBeenCalled();
+        });
+
+        it('handles fetch platform ELP failure gracefully', async () => {
+            vi.stubGlobal('location', { 
+                href: 'http://localhost:8080/?jwt_token=12345&fetchPlatformElp=1',
+                search: '?jwt_token=12345&fetchPlatformElp=1' 
+            });
+            global.fetch.mockResolvedValue({
+                ok: false,
+                status: 500
+            });
+
+            await projectManager.checkAndImportElp();
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/api/platform/integration/openPlatformElp'),
+                expect.objectContaining({ method: 'POST' })
+            );
+            expect(projectManager.importFromElpxViaYjs).not.toHaveBeenCalled();
+        });
+    });
+
     describe('resetProject', () => {
         it('sets _forceStructureImport flag', () => {
             projectManager.resetProject();
@@ -3345,6 +3414,37 @@ describe('ProjectManager', () => {
 
                 expect(window.eXeLearning.projectId).toBe('existing-uuid');
                 expect(window.location.reload).toHaveBeenCalled();
+            });
+
+            it('new action: clears the Electron saved path so the next Save starts fresh', async () => {
+                const clearSavedPath = vi.fn().mockResolvedValue(true);
+                window.electronAPI = { clearSavedPath };
+
+                await projectManager.transitionToProject({ action: 'new' });
+
+                expect(clearSavedPath).toHaveBeenCalled();
+                delete window.electronAPI;
+            });
+
+            it('new action: survives a missing clearSavedPath without throwing', async () => {
+                window.electronAPI = {};
+
+                await expect(
+                    projectManager.transitionToProject({ action: 'new' }),
+                ).resolves.not.toThrow();
+
+                delete window.electronAPI;
+            });
+
+            it('import action: persists the imported file name via setSavedPath', async () => {
+                const setSavedPath = vi.fn().mockResolvedValue(true);
+                window.electronAPI = { setSavedPath };
+                const file = new File(['content'], 'Imported.elpx');
+
+                await projectManager.transitionToProject({ action: 'import', file });
+
+                expect(setSavedPath).toHaveBeenCalledWith('Imported.elpx');
+                delete window.electronAPI;
             });
 
             it('uses exportToElpxViaYjs for save instead of server saveManager', async () => {

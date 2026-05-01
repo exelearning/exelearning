@@ -31,6 +31,7 @@ var $exeDevice = {
     selectionCounterId: 'digcompeduSelectionCounter',
 
     defaultLang: 'es',
+    supportedLangs: ['es', 'gl', 'en', 'eu'],
     levelOrder: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
     jsonPathTemplate: '../data/digcompedu_{lang}.json',
 
@@ -69,8 +70,12 @@ var $exeDevice = {
         );
         this.selectionGranularity =
             this.idevicePreviousData.digcompeduGranularity || 'indicator';
+        const projectLang = (
+            eXe && eXe.app && eXe.app.locale && eXe.app.locale._contentLang || ''
+        ).split('-')[0];
         this.activeLang =
-            this.idevicePreviousData.digcompeduDataLang || this.defaultLang;
+            this.idevicePreviousData.digcompeduDataLang ||
+            (this.supportedLangs.includes(projectLang) ? projectLang : this.defaultLang);
         this.summaryTableHtml =
             this.idevicePreviousData.digcompeduSummaryTableHtml || '';
         this.summaryTextHtml =
@@ -555,9 +560,10 @@ var $exeDevice = {
         const displayMode =
             this.idevicePreviousData.digcompeduDisplayMode || 'table';
         const frameworkOptions = `
-            <option value="es"${this.activeLang === 'es' ? ' selected' : ''}>${_('Español (MRCDD detallado)')}</option>
-            <option value="gl"${this.activeLang === 'gl' ? ' selected' : ''}>${_('Galego (MRCDD completo)')}</option>
-            <option value="en"${this.activeLang === 'en' ? ' selected' : ''}>${_('English (DigCompEdu core)')}</option>
+            <option value="es"${this.activeLang === 'es' ? ' selected' : ''}>Español (MRCDD detallado)</option>
+            <option value="gl"${this.activeLang === 'gl' ? ' selected' : ''}>Galego (MRCDD completo)</option>
+            <option value="en"${this.activeLang === 'en' ? ' selected' : ''}>English (DigCompEdu core)</option>
+            <option value="eu"${this.activeLang === 'eu' ? ' selected' : ''}>Euskara (IKDEE zehaztuta)</option>
         `;
 
         return `

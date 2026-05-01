@@ -95,6 +95,9 @@ export class Scorm2004Exporter extends Html5Exporter {
             // Configure iDevice renderer with theme files for icon resolution
             this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
 
+            // Fetch translated nav labels for the content language (includes license)
+            const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
+
             // 1. Generate HTML pages (with SCORM 2004 support and optional LaTeX/Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -112,6 +115,7 @@ export class Scorm2004Exporter extends Html5Exporter {
                     i,
                     faviconInfo,
                     pageFilenameMap,
+                    navLabels,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -395,6 +399,7 @@ export class Scorm2004Exporter extends Html5Exporter {
         pageIndex?: number,
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
+        navLabels?: { previous: string; next: string; license?: string },
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -405,10 +410,8 @@ export class Scorm2004Exporter extends Html5Exporter {
         if (meta.globalFont && meta.globalFont !== 'default') {
             const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
             if (globalFontCss) {
-                // Prepend global font CSS to customStyles
                 customStyles = globalFontCss + '\n' + customStyles;
             }
-            // Add font-specific body class
             const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
             if (fontBodyClass) {
                 bodyClass += ` ${fontBodyClass}`;
@@ -429,31 +432,25 @@ export class Scorm2004Exporter extends Html5Exporter {
             license: meta.license || '',
             description: meta.description || '',
             licenseUrl: meta.licenseUrl || '',
-            // Export options - SCORM specific overrides
-            // SCORM/IMS exports don't use client-side search - LMS handles navigation
             addSearchBox: false,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
-            // SCORM 2004-specific options
             isScorm: true,
             scormVersion: '2004',
             bodyClass: bodyClass,
             extraHeadScripts: this.getScorm2004HeadScripts(basePath),
             onLoadScript: 'loadPage()',
             onUnloadScript: 'unloadPage()',
-            // Hide navigation elements - LMS handles navigation in SCORM
             hideNavigation: true,
             hideNavButtons: true,
-            // Theme files for HTML head includes
             themeFiles: themeFiles || [],
-            // Favicon options
             faviconPath: faviconInfo?.path,
             faviconType: faviconInfo?.type,
-            // Page filename map for navigation links (handles title collisions)
             pageFilenameMap,
-            // Application version for generator meta tag
+            // Pre-translated nav button labels (resolved from XLF at export time)
+            navLabels,
             version: meta.exelearningVersion,
         });
     }

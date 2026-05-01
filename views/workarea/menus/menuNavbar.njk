@@ -12,10 +12,10 @@
                     {{ t.file or 'File' }}
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="dropdownFile">
-                    <li><a class="dropdown-item" id="navbar-button-new" href="{{ basePath }}/workarea" data-shortcut="Mod+Alt+N" aria-keyshortcuts="Control+Alt+N Meta+Alt+N"><span class="small-icon new-icon-green"></span> {{ t.new or 'New' }}</a></li>
+                    <li class="{% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="navbar-button-new" href="{{ basePath }}/workarea" data-shortcut="Mod+Alt+N" aria-keyshortcuts="Control+Alt+N Meta+Alt+N"><span class="small-icon new-icon-green"></span> {{ t.new or 'New' }}</a></li>
                     <li class="d-none"><a class="dropdown-item" id="navbar-button-new-from-template" href="#"><span class="small-icon new-icon"></span> {{ t.new_from_template or 'New from Template...' }}</a></li>
-                    <li class="exe-online"><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ t.open or 'Open' }}</a></li>
-                    <li class="dropdown dropend exe-online">
+                    <li class="exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ t.open or 'Open' }}</a></li>
+                    <li class="dropdown dropend exe-online {% if config.platformIntegration %}d-none{% endif %}">
                         <a class="dropdown-item dropdown-toggle" href="#" id="navbar-button-dropdown-recent-projects" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <span class="small-icon recent-icon-green"></span> {{ t.recent_projects or 'Recent projects' }}
                         </a>
@@ -27,8 +27,8 @@
                     {# Hidden to reduce Open/Import confusion (issue #1223) #}
                     <li class="d-none"><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> {{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
                     {% endif %}
-                    <li class="dropdown-divider exe-online"></li>
-                    <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
+                    <li class="dropdown-divider exe-online {% if config.platformIntegration %}d-none{% endif %}"></li>
+                    <li class="exe-online {% if config.platformIntegration %}d-none{% endif %}"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
                     <li class="dropdown dropend exe-online">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAs" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon download-icon-green"></span> {{ t.download_as or 'Download as...' }}</a>
                         <ul class="dropdown-menu" aria-labelledby="dropdownExportAs">
@@ -41,8 +41,8 @@
                             <li><a id="navbar-button-export-epub3" class="dropdown-item" href="#">ePub3</a></li>
                         </ul>
                     </li>
-                    <li class="dropdown-divider"></li>
-                    <li class="exe-online"><a class="dropdown-item" id="navbar-button-share" href="#" data-shortcut="Mod+Alt+S" aria-keyshortcuts="Control+Alt+S Meta+Alt+S"><span class="small-icon share-icon"></span> {{ t.share or 'Share' }}</a></li>
+                    <li class="dropdown-divider {% if config.platformIntegration %}d-none{% endif %}"></li>
+                    <li class="exe-online {% if config.platformIntegration %}d-none{% endif %}"><a class="dropdown-item" id="navbar-button-share" href="#" data-shortcut="Mod+Alt+S" aria-keyshortcuts="Control+Alt+S Meta+Alt+S"><span class="small-icon share-icon"></span> {{ t.share or 'Share' }}</a></li>
                     {% if config.isOfflineInstallation %}
                         <li><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ t.open or 'Open' }}</a></li>
                         {# Hidden to reduce Open/Import confusion (issue #1223) #}

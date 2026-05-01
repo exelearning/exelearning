@@ -5513,9 +5513,9 @@
         <source>Cool!</source>
         <target>~Bone!</target>
       </trans-unit>
-      <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
-        <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target><![CDATA[__You need at least %s&amp;percnt;  of correct answers to get the information. Please try again.]]></target>
+      <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
+        <source>You need at least %s% of correct answers to get the information. Please try again.</source>
+        <target>~Vi bezonas almenaŭ %s% da ĝustaj respondoj por ricevi la informon. Bonvolu provi denove.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5633,9 +5633,9 @@
         <source>Percent</source>
         <target>~Procento</target>
       </trans-unit>
-      <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
-        <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[__&percnt; right to see the feedback]]></target>
+      <trans-unit id="I4MH_aK" resname="% right to see the feedback">
+        <source>% right to see the feedback</source>
+        <target>~% ĝuste por vidi la retrosciigon</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5753,9 +5753,9 @@
         <source>Allow errors in typed words</source>
         <target>~Permesi erarojn en tajpitaj vortoj</target>
       </trans-unit>
-      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
-        <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target><![CDATA[__Incorrect letters allowed (&percnt;)]]></target>
+      <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (%)">
+        <source>Incorrect letters allowed (%)</source>
+        <target>~Permesitaj malĝustaj literoj (%)</target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -8789,14 +8789,6 @@
         <source>Apply</source>
         <target>~Apliki</target>
       </trans-unit>
-      <trans-unit id="Zlk8BL5" resname="Complete the table to define a scoring guide. Define the score or value of each descriptor.">
-        <source>Complete the table to define a scoring guide. Define the score or value of each descriptor.</source>
-        <target>~Plenigu la tabelon por difini taksogvidilon. Difinu la poentaron aŭ valoron de ĉiu priskribo.</target>
-      </trans-unit>
-      <trans-unit id="pILraKV" resname="Learn how to apply a rubric">
-        <source>Learn how to apply a rubric</source>
-        <target>~Lerni kiel apliki rubricon</target>
-      </trans-unit>
       <trans-unit id="2niDz93" resname="Example rubric">
         <source>Example rubric</source>
         <target>~Ekzempla rubrico</target>
@@ -8837,10 +8829,6 @@
         <source>CEDEC's rubrics</source>
         <target>~CEDEC-aj rubrikoj</target>
       </trans-unit>
-      <trans-unit id="4FHSdXr" resname="Rubric use instructions (optional)">
-        <source>Rubric use instructions (optional)</source>
-        <target>~Instrukcioj pri uzado de rubriko (opciaj)</target>
-      </trans-unit>
       <trans-unit id="WRV28cD" resname="Maximum score:">
         <source>Maximum score:</source>
         <target>~Plej alta poentotabelo:</target>
@@ -8856,10 +8844,6 @@
       <trans-unit id="EXqwPw9" resname="New row">
         <source>New row</source>
         <target>~Nova vico</target>
-      </trans-unit>
-      <trans-unit id="GYFdP4l" resname="Rubric information">
-        <source>Rubric information</source>
-        <target>~Rubrika informo</target>
       </trans-unit>
       <trans-unit id="vrJHk5H" resname="Show rubric information">
         <source>Show rubric information</source>
@@ -8928,10 +8912,6 @@
       <trans-unit id="YxuvdUc" resname="Delete the column?">
         <source>Delete the column?</source>
         <target>~Ĉu forigi la kolonon?</target>
-      </trans-unit>
-      <trans-unit id="1WTTY.L" resname="Please export the content to apply the rubric.">
-        <source>Please export the content to apply the rubric.</source>
-        <target>~Bonvolu eksporti la enhavon por apliki la rubrikon.</target>
       </trans-unit>
       <trans-unit id="0fyNG8V" resname="Add at least 3 elements.">
         <source>Add at least 3 elements.</source>
@@ -9487,7 +9467,7 @@
       </trans-unit>
       <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
         <source>Action &amp; Expression</source>
-        <target><![CDATA[__Action & Expression]]></target>
+        <target>~Ago &amp; Esprimo</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>
@@ -12125,9 +12105,9 @@
         <source>Line highlight</source>
         <target>~Linia emfazado</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target><![CDATA[__You must review %s&percnt; of the contents of the activity before completing the questionnaire.]]></target>
+      <trans-unit id="cIfYpvB" resname="You must review %s% of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s% of the contents of the activity before completing the questionnaire.</source>
+        <target>~Vi devas trarigardi %s% de la enhavoj de la agado antaŭ ol kompletigi la demandaron.</target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
@@ -13949,18 +13929,6 @@
         <source>DigCompEdu settings</source>
         <target>~Agordo de DigCompEdu</target>
       </trans-unit>
-      <trans-unit id="tgcnndm" resname="Español (MRCDD detallado)">
-        <source>Español (MRCDD detallado)</source>
-        <target>~Hispana (Detala MRCDD)</target>
-      </trans-unit>
-      <trans-unit id="4wayhny" resname="Galego (MRCDD completo)">
-        <source>Galego (MRCDD completo)</source>
-        <target>~Galega (Plena MRCDD)</target>
-      </trans-unit>
-      <trans-unit id="runzdvs" resname="English (DigCompEdu core)">
-        <source>English (DigCompEdu core)</source>
-        <target>~Angla (DigCompEdu kerna)</target>
-      </trans-unit>
       <trans-unit id="oanb207" resname="Display options">
         <source>Display options</source>
         <target>~Opcioj de vida</target>
@@ -14097,10 +14065,6 @@
         <source>Import (.elpx…)</source>
         <target>~Importi (.elpx…)</target>
       </trans-unit>
-      <trans-unit id="5qzib1r" resname="Download as">
-        <source>Download as</source>
-        <target>~Elŝuti kiel</target>
-      </trans-unit>
       <trans-unit id="5eaeiph" resname="0 iDevices">
         <source>0 iDevices</source>
         <target>~0 iDevices</target>
@@ -14164,6 +14128,102 @@
       <trans-unit id="pmcify3" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
         <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
         <target>~Ne povis esti kontrolita: HTTP-enhavo estas blokita en HTTPS-paĝoj.</target>
+      </trans-unit>
+      <trans-unit id="3oxnt5a" resname="You can only add one Rubric iDevice per page.">
+        <source>You can only add one Rubric iDevice per page.</source>
+        <target>~Vi povas aldoni nur unu Rubrik-iDevice por paĝo.</target>
+      </trans-unit>
+      <trans-unit id="uu8oao2" resname="CSV import/export">
+        <source>CSV import/export</source>
+        <target>~CSV-importado/eksportado</target>
+      </trans-unit>
+      <trans-unit id="7slkf9e" resname="You can import rubric data from CSV files.">
+        <source>You can import rubric data from CSV files.</source>
+        <target>~Vi povas importi rubrik-datumojn el CSV-dosieroj.</target>
+      </trans-unit>
+      <trans-unit id="qhhdnvq" resname="You can export the rubric in CSV format to integrate it into other compatible activities.">
+        <source>You can export the rubric in CSV format to integrate it into other compatible activities.</source>
+        <target>~Vi povas eksporti la rubrikon en CSV-formato por integri ĝin en aliajn kongruajn agadojn.</target>
+      </trans-unit>
+      <trans-unit id="77rxd98" resname="Export CSV">
+        <source>Export CSV</source>
+        <target>~Eksporti CSV</target>
+      </trans-unit>
+      <trans-unit id="jxzk5jh" resname="Only CSV files are allowed.">
+        <source>Only CSV files are allowed.</source>
+        <target>~Nur CSV-dosieroj estas permesataj.</target>
+      </trans-unit>
+      <trans-unit id="c68pyc9" resname="Could not read the selected CSV file.">
+        <source>Could not read the selected CSV file.</source>
+        <target>~Ne povis legi la elektitan CSV-dosieron.</target>
+      </trans-unit>
+      <trans-unit id="18r6ja8" resname="Invalid CSV format.">
+        <source>Invalid CSV format.</source>
+        <target>~Nevalida CSV-formato.</target>
+      </trans-unit>
+      <trans-unit id="w1juj31" resname="CSV imported successfully.">
+        <source>CSV imported successfully.</source>
+        <target>~CSV importita sukcese.</target>
+      </trans-unit>
+      <trans-unit id="kejqcda" resname="There is no rubric to export.">
+        <source>There is no rubric to export.</source>
+        <target>~Ne ekzistas rubrik por eksporti.</target>
+      </trans-unit>
+      <trans-unit id="x55jy7h" resname="Please provide CSV content.">
+        <source>Please provide CSV content.</source>
+        <target>~Bonvolu provizi CSV-enhavon.</target>
+      </trans-unit>
+      <trans-unit id="jazjh2f" resname="The CSV must include a header row and at least one data row.">
+        <source>The CSV must include a header row and at least one data row.</source>
+        <target>~La CSV devas inkludi titol-vicon kaj almenaŭ unu datumvicon.</target>
+      </trans-unit>
+      <trans-unit id="bokwhyl" resname="The CSV must include at least one score column.">
+        <source>The CSV must include at least one score column.</source>
+        <target>~La CSV devas inkludi almenaŭ unu poentum-kolumnon.</target>
+      </trans-unit>
+      <trans-unit id="yhdg0kk" resname="No rubric rows could be imported from the CSV.">
+        <source>No rubric rows could be imported from the CSV.</source>
+        <target>~Neniuj rubrik-vicoj povis esti importitaj el la CSV.</target>
+      </trans-unit>
+      <trans-unit id="99ht02c" resname="Assessment criteria">
+        <source>Assessment criteria</source>
+        <target>~Taksado-kriterioj</target>
+      </trans-unit>
+      <trans-unit id="zrnkveu" resname="Performance level">
+        <source>Performance level</source>
+        <target>~Prezenta nivelo</target>
+      </trans-unit>
+      <trans-unit id="5qk9w2u" resname="There are unsaved changes in this row. Close and lose them?">
+        <source>There are unsaved changes in this row. Close and lose them?</source>
+        <target>~Estas nekonservitaj ŝanĝoj en ĉi tiu vico. Fermi kaj perdi ilin?</target>
+      </trans-unit>
+      <trans-unit id="i4me8m7" resname="First row">
+        <source>First row</source>
+        <target>~Unua vico</target>
+      </trans-unit>
+      <trans-unit id="kvbu6sf" resname="There are unsaved changes in this column. Close and lose them?">
+        <source>There are unsaved changes in this column. Close and lose them?</source>
+        <target>~Estas nekonservitaj ŝanĝoj en ĉi tiu kolumno. Fermi kaj perdi ilin?</target>
+      </trans-unit>
+      <trans-unit id="htidn0p" resname="Complete the following rubric">
+        <source>Complete the following rubric</source>
+        <target>~Plenigu la sekvan rubrikon</target>
+      </trans-unit>
+      <trans-unit id="5relnqj" resname="Imported rubric">
+        <source>Imported rubric</source>
+        <target>~Importita rubrik</target>
+      </trans-unit>
+      <trans-unit id="tar0eks" resname="Please complete the rubric before saving your score.">
+        <source>Please complete the rubric before saving your score.</source>
+        <target>~Bonvolu kompletigi la rubron antaŭ konservi vian poentaron.</target>
+      </trans-unit>
+      <trans-unit id="lly5w0h" resname="Your score will be saved after each change. You can only complete once.">
+        <source>Your score will be saved after each change. You can only complete once.</source>
+        <target>~Via poentaro estos konservita post ĉiu ŝanĝo. Vi povas kompletigi nur unufoje.</target>
+      </trans-unit>
+      <trans-unit id="21qeoch" resname="Your score will be automatically saved after each change.">
+        <source>Your score will be automatically saved after each change.</source>
+        <target>~Via poentaro estos aŭtomate konservita post ĉiu ŝanĝo.</target>
       </trans-unit>
     </body>
   </file>

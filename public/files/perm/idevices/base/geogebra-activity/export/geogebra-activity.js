@@ -397,11 +397,29 @@ var $geogebraactivity = {
         }
 
         setTimeout(function () {
-            $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
-                options,
-                this.isInExe
-            );
+            if (options.evaluation) {
+                $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
+                    options,
+                    this.isInExe
+                );
+            } else {
+                $geogebraactivity.removeEvaluationIcon(options);
+            }
         }, 500);
+    },
+    removeEvaluationIcon: function (options) {
+        if (!options || !options.main || !options.idevice) return;
+
+        const $main = $('#' + options.main);
+        let $idevice = $main.closest(`.${options.idevice}`);
+        if (!$idevice.length) {
+            $idevice = $main.closest('.idevice_node');
+        }
+
+        $idevice.find('.Games-ReportIconDiv').remove();
+        if (options.id) {
+            $('#ac-' + options.id).remove();
+        }
     },
     getIdeviceID: function (sfx) {
         const ideviceid =
@@ -413,6 +431,7 @@ var $geogebraactivity = {
     },
 
     getOptions: function (sfx, weighted, messagesScorm, evaluationID) {
+        evaluationID = evaluationID && evaluationID !== '0' ? evaluationID : '';
         let messages = $geogebraactivity.messages;
         let messagesEval = [];
         for (let z = 0; z < messages.length; z++) {
@@ -428,7 +447,7 @@ var $geogebraactivity = {
             evaluationID: evaluationID,
             isInExe: this.isInExe,
             main: 'auto-geogebra-' + sfx,
-            idevice: 'geogebra-activity',
+            idevice: 'geogebra-activityIdevice',
             scorerp: 0,
             idevicePath: this.idevicePath,
             textButtonScorm: $geogebraactivity.messages[3],

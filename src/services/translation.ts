@@ -174,7 +174,11 @@ function parseXlfContent(content: string): XlfParseResult {
 
     for (const unit of transUnits) {
         const source = extractText(unit.source);
-        const target = extractText(unit.target);
+        const rawTarget = extractText(unit.target);
+        // Strip the "~" fuzzy marker used to flag machine-translated placeholder
+        // entries. The marker is kept on disk so translators can spot entries
+        // needing review, but it must never reach the UI or exports.
+        const target = rawTarget.startsWith('~') ? rawTarget.slice(1) : rawTarget;
         // Use resname or id as key (for error.page_not_found style keys)
         const resname = unit['@_resname'];
         const id = unit['@_id'];

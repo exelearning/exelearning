@@ -584,11 +584,10 @@ var $exeDevice = {
     createForm: function () {
         const html = `
         <div id="reportQEIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${_('It shows the result of the pupils in the activities linked to their average score.')}
-                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/informe_de_progreso.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-            </p>
+            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                _('It shows the result of the pupils in the activities linked to their average score.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/informe-de-progreso.html',
+            )}
             <div class="exe-form-tab" title="${_('General settings')}">
                 <fieldset class="exe-fieldset">
                     <legend><a href="#">${_('Options')}</a></legend>

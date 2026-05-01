@@ -113,6 +113,19 @@ describe('ModalFilemanager', () => {
               <li><a class="dropdown-item media-library-fullsize-btn" href="#">View full size</a></li>
             </ul>
           </div>
+          <div class="dropdown media-library-mobile-actions">
+            <button class="dropdown-toggle media-library-mobile-actions-toggle" disabled>Actions</button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-mobile-action="delete">Delete</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="rename">Rename</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="duplicate">Duplicate</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="move">Move</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="download">Download</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="extract-zip">Extract ZIP</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="copyurl">Copy URL</a></li>
+              <li><a class="dropdown-item" href="#" data-mobile-action="fullsize">Full size</a></li>
+            </ul>
+          </div>
         </div>
         <button class="media-library-insert-btn">Insert</button>
       </div>
@@ -699,6 +712,7 @@ describe('ModalFilemanager', () => {
   describe('uploadFiles', () => {
     it('should upload files and reload assets', async () => {
       const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
       const file = new File(['x'], 'sample.png', { type: 'image/png' });
       await modal.uploadFiles([file]);
       // Now uploads to current folder (empty = root by default)
@@ -708,6 +722,7 @@ describe('ModalFilemanager', () => {
 
     it('should upload files to current folder', async () => {
       const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
       modal.currentPath = 'images/icons';
       const file = new File(['x'], 'icon.svg', { type: 'image/svg+xml' });
       await modal.uploadFiles([file]);
@@ -721,6 +736,71 @@ describe('ModalFilemanager', () => {
       const file = new File(['x'], 'sample.png', { type: 'image/png' });
       await modal.uploadFiles([file]);
       expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalled();
+    });
+
+    it('should auto-select the uploaded file when exactly one file is uploaded', async () => {
+      vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      const autoSelectSpy = vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
+      window.eXeLearning.app.project._yjsBridge.assetManager.insertImage.mockResolvedValueOnce('asset://test-uuid.png');
+      const file = new File(['x'], 'sample.png', { type: 'image/png' });
+      await modal.uploadFiles([file]);
+      expect(autoSelectSpy).toHaveBeenCalledWith('test-uuid');
+    });
+
+    it('should not auto-select when multiple files are uploaded', async () => {
+      vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      const autoSelectSpy = vi.spyOn(modal, 'autoSelectUploadedAsset').mockResolvedValue();
+      window.eXeLearning.app.project._yjsBridge.assetManager.insertImage
+        .mockResolvedValueOnce('asset://uuid-1.png')
+        .mockResolvedValueOnce('asset://uuid-2.jpg');
+      const files = [
+        new File(['x'], 'a.png', { type: 'image/png' }),
+        new File(['y'], 'b.jpg', { type: 'image/jpeg' }),
+      ];
+      await modal.uploadFiles(files);
+      expect(autoSelectSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('autoSelectUploadedAsset', () => {
+    const asset = { id: 'asset-abc', filename: 'photo.jpg', mime: 'image/jpeg' };
+
+    beforeEach(() => {
+      modal.assets = [asset];
+    });
+
+    it('should select asset in grid view', async () => {
+      modal.viewMode = 'grid';
+      const item = document.createElement('div');
+      item.dataset.assetId = 'asset-abc';
+      modal.grid.appendChild(item);
+      const selectSpy = vi.spyOn(modal, 'selectAsset').mockResolvedValue();
+      await modal.autoSelectUploadedAsset('asset-abc');
+      expect(selectSpy).toHaveBeenCalledWith(asset, item);
+    });
+
+    it('should select asset in list view', async () => {
+      modal.viewMode = 'list';
+      const row = document.createElement('tr');
+      row.dataset.assetId = 'asset-abc';
+      modal.listTbody.appendChild(row);
+      const selectSpy = vi.spyOn(modal, 'selectAssetInList').mockResolvedValue();
+      await modal.autoSelectUploadedAsset('asset-abc');
+      expect(selectSpy).toHaveBeenCalledWith(asset, row);
+    });
+
+    it('should do nothing when asset is not found', async () => {
+      modal.assets = [];
+      const selectSpy = vi.spyOn(modal, 'selectAsset').mockResolvedValue();
+      await modal.autoSelectUploadedAsset('asset-abc');
+      expect(selectSpy).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing when DOM element is not found', async () => {
+      modal.viewMode = 'grid';
+      const selectSpy = vi.spyOn(modal, 'selectAsset').mockResolvedValue();
+      await modal.autoSelectUploadedAsset('asset-abc');
+      expect(selectSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -3900,6 +3980,64 @@ describe('ModalFilemanager', () => {
       const count = modal.countAssetReferences('null-test');
       expect(count).toBe(0);
     });
+
+    // Regression test for issue #1674: after deleting an image from a Text iDevice
+    // in the desktop (Electron) build, the File Manager still reported 1 reference
+    // because the counter read the stale `htmlView` string (set once during ELP
+    // import) instead of the freshly updated `htmlContent` Y.Text.
+    it('should prefer fresh htmlContent over stale htmlView (issue #1674)', () => {
+      const mockComponent = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') {
+            // Fresh content after the user deleted the image — no asset reference.
+            return { toString: () => '<p>image removed</p>' };
+          }
+          if (key === 'htmlView') {
+            // Stale string from ELP import, still references the deleted asset.
+            return '<p><img src="asset://stale-asset-1674/image.jpg"></p>';
+          }
+          return null;
+        })
+      };
+
+      const mockBlock = {
+        get: vi.fn((key) => {
+          if (key === 'components') {
+            return { length: 1, get: () => mockComponent };
+          }
+          return null;
+        })
+      };
+
+      const mockPage = {
+        get: vi.fn((key) => {
+          if (key === 'blocks') {
+            return { length: 1, get: () => mockBlock };
+          }
+          return null;
+        })
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              documentManager: {
+                ydoc: {
+                  getArray: vi.fn().mockReturnValue({
+                    length: 1,
+                    get: () => mockPage
+                  })
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const count = modal.countAssetReferences('stale-asset-1674');
+      expect(count).toBe(0);
+    });
   });
 
   describe('duplicateSelectedAsset edge cases', () => {
@@ -4009,6 +4147,105 @@ describe('ModalFilemanager', () => {
       // Should have root + other = 2 items (parent and parent/child excluded)
       const items = modal.folderPickerList.querySelectorAll('.folder-picker-item');
       expect(items.length).toBe(2);
+    });
+  });
+
+  describe('mobile actions dropdown', () => {
+    const mobileItem = (action) =>
+      modal.mobileActionsWrapper.querySelector(`[data-mobile-action="${action}"]`);
+
+    it('wires up all mobile action targets', () => {
+      expect(modal.mobileActionsWrapper).toBeTruthy();
+      expect(modal.mobileActionsToggle).toBeTruthy();
+      expect(modal.mobileActionTargets.delete).toBe(modal.deleteBtn);
+      expect(modal.mobileActionTargets.rename).toBe(modal.renameBtn);
+      expect(modal.mobileActionTargets.duplicate).toBe(modal.duplicateBtn);
+      expect(modal.mobileActionTargets.move).toBe(modal.moveBtn);
+      expect(modal.mobileActionTargets.download).toBe(modal.downloadBtn);
+      expect(modal.mobileActionTargets['extract-zip']).toBe(modal.extractBtn);
+      expect(modal.mobileActionTargets.copyurl).toBe(modal.dropdownCopyUrlBtn);
+      expect(modal.mobileActionTargets.fullsize).toBe(modal.fullSizeBtn);
+    });
+
+    it('forwards a click to the matching desktop button when enabled', () => {
+      modal.deleteBtn.disabled = false;
+      const clickSpy = vi.spyOn(modal.deleteBtn, 'click');
+      mobileItem('delete').click();
+      expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('does not forward a click when the target is disabled', () => {
+      modal.renameBtn.disabled = true;
+      const clickSpy = vi.spyOn(modal.renameBtn, 'click');
+      mobileItem('rename').click();
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not forward a click to a hidden extract-zip target', () => {
+      modal.extractBtn.classList.add('d-none');
+      modal.extractBtn.disabled = false;
+      // syncMobileActions propagates the hidden state onto the mobile item
+      modal.syncMobileActions();
+      const clickSpy = vi.spyOn(modal.extractBtn, 'click');
+      mobileItem('extract-zip').click();
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not forward a click when the mobile item is marked disabled', () => {
+      modal.renameBtn.disabled = true;
+      modal.syncMobileActions();
+      const clickSpy = vi.spyOn(modal.renameBtn, 'click');
+      mobileItem('rename').click();
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('forwards a click when desktop target has d-none (its mobile-only class)', () => {
+      // Desktop buttons have `d-none d-md-inline-block`, so d-none is always present on
+      // mobile viewports. The click handler must not treat that as "hide the item".
+      modal.deleteBtn.classList.add('d-none');
+      modal.deleteBtn.disabled = false;
+      modal.syncMobileActions();
+      const clickSpy = vi.spyOn(modal.deleteBtn, 'click');
+      mobileItem('delete').click();
+      expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('syncMobileActions mirrors disabled state onto the items', () => {
+      modal.deleteBtn.disabled = false;
+      modal.renameBtn.disabled = true;
+      modal.syncMobileActions();
+      expect(mobileItem('delete').classList.contains('disabled')).toBe(false);
+      expect(mobileItem('delete').getAttribute('aria-disabled')).toBe('false');
+      expect(mobileItem('rename').classList.contains('disabled')).toBe(true);
+      expect(mobileItem('rename').getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('syncMobileActions hides extract-zip only when the source button is hidden', () => {
+      modal.extractBtn.disabled = false;
+      modal.extractBtn.classList.add('d-none');
+      modal.syncMobileActions();
+      expect(mobileItem('extract-zip').classList.contains('d-none')).toBe(true);
+
+      modal.extractBtn.classList.remove('d-none');
+      modal.syncMobileActions();
+      expect(mobileItem('extract-zip').classList.contains('d-none')).toBe(false);
+    });
+
+    it('syncMobileActions ignores d-none on non-extract targets (the mobile-only class)', () => {
+      modal.deleteBtn.classList.add('d-none');
+      modal.deleteBtn.disabled = false;
+      modal.syncMobileActions();
+      expect(mobileItem('delete').classList.contains('d-none')).toBe(false);
+    });
+
+    it('dropdown toggle is enabled when at least one action is available', () => {
+      Object.values(modal.mobileActionTargets).forEach((btn) => { btn.disabled = true; });
+      modal.syncMobileActions();
+      expect(modal.mobileActionsToggle.disabled).toBe(true);
+
+      modal.deleteBtn.disabled = false;
+      modal.syncMobileActions();
+      expect(modal.mobileActionsToggle.disabled).toBe(false);
     });
   });
 });

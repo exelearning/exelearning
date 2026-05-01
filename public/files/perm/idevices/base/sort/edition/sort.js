@@ -71,7 +71,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgEndGameScore: c_(
                 'Please start the game before saving your score.'
@@ -149,9 +149,6 @@ var $exeDevice = {
         msgs.msgCardsColumn = _(
             'With fixed headers, the number of cards must be bigger than the number of columns'
         );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters'
-        );
         msgs.msgEOneWord = _('Please provide at least one word');
     },
 
@@ -159,11 +156,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
     <div id="gameQEIdeviceForm">
-        <p class="exe-block-info exe-block-dismissible" style="position:relative">
-            ${_('Create interactive activities in which players will have to order cards with images, texts and/or sounds.')}
-            <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/ordena.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-            <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-        </p>
+        ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+            _('Create interactive activities in which players will have to order cards with images, texts and/or sounds.'),
+            'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/ordena.html',
+        )}
         <div class="exe-form-tab" title="${_('General settings')}">
             ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each letter to its correct position'))}
             <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -309,24 +305,8 @@ var $exeDevice = {
                         <label class="toggle-label" for="ordenaEWordBorder">${_('Word border')}.</label>
                     </div>
                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                        <div class="toggle-item mb-0">
-                            <span class="toggle-control">
-                                <input type="checkbox" id="ordenaEEvaluation" class="toggle-input" />
-                                <span class="toggle-visual"></span>
-                            </span>
-                            <label class="toggle-label" for="ordenaEEvaluation">${_('Progress report')}.</label>
-                        </div>
-                        <div class="d-flex flex-nowrap align-items-center gap-2">
-                            <label for="ordenaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                            <input type="text" class="form-control" id="ordenaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                        </div>
-                        <a href="#ordenaEEvaluationHelp" id="ordenaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                            <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                        </a>
+                        ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                     </div>
-                    <p id="ordenaEEvaluationHelp" class="ODNE-TypeGameHelp exe-block-info">
-                        ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                    </p>
                 </div>
             </fieldset>
             <fieldset class="exe-fieldset">
@@ -1350,17 +1330,13 @@ var $exeDevice = {
             maxWidth = $('#ordenaMaxWidth').is(':checked'),
             orderedColumns = $('#ordenaOrderedColumns').is(':checked'),
             phrasesGame = $exeDevice.phrasesGame,
-            evaluation = $('#ordenaEEvaluation').is(':checked'),
-            evaluationID = $('#ordenaEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
             type = parseInt($('input.ODNE-EType[name=odntype]:checked').val());
 
         if (!itinerary) return;
-
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
-            return false;
-        }
+        if (!progressBar) return false;
         if (phrasesGame.length == 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
@@ -1395,8 +1371,8 @@ var $exeDevice = {
             startAutomatically: startAutomatically,
             orderedColumns: orderedColumns,
             gameColumns: gameColumns,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             wordBorder: wordBorder,
             id: id,
             type: type,
@@ -1732,15 +1708,7 @@ var $exeDevice = {
             }
         });
 
-        $('#ordenaEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#ordenaEEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#ordenaEEvaluationHelpLnk').click(function () {
-            $('#ordenaEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         const gameColumns = parseInt(
                 $('input.ODNE-EColumns[name=odncolumns]:checked').val()
@@ -2025,9 +1993,10 @@ var $exeDevice = {
         $('#ordenaStartAutomatically').prop('checked', game.startAutomatically);
         $('#ordenaMaxWidth').prop('checked', game.maxWidth);
         $('#ordenaOrderedColumns').prop('checked', game.orderedColumns);
-        $('#ordenaEEvaluation').prop('checked', game.evaluation);
-        $('#ordenaEEvaluationID').val(game.evaluationID);
-        $('#ordenaEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $("input.ODNE-EType[name='odntype'][value='" + game.type + "']").prop(
             'checked',
             true

@@ -1044,6 +1044,72 @@ describe('BaseExporter', () => {
             expect(count).toBe(1);
             expect(trackingList).toContain('content/resources/track.css');
         });
+
+        // Regression coverage for exelearning/mod_exeweb#42 and exelearning/mod_exescorm#55:
+        // when an `asset://` reference in the rendered HTML cannot be resolved against the
+        // export path map, addFilenamesToAssetUrls falls back to a literal
+        // `content/resources/<id><ext>` URL. addAssetsToZipWithResourcePath must mirror that
+        // by writing each asset under its `<id><ext>` path too, so the URL resolves on
+        // downstream platforms (Moodle pluginfile.php) instead of returning 404.
+        it('should also write each asset under the <id><ext> fallback path', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset(
+                '12345678-1234-1234-1234-123456789012',
+                'photo.png',
+                'image/png',
+                Buffer.from('png-data'),
+            );
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            await forEachExporter.addAssetsToZipWithResourcePath();
+
+            expect(forEachZip.files.has('content/resources/photo.png')).toBe(true);
+            expect(forEachZip.files.has('content/resources/12345678-1234-1234-1234-123456789012.png')).toBe(true);
+        });
+
+        it('should not write the fallback when the resolved path is already <id><ext>', async () => {
+            // When the asset metadata does not yield a friendly filename, the resolved path
+            // already matches the fallback. Skip the duplicate write so we do not pollute
+            // the archive (or the ELPX manifest) with two pointers to the same path.
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset(
+                'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png',
+                'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png',
+                'image/png',
+                Buffer.from('png'),
+            );
+
+            const trackingList: string[] = [];
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            await forEachExporter.addAssetsToZipWithResourcePath(trackingList);
+
+            const fallbackHits = trackingList.filter(
+                p => p === 'content/resources/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png',
+            );
+            expect(fallbackHits.length).toBe(1);
+        });
+
+        it('should derive the fallback extension from the mime when filename is missing', async () => {
+            const forEachAssets = new MockAssetProviderWithForEach();
+            forEachAssets.addAsset('99999999-1111-2222-3333-444444444444', '', 'image/jpeg', Buffer.from('jpg'));
+
+            const forEachZip = new MockZipProvider();
+            const forEachDoc = new MockDocument({}, []);
+            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
+
+            await forEachExporter.addAssetsToZipWithResourcePath();
+
+            // The mime-derived friendly name (asset-99999999.jpg) plus the literal UUID fallback
+            // path must both end up in the archive.
+            const fallbackPath = 'content/resources/99999999-1111-2222-3333-444444444444.jpg';
+            expect(forEachZip.files.has(fallbackPath)).toBe(true);
+        });
     });
 
     describe('Fallback Styles', () => {

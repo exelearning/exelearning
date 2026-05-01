@@ -101,9 +101,11 @@ export class PageExporter extends Html5Exporter {
                 }
             }
 
-            // 1. Generate single-page HTML with all content
+            // Fetch translated nav labels for the content language (includes license)
+            const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
 
-            const html = this.generateSinglePageHtml(pages, meta, usedIdevices, faviconInfo);
+            // 1. Generate single-page HTML with all content
+            const html = this.generateSinglePageHtml(pages, meta, usedIdevices, faviconInfo, [], false, navLabels);
             this.zip.addFile('index.html', html);
 
             // 2. Add base CSS (fetch from content/css)
@@ -180,6 +182,7 @@ export class PageExporter extends Html5Exporter {
                 faviconInfo,
                 patterns.map(p => p.name),
                 meta.addMathJax === true,
+                navLabels,
             );
             this.zip.addFile(options?.filename || 'index.html', singlePageHtml);
 
@@ -225,6 +228,7 @@ export class PageExporter extends Html5Exporter {
         faviconInfo?: FaviconInfo | null,
         detectedLibraries: string[] = [],
         addMathJax = false,
+        navLabels?: { previous: string; next: string; page: string; license?: string },
     ): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',
@@ -239,8 +243,11 @@ export class PageExporter extends Html5Exporter {
             // Application version for generator meta tag
             version: meta.exelearningVersion,
             detectedLibraries,
+            linkToElp: meta.exportSource !== false,
             addMathJax,
             addExeLink: meta.addExeLink ?? true,
+            // Pre-translated nav labels (resolved from XLF at export time)
+            navLabels,
         });
     }
 

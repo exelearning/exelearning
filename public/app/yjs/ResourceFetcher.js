@@ -507,6 +507,27 @@ class ResourceFetcher {
    * @returns {Promise<Map<string, Blob>>}
    */
   async fetchThemeStatic(themeName) {
+    // Admin-approved uploaded themes (WP/Moodle/Omeka-S) arrive through
+    // window.eXeLearning.config.themeRegistryOverride.uploaded with an
+    // absolute URL and a file manifest. They live outside the bundled
+    // /bundles/themes/ directory, so we fan out to individual fetches
+    // instead of expecting a monolithic zip.
+    const adminTheme = this._findAdminUploadedTheme(themeName);
+    if (adminTheme) {
+      const filesFromAdmin = await this._fetchAdminUploadedTheme(adminTheme);
+      if (filesFromAdmin && filesFromAdmin.size > 0) {
+        Logger.log(
+          `[ResourceFetcher] Admin theme '${themeName}' loaded from `
+          + `${adminTheme.url} (${filesFromAdmin.size} files)`,
+        );
+        return filesFromAdmin;
+      }
+      console.warn(
+        `[ResourceFetcher] Admin theme '${themeName}' registered but no `
+        + 'files could be fetched; falling back to bundle lookup.',
+      );
+    }
+
     const bundleUrl = `${this.basePath}/bundles/themes/${themeName}.zip`;
     console.log(`[ResourceFetcher] 📦 Static mode: Loading theme '${themeName}' from bundle:`, bundleUrl);
 
@@ -519,6 +540,64 @@ class ResourceFetcher {
     }
 
     return themeFiles || new Map();
+  }
+
+  /**
+   * Look up an admin-uploaded theme entry from the host-supplied override.
+   * @param {string} themeName
+   * @returns {Object|null}
+   * @private
+   */
+  _findAdminUploadedTheme(themeName) {
+    try {
+      const override = (typeof window !== 'undefined')
+        ? window?.eXeLearning?.config?.themeRegistryOverride
+        : null;
+      if (!override || !Array.isArray(override.uploaded)) return null;
+      const entry = override.uploaded.find(
+        (t) => t && (t.name === themeName || t.id === themeName || t.dirName === themeName),
+      );
+      if (!entry) return null;
+      if (typeof entry.url !== 'string') return null;
+      if (!/^(?:https?:)?\/\//i.test(entry.url)) return null;
+      return entry;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Fetch every file declared by an admin-uploaded theme and return them
+   * under their relative paths so the downstream exporter can repack them
+   * as `theme/<path>` entries. Missing assets are skipped silently.
+   * @param {{url:string, files?:string[], cssFiles?:string[]}} adminTheme
+   * @returns {Promise<Map<string, Blob>>}
+   * @private
+   */
+  async _fetchAdminUploadedTheme(adminTheme) {
+    const manifest = Array.isArray(adminTheme.files) && adminTheme.files.length > 0
+      ? adminTheme.files
+      : (Array.isArray(adminTheme.cssFiles) && adminTheme.cssFiles.length > 0
+        ? adminTheme.cssFiles
+        : ['style.css']);
+    const base = adminTheme.url.replace(/\/$/, '');
+    const themeFiles = new Map();
+    const encodeRel = (rel) => rel
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+    await Promise.all(manifest.map(async (rel) => {
+      if (!rel || typeof rel !== 'string') return;
+      try {
+        const resp = await fetch(`${base}/${encodeRel(rel)}`);
+        if (resp.ok) {
+          themeFiles.set(rel, await resp.blob());
+        }
+      } catch (e) {
+        // Silent: missing per-file assets must not abort the whole theme.
+      }
+    }));
+    return themeFiles;
   }
 
   // =========================================================================

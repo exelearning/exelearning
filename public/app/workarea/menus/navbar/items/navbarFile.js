@@ -351,6 +351,11 @@ export default class NavbarFile {
         if (capabilities && !capabilities.storage.remote) {
             return;
         }
+        
+        // Hide templates if this is an LMS session
+        if (eXeLearning?.config?.platformIntegration) {
+            return;
+        }
 
         try {
             // Get current locale from eXeLearning config or default to 'en'
@@ -1207,6 +1212,18 @@ export default class NavbarFile {
      * Creates a new project/session. Always does a full page reload in online mode.
      */
     async createSession() {
+        // Desktop/static reloads via `window.newProject()` bypass
+        // transitionToProject, so the main-process "current file" slot
+        // would still carry the previously saved file name across the
+        // reload. Clear it so File → New starts with no remembered value.
+        try {
+            if (typeof window.electronAPI?.clearSavedPath === 'function') {
+                await window.electronAPI.clearSavedPath();
+            }
+        } catch (_e) {
+            // Best effort — must not block creating a new project.
+        }
+
         if (
             this.isStaticMode() &&
             typeof window.newProject === 'function'
@@ -1502,44 +1519,95 @@ export default class NavbarFile {
     }
 
     /**
-     * Save ode and send to platform
+     * Decode the payload of a JWT without verifying its signature. Verification
+     * still happens on the server (it has the secret); we only need a couple of
+     * fields up front to decide which export format to generate in the browser.
      *
+     * @param {string} token
+     * @returns {object|null}
+     */
+    _decodePlatformJwtPayload(token) {
+        if (!token || typeof token !== 'string') {
+            return null;
+        }
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return null;
+        }
+        try {
+            const padded = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            const json = atob(padded + '==='.slice((padded.length + 3) % 4));
+            return JSON.parse(json);
+        } catch (e) {
+            console.warn('[NavbarFile] Could not decode platform JWT payload:', e);
+            return null;
+        }
+    }
+
+    /**
+     * Save ode and send to platform.
+     *
+     * The browser holds the source of truth (Yjs document + IndexedDB assets),
+     * so the package is generated client-side via SharedExporters and uploaded
+     * as a binary blob to the server, which simply forwards it to Moodle's
+     * set_ode.php. This avoids the `platformPetitionSet` server path that
+     * relied on a Yjs snapshot + DatabaseAssetProvider, both of which can be
+     * stale or missing the just-edited content (the actual cause of
+     * mod_exeweb#42 / mod_exescorm#55: HTML referenced assets that lived only
+     * in the user's browser, so the server-built ZIP shipped with no
+     * content/resources/ folder and broken image URLs on Moodle).
+     *
+     * The legacy server-side export is kept as a fallback for environments
+     * where SharedExporters is unavailable (e.g., non-Yjs projects) so we do
+     * not regress those flows.
      */
     async uploadPlatformEvent() {
         const urlParams = new URLSearchParams(window.location.search);
-        let jwt_token = urlParams.get('jwt_token');
+        const jwt_token = urlParams.get('jwt_token');
+        const projectUuid =
+            eXeLearning.app.project.yjsProjectId ||
+            eXeLearning.app.project.odeId ||
+            eXeLearning.app.project.odeSession;
 
-        // Get project UUID - in Yjs mode this is the project ID, otherwise use odeSession
-        const projectUuid = eXeLearning.app.project.yjsProjectId ||
-                           eXeLearning.app.project.odeId ||
-                           eXeLearning.app.project.odeSession;
-
-        // Save project to server before uploading to platform
-        // This ensures the Yjs document is persisted
+        // Persist the latest Yjs snapshot before uploading. The new endpoint
+        // does not depend on the snapshot, but the legacy fallback does.
         try {
-            if (eXeLearning.app.project._yjsBridge?.getDocumentManager) {
-                const docManager = eXeLearning.app.project._yjsBridge.getDocumentManager();
-                if (docManager?.saveToServer) {
-                    await docManager.saveToServer();
-                    console.log('[NavbarFile] Project saved to server before platform upload');
-                }
+            const docManager = eXeLearning.app.project._yjsBridge?.getDocumentManager?.();
+            if (docManager?.saveToServer) {
+                await docManager.saveToServer();
+                console.log('[NavbarFile] Project saved to server before platform upload');
             }
         } catch (saveError) {
             console.warn('[NavbarFile] Failed to save before platform upload:', saveError);
-            // Continue anyway - server might have the document from WebSocket sync
         }
 
-        let data = {
-            projectUuid: projectUuid,
-            jwt_token: jwt_token,
-        };
-        // Upload to platform
-        let response;
+        const yjsBridge = eXeLearning.app.project?._yjsBridge;
+        const SharedExporters = window.SharedExporters;
+        const canExportClientSide =
+            !!yjsBridge?.documentManager && typeof SharedExporters?.quickExport === 'function';
 
-        response =
-            await eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload(
-                data
+        if (canExportClientSide) {
+            const handled = await this._uploadPlatformEventClientSide(
+                jwt_token,
+                projectUuid,
+                yjsBridge,
+                SharedExporters,
             );
+            if (handled) {
+                return;
+            }
+        }
+
+        // Legacy fallback: server-side generation. Used only when the browser
+        // cannot produce the package itself (e.g., Yjs disabled or shared
+        // exporters bundle missing). When this path is hit and the server's
+        // database does not yet have the latest assets, the generated package
+        // can lack images -- but that is preferable to refusing to publish in
+        // setups that never relied on Yjs.
+        const response = await eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload({
+            projectUuid,
+            jwt_token,
+        });
 
         if (response.responseMessage == 'OK') {
             window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
@@ -1547,6 +1615,92 @@ export default class NavbarFile {
             window.location.replace(response.returnUrl);
         } else {
             eXe.app.alert(_(response.responseMessage));
+        }
+    }
+
+    /**
+     * Browser-driven publish: generate the platform package in the browser
+     * (where the Yjs document and IndexedDB assets live) and POST it as a
+     * binary blob to the server forwarder endpoint.
+     *
+     * @returns {Promise<boolean>} true when the platform upload was handled
+     * (success or surfaced error); false to fall back to the legacy server
+     * generation path.
+     */
+    async _uploadPlatformEventClientSide(jwt_token, projectUuid, yjsBridge, SharedExporters) {
+        const payload = this._decodePlatformJwtPayload(jwt_token) || {};
+        const exportFormat = payload.pkgtype === 'scorm' ? 'SCORM12' : 'HTML5';
+
+        const toast = eXeLearning.app.toasts.createToast({
+            title: _('Save'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        });
+
+        let result;
+        try {
+            result = await SharedExporters.quickExport(
+                exportFormat,
+                yjsBridge.documentManager,
+                yjsBridge.assetCache || null,
+                yjsBridge.resourceFetcher || null,
+                {},
+                yjsBridge.assetManager || null,
+            );
+        } catch (error) {
+            console.error('[NavbarFile] Client-side platform export failed:', error);
+            toast?.remove?.();
+            eXe.app.alert(
+                _('An error occurred while exporting the project: ') +
+                    (error?.message || _('Unknown error.')),
+            );
+            return true;
+        }
+
+        if (!result?.success || !result.data) {
+            toast?.remove?.();
+            eXe.app.alert(_(result?.error || 'Export failed'));
+            return true;
+        }
+
+        if (toast?.toastBody) {
+            toast.toastBody.innerHTML = _('Sending to the platform...');
+        }
+
+        try {
+            const blob = new Blob([result.data], { type: 'application/zip' });
+            const filename = result.filename || 'package.zip';
+            const formData = new FormData();
+            formData.append('jwt_token', jwt_token || '');
+            formData.append('projectUuid', projectUuid || '');
+            formData.append('package', blob, filename);
+
+            const apiBase = `${window.location.origin}/api`;
+            const response = await fetch(`${apiBase}/platform/integration/set_platform_new_ode_browser`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+
+            toast?.remove?.();
+
+            if (response.ok && data.responseMessage === 'OK') {
+                window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
+                window.onbeforeunload = null;
+                window.location.replace(data.returnUrl);
+                return true;
+            }
+
+            eXe.app.alert(_(data.responseMessage || `Upload failed (${response.status})`));
+            return true;
+        } catch (forwardError) {
+            console.error('[NavbarFile] Failed to forward package to platform:', forwardError);
+            toast?.remove?.();
+            eXe.app.alert(
+                _('Could not send the project to the platform: ') +
+                    (forwardError?.message || _('Unknown error.')),
+            );
+            return true;
         }
     }
 
@@ -1641,6 +1795,16 @@ export default class NavbarFile {
                     } catch (_e) {
                         // Intentional: Electron-specific assignment may fail
                     }
+                    // Persist to main-process settings so the next Save
+                    // dialog pre-fills with this file's name even after
+                    // the reload that follows the import.
+                    try {
+                        if (typeof window.electronAPI?.setSavedPath === 'function') {
+                            await window.electronAPI.setSavedPath(filePath);
+                        }
+                    } catch (_e) {
+                        // Best effort — must not break Open.
+                    }
                     eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                         file
                     );
@@ -1675,9 +1839,24 @@ export default class NavbarFile {
             fileInput.style.display = 'none';
             document.body.appendChild(fileInput);
 
-            fileInput.addEventListener('change', (e) => {
+            fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
+                    // Persist the picked file to the main-process "current
+                    // file" slot so the next Save dialog pre-fills with it.
+                    // Prefer the absolute path (via Electron's webUtils)
+                    // when available so the folder is remembered too.
+                    try {
+                        if (typeof window.electronAPI?.setSavedPath === 'function') {
+                            const fullPath =
+                                typeof window.electronAPI?.getFilePath === 'function'
+                                    ? window.electronAPI.getFilePath(file)
+                                    : null;
+                            await window.electronAPI.setSavedPath(fullPath || file.name);
+                        }
+                    } catch (_e) {
+                        // Best effort — must not block Open.
+                    }
                     // Reuse unified open flow (handles unsaved modal + static import)
                     eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
                 }

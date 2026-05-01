@@ -117,12 +117,11 @@ var $exeDevice = {
         this.wrongText =
             (this.ideviceBody.querySelector('#sortableListWrongText') || {})
                 .value || '';
-        this.evaluationID =
-            (this.ideviceBody.querySelector('#sortableEvaluationID') || {})
-                .value || '';
-        this.evaluation = !!(
-            this.ideviceBody.querySelector('#sortableEvaluation') || {}
-        ).checked;
+        const progressBar =
+            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBar) return false;
+        this.evaluationID = progressBar.evaluationID;
+        this.evaluation = progressBar.evaluation;
         this.showSolutions = !!(
             this.ideviceBody.querySelector('#sortableShowSolutions') || {}
         ).checked;
@@ -260,10 +259,10 @@ var $exeDevice = {
         const hiddenClass = '';
         const html = `
             <div id="scrambledlistIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">
-                    ${_('Create interactive text ordering activities.')}
-                    <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create interactive text ordering activities.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/lista-desordenada.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
                     <fieldset class="exe-fieldset">
@@ -287,25 +286,7 @@ var $exeDevice = {
                                     <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
                                 </div>
                                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                    <div class="toggle-item mb-0">
-                                        <span class="toggle-control">
-                                            <input type="checkbox" id="sortableEvaluation" class="toggle-input" />
-                                            <span class="toggle-visual"></span>
-                                        </span>
-                                        <label class="toggle-label mb-0" for="sortableEvaluation">${_('Progress report')}.</label>
-                                    </div>
-                                    <div class="d-flex flex-nowrap align-items-center gap-2">
-                                        <label for="sortableEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                        <input type="text" id="sortableEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                                    </div>
-                                    <a href="#sortableEvaluationHelp" id="sortableEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${this.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
-                                    </a>
-                                </div>
-                                <div id="sortableEvaluationHelp" class="tofTypeGameHelp d-none">
-                                    <p class="exe-block-info exe-block-dismissible">
-                                        ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                                    </p>
+                                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(this.idevicePath)}
                                 </div>
                             </div>
                         </div>
@@ -325,23 +306,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        document
-            .getElementById('sortableEvaluation')
-            .addEventListener('change', function () {
-                const select = this.checked;
-                document.getElementById('sortableEvaluationID').disabled =
-                    !select;
-            });
-
-        document
-            .getElementById('sortableEvaluationHelpLnk')
-            .addEventListener('click', function (event) {
-                event.preventDefault();
-                const help = document.getElementById('sortableEvaluationHelp');
-                const isHidden = help.classList.contains('d-none');
-                help.classList.toggle('d-none', !isHidden);
-                help.classList.toggle('d-block', isHidden);
-            });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#sortableAttemptsNumber')
             .on('keyup', function () {
@@ -534,22 +499,16 @@ var $exeDevice = {
             data.rightText || rightText;
         this.ideviceBody.querySelector('#sortableListWrongText').value =
             data.wrongText || wrongText;
-        const evalCheckbox = this.ideviceBody.querySelector(
-            '#sortableEvaluation'
-        );
-        const evalInput = this.ideviceBody.querySelector(
-            '#sortableEvaluationID'
-        );
         const evalChecked = !!data.evaluation;
-        evalCheckbox.checked = evalChecked;
-
-        if (
+        const evalIDValue =
             typeof data.evaluationID === 'string' &&
             data.evaluationID.trim() !== ''
-        ) {
-            evalInput.value = data.evaluationID;
-        }
-        evalInput.disabled = !evalChecked;
+                ? data.evaluationID
+                : '';
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: evalChecked,
+            evaluationID: evalIDValue,
+        });
 
         this.ideviceBody.querySelector('#eXeGameInstructions').value =
             data.instructions ||

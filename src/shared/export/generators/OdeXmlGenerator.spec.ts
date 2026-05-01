@@ -3,7 +3,14 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { generateOdeXml, generateOdeId, escapeXml, escapeCdata, transformAssetUrlsForXml } from './OdeXmlGenerator';
+import {
+    generateOdeXml,
+    generateOdeId,
+    escapeXml,
+    escapeCdata,
+    transformAssetUrlsForXml,
+    normalizeExeVersion,
+} from './OdeXmlGenerator';
 import type { ExportMetadata, ExportPage } from '../interfaces';
 
 describe('OdeXmlGenerator', () => {
@@ -53,6 +60,41 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('<key>odeVersionId</key>');
             expect(xml).toContain('<key>exe_version</key>');
             expect(xml).toContain('</odeResources>');
+        });
+
+        it('should write exe_version from meta.exelearningVersion', () => {
+            const meta: ExportMetadata = {
+                title: 'Test',
+                exelearningVersion: '4.0.0',
+            };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toMatch(/<key>exe_version<\/key>\s*<value>4\.0\.0<\/value>/);
+            expect(xml).not.toContain('<value>3.0</value>');
+        });
+
+        it('should strip the leading v prefix from exelearningVersion', () => {
+            const meta: ExportMetadata = {
+                title: 'Test',
+                exelearningVersion: 'v4.0.0-rc3',
+            };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toMatch(/<key>exe_version<\/key>\s*<value>4\.0\.0-rc3<\/value>/);
+        });
+
+        it('should write empty exe_version when exelearningVersion is missing', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toMatch(/<key>exe_version<\/key>\s*<value><\/value>/);
+            expect(xml).not.toContain('<value>3.0</value>');
         });
 
         it('should include odeProperties section with metadata', () => {
@@ -423,6 +465,30 @@ describe('OdeXmlGenerator', () => {
             const id2 = generateOdeId();
 
             expect(id1).not.toBe(id2);
+        });
+    });
+
+    describe('normalizeExeVersion', () => {
+        it('should strip a leading v prefix', () => {
+            expect(normalizeExeVersion('v4.0.0')).toBe('4.0.0');
+        });
+
+        it('should leave bare versions unchanged', () => {
+            expect(normalizeExeVersion('4.0.0')).toBe('4.0.0');
+        });
+
+        it('should preserve pre-release suffixes', () => {
+            expect(normalizeExeVersion('v4.0.0-rc3')).toBe('4.0.0-rc3');
+        });
+
+        it('should trim surrounding whitespace', () => {
+            expect(normalizeExeVersion('  v3.1.0  ')).toBe('3.1.0');
+        });
+
+        it('should return empty string for null, undefined, or empty input', () => {
+            expect(normalizeExeVersion(null)).toBe('');
+            expect(normalizeExeVersion(undefined)).toBe('');
+            expect(normalizeExeVersion('')).toBe('');
         });
     });
 

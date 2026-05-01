@@ -411,40 +411,97 @@
     }
 
     /**
-     * Show/hide loading indicator
+     * CSS classes added to the host button so the absolutely positioned
+     * progress bar is clipped and stacks correctly (Bootstrap utility classes).
+     * @type {string[]}
+     */
+    var PROGRESS_HOST_CLASSES = ['position-relative', 'overflow-hidden'];
+
+    /**
+     * Find all download-source-file buttons currently in the DOM.
+     * @returns {NodeListOf<Element>}
+     */
+    function getDownloadButtons() {
+        return document.querySelectorAll('.exe-download-package-link a, .exe-download-package-link button');
+    }
+
+    /**
+     * Show/hide the in-button progress indicator.
+     *
+     * On show, the original button text is wrapped in a Bootstrap-styled
+     * progress bar overlay so the user sees a determinate progress bar
+     * without leaving the button (matches the project's Bootstrap UI).
+     *
      * @param {boolean} show - Whether to show the indicator
      */
     function showLoadingIndicator(show) {
-        // Try to find existing button and update its state
-        var buttons = document.querySelectorAll('.exe-download-package-link a, .exe-download-package-link button');
+        var buttons = getDownloadButtons();
         buttons.forEach(function (btn) {
             if (show) {
-                btn.setAttribute('data-original-text', btn.textContent);
-                btn.textContent = i18n('elpxGenerating', 'Generating...');
-                btn.style.opacity = '0.7';
+                // Preserve original markup/classes so we can restore on completion/error
+                btn.setAttribute('data-original-html', btn.innerHTML);
+                btn.setAttribute('data-original-class', btn.className);
+                PROGRESS_HOST_CLASSES.forEach(function (cls) {
+                    btn.classList.add(cls);
+                });
                 btn.style.pointerEvents = 'none';
+                btn.setAttribute('aria-busy', 'true');
+
+                var label = i18n('elpxProcessing', 'Processing...');
+                btn.innerHTML =
+                    '<span class="exe-elpx-progress-bar position-absolute top-0 start-0 h-100 bg-dark bg-opacity-25"' +
+                    ' style="width: 0%;" aria-hidden="true"></span>' +
+                    '<span class="exe-elpx-progress-label position-relative">' + label + '</span>';
             } else {
-                var original = btn.getAttribute('data-original-text');
-                if (original) {
-                    btn.textContent = original;
+                var originalHtml = btn.getAttribute('data-original-html');
+                if (originalHtml !== null) {
+                    btn.innerHTML = originalHtml;
+                    btn.removeAttribute('data-original-html');
                 }
-                btn.style.opacity = '';
+                var originalClass = btn.getAttribute('data-original-class');
+                if (originalClass !== null) {
+                    btn.className = originalClass;
+                    btn.removeAttribute('data-original-class');
+                } else {
+                    PROGRESS_HOST_CLASSES.forEach(function (cls) {
+                        btn.classList.remove(cls);
+                    });
+                }
                 btn.style.pointerEvents = '';
+                btn.removeAttribute('aria-busy');
             }
         });
     }
 
     /**
-     * Update progress (optional UI feedback)
+     * Update the in-button progress bar width and label.
+     *
      * @param {number} completed - Number of completed items
      * @param {number} total - Total number of items
      */
     function updateProgress(completed, total) {
-        // Optional: Could update a progress bar here
-        // For now, just log to console in debug mode
         if (window.__ELPX_DEBUG__) {
             console.log('[ELPX Download] Progress: ' + completed + '/' + total);
         }
+
+        var percent = 0;
+        if (total > 0) {
+            percent = Math.max(0, Math.min(100, Math.round((completed / total) * 100)));
+        }
+
+        var label = i18n('elpxProcessing', 'Processing...') + ' ' + percent + '%';
+        var buttons = getDownloadButtons();
+        buttons.forEach(function (btn) {
+            var bar = btn.querySelector('.exe-elpx-progress-bar');
+            if (bar) {
+                bar.style.width = percent + '%';
+            }
+            var labelEl = btn.querySelector('.exe-elpx-progress-label');
+            if (labelEl) {
+                labelEl.textContent = label;
+            }
+            btn.setAttribute('aria-valuenow', String(percent));
+        });
     }
 
     // Expose to global scope

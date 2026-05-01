@@ -119,6 +119,37 @@ describe('scrambled-list iDevice export', () => {
     });
   });
 
+  describe('updateConfig', () => {
+    it('targets the scrambled-list iDevice body for report icons', () => {
+      const previousIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = vi.fn(() => false);
+
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Scrambled list</h1></header>
+          <div id="scrambled-1" class="idevice_node scrambled-list" data-idevice-path="/idevices/scrambled-list/"></div>
+        </article>
+      `;
+
+      try {
+        const result = $scrambledlist.updateConfig(
+          {
+            id: 'scrambled-1',
+            attemptsNumber: 1,
+            pendingAttempts: 1,
+            msgs: $scrambledlist.getMessages(),
+          },
+          'scrambled-1',
+        );
+
+        expect(result.idevice).toBe('scrambled-listIdevice');
+        expect(result.main).toBe('slscrambled-1');
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+      }
+    });
+  });
+
   describe('setupTouchDrag', () => {
     it('exists as a function', () => {
       expect(typeof $scrambledlist.setupTouchDrag).toBe('function');

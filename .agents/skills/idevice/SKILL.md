@@ -1,6 +1,6 @@
 ---
 name: idevice
-description: Creating or modifying interactive devices in public/files/perm/idevices/base/.
+description: Creating or modifying interactive devices in public/files/perm/idevices/base/. Every change must ship with colocated Vitest `*.test.js` coverage for edition and export logic, keep patch coverage ≥ 90% on changed lines, include a Playwright spec exercising the iDevice in the workarea and preview, and pass `make fix`, `make test-unit`, `make test-integration`, and `make test-e2e` before submission.
 ---
 
 # Skill: iDevice
