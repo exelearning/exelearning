@@ -101,9 +101,20 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
                     }
                 }
                 .idevices-list-container {
+                    // Tabs (System / User): only the selector keeps a border.
+                    // The panel underneath sits flush against it.
+                    .exe-form-tabs ~ div {
+                        border: none;
+                        border-radius: 0;
+                        margin-top: 0;
+                    }
                     .idevices-toggle-container {
                         overflow-x: auto;
-                        display: block;
+                        // Inactive pane stays hidden until its tab is clicked.
+                        display: none;
+                        &.exe-form-active-content {
+                            display: block;
+                        }
                         background: white;
                         padding: 0;
                         scrollbar-color: var(--gray-border-dark) transparent;

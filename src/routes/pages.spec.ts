@@ -192,6 +192,8 @@ describe('Pages Routes', () => {
 
         // Reset env
         process.env.APP_ONLINE_MODE = '1';
+        process.env.APP_ENV = 'prod';
+        process.env.ONLINE_IDEVICES_INSTALL = '0';
         process.env.APP_AUTH_METHODS = 'form,guest';
         process.env.JWT_SECRET = 'test-secret-for-testing-only';
 
@@ -1658,6 +1660,7 @@ describe('Pages Routes', () => {
             expect(config.platformType).toBe('standalone');
             expect(typeof config.clientCallWaitingTime).toBe('number');
             expect(typeof config.isOfflineInstallation).toBe('boolean');
+            expect(config.userIdevices).toBe(0);
         });
 
         it('should include symfony compatibility object', async () => {
@@ -2514,6 +2517,110 @@ describe('Pages Routes', () => {
             );
 
             expect(templateData.config.isOfflineInstallation).toBe(true);
+            expect(templateData.config.userIdevices).toBe(1);
+        });
+
+        it('should enable user iDevices in online mode when ONLINE_IDEVICES_INSTALL is enabled', async () => {
+            process.env.APP_AUTH_METHODS = 'form,guest';
+            process.env.APP_ONLINE_MODE = '1';
+            process.env.ONLINE_IDEVICES_INSTALL = '1';
+
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            mockSessions.set('online-idevices-test', {
+                sessionId: 'online-idevices-test',
+                fileName: 'Test.elp',
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=online-idevices-test', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(templateData.config.isOfflineInstallation).toBe(false);
+            expect(templateData.config.userIdevices).toBe(1);
+        });
+
+        it('should enable user iDevices in dev mode', async () => {
+            process.env.APP_AUTH_METHODS = 'form,guest';
+            process.env.APP_ONLINE_MODE = '1';
+            process.env.APP_ENV = 'dev';
+            process.env.ONLINE_IDEVICES_INSTALL = '0';
+
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            mockSessions.set('dev-idevices-test', {
+                sessionId: 'dev-idevices-test',
+                fileName: 'Test.elp',
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=dev-idevices-test', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(templateData.config.isOfflineInstallation).toBe(false);
+            expect(templateData.config.userIdevices).toBe(1);
         });
     });
 

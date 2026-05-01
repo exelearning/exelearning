@@ -1,0 +1,1561 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="robots" content="noindex">
+        <title>eXeLearning</title>
+        <link rel="icon" href="/v0.0.0-alpha/favicon.ico">
+        
+    
+    <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/libs/bootstrap/bootstrap.min.css">
+    <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/style/workarea/main.css">
+    <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/style/workarea/base.css">
+    
+    <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/app/common/exe_effects/exe_effects.css">
+    <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/app/common/exe_games/exe_games.css">
+    <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/app/common/exe_highlighter/exe_highlighter.css">
+    <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/app/common/exe_lightbox/exe_lightbox.css">
+    <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/app/common/exe_media/exe_media.css">
+    <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/app/common/exe_wikipedia/exe_wikipedia.css">
+
+        <link class="exe" rel="stylesheet" href="/v0.0.0-alpha/style/workarea/custom.css">
+        <script class="exe" src="/v0.0.0-alpha/libs/jquery/jquery.min.js"></script>
+        
+    
+    <script class="exe" src="/v0.0.0-alpha/libs/jquery-ui/jquery-ui.min.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/libs/bootstrap/bootstrap.bundle.min.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/libs/multi-dropdown.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/libs/interact/interact.min.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/libs/showdown/showdown.min.js" defer></script>
+    
+    <script class="exe" src="/v0.0.0-alpha/app/common/asset_url_resolver.js" defer></script>
+    
+    <script class="exe" type="module" src="/v0.0.0-alpha/app/common/app_common.js" defer></script>
+    
+    <script class="exe" src="/v0.0.0-alpha/app/common/common_edition.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/common/common.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/common/exe_effects/exe_effects.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/common/exe_games/exe_games.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/common/exe_highlighter/exe_highlighter.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/common/exe_lightbox/exe_lightbox.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/common/exe_media/exe_media.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/common/exe_math/tex-mml-svg.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/common/LatexPreRenderer.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/common/MermaidPreRenderer.js" defer></script>
+    
+    <script class="exe" src="/v0.0.0-alpha/app/common/fix_webm_duration/fix_webm_duration.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/libs/abcjs/exe_abc_music.js" defer></script>
+    
+    <script class="exe">
+        // Environment control variables for frontend
+        window.__APP_ENV__ = "dev";
+        window.__APP_DEBUG__ = "0";
+        window.__APP_ONLINE_MODE__ = true;
+
+        window.eXeLearning = {
+            version: "v0.0.0-alpha",
+            expires: "",
+            extension: "elpx",
+            user: `{"id":88,"username":"user@exelearning.net","usernameFirsLetter":"U","acceptedLopd":true,"odePlatformId":null,"newOde":null,"gravatarUrl":"https://www.gravatar.com/avatar/edd939008052fa8896ed55a75bb2f260?s=96&d=initials&r=g&initials=UEN","roles":["ROLE_USER"],"isAdmin":false}`,
+            config: `{"version":"v0.0.0-alpha","platformName":"exelearning","platformType":"standalone","platformUrlGet":"","platformUrlSet":"","clientCallWaitingTime":120000,"clientIntervalGetLastEdition":5000,"clientIntervalUpdate":3000,"defaultTheme":"base","isOfflineInstallation":false,"platformIntegration":false,"userStyles":0,"userIdevices":1,"debugJs":true,"appEnv":"dev","appDebug":"0","onlineMode":true,"odeSessionId":null,"environment":"dev","baseURL":"","basePath":"","fullURL":"","changelogURL":"/CHANGELOG.md","filesDirPermission":{"checked":true},"locale":"es","themeTypeBase":"base","themeTypeUser":"user","ideviceTypeBase":"base","ideviceTypeUser":"user","ideviceVisibilityPreferencePre":"exe_","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjg4LCJlbWFpbCI6InVzZXJAZXhlbGVhcm5pbmcubmV0IiwiaXNHdWVzdCI6ZmFsc2UsImV4cCI6MTc3ODI2MjQyMywiaWF0IjoxNzc3NjU3NjIzfQ.ImwDsGbZmbWuyx1u3_3MjEu9IUypdptHjjSSB4Qm3c0"}`,
+            projectId: "264ac72b-f25c-4a5b-b08d-759a23f34d9a"
+        }
+    </script>
+    
+    <script class="exe" src="/v0.0.0-alpha/libs/tinymce_5/js/tinymce/tinymce.min.js" defer></script>
+    <script class="exe" src="/v0.0.0-alpha/app/editor/tinymce_5_settings.js" defer></script>
+    
+    <script class="exe" type="module" src="/v0.0.0-alpha/app/common/connectionMonitor.js" defer></script>
+    
+    <script class="exe" src="/v0.0.0-alpha/app/yjs/yjs-loader.js" defer></script>
+    
+    
+    <script class="exe" type="module" src="/v0.0.0-alpha/app/app.js" defer></script>
+    
+
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        
+        
+    </head>
+    <body class="" id="main">
+        
+        
+    <div id="load-screen-main" class="load-screen loading" data-testid="loading-main" data-visible="true">
+        <span>eXeLearning v0.0.0-alpha</span>
+    </div>
+    <div id="workarea" class="container-fluid d-flex flex-nowrap" data-preview-pinned="false">
+        <aside class="asideleft col-md-4 col-lg-3 bg-light vh-100">
+            <div class="content-info">
+                <div id="exe-title" class="title-not-editing">
+                    <h2 class="exe-title content" id="change_title">...</h2>
+                    <button class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Editar título" aria-label="Editar título">
+                        <span class="exe-icon small-icon edit-icon-green"></span>
+                    </button>
+                </div>
+            </div>
+            <div class="accordion" id="menus_content">
+                <div id="menu_nav" class="menu long accordion-item" size="long" pos="left" iddrag="menu">
+    <div class="accordion-header" id="menu_nav_header">
+        <div class="accordion-button">
+            <div class="content_action_buttons buttons_action_container_right">
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-left button_nav_action action_move_prev"
+                        title="Subir"
+                        data-testid="nav-move-up">
+                    <i class="small-icon arrow-up-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">Subir</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-center button_nav_action action_move_next"
+                        title="Bajar"
+                        data-testid="nav-move-down">
+                    <i class="small-icon arrow-down-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">Bajar</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-center button_nav_action action_move_up"
+                        title="Izquierda (subir en jerarquía)"
+                        data-testid="nav-move-left">
+                    <i class="small-icon arrow-left-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">Izquierda (subir en jerarquía)</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-right button_nav_action action_move_down"
+                        title="Mover a la derecha (abajo en la jerarquía)"
+                        data-testid="nav-move-right">
+                    <i class="small-icon arrow-right-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">Mover a la derecha (abajo en la jerarquía)</span>
+                </button>
+            </div>
+            <div class="content_action_buttons buttons_action_container_left" id="nav_actions">
+                <button class="button_nav_action action_properties d-none"
+                        title="Propiedades de la página"
+                        data-testid="nav-properties">
+                    <i class="exe-icon" aria-hidden="true">settings</i>
+                    <span class="visually-hidden">Propiedades de la página</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-square button-combo combo-left button_nav_action action_delete"
+                        title="Borrar página"
+                        data-testid="nav-delete">
+                    <i class="small-icon delete-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">Borrar página</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-square button-combo combo-center button_nav_action action_clone"
+                        title="Clonar página"
+                        data-testid="nav-clone">
+                    <i class="small-icon duplicate-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">Clonar página</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-square button-combo combo-right button_nav_action action_import_idevices"
+                        title="Importar contenido"
+                        data-testid="nav-import-idevices">
+                    <i class="small-icon import-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">Importar contenido</span>
+                </button>
+            </div>
+            <div class="content_action_buttons add-page">
+                <button class="button_nav_action action_add" title="Página nueva" aria-label="Página nueva" data-testid="nav-add-page">
+                    <span class="exe-icon" aria-hidden="true">add</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+    <div id="menu_nav_content" class="menu_content accordion-collapse collapse show" aria-labelledby="menu_nav_header">
+        <div id="nav_list" role="tree">
+            <div id="nav_document_root_node"></div>
+        </div>
+    </div>
+</div>
+
+                <div id="menu_idevices" class="menu long accordion-item" size="long" pos="left" drag="menu">
+    <h2 class="accordion-header" id="menu_idevices_header">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#menu_idevices_content" aria-expanded="true" aria-controls="menu_idevices_content">
+            iDevices
+        </button>
+    </h2>
+    <div id="menu_idevices_content" class="menu_content accordion-collapse collapse show" aria-labelledby="menu_idevices_header" data-testid="idevices-menu">
+        <div id="list_menu_idevices" class="list"></div>
+    </div>
+</div>
+
+            </div>
+        </aside>
+        <main>
+            <header id="head">
+                <nav class="navbar bg-transparent">
+                    <div class="top" id="eXeLearningNavbar">
+    <div class="main-menu">
+        <div class="main-menu-left">
+            <nav class="navbar navbar-expand-md navbar-light">
+    
+    <button id="exe-panels-toggler" class="btn me-2 nav-link" title="Ocultar/Mostrar paneles" data-bs-placement="bottom" aria-label="Ocultar/Mostrar paneles">
+        <div class="medium-icon menu-icon"></div>
+    </button>
+
+    
+    <div class="navbar-collapse d-none d-md-flex" id="navbarMainMenu">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item btn button-tertiary button-dropdown dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="dropdownFile" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Archivo
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="dropdownFile">
+                    <li class=""><a class="dropdown-item" id="navbar-button-new" href="/workarea" data-shortcut="Mod+Alt+N" aria-keyshortcuts="Control+Alt+N Meta+Alt+N"><span class="small-icon new-icon-green"></span> Nuevo</a></li>
+                    <li class="d-none"><a class="dropdown-item" id="navbar-button-new-from-template" href="#"><span class="small-icon new-icon"></span> Nuevo desde plantilla...</a></li>
+                    <li class="exe-online "><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> Abrir</a></li>
+                    <li class="dropdown dropend exe-online ">
+                        <a class="dropdown-item dropdown-toggle" href="#" id="navbar-button-dropdown-recent-projects" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="small-icon recent-icon-green"></span> Proyectos recientes
+                        </a>
+                        <ul class="dropdown-menu" id="navbar-dropdown-menu-recent-projects" aria-labelledby="navbar-button-dropdown-recent-projects">
+                            <li class="text-center">...</li>
+                        </ul>
+                    </li>
+                    
+                    
+                    <li class="d-none"><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> Importar (.elpx...)</a></li>
+                    
+                    <li class="dropdown-divider exe-online "></li>
+                    <li class="exe-online "><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> Guardar</a></li>
+                    <li class="dropdown dropend exe-online">
+                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAs" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon download-icon-green"></span> Descargar como...</a>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownExportAs">
+                            <li><a class="dropdown-item exe-advanced" id="navbar-button-download-project" href="#">Archivo de eXeLearning (.elpx)</a></li>
+                            <li><a id="navbar-button-export-html5" class="dropdown-item" href="#">Sitio web</a></li>
+                            <li><a id="navbar-button-export-html5-sp" class="dropdown-item" href="#">Página sola</a></li>
+                            <li><a id="navbar-button-export-scorm12" class="dropdown-item" href="#">SCORM 1.2</a></li>
+                            <li class="d-none"><a id="navbar-button-export-scorm2004" class="dropdown-item" href="#">SCORM 2004</a></li>
+                            <li><a id="navbar-button-export-ims" class="dropdown-item exe-advanced" href="#">IMS CP</a></li>
+                            <li><a id="navbar-button-export-epub3" class="dropdown-item" href="#">ePub3</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-divider "></li>
+                    <li class="exe-online "><a class="dropdown-item" id="navbar-button-share" href="#" data-shortcut="Mod+Alt+S" aria-keyshortcuts="Control+Alt+S Meta+Alt+S"><span class="small-icon share-icon"></span> Compartir</a></li>
+                    
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> Propiedades del proyecto</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> Imprimir</a></li>
+                    
+                    <li class="dropdown dropend exe-advanced d-none">
+                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownProperties" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Metadatos</a>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownProperties">
+                            <li><a id="navbar-button-import-xml-properties" class="dropdown-item" href="#">Importar</a></li>
+                            <li><a id="navbar-button-export-xml-properties" class="dropdown-item" href="#">Exportar</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <li class="nav-item btn button-tertiary button-dropdown dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="dropdownUtilities" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Utilidades
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="dropdownUtilities">
+                    <li><a class="dropdown-item" id="navbar-button-global-search" href="#" data-shortcut="Mod+K" aria-keyshortcuts="Control+K Meta+K"><span class="small-icon search-menu-icon"></span> Buscar...</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-idevice-manager" href="#"><span class="small-icon import-icon-green"></span> Gestionar iDevices</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#"><span class="small-icon report-icon-green"></span> Informe de recursos</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#"><span class="small-icon link-icon"></span>  Validación de enlaces</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-filemanager" href="#"><span class="small-icon folder-icon-green"></span> Gestor de archivos</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-imageoptimizer" href="#"><span class="small-icon image-icon-green"></span> Optimizar imagen</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-styles" href="#" data-shortcut="Mod+Alt+T" aria-keyshortcuts="Control+Alt+T Meta+Alt+T"><span class="small-icon styles-icon"></span> Estilos</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-preview" href="#" data-shortcut="Mod+P" aria-keyshortcuts="Control+P Meta+P"><span class="small-icon preview-icon-green"></span> Visualización previa</a></li>
+                </ul>
+            </li>
+            <li class="nav-item btn button-tertiary button-dropdown dropdown" id="dropdownHelpItem" >
+                <a class="nav-link dropdown-toggle" href="#" id="dropdownHelp" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Ayuda
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="dropdownHelp">
+                    <li><a class="dropdown-item" id="navbar-button-assistant" href="#">Asistente</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-exe-tutorial" href="#">Manual de usuario</a></li>
+                    <li class="d-none"><a class="dropdown-item" id="navbar-button-api-docs" href="#">API de gestión (documentación)</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-about-exe" href="#">Sobre eXeLearning</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-release-notes" href="#">Notas de la versión</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-legal-notes" href="#">Notas legales</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-exe-web" href="#">Web de eXeLearning</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-report-bug" href="#">Informar de un fallo</a></li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+        </div>
+        <div class="main-menu-right">
+            <button id="head-top-download-button" class="btn" title="Descargar"  data-testid="download-button">
+                <span class="auto-icon" aria-hidden="true">download</span>
+                <span class="btn-label">Descargar</span>
+            </button>
+            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2 " title="Guardar" data-testid="save-button">
+                <div class="small-icon save-icon-white"></div>
+                <span>Guardar</span>
+            </button>
+            <button id="head-bottom-preview" class="btn button-display display-outline button-square d-flex justify-content-center align-items-center" title="Visualización previa">
+                <div class="small-icon preview-icon-green"></div>
+            </button>
+            <button id="dropdownStyles" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="Estilos">
+                <span class="medium-icon styles-icon"></span>
+            </button>
+            <button id="head-top-settings-button" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="Propiedades del proyecto" data-testid="settings-button">
+                <span class="medium-icon settings-icon"></span>
+            </button>
+            <button id="head-top-share-button"
+                    class="btn button-secondary button-share-link d-flex justify-content-center align-items-center exe-online ms-1 "
+                    title="Compartir"
+                    aria-label="Compartir">
+                <span class="share-visibility-indicator d-flex align-items-center">
+                    <div class="medium-icon share-icon"></div>
+                </span>
+                <span class="button-share-text">Compartir</span>
+            </button>
+            
+            <div id="exe-last-edition" class="btn">
+                <span class="content"></span>
+            </div>
+            <div id="exe-concurrent-users" class="exe-online">
+                <button id="button-more-exe-concurrent-users" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="Usuarios en línea">
+                    <span class="medium-icon concurrent-users-icon"></span>
+                </button>
+            </div>
+            <div id="head-bottom-user-logged" class="dropdown" title="user@exelearning.net" data-testid="user-menu" data-user-email="user@exelearning.net">
+                <button class="btn btn-link" type="button" id="exeUserMenuToggler" data-bs-toggle="dropdown" aria-expanded="false" title="Menú de usuario">
+                    
+                    <img class="exe-gravatar exe-offline" src="/exelearning.png" alt="eXeLearning" width="50" height="50" data-testid="user-avatar-offline">
+                    
+                    <img class="exe-gravatar exe-online" src="https://www.gravatar.com/avatar/edd939008052fa8896ed55a75bb2f260?s=96&amp;d=initials&amp;r=g&amp;initials=UEN" alt="user@exelearning.net" width="50" height="50" data-testid="user-avatar" onerror="this.onerror=null;this.src='/images/default-avatar.svg';">
+                </button>
+
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exeUserMenuToggler">
+                    
+                    <li class="d-md-none "><a class="dropdown-item" id="mobile-navbar-button-new" href="#">Nuevo</a></li>
+                    <li class="d-md-none exe-online "><a class="dropdown-item" id="mobile-navbar-button-openuserodefiles" href="#">Abrir</a></li>
+                    
+                    <li class="dropdown-divider d-md-none exe-online "></li>
+                    <li class="d-md-none exe-online "><h6 class="dropdown-header">Descargar como...</h6></li>
+                    <li class="d-md-none exe-online "><a class="dropdown-item" id="mobile-navbar-button-download-project" href="#">Archivo de eXeLearning (.elpx)</a></li>
+                    <li class="d-md-none exe-online "><a class="dropdown-item" id="mobile-navbar-button-export-web" href="#">Sitio web</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-filemanager" href="#">Gestor de archivos</a></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-about-exe" href="#">Sobre eXeLearning</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+
+                    
+                    <li><a class="dropdown-item" id="navbar-button-preferences" href="#">Preferencias</a></li>
+                    
+                    <li class="dropdown-divider exe-online"></li>
+                    <li class="exe-online"><a class="dropdown-item" id="head-bottom-logout-button" href="#">Cerrar sesión</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+                    <div class="bottom">
+    <button id="button_menu_nav" class="btn btn-light" title="Panel de estructura">
+        <span class="auto-icon" aria-hidden="true">vertical_split</span>
+        <span class="visually-hidden">Panel de estructura</span>
+    </button>
+    <button id="button_menu_idevices" class="btn btn-light" title="Panel de iDevices">
+        <span class="auto-icon" aria-hidden="true">dashboard_customize</span>
+        <span class="visually-hidden">Panel de iDevices</span>
+    </button>
+</div>
+
+                </nav>
+            </header>
+            <div id="main-content-wrapper" class="main-content-wrapper">
+                <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
+                    <div id="load-screen-node-content" class="load-screen hide" data-testid="loading-content" data-visible="false"></div>
+                    <div id="node-content" class="content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
+                        <div>
+                            <div id="header-node-content" class="header"></div>
+                            <h1 id="page-title-node-content" class="page-title" data-testid="page-title"></h1>
+                        </div>
+                    </div>
+                    
+                    <div id="idevices-bottom" class="idevices-bottom-menu" data-testid="idevices-quickbar">
+                    </div>
+                </section>
+                
+                <aside id="preview-pinned-container" class="preview-pinned" aria-label="Visualización previa">
+                    <div class="preview-pinned-header">
+                        <h2 class="preview-pinned-title">Visualización previa</h2>
+                        <div class="preview-pinned-actions">
+                            <button id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="Open in new tab" aria-label="Open preview in new tab">
+                                <span class="small-icon external-link-icon"></span>
+                            </button>
+                            <button id="preview-unpin-button" class="btn button-square button-tertiary" title="Unpin preview" aria-label="Unpin preview">
+                                <span class="small-icon unpin-icon"></span>
+                            </button>
+                            <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" aria-label="Refresh preview">
+                                <span class="small-icon refresh-icon"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="preview-pinned-body">
+                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="Content preview" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                    </div>
+                </aside>
+            </div>
+        </main>
+    </div>
+    
+    <div id="stylessidenav-content" class="relative z-50 navbar-menu">
+        <div id="sidenav-overlay"  class="sidenav-overlay"></div>
+        <aside id="stylessidenav" class="sidenav" role="complementary">
+            <div class="content-styles-header">
+                <h1 class="styles-title">
+                    Estilos
+                </h1>
+                <div id="stylessidenavclose" class="navbar-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="content-tabs">
+                <ul class="nav nav-tabs d-none" id="styleslist" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab" data-bs-target="#exestylescontent" type="button" role="tab" aria-controls="exestylescontent" aria-selected="true">
+                            Sistema
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="importedstylescontent-tab" data-bs-toggle="tab" data-bs-target="#importedstylescontent" type="button" role="tab" aria-controls="importedstylescontent" aria-selected="false">
+                            Importado
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="tab-content mt-3" id="styleslistContent">
+                <div class="tab-pane fade show active" id="exestylescontent" role="tabpanel" aria-labelledby="exestylescontent-tab" tabindex="0">
+                </div>
+                <div class="tab-pane fade" id="importedstylescontent" role="tabpanel" aria-labelledby="importedstylescontent-tab">
+                </div>
+            </div>
+        </aside>
+    </div>
+    
+    <div id="previewsidenav-content" class="preview-panel-container">
+        <div id="preview-sidenav-overlay" class="sidenav-overlay"></div>
+        <aside id="previewsidenav" class="preview-sidenav" role="complementary">
+            <div class="preview-panel-header">
+                <h1 class="preview-title">Visualización previa</h1>
+                <div class="preview-header-actions">
+                    <button id="preview-extract-button" class="btn button-square button-tertiary" title="Open in new tab" aria-label="Open preview in new tab">
+                        <span class="small-icon external-link-icon"></span>
+                    </button>
+                    <button id="preview-pin-button" class="btn button-square button-tertiary" title="Pin preview" aria-label="Pin preview to layout">
+                        <span class="small-icon pin-icon"></span>
+                    </button>
+                    <button id="preview-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" aria-label="Refresh preview">
+                        <span class="small-icon refresh-icon"></span>
+                    </button>
+                    <div id="previewsidenavclose" class="navbar-close" role="button" tabindex="0" aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="preview-panel-body">
+                <iframe id="preview-iframe" class="preview-iframe" title="Content preview" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+            </div>
+        </aside>
+    </div>
+
+    
+    <div class="modals-container">
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalAlert" role="alertdialog" data-testid="modal-alert" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-alert" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title"></div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body"></div>
+            <div class="modal-footer">
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" id="modalInfo" tabindex="-1" role="dialog" aria-hidden="true" data-testid="modal-info" data-open="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title"></div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body"></div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalConfirm" role="dialog" aria-hidden="true" data-testid="modal-confirm" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title"></div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body"></div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn button-primary" data-testid="confirm-action"><span class="hidden d-none">Confirmar</span></button>
+                <button type="button" class="cancel btn button-tertiary" data-testid="cancel-action" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalSessionLogout" role="dialog" aria-hidden="true" data-testid="modal-session-logout" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-session-logout" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title"></div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body"></div>
+            <div class="modal-footer">
+                <button type="button" class="session-logout-save btn btn-primary"><span class="hidden d-none">Guardar y salir</span></button>
+                <button type="button" class="session-logout-without-save btn btn-primary"><span class="hidden d-none">Salir sin guardar</span></button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalUploadToDrive" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Subir a Drive</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary">Cargar</button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalUploadToDropbox" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Subir a Dropbox</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary">Cargar</button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalFileManager" role="dialog" aria-hidden="true" data-testid="modal-filemanager" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down modal-xl modal-confirm" role="document">
+        <div class="modal-content" id="modalFileManagerContent">
+            <div class="modal-header">
+                <div class="modal-title">Gestor de archivos</div>
+                <div class="media-library-header-search d-none d-md-block">
+                    <input type="search" class="form-control media-library-search" placeholder="Buscar archivos...">
+                </div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body media-library-body">
+                <div class="media-library-toolbar">
+                    <button type="button" class="btn btn-primary media-library-upload-btn">
+                        <span class="exe-icon">add</span> Añadir archivos
+                    </button>
+                    <button type="button" class="btn btn-secondary media-library-newfolder-btn" title="Nueva carpeta">
+                        <span class="exe-icon">create_new_folder</span>
+                    </button>
+                    <input type="file" class="media-library-upload-input" accept="image/*,video/*,audio/*,.pdf,.zip,.elp,.elpx" multiple style="display:none;">
+
+                    <div class="media-library-view-controls">
+                        <button type="button" class="media-library-view-btn active" data-view="grid" title="Ver cuadrícula">
+                            <span class="exe-icon">grid_view</span>
+                        </button>
+                        <button type="button" class="media-library-view-btn" data-view="list" title="Ver lista">
+                            <span class="exe-icon">view_list</span>
+                        </button>
+                    </div>
+
+                    <div class="media-library-sort-controls d-none d-md-flex">
+                        <label>Ordena:</label>
+                        <select class="form-select media-library-sort">
+                            <option value="name-asc">Nombre A-Z</option>
+                            <option value="name-desc">Nombre Z-A</option>
+                            <option value="date-desc" selected>Más recientes primero</option>
+                            <option value="date-asc">Más antiguos primero</option>
+                            <option value="size-desc">Más grandes primero</option>
+                            <option value="size-asc">Más pequeños primero</option>
+                            <option value="type-asc">Tipo A-Z</option>
+                            <option value="type-desc">Tipo Z-A</option>
+                        </select>
+                    </div>
+
+                    <div class="media-library-filter-controls d-none d-md-flex">
+                        <label>Tipo:</label>
+                        <select class="form-select media-library-filter">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+
+                    <div class="media-library-refcount-toggle d-none d-md-flex">
+                        <label class="form-check-label">
+                            <input type="checkbox" class="form-check-input media-library-show-refcount">
+                            Mostrar referencias
+                        </label>
+                    </div>
+
+                    <div class="media-library-file-count d-none d-md-block">
+                        <span class="media-library-count-value">0</span> archivos
+                    </div>
+                </div>
+
+                <div class="media-library-container">
+                    <div class="media-library-main">
+                        <div class="media-library-breadcrumbs ps-2">
+                            <span class="breadcrumb-item" data-path="" title="Raíz">
+                                <span class="exe-icon">home</span>
+                            </span>
+                        </div>
+                        <div class="media-library-search-indicator ps-2 d-none">
+                            <span class="breadcrumb-home exe-icon" title="Directorio raíz">home</span>
+                            <span class="breadcrumb-separator">/</span>
+                            <span>Resultados de búsqueda para: <strong class="search-term"></strong></span>
+                            <button type="button" class="btn btn-sm btn-link clear-search-btn p-0 ms-2" title="Limpiar búsqueda">
+                                <span class="exe-icon">close</span>
+                            </button>
+                        </div>
+                        <div class="media-library-empty">
+                            <p>Aún no hay archivos multimedia</p>
+                            <p class="media-library-empty-hint">Haz clic en &quot;Añadir archivos&quot; o arrastra archivos aquí para subir</p>
+                        </div>
+                        <div class="media-library-grid">
+                            <div class="media-library-loading">Cargando recursos...</div>
+                        </div>
+                        <div class="media-library-list-container" style="display:none;">
+                            <table class="media-library-list">
+                                <thead>
+                                    <tr>
+                                        <th class="col-thumb"></th>
+                                        <th class="col-name" data-sort="name">Nombre</th>
+                                        <th class="col-location d-none">Ubicación</th>
+                                        <th class="col-type" data-sort="type">Tipo</th>
+                                        <th class="col-size" data-sort="size">Tamaño</th>
+                                        <th class="col-date" data-sort="date">Fecha</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+
+                    </div>
+
+                    <div class="media-library-sidebar">
+                        <div class="media-library-sidebar-empty">
+                            <p>Selecciona un elemento para ver los detalles</p>
+                        </div>
+                        <div class="media-library-sidebar-content" style="display:none;">
+                            <div class="media-library-preview">
+                                <img src="" alt="" class="media-library-preview-img">
+                                <video src="" class="media-library-preview-video" controls style="display:none;"></video>
+                                <audio src="" class="media-library-preview-audio" controls style="display:none;"></audio>
+                                <div class="media-library-preview-file" style="display:none;">
+                                    <span class="exe-icon file-icon">description</span>
+                                </div>
+                            </div>
+                            <div class="media-library-metadata">
+                                <div class="metadata-row metadata-filename">
+                                    <span class="media-library-filename"></span>
+                                </div>
+                                <div class="metadata-row">
+                                    <label>Tipo:</label>
+                                    <span class="media-library-type"></span>
+                                </div>
+                                <div class="metadata-row">
+                                    <label>Tamaño:</label>
+                                    <span class="media-library-size"></span>
+                                </div>
+                                <div class="metadata-row media-library-dimensions-row">
+                                    <label>Dimensiones:</label>
+                                    <span class="media-library-dimensions"></span>
+                                </div>
+                                <div class="metadata-row">
+                                    <label>Fecha:</label>
+                                    <span class="media-library-date"></span>
+                                </div>
+                                <div class="metadata-row media-library-usage-row">
+                                    <label>Uso:</label>
+                                    <span class="badge bg-light text-dark border media-library-usage">0 iDevices</span>
+                                </div>
+                                <div class="metadata-row media-library-location-row" style="display: none;">
+                                    <label>Ubicación:</label>
+                                    <div class="d-flex align-items-center gap-1 flex-grow-1 min-w-0">
+                                        <span class="media-library-location-value text-truncate flex-grow-1">/</span>
+                                        <button type="button" class="btn btn-sm btn-link media-library-open-folder-btn p-0" title="Abrir carpeta contenedora">
+                                            <span class="exe-icon">folder_open</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="metadata-row metadata-url-row">
+                                    <label>URL:</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control media-library-url" readonly>
+                                        <button type="button" class="btn btn-secondary media-library-copy-url-btn" title="Copiar URL">
+                                            <span class="exe-icon">content_copy</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer media-library-footer">
+                <div class="media-library-footer-actions">
+                    <button type="button" class="btn btn-danger media-library-delete-btn d-none d-md-inline-block" disabled>
+                        <span class="exe-icon">delete</span> Borrar
+                    </button>
+                    <button type="button" class="btn btn-secondary media-library-rename-btn d-none d-md-inline-block" disabled>
+                        <span class="exe-icon">edit</span> Renombrar
+                    </button>
+                    <button type="button" class="btn btn-secondary media-library-duplicate-btn d-none d-md-inline-block" disabled>
+                        <span class="exe-icon">content_copy</span> Duplicar
+                    </button>
+                    <button type="button" class="btn btn-secondary media-library-move-btn d-none d-md-inline-block" disabled>
+                        <span class="exe-icon">drive_file_move</span> Mover
+                    </button>
+                    <button type="button" class="btn btn-secondary media-library-download-btn d-none d-md-inline-block" disabled>
+                        <span class="exe-icon">download</span> Descargar
+                    </button>
+
+                    <!-- Dropdown More Options (desktop only) -->
+                    <div class="dropdown d-none d-md-inline-block">
+                        <button type="button" class="btn btn-secondary media-library-more-btn dropdown-toggle" data-bs-toggle="dropdown" disabled>
+                            <span class="exe-icon">more_horiz</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item media-library-extract-btn d-none" href="#">
+                                <span class="exe-icon">folder_zip</span> Extraer ZIP
+                            </a></li>
+                            <li><a class="dropdown-item media-library-copyurl-btn" href="#">
+                                <span class="exe-icon">link</span> Copiar URL
+                            </a></li>
+                            <li><a class="dropdown-item media-library-fullsize-btn" href="#">
+                                <span class="exe-icon">open_in_new</span> Ver tamaño completo
+                            </a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Mobile-only: all actions collapsed in one dropdown -->
+                    <div class="dropdown d-md-none media-library-mobile-actions">
+                        <button type="button" class="btn btn-secondary dropdown-toggle media-library-mobile-actions-toggle" data-bs-toggle="dropdown" disabled>
+                            <span class="exe-icon">more_vert</span> Acciones
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item text-danger" href="#" data-mobile-action="delete">
+                                <span class="exe-icon">delete</span> Borrar
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="rename">
+                                <span class="exe-icon">edit</span> Renombrar
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="duplicate">
+                                <span class="exe-icon">content_copy</span> Duplicar
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="move">
+                                <span class="exe-icon">drive_file_move</span> Mover
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="download">
+                                <span class="exe-icon">download</span> Descargar
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item d-none" href="#" data-mobile-action="extract-zip">
+                                <span class="exe-icon">folder_zip</span> Extraer ZIP
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="copyurl">
+                                <span class="exe-icon">link</span> Copiar URL
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-mobile-action="fullsize">
+                                <span class="exe-icon">open_in_new</span> Ver tamaño completo
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-primary media-library-insert-btn ms-auto" disabled>
+                    <span class="exe-icon">arrow_forward</span> Insertar
+                </button>
+            </div>
+            <!-- Folder Picker Dialog (inside modal-content for proper positioning) -->
+            <div class="media-library-folder-picker" style="display:none;">
+                <div class="folder-picker-overlay"></div>
+                <div class="folder-picker-dialog">
+                    <div class="folder-picker-header">
+                        <span class="folder-picker-title">Mover a carpeta</span>
+                        <button type="button" class="folder-picker-close">&times;</button>
+                    </div>
+                    <div class="folder-picker-body">
+                        <div class="folder-picker-list"></div>
+                    </div>
+                    <div class="folder-picker-footer">
+                        <button type="button" class="btn btn-secondary folder-picker-cancel">Cancelar</button>
+                        <button type="button" class="btn btn-primary folder-picker-confirm">Mover aquí</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Rename Dialog (inside modal-content for proper positioning) -->
+            <div class="media-library-rename-dialog" style="display:none;">
+                <div class="rename-dialog-overlay"></div>
+                <div class="rename-dialog-content">
+                    <div class="rename-dialog-header">
+                        <span class="rename-dialog-title"></span>
+                        <button type="button" class="rename-dialog-close">&times;</button>
+                    </div>
+                    <div class="rename-dialog-body">
+                        <label class="rename-dialog-label form-label" for="renameDialogInput"></label>
+                        <input type="text" class="form-control rename-dialog-input" id="renameDialogInput" autocomplete="off">
+                    </div>
+                    <div class="rename-dialog-footer">
+                        <button type="button" class="btn btn-secondary rename-dialog-cancel">Cancelar</button>
+                        <button type="button" class="btn btn-primary rename-dialog-confirm">Renombrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalStyleManager" role="dialog" aria-hidden="true" data-testid="modal-stylemanager" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content" id="modalStyleManagerContent">
+            <div class="modal-header">
+                <div class="modal-title">Estilos</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger alert-dismissible fade" role="alert">
+                    <div class="text"></div>
+                    <button type="button" class="close-alert" data-dismiss="alert" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body-content"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary">Guardar</button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalIdeviceManager" role="dialog" aria-hidden="true" data-testid="modal-idevicemanager" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content" id="modalIdeviceManagerContent">
+            <div class="modal-header">
+                <div class="modal-title">Gestionar iDevices</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger alert-dismissible fade" role="alert">
+                    <div class="text"></div>
+                    <button type="button" class="close-alert" data-dismiss="alert" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body-content"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary">Guardar</button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalOdeBrokenLinks" role="dialog" aria-hidden="true" data-testid="modal-ode-broken-links" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Validación de enlaces</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="odeBrokenLinks" class="modal-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary">Descargar CSV</button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalOdeUsedFiles" role="dialog" aria-hidden="true" data-testid="modal-ode-used-files" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Informe de recursos</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="odeUsedFiles" class="modal-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary">Descargar CSV</button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalImageOptimizer" role="dialog" aria-hidden="true" data-testid="modal-image-optimizer" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Optimizar imagen</div>
+                <button type="button" class="close image-optimizer-close-btn" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="imageOptimizerBody" class="modal-body">
+                <!-- Loading state -->
+                <div class="image-optimizer-loading text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando imágenes del proyecto...</p>
+                </div>
+
+                <!-- Empty state (shown when no images) -->
+                <div class="image-optimizer-empty text-center py-4 d-none">
+                    <p class="text-muted">No se encontraron imágenes PNG o JPEG en este proyecto.</p>
+                </div>
+
+                <!-- Main content (hidden until loaded) -->
+                <div class="image-optimizer-content d-none">
+                    <!-- Settings panel (compact row) -->
+                    <div class="image-optimizer-settings d-flex align-items-center gap-3 mb-3 flex-wrap">
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="mb-0 fw-semibold">Predefinido:</label>
+                            <select class="form-select form-select-sm image-optimizer-preset" style="width: auto; min-width: 110px;">
+                                <option value="light">Claro</option>
+                                <option value="medium" selected>Medio</option>
+                                <option value="strong">Fuerte</option>
+                            </select>
+                        </div>
+                        <div class="image-optimizer-quality-container d-flex align-items-center gap-2 d-none">
+                            <label class="mb-0">Calidad JPEG:</label>
+                            <input type="range" class="form-range image-optimizer-quality" style="width: 100px;" min="50" max="100" value="85">
+                            <span class="image-optimizer-quality-value badge bg-secondary">85</span>
+                        </div>
+                        <div class="ms-auto d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-secondary image-optimizer-select-all">
+                                Elegir todo
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary image-optimizer-deselect-all">
+                                Deseleccionar todo
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Image list (scrollable table) -->
+                    <div class="image-optimizer-queue" style="max-height: 350px; overflow-y: auto;">
+                        <table class="table table-striped table-sm table-hover mb-0">
+                            <thead class="sticky-top bg-white">
+                                <tr>
+                                    <th style="width: 40px;" class="text-center">
+                                        <input type="checkbox" class="form-check-input image-optimizer-toggle-all" title="Seleccionar/Deseleccionar todo">
+                                    </th>
+                                    <th style="width: 60px;">Visualización previa</th>
+                                    <th>Nombre de archivo</th>
+                                    <th style="width: 80px;">Tipo</th>
+                                    <th style="width: 100px;">Original</th>
+                                    <th style="width: 100px;">Estimado</th>
+                                    <th style="width: 120px;">Ahorro</th>
+                                    <th style="width: 120px;">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody class="image-optimizer-tbody">
+                                <!-- Rows populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Summary panel -->
+                    <div class="image-optimizer-summary bg-light p-3 rounded mt-3">
+                        <div class="row text-center">
+                            <div class="col">
+                                <strong class="summary-selected fs-5">0</strong>
+                                <br>
+                                <small class="text-muted">Seleccionado</small>
+                            </div>
+                            <div class="col">
+                                <strong class="summary-original fs-5">0 KB</strong>
+                                <br>
+                                <small class="text-muted">Original</small>
+                            </div>
+                            <div class="col">
+                                <strong class="summary-estimated fs-5">-</strong>
+                                <br>
+                                <small class="text-muted">Estimado</small>
+                            </div>
+                            <div class="col">
+                                <strong class="summary-savings fs-5 text-success">-</strong>
+                                <br>
+                                <small class="text-muted">Ahorro</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Confirmation panel (hidden by default) -->
+                    <div class="image-optimizer-confirm-panel d-none mt-3">
+                        <div class="alert alert-warning mb-3">
+                            <strong>Advertencia:</strong>
+                            La optimización de imágenes puede reducir la calidad. Esta acción no se puede deshacer.
+                        </div>
+                        <p class="mb-0">¿Quieres optimizar las imágenes seleccionadas?</p>
+                    </div>
+
+                    <!-- Progress panel (hidden by default) -->
+                    <div class="image-optimizer-progress-panel d-none mt-3">
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span class="image-optimizer-progress-text fw-semibold">Optimizando...</span>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated image-optimizer-progress-bar"
+                                 role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                <span class="image-optimizer-progress-percent">0%</span>
+                            </div>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0 image-optimizer-progress-detail"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <!-- Normal footer buttons -->
+                <div class="image-optimizer-footer-normal">
+                    <button type="button" class="btn btn-primary image-optimizer-optimize-btn" disabled>
+                        Optimizar
+                    </button>
+                    <button type="button" class="close btn btn-secondary" data-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+                <!-- Confirmation footer buttons (hidden by default) -->
+                <div class="image-optimizer-footer-confirm d-none">
+                    <button type="button" class="btn btn-warning image-optimizer-confirm-btn">
+                        Optimizar
+                    </button>
+                    <button type="button" class="btn btn-secondary image-optimizer-cancel-btn">
+                        Cancelar
+                    </button>
+                </div>
+                <!-- Progress footer (hidden by default) -->
+                <div class="image-optimizer-footer-progress d-none">
+                    <button type="button" class="btn btn-secondary" disabled>
+                        Procesando...
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalLopd" role="dialog" aria-hidden="true" data-testid="modal-lopd" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content static">
+            <div class="modal-header">
+                <div class="modal-title"></div>
+            </div>
+            <div class="modal-body text-start">
+                <h1 class="text-start">Privacidad y Términos de uso</h1>
+                <div class="lopdgdd-body text-start"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="confirm btn btn-primary" type="button">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalAssistant" role="dialog" aria-hidden="true" data-testid="modal-assistant" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Asistente</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body help-modal">
+                <div class="top-menu">
+                    <icon class="exe-icon show-tabs">menu</icon>
+                </div>
+                <div class="body-content show-tabs">
+                    <ul class="exe-form-tabs">
+                        <li>
+                            <a href="#modalAssistant-tab-1" class="exe-tab exe-form-active-tab">1. ¿Qué es eXeLearning?</a>
+                        </li>
+                        <li>
+                            <a href="#modalAssistant-tab-2" class="exe-tab">2. Crear un proyecto</a>
+                        </li>
+                        <li>
+                            <a href="#modalAssistant-tab-3" class="exe-tab">3. Añadir páginas</a>
+                        </li>
+                        <li>
+                            <a href="#modalAssistant-tab-4" class="exe-tab">4. Añadir contenido</a>
+                        </li>
+                        <li>
+                            <a href="#modalAssistant-tab-5" class="exe-tab">5. Exportar un proyecto</a>
+                        </li>
+                        <li>
+                            <a href="#modalAssistant-tab-6" class="exe-tab">6. Más opciones</a>
+                        </li>
+                    </ul>
+                    <div id="modalAssistant-tab-1" class="exe-form-content exe-form-active-content">
+                        <p>...</p>
+                    </div>
+                    <div id="modalAssistant-tab-2" class="exe-form-content">
+                        <p>...</p>
+                    </div>
+                    <div id="modalAssistant-tab-3" class="exe-form-content">
+                        <p>...</p>
+                    </div>
+                    <div id="modalAssistant-tab-4" class="exe-form-content">
+                        <p>...</p>
+                    </div>
+                    <div id="modalAssistant-tab-5" class="exe-form-content">
+                        <p>...</p>
+                    </div>
+                    <div id="modalAssistant-tab-6" class="exe-form-content">
+                        <p>...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="modal exe-modal-fade" tabindex="-1" id="modalReleaseNotes" role="dialog" aria-hidden="true" data-testid="modal-releasenotes" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Notas de la versión</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body help-modal help-modal-with-logo">
+                <div class="help-modal-top">
+                    <img src="/v0.0.0-alpha/style/workarea/images/exelearning.svg" class="exe-logo content" alt="Logo eXeLearning">
+                </div>
+                <div class="help-modal-content">
+                    <h1 class="lead mb-4">Registro de cambios</h1>
+                    <div class="body-release">
+                        <div class="changelog-content md-converted-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+	        <div class="modal exe-modal-fade" tabindex="-1" id="modalLegalNotes" role="dialog" aria-hidden="true" data-testid="modal-legalnotes" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Notas legales</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body help-modal help-modal-with-logo">
+                <div class="help-modal-top">
+                    <img src="/v0.0.0-alpha/style/workarea/images/exelearning.svg" class="exe-logo content" alt="Logo eXeLearning">
+                </div>
+                <div class="help-modal-content">
+                    <ul class="exe-form-tabs">
+                        <li>
+                            <a href="#modalLegalNotes-tab-1" class="exe-tab exe-form-active-tab">Créditos</a>
+                        </li>
+                        <li>
+                            <a href="#modalLegalNotes-tab-2" class="exe-tab">Librerías de terceros</a>
+                        </li>
+                        <li>
+                            <a href="#modalLegalNotes-tab-3" class="exe-tab">Licencias</a>
+                        </li>
+                    </ul>
+                    <div id="modalLegalNotes-tab-1" class="exe-form-content exe-form-active-content">
+                        <h3 class="visually-hidden">Créditos</h3>
+                        <h4 class="lead mb-4">eXeLearning 4+</h4>
+                        <ul class="main-desc">
+                            <li>Copyright (2026):
+                                <ul>
+                                    <li><a href="https://intef.es/" target="_blank" rel="noopener" title="Se abre en una ventana nueva">INTEF<span class="visually-hidden"> Instituto Nacional de tecnologías educativas y formación del profesorado</span></a></li></li>
+                                    <li>Junta de Extremadura</li>
+                                </ul>
+                            </li>
+                            <li>2025-present <a href="https://exelearning.net/" target="_blank" rel="noopener" title="Se abre en una ventana nueva">eXeLearning.net</a>, <a href="mailto:info@exelearning.net" title="Enviar correo electrónico">info@exelearning.net</a></li>
+                        </ul>
+                        <p>Licencia: GNU Affero GPL 3</p>
+                        <h3 class="lead my-4">Participantes</h3>
+                        <ul>
+                            <li>Gobierno de Canarias</li>
+                            <li>Comunidad de Madrid</li>
+                            <li>Generalitat Valenciana</li>
+                            <li>Xunta de Galicia</li>
+                        </ul>
+                        <h4 class="lead my-4">Versiones anteriores</h4>
+                        <ul class="main-desc">
+                            <li>Copyright 2004-2005: University of Auckland.<br>Licencia: GPLv2</li>
+                            <li>Copyright 2004-2011: eXe Project (exelearning.org).<br>Licencia: GPLv2</li>
+                            <li>Copyright 2011-2025: <a href="https://exelearning.net/" target="_blank" rel="noopener" title="Se abre en una ventana nueva">eXeLearning.net</a>, <a href="mailto:info@exelearning.net" title="Enviar correo electrónico">info@exelearning.net</a>.<br>Licencia: GPLv2</li>
+                            <li>Copyright 2025-2026: <a href="https://intef.es/" target="_blank" rel="noopener" title="Se abre en una ventana nueva">INTEF<span class="visually-hidden"> Instituto Nacional de tecnologías educativas y formación del profesorado</span></a>, Junta de Andalucía, Junta de Extremadura.<br>Licencia: GNU Affero GPL 3</li>
+                        </ul>
+                    </div>
+                    <div id="modalLegalNotes-tab-2" class="exe-form-content">
+                        <h3 class="visually-hidden">Librerías de terceros</h3>
+                        <div class="third-party-content md-converted-content"></div>
+                    </div>
+                    <div id="modalLegalNotes-tab-3" class="exe-form-content">
+                        <h3 class="visually-hidden">Licencias</h3>
+                        <div class="licenses-list md-converted-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+	        <div class="modal exe-modal-fade" tabindex="-1" id="modalAbout" role="dialog" aria-hidden="true" data-testid="modal-about" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Sobre eXeLearning</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body help-modal help-modal-with-logo">
+                <div class="help-modal-top">
+                    <img src="/v0.0.0-alpha/style/workarea/images/exelearning.svg" class="exe-logo content" alt="Logo eXeLearning">
+                </div>
+                <div class="help-modal-content">
+                    <h1 class="lead mb-4">eXeLearning v0.0.0-alpha</h1>
+                    
+                    <p class="alert alert-warning mb-4">
+                        <strong>¡Esta es una versión para pruebas!</strong>
+                        Este software se proporciona para pruebas y no debe ser distribuido. Está en desarrollo y sujeto a cambios sustanciales. Considera la información incluida como incompleta y úsala con precaución.
+                    </p>
+                    
+                    <p>eXeLearning es una herramienta de software libre bajo licencia GNU Affero GPL que se puede utilizar para crear contenidos web educativos interactivos. eXeLearning puede generar contenidos en diferentes formatos y te permite crear páginas web fácilmente navegables. Todos los materiales educativos generados con eXeLearning se pueden exportar en diferentes formatos digitales para ser utilizados de forma independiente o para integrarlos en un LMS (Learning Management System) como Moodle.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+	        <div class="modal exe-modal-fade" tabindex="-1" id="modalEasterEgg" role="dialog" aria-hidden="true" data-testid="modal-easteregg" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down modal-xl modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Aula Secreta</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body easteregg-modal-body">
+                <div class="easteregg-hud">
+                    <div class="easteregg-title">Aula Secreta 3D</div>
+                    <div class="easteregg-stats">
+                        <span class="easteregg-stat" data-easteregg="stats"></span>
+                        <span class="easteregg-stat" data-easteregg="timer"></span>
+                    </div>
+                    <div class="easteregg-help d-none d-md-block">
+                        WASD/↑↓ · ← → · Mapa (M) · Reiniciar (R) · Salir (ESC) · Móvil: tocar o arrastrar (arriba avanza, laterales giran, abajo retrocede)
+                    </div>
+                </div>
+                <div class="easteregg-canvas-wrap">
+                    <canvas class="easteregg-canvas" data-easteregg="canvas" aria-label="Aula Secreta 3D mini game"></canvas>
+                    <div class="easteregg-overlay" data-easteregg="overlay">
+                        <div class="easteregg-panel">
+                            <h2 data-easteregg="overlay-title">Has encontrado el huevo de pascua</h2>
+                            <p data-easteregg="overlay-text">
+                                Recolecta los <strong>iDevices</strong> (amarillos) pasando cerca de ellos y vuelve a la puerta para “exportar” tu escape.
+                            </p>
+                            <div class="easteregg-actions">
+                                <button type="button" class="btn btn-primary" data-easteregg="start">Empezar</button>
+                                <button type="button" class="btn btn-secondary ms-2" data-easteregg="close">Cerrar</button>
+                            </div>
+                            <div class="easteregg-small">
+                                Consejo: si te mareas, pulsa <strong>M</strong> para activar el minimapa.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+	        <div class="modal exe-modal-fade" tabindex="-1" id="modalProperties" role="dialog" aria-hidden="true" data-testid="modal-properties" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Propiedades</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body form-properties"></div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary" data-testid="save-properties-button">Guardar</button>
+                <button type="button" class="close btn btn-secondary" data-testid="close-properties-button" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+	        <div class="modal exe-modal-fade" tabindex="-1" id="modalOpenUserOdeFiles" role="dialog" aria-hidden="true" data-testid="modal-open-user-ode-files" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down modal-confirm" role="document">
+        <div class="modal-content" id="modalOpenUserOdeFilesContent">
+            <div class="modal-header">
+                <div class="modal-title">Abrir</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-body-content"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary">Abrir</button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+	        <div class="modal exe-modal-fade" tabindex="-1" id="modalTemplateSelection" role="dialog" aria-hidden="true" data-testid="modal-template-selection" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content" id="modalTemplateSelectionContent">
+            <div class="modal-header">
+                <div class="modal-title">Nuevo desde plantilla</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-body-content">
+                    <p>Selecciona una plantilla para crear un nuevo proyecto:</p>
+                    <div id="template-list" class="list-group"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary" disabled>Crear</button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+	        
+<div class="modal exe-modal-fade" tabindex="-1" id="modalShare" role="dialog" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalShareTitle"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                
+                <div id="share-invite-section" class="mb-4">
+                    <div class="input-group">
+                        <input type="email"
+                               id="share-invite-email"
+                               class="form-control"
+                               placeholder="Añadir usuarios por correo electrónico"
+                               aria-label="Añadir usuarios por correo electrónico"
+                               autocomplete="off">
+                        <button id="share-invite-button"
+                                class="btn btn-primary"
+                                type="button">
+                            Invitar
+                        </button>
+                    </div>
+                    <div id="share-invite-error" class="invalid-feedback d-none"></div>
+                </div>
+
+                
+                <div id="share-people-section" class="mb-4">
+                    <h6>Personas con acceso</h6>
+                    <div id="share-people-list"></div>
+                </div>
+
+                
+                <div id="share-general-access-section" class="mb-4">
+                    <h6>Acceso general</h6>
+                    <div class="share-visibility-wrapper d-flex align-items-center gap-2">
+                        <img id="share-visibility-icon"
+                             src="/style/workarea/images/icons/exe-lock-icon-green.svg"
+                             alt=""
+                             width="16"
+                             height="16"
+                             aria-hidden="true">
+                        <select id="share-visibility-select"
+                                class="form-select flex-grow-1"
+                                aria-label="Acceso general"
+                                data-icon-private="/style/workarea/images/icons/exe-lock-icon-green.svg"
+                                data-icon-public="/style/workarea/images/icons/exe-globe-icon-green.svg">
+                            <option value="private">Restringido (Privado)</option>
+                            <option value="public">Cualquier persona con el enlace (Público)</option>
+                        </select>
+                    </div>
+                    <small id="share-visibility-help" class="form-text text-muted d-none">
+                        Cualquier persona con el enlace puede ver y editar en tiempo real
+                    </small>
+                </div>
+
+                
+                <div id="share-link-section">
+                    <h6>Enlace</h6>
+                    <div class="input-group">
+                        <input type="text"
+                               id="share-link-input"
+                               class="form-control"
+                               readonly
+                               aria-label="Enlace para compartir">
+                        <button id="share-copy-button"
+                                class="btn btn-outline-secondary"
+                                type="button"
+                                aria-label="Copiar enlace">
+                            <div class="auto-icon" aria-hidden="true">content_copy</div>
+                            <span>Copiar enlace</span>
+                        </button>
+                    </div>
+                </div>
+
+                
+                <div id="share-aria-live"
+                     class="visually-hidden"
+                     aria-live="polite"
+                     aria-atomic="true"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button"
+                        class="btn btn-primary close"
+                        data-dismiss="modal">
+                    Hecho
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+	        <!-- Print Preview Overlay (not using Bootstrap modal) -->
+<div id="printPreviewOverlay" class="print-preview-overlay" data-visible="false">
+    <div class="print-preview-header d-flex justify-content-between align-items-center p-2 border-bottom">
+        <div class="print-preview-title h5 mb-0">
+            <span>Vista previa de impresión</span>
+        </div>
+        <div class="print-preview-actions d-flex gap-2">
+            <button type="button" class="print-preview-print-btn btn btn-primary" title="Imprimir">
+                Imprimir
+            </button>
+            <button type="button" class="print-preview-close-btn btn btn-secondary" title="Cerrar">
+                Cerrar
+            </button>
+        </div>
+    </div>
+    <div class="print-preview-content">
+        <div class="print-preview-loading">
+            <div class="spinner-border" role="status"></div>
+            <p>Generando vista previa...</p>
+        </div>
+        <iframe class="print-preview-iframe" title="Vista previa de impresión"></iframe>
+    </div>
+</div>
+
+	        <div class="modal exe-modal-fade" id="modalGlobalSearch" tabindex="-1"
+     role="dialog" aria-label="Buscar" data-open="false">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body p-0">
+                <div class="global-search-input-wrapper">
+                    <span class="exe-icon search-icon">search</span>
+                    <input type="text" id="global-search-input"
+                           placeholder="Buscar páginas y contenido..."
+                           autocomplete="off" />
+                    <kbd class="search-shortcut-hint">ESC</kbd>
+                </div>
+                <ul class="global-search-results" role="listbox" aria-label="Resultados de búsqueda"></ul>
+                <div class="global-search-empty d-none">No se encontraron resultados</div>
+                <div class="global-search-footer">
+                    <span><kbd>↑↓</kbd> Navegar</span>
+                    <span><kbd>↵</kbd> Selecciona</span>
+                    <span><kbd>ESC</kbd> Cerrar</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+	    </div>
+
+    
+    <div class="toasts-container">
+        <div id="toastDefault" class="toast" role="alert" data-bs-autohide="false" aria-live="assertive" aria-atomic="true">
+  <div class="toast-header">
+    <span class="toast-icon exe-icon rounded me-2">info</span>
+    <strong class="toast-title me-auto"></strong>
+    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+  </div>
+  <div class="toast-body"></div>
+  <div class="toast-progress-container" style="display: none;">
+    <div class="toast-progress-bar"></div>
+  </div>
+</div>
+
+    </div>
+
+        <script src="/v0.0.0-alpha/app/workarea/custom.js"></script>
+    </body>
+</html>
+

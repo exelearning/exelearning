@@ -117,46 +117,93 @@ describe('Config Routes', () => {
         });
 
         it('should return application settings', async () => {
+            const prevAppEnv = process.env.APP_ENV;
+            const prevOnlineIdevicesInstall = process.env.ONLINE_IDEVICES_INSTALL;
             const prevThemes = await getSetting(db as any, 'ONLINE_THEMES_INSTALL');
             const prevIdevices = await getSetting(db as any, 'ONLINE_IDEVICES_INSTALL');
             const prevAutosaveInterval = await getSetting(db as any, 'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL');
 
-            await setSetting(db as any, 'ONLINE_THEMES_INSTALL', '0', 'boolean');
-            await setSetting(db as any, 'ONLINE_IDEVICES_INSTALL', '0', 'boolean');
-            await setSetting(db as any, 'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL', '600', 'number');
+            try {
+                process.env.APP_ENV = 'prod';
+                process.env.ONLINE_IDEVICES_INSTALL = '0';
+                await setSetting(db as any, 'ONLINE_THEMES_INSTALL', '0', 'boolean');
+                await setSetting(db as any, 'ONLINE_IDEVICES_INSTALL', '0', 'boolean');
+                await setSetting(db as any, 'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL', '600', 'number');
 
-            const response = await app.handle(
-                new Request('http://localhost/api/parameter-management/parameters/data/list'),
-            );
-
-            const data = await response.json();
-            expect(data.canInstallThemes).toBe(0);
-            expect(data.canInstallIdevices).toBe(0);
-            expect(data.autosaveOdeFilesFunction).toBe(true);
-            expect(data.autosaveIntervalTime).toBe(600);
-
-            if (prevThemes) {
-                await setSetting(db as any, 'ONLINE_THEMES_INSTALL', prevThemes.value, prevThemes.type as any);
-            } else {
-                await db.deleteFrom('app_settings').where('key', '=', 'ONLINE_THEMES_INSTALL').execute();
-            }
-            if (prevIdevices) {
-                await setSetting(db as any, 'ONLINE_IDEVICES_INSTALL', prevIdevices.value, prevIdevices.type as any);
-            } else {
-                await db.deleteFrom('app_settings').where('key', '=', 'ONLINE_IDEVICES_INSTALL').execute();
-            }
-            if (prevAutosaveInterval) {
-                await setSetting(
-                    db as any,
-                    'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL',
-                    prevAutosaveInterval.value,
-                    prevAutosaveInterval.type as any,
+                const response = await app.handle(
+                    new Request('http://localhost/api/parameter-management/parameters/data/list'),
                 );
-            } else {
-                await db
-                    .deleteFrom('app_settings')
-                    .where('key', '=', 'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL')
-                    .execute();
+
+                const data = await response.json();
+                expect(data.canInstallThemes).toBe(0);
+                expect(data.canInstallIdevices).toBe(0);
+                expect(data.autosaveOdeFilesFunction).toBe(true);
+                expect(data.autosaveIntervalTime).toBe(600);
+            } finally {
+                if (prevAppEnv === undefined) delete process.env.APP_ENV;
+                else process.env.APP_ENV = prevAppEnv;
+                if (prevOnlineIdevicesInstall === undefined) delete process.env.ONLINE_IDEVICES_INSTALL;
+                else process.env.ONLINE_IDEVICES_INSTALL = prevOnlineIdevicesInstall;
+
+                if (prevThemes) {
+                    await setSetting(db as any, 'ONLINE_THEMES_INSTALL', prevThemes.value, prevThemes.type as any);
+                } else {
+                    await db.deleteFrom('app_settings').where('key', '=', 'ONLINE_THEMES_INSTALL').execute();
+                }
+                if (prevIdevices) {
+                    await setSetting(
+                        db as any,
+                        'ONLINE_IDEVICES_INSTALL',
+                        prevIdevices.value,
+                        prevIdevices.type as any,
+                    );
+                } else {
+                    await db.deleteFrom('app_settings').where('key', '=', 'ONLINE_IDEVICES_INSTALL').execute();
+                }
+                if (prevAutosaveInterval) {
+                    await setSetting(
+                        db as any,
+                        'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL',
+                        prevAutosaveInterval.value,
+                        prevAutosaveInterval.type as any,
+                    );
+                } else {
+                    await db
+                        .deleteFrom('app_settings')
+                        .where('key', '=', 'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL')
+                        .execute();
+                }
+            }
+        });
+
+        it('should enable iDevice installation flag in dev mode', async () => {
+            const prevAppEnv = process.env.APP_ENV;
+            const prevIdevices = await getSetting(db as any, 'ONLINE_IDEVICES_INSTALL');
+
+            try {
+                process.env.APP_ENV = 'dev';
+                await setSetting(db as any, 'ONLINE_IDEVICES_INSTALL', '0', 'boolean');
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/parameter-management/parameters/data/list'),
+                );
+
+                const data = await response.json();
+                expect(data.canInstallIdevices).toBe(1);
+            } finally {
+                if (prevAppEnv === undefined) delete process.env.APP_ENV;
+                else process.env.APP_ENV = prevAppEnv;
+
+                if (prevIdevices) {
+                    await setSetting(
+                        db as any,
+                        'ONLINE_IDEVICES_INSTALL',
+                        prevIdevices.value,
+                        prevIdevices.type as any,
+                    );
+                } else {
+                    await db.deleteFrom('app_settings').where('key', '=', 'ONLINE_IDEVICES_INSTALL').execute();
+                }
             }
         });
 

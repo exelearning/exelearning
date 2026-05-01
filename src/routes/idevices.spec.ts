@@ -68,6 +68,19 @@ describe('iDevices Routes', () => {
             expect(idevice.icon.type).toBeDefined();
         });
 
+        it('should mark each iDevice as type "base" or "user"', async () => {
+            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+
+            const body = await res.json();
+            // Frontend modalIdeviceManager.getBaseIdevices/getUserIdevices filters
+            // by this field to populate the System / User tabs.
+            for (const idevice of body.idevices) {
+                expect(['base', 'user']).toContain(idevice.type);
+            }
+            // We always ship at least one base iDevice in the repo.
+            expect(body.idevices.some((i: { type: string }) => i.type === 'base')).toBe(true);
+        });
+
         it('should include JS and CSS file arrays', async () => {
             const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
 

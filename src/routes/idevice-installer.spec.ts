@@ -1,0 +1,234 @@
+import { describe, expect, it } from 'bun:test';
+import { Elysia } from 'elysia';
+import { createIdeviceInstallerRoutes } from './idevice-installer';
+import type {
+    IdeviceConfig,
+    IdeviceInstallerService,
+    InstallOutcome,
+    UninstallResult,
+} from '../services/idevice-installer';
+
+const stubConfig = (overrides: Partial<IdeviceConfig> = {}): IdeviceConfig => ({
+    id: 'custom-idevice',
+    title: 'Custom iDevice',
+    cssClass: 'custom-idevice',
+    category: 'Activity',
+    icon: { name: 'custom-idevice-icon', url: 'custom-idevice-icon.svg', type: 'img' },
+    version: '1.0',
+    apiVersion: '3.0',
+    componentType: 'json',
+    author: '',
+    authorUrl: '',
+    license: '',
+    licenseUrl: '',
+    description: '',
+    downloadable: false,
+    url: '/tmp/users/custom-idevice',
+    editionJs: ['custom-idevice.js'],
+    editionCss: [],
+    exportJs: ['custom-idevice.js'],
+    exportCss: [],
+    editionTemplateFilename: '',
+    exportTemplateFilename: '',
+    editionTemplateContent: '',
+    exportTemplateContent: '',
+    location: '',
+    locationType: '',
+    exportObject: '$customidevice',
+    ...overrides,
+});
+
+const createApp = (options: {
+    canInstall?: () => boolean;
+    installResult?: InstallOutcome;
+    uninstallResult?: UninstallResult;
+    onInstall?: (buffer: Buffer, confirmOverwrite: boolean) => void;
+    onUninstall?: (ideviceId: string) => void;
+    appVersion?: () => string;
+}) => {
+    const installer: IdeviceInstallerService = {
+        installFromBuffer: async (buffer, installOptions = {}) => {
+            options.onInstall?.(buffer, !!installOptions.confirmOverwrite);
+            return (
+                options.installResult ?? {
+                    success: true,
+                    id: 'custom-idevice',
+                    name: 'custom-idevice',
+                    title: 'Custom iDevice',
+                    version: '1.0',
+                    exportObject: '$customidevice',
+                    overwritten: false,
+                    config: stubConfig(),
+                }
+            );
+        },
+        uninstall: async ideviceId => {
+            options.onUninstall?.(ideviceId);
+            return options.uninstallResult ?? { success: true, backupPath: 'backup/custom-idevice' };
+        },
+    };
+
+    return new Elysia().use(
+        createIdeviceInstallerRoutes({
+            installer,
+            canInstall: options.canInstall ?? (() => true),
+            appVersion: options.appVersion ?? (() => 'v1.2.3'),
+        }),
+    );
+};
+
+describe('iDevice installer routes', () => {
+    describe('POST /api/idevices/install', () => {
+        it('returns 403 when installation is not allowed', async () => {
+            const app = createApp({ canInstall: () => false });
+            const formData = new FormData();
+            formData.append('file', new File(['zip-data'], 'custom.idevice.zip'));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/idevices/install', {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            expect(await res.json()).toMatchObject({
+                success: false,
+                code: 'LOCAL_MODE_REQUIRED',
+            });
+        });
+
+        it('passes uploaded ZIP bytes and confirmOverwrite to the installer', async () => {
+            let receivedBuffer: Buffer | null = null;
+            let receivedConfirmOverwrite = false;
+            const app = createApp({
+                onInstall: (buffer, confirmOverwrite) => {
+                    receivedBuffer = buffer;
+                    receivedConfirmOverwrite = confirmOverwrite;
+                },
+            });
+            const formData = new FormData();
+            formData.append('file', new File(['zip-data'], 'custom.idevice.zip', { type: 'application/zip' }));
+            formData.append('confirmOverwrite', 'true');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/idevices/install', {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(receivedBuffer?.toString()).toBe('zip-data');
+            expect(receivedConfirmOverwrite).toBe(true);
+            const body = await res.json();
+            expect(body).toMatchObject({
+                success: true,
+                id: 'custom-idevice',
+            });
+            expect(body.config.url).toBe('/v1.2.3/files/perm/idevices/users/custom-idevice');
+            expect(body.config.name).toBe('custom-idevice');
+        });
+
+        it('returns 400 when no file is provided', async () => {
+            const app = createApp({});
+
+            const res = await app.handle(
+                new Request('http://localhost/api/idevices/install', {
+                    method: 'POST',
+                    body: new FormData(),
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            expect(await res.json()).toMatchObject({
+                success: false,
+                code: 'INVALID_ZIP',
+            });
+        });
+
+        it('maps installer error codes to HTTP statuses', async () => {
+            const app = createApp({
+                installResult: {
+                    success: false,
+                    code: 'IDEVICE_ALREADY_EXISTS_NEEDS_CONFIRM',
+                    message: 'iDevice already exists.',
+                },
+            });
+            const formData = new FormData();
+            formData.append('file', new File(['zip-data'], 'custom.idevice.zip'));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/idevices/install', {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(409);
+            expect(await res.json()).toMatchObject({
+                success: false,
+                code: 'IDEVICE_ALREADY_EXISTS_NEEDS_CONFIRM',
+            });
+        });
+    });
+
+    describe('DELETE /api/idevices/installed/:ideviceId', () => {
+        it('returns 403 when uninstall is not allowed', async () => {
+            const app = createApp({ canInstall: () => false });
+
+            const res = await app.handle(
+                new Request('http://localhost/api/idevices/installed/custom-idevice', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            expect(await res.json()).toMatchObject({
+                success: false,
+                code: 'LOCAL_MODE_REQUIRED',
+            });
+        });
+
+        it('passes the route id to the installer', async () => {
+            let receivedId = '';
+            const app = createApp({
+                onUninstall: ideviceId => {
+                    receivedId = ideviceId;
+                },
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/api/idevices/installed/custom-idevice', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(receivedId).toBe('custom-idevice');
+            expect(await res.json()).toMatchObject({ success: true });
+        });
+
+        it('maps missing user iDevices to 404', async () => {
+            const app = createApp({
+                uninstallResult: {
+                    success: false,
+                    code: 'NOT_FOUND',
+                    message: 'iDevice is not installed.',
+                },
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/api/idevices/installed/missing-idevice', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(404);
+            expect(await res.json()).toMatchObject({
+                success: false,
+                code: 'NOT_FOUND',
+            });
+        });
+    });
+});

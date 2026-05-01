@@ -25,6 +25,9 @@ global.eXeLearning = {
                 show: vi.fn(),
             },
         },
+        toasts: {
+            createToast: vi.fn(),
+        },
     },
 };
 
@@ -107,6 +110,7 @@ describe('MenuIdevicesCompose', () => {
                 },
             },
             loadIdevice: vi.fn(),
+            loadIdevicesInstalled: vi.fn().mockResolvedValue(undefined),
             removeIdevice: vi.fn(),
         };
 
@@ -641,7 +645,7 @@ describe('MenuIdevicesCompose', () => {
             });
         });
 
-        it('should load idevice on success', async () => {
+        it('should reload installed iDevices on success', async () => {
             const mockResponse = {
                 responseMessage: 'OK',
                 idevice: { name: 'custom', title: 'Custom', icon: {} },
@@ -651,7 +655,26 @@ describe('MenuIdevicesCompose', () => {
 
             await menuIdevicesCompose.uploadIdevice('test.zip', 'data:test');
 
-            expect(mockIdeviceList.loadIdevice).toHaveBeenCalled();
+            expect(mockIdeviceList.loadIdevicesInstalled).toHaveBeenCalled();
+            expect(mockParent.compose).toHaveBeenCalled();
+            expect(mockParent.behaviour).toHaveBeenCalled();
+            expect(mockIdeviceList.loadIdevice).not.toHaveBeenCalled();
+        });
+
+        it('should show a success message after installing', async () => {
+            eXeLearning.app.api.postUploadIdevice.mockResolvedValue({
+                responseMessage: 'OK',
+                idevice: { name: 'custom', title: 'Custom', icon: {} },
+            });
+            menuIdevicesCompose.categoriesIdevices = { 'Imported': [] };
+
+            await menuIdevicesCompose.uploadIdevice('test.zip', 'data:test');
+
+            expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith({
+                title: 'iDevice manager',
+                body: 'The iDevice "Custom" has been installed correctly.',
+                icon: 'check',
+            });
         });
 
         it('should show alert on failure', async () => {
@@ -709,6 +732,21 @@ describe('MenuIdevicesCompose', () => {
             await menuIdevicesCompose.removeIdevice('custom');
 
             expect(document.getElementById('custom')).toBeNull();
+        });
+
+        it('should show a success message after uninstalling', async () => {
+            eXeLearning.app.api.deleteIdeviceInstalled.mockResolvedValue({
+                responseMessage: 'OK',
+                deleted: { name: 'custom' },
+            });
+
+            await menuIdevicesCompose.removeIdevice('custom');
+
+            expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith({
+                title: 'iDevice manager',
+                body: 'The iDevice "custom" has been uninstalled correctly.',
+                icon: 'check',
+            });
         });
 
         it('should show alert on failure', async () => {

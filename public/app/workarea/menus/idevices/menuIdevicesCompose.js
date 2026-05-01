@@ -280,54 +280,82 @@ export default class MenuIdevicesCompose {
         reader.readAsDataURL(file);
     }
 
-    uploadIdevice(fileName, fileData) {
+    async uploadIdevice(fileName, fileData) {
         let params = {};
         params.filename = fileName;
         params.file = fileData;
-        eXeLearning.app.api.postUploadIdevice(params).then((response) => {
-            if (response && response.responseMessage === 'OK') {
-                response.idevice.id = response.idevice.name;
-                this.idevicesList.loadIdevice(response.idevice);
-                this.categoriesIdevices[_('Imported')].push(response.idevice);
-                this.rebuildImportedIdevices();
-            } else {
-                // Show alert
-                this.showElementAlert(
-                    _('Failed to install the new iDevice'),
-                    response
-                );
-            }
-        });
+        let response = await eXeLearning.app.api.postUploadIdevice(params);
+        if (response && response.responseMessage === 'OK') {
+            await this.idevicesList.loadIdevicesInstalled();
+            this.parent.compose();
+            this.parent.behaviour();
+            this.showSuccessMessage(
+                _('The iDevice "%s" has been installed correctly.').replace(
+                    '%s',
+                    this.getIdeviceDisplayName(response.idevice, fileName)
+                )
+            );
+        } else {
+            // Show alert
+            this.showElementAlert(
+                _('Failed to install the new iDevice'),
+                response
+            );
+        }
     }
 
-    removeIdevice(id) {
+    async removeIdevice(id) {
         let params = {};
         params.id = id;
-        eXeLearning.app.api.deleteIdeviceInstalled(params).then((response) => {
-            if (
-                response &&
-                response.responseMessage === 'OK' &&
-                response.deleted &&
-                response.deleted.name
-            ) {
-                this.idevicesList.removeIdevice(params.id);
-                document.getElementById(params.id).remove();
-                const idx = this.categoriesIdevices[_('Imported')].findIndex(
-                    (obj) => obj.id === params.id
-                );
-                if (idx !== -1) {
-                    this.categoriesIdevices[_('Imported')].splice(idx, 1);
-                }
-                this.rebuildImportedIdevices();
-            } else {
-                setTimeout(() => {
-                    this.showElementAlert(
-                        _('Could not remove the iDevice'),
-                        response
-                    );
-                });
+        let response = await eXeLearning.app.api.deleteIdeviceInstalled(params);
+        if (
+            response &&
+            response.responseMessage === 'OK' &&
+            response.deleted &&
+            response.deleted.name
+        ) {
+            const deletedName = response.deleted.name;
+            this.idevicesList.removeIdevice(params.id);
+            document.getElementById(params.id)?.remove();
+            const idx = this.categoriesIdevices[_('Imported')].findIndex(
+                (obj) => obj.id === params.id
+            );
+            if (idx !== -1) {
+                this.categoriesIdevices[_('Imported')].splice(idx, 1);
             }
-        });
+            this.rebuildImportedIdevices();
+            this.showSuccessMessage(
+                _('The iDevice "%s" has been uninstalled correctly.').replace(
+                    '%s',
+                    deletedName
+                )
+            );
+        } else {
+            setTimeout(() => {
+                this.showElementAlert(
+                    _('Could not remove the iDevice'),
+                    response
+                );
+            });
+        }
+    }
+
+    showSuccessMessage(message) {
+        const toasts = eXeLearning?.app?.toasts;
+        if (toasts?.createToast) {
+            toasts.createToast({
+                title: _('iDevice manager'),
+                body: message,
+                icon: 'check',
+            });
+            return;
+        }
+        if (typeof eXe !== 'undefined' && eXe?.app?.alert)
+            eXe.app.alert(`<p>${message}</p>`);
+    }
+
+    getIdeviceDisplayName(idevice, fallbackName) {
+        return idevice?.title || idevice?.name || idevice?.id || fallbackName;
     }
 
     downloadIdeviceZip(idevice) {

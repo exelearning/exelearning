@@ -29,6 +29,7 @@ import { getFilesDir } from '../utils/admin-route-helpers';
 import * as path from 'path';
 import { getDefaultTheme, getDefaultThemeRecord } from '../db/queries/themes';
 import { SUPPORTED_LOCALES } from '../services/admin-upload-validator';
+import { canInstallIdevices as canInstallIdevicesForRuntime } from '../utils/local-mode.util';
 import { LICENSE_REGISTRY } from '../shared/export/constants';
 import { ALLOWED_EXTENSIONS } from '../config';
 import { buildConfigParams } from './config-params';
@@ -165,11 +166,7 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
             'ONLINE_THEMES_INSTALL',
             parseBoolean(process.env.ONLINE_THEMES_INSTALL, false),
         );
-        const canInstallIdevices = await getSettingBoolean(
-            defaultDb,
-            'ONLINE_IDEVICES_INSTALL',
-            parseBoolean(process.env.ONLINE_IDEVICES_INSTALL, false),
-        );
+        const canInstallIdevices = await canInstallIdevicesForRuntime(defaultDb);
         const autosaveOdeFilesFunction = await getSettingBoolean(
             defaultDb,
             'AUTOSAVE_ODE_FILES_FUNCTION',

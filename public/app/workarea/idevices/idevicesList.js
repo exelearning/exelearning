@@ -20,6 +20,7 @@ export default class IdeviceList {
         // Use ApiCallManager which handles both static and server modes internally
         let installedIdevicesJSON =
             await this.manager.app.api.getIdevicesInstalled();
+        Object.keys(this.installed).forEach((key) => delete this.installed[key]);
         if (installedIdevicesJSON && installedIdevicesJSON.idevices) {
             installedIdevicesJSON.idevices.forEach((ideviceData) => {
                 let idevice = new Idevice(this.manager, ideviceData);

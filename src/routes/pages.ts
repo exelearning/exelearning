@@ -26,6 +26,7 @@ import {
 import { db as dbDefault } from '../db/client';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
+import { isDevEnv } from '../utils/local-mode.util';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
@@ -896,6 +897,14 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     'ONLINE_THEMES_INSTALL',
                     parseAppSettingBoolean(process.env.ONLINE_THEMES_INSTALL, false),
                 );
+                const userIdevicesEnabled =
+                    isOfflineInstallation ||
+                    isDevEnv() ||
+                    (await getSettingBoolean(
+                        db,
+                        'ONLINE_IDEVICES_INSTALL',
+                        parseAppSettingBoolean(process.env.ONLINE_IDEVICES_INSTALL, false),
+                    ));
 
                 // Check for platform integration (jwt_token in URL means user came from platform)
                 const jwtToken = query.jwt_token as string | undefined;
@@ -927,7 +936,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     isOfflineInstallation,
                     platformIntegration: platformIntegrationEnabled,
                     userStyles: userStylesEnabled ? 1 : 0,
-                    userIdevices: 0,
+                    userIdevices: userIdevicesEnabled ? 1 : 0,
                     debugJs: process.env.APP_ENV === 'dev',
                     appEnv: process.env.APP_ENV || 'prod',
                     appDebug: process.env.APP_DEBUG || '0',

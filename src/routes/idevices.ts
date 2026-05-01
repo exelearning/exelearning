@@ -32,10 +32,10 @@ interface FileWithName extends Blob {
 }
 
 // Base path for iDevices
-const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
-const IDEVICES_USERS_PATH = 'public/files/perm/idevices/users';
+export const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
+export const IDEVICES_USERS_PATH = 'public/files/perm/idevices/users';
 
-interface IdeviceConfig {
+export interface IdeviceConfig {
     id: string;
     title: string;
     cssClass: string;
@@ -87,7 +87,7 @@ function readTemplateContent(basePath: string, folder: string, filename: string)
 /**
  * Parse iDevice config.xml
  */
-function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: string): IdeviceConfig | null {
+export function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: string): IdeviceConfig | null {
     try {
         // Simple XML parsing (no external dependency needed)
         const getValue = (tag: string): string => {
@@ -184,7 +184,7 @@ function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: str
 
         return {
             id: ideviceId,
-            title: getValue('title') || ideviceId,
+            title: getValue('title') || getValue('name') || ideviceId,
             cssClass: getValue('css-class') || ideviceId,
             category: getValue('category') || 'Uncategorized',
             icon,
@@ -218,7 +218,7 @@ function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: str
 /**
  * Scan iDevices directory and return list
  */
-function scanIdevices(basePath: string): IdeviceConfig[] {
+export function scanIdevices(basePath: string): IdeviceConfig[] {
     const idevices: IdeviceConfig[] = [];
 
     if (!fs.existsSync(basePath)) {
@@ -254,16 +254,26 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
         const baseIdevices = scanIdevices(IDEVICES_BASE_PATH);
         const userIdevices = scanIdevices(IDEVICES_USERS_PATH);
 
-        // Merge user iDevices with base, user takes priority
-        const ideviceMap = new Map<string, IdeviceConfig>();
+        // Merge user iDevices with base, user takes priority. The `type` field
+        // is required by the frontend's modalIdeviceManager to split System vs.
+        // User tabs (matches eXeLearning.config.ideviceTypeBase/User).
+        const ideviceMap = new Map<string, IdeviceConfig & { type: 'base' | 'user' }>();
         const version = getAppVersion();
 
         for (const idevice of baseIdevices) {
-            ideviceMap.set(idevice.id, { ...idevice, url: `/${version}/files/perm/idevices/base/${idevice.id}` });
+            ideviceMap.set(idevice.id, {
+                ...idevice,
+                url: `/${version}/files/perm/idevices/base/${idevice.id}`,
+                type: 'base',
+            });
         }
 
         for (const idevice of userIdevices) {
-            ideviceMap.set(idevice.id, { ...idevice, url: `/${version}/files/perm/idevices/users/${idevice.id}` });
+            ideviceMap.set(idevice.id, {
+                ...idevice,
+                url: `/${version}/files/perm/idevices/users/${idevice.id}`,
+                type: 'user',
+            });
         }
 
         const result = Array.from(ideviceMap.values());

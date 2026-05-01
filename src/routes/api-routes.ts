@@ -18,8 +18,8 @@ export const API_ROUTES: RouteMap = {
     // iDevices
     api_idevices_installed: { path: '/api/idevices/installed', methods: ['GET'] },
     api_idevices_installed_idevice: { path: '/api/idevices/installed/{ideviceId}', methods: ['GET'] },
-    api_idevices_upload: { path: '/api/idevices/upload', methods: ['POST'] },
-    api_idevices_installed_delete: { path: '/api/idevices/{ideviceId}/delete', methods: ['DELETE'] },
+    api_idevices_upload: { path: '/api/idevices/install', methods: ['POST'] },
+    api_idevices_installed_delete: { path: '/api/idevices/installed/{ideviceId}', methods: ['DELETE'] },
     api_idevices_installed_download: { path: '/api/idevices/{ideviceId}/download', methods: ['GET'] },
     api_idevices_download_ode_components: { path: '/api/idevices/download-ode-components', methods: ['GET'] },
     api_idevices_download_file_resources: { path: '/api/idevices/download-file-resources', methods: ['GET'] },

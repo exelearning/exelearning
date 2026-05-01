@@ -88,6 +88,7 @@ export default class NavbarFile {
      *
      */
     setIdeviceManagerEvent() {
+        if (!this.ideviceManagerButton) return;
         this.ideviceManagerButton.addEventListener('click', () => {
             this.ideviceManagerEvent();
         });

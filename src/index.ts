@@ -15,6 +15,7 @@ import { convertRoutes } from './routes/convert';
 import { pagesRoutes } from './routes/pages';
 import { configRoutes } from './routes/config';
 import { idevicesRoutes } from './routes/idevices';
+import { ideviceInstallerRoutes } from './routes/idevice-installer';
 import { gamesRoutes } from './routes/games';
 import { themesRoutes } from './routes/themes';
 import { resourcesRoutes } from './routes/resources';
@@ -590,6 +591,7 @@ app.use(healthRoutes)
     .use(convertRoutes)
     .use(configRoutes)
     .use(idevicesRoutes)
+    .use(ideviceInstallerRoutes)
     .use(gamesRoutes)
     .use(themesRoutes)
     .use(resourcesRoutes)
@@ -627,6 +629,7 @@ if (routePrefix) {
             .use(convertRoutes)
             .use(configRoutes)
             .use(idevicesRoutes)
+            .use(ideviceInstallerRoutes)
             .use(gamesRoutes)
             .use(themesRoutes)
             .use(resourcesRoutes)

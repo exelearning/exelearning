@@ -274,19 +274,53 @@ export default class ModalIdeviceManager extends Modal {
         bodyContainer.append(idevicesListContainer);
         const header = this.makeRowTableTheadElements();
         if (header) bodyContainer.prepend(header);
-        let defaultIdevicesTabData = {
-            title: _('Default iDevices'),
+        // Tabs: System (base) / User (manually installed). System is active by
+        // default. Both tabs render even if Users is empty so the user always
+        // has a place to drop in newly imported iDevices.
+        const baseIdevicesTabData = {
+            title: _('System'),
             id: 'base-idevices-tab',
             active: true,
         };
+        const userIdevicesTabData = {
+            title: _('User'),
+            id: 'user-idevices-tab',
+        };
         idevicesListContainer.append(
-            this.makeElementTableIdevices(
-                this.idevices.installed,
-                defaultIdevicesTabData
-            )
+            this.makeIdevicesFormTabs([baseIdevicesTabData, userIdevicesTabData])
         );
-        idevicesListContainer.classList.add('no-tabs');
+        idevicesListContainer.append(
+            this.makeElementTableIdevices(this.idevicesBase, baseIdevicesTabData)
+        );
+        idevicesListContainer.append(
+            this.makeElementTableIdevices(this.idevicesUser, userIdevicesTabData)
+        );
         return bodyContainer;
+    }
+
+    /**
+     * Build the tab list (`<ul class="exe-form-tabs">`) used to switch between
+     * System and User iDevice panes. Mirrors the pattern in
+     * `modalStyleManager.makeThemesFormTabs` so the shared
+     * `Modal.addBehaviourExeTabs` wiring picks them up automatically.
+     *
+     * @param {Array<{title: string, id: string, active?: boolean}>} tabs
+     * @returns {Element}
+     */
+    makeIdevicesFormTabs(tabs) {
+        const formTabs = document.createElement('ul');
+        formTabs.classList.add('exe-form-tabs');
+        tabs.forEach((data) => {
+            const li = document.createElement('li');
+            const link = document.createElement('a');
+            link.setAttribute('href', `#${data.id}`);
+            link.classList.add('exe-tab');
+            if (data.active) link.classList.add('exe-form-active-tab');
+            link.innerText = data.title;
+            li.append(link);
+            formTabs.append(li);
+        });
+        return formTabs;
     }
 
     makeFilterTableIdevices(container, filterTdClass, placeholder) {
@@ -298,17 +332,18 @@ export default class ModalIdeviceManager extends Modal {
         inputFilter.setAttribute('name', 'idevice-searcher');
         inputFilter.id = 'idevice-searcher';
         inputFilter.addEventListener('keyup', () => {
-            let filter = inputFilter.value.toUpperCase();
-            container.querySelectorAll('.toggle-item').forEach((tr) => {
-                let td = tr.querySelector(filterTdClass);
-                if (td) {
-                    let txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        tr.style.display = '';
-                    } else {
-                        tr.style.display = 'none';
-                    }
-                }
+            const filter = inputFilter.value.toUpperCase();
+            // Only filter the visible tab so the inactive pane keeps its layout.
+            const activePane =
+                container.querySelector(
+                    '.idevices-toggle-container.exe-form-active-content'
+                ) || container;
+            activePane.querySelectorAll('.toggle-item').forEach((tr) => {
+                const td = tr.querySelector(filterTdClass);
+                if (!td) return;
+                const txtValue = td.textContent || td.innerText;
+                tr.style.display =
+                    txtValue.toUpperCase().indexOf(filter) > -1 ? '' : 'none';
             });
         });
 
@@ -584,7 +619,55 @@ export default class ModalIdeviceManager extends Modal {
         control.append(input, visual);
         row.append(control, label);
 
+        // For user-installed iDevices, append an uninstall button on the left
+        // of the row that asks for confirmation before removing the iDevice.
+        if (idevice.type === eXeLearning.config.ideviceTypeUser) {
+            const uninstallButton = this.makeUninstallIdeviceButton(idevice);
+            row.prepend(uninstallButton);
+        }
+
         return row;
+    }
+
+    /**
+     * Build the uninstall button shown next to user-installed iDevices in the
+     * iDevice manager modal. Clicking it opens a confirmation modal; on
+     * confirmation the iDevice is removed via the API and the manager modal
+     * is reloaded (handled by `removeIdevice`).
+     *
+     * @param {*} idevice
+     * @returns {HTMLButtonElement}
+     */
+    makeUninstallIdeviceButton(idevice) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.classList.add('idevice-uninstall', 'btn', 'btn-link', 'p-0');
+        const ideviceLabel = idevice.title || idevice.id;
+        const ariaLabel = `${_('Uninstall iDevice')}: ${ideviceLabel}`;
+        button.setAttribute('aria-label', ariaLabel);
+        button.title = ariaLabel;
+
+        const icon = document.createElement('span');
+        icon.classList.add('small-icon', 'delete-icon-red');
+        button.append(icon);
+
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            eXeLearning.app.modals.confirm.show({
+                title: _('Uninstall iDevice'),
+                body: _(
+                    `Are you sure you want to uninstall the iDevice: ${ideviceLabel}?`
+                ),
+                confirmButtonText: _('Uninstall'),
+                cancelButtonText: _('Cancel'),
+                confirmExec: () => {
+                    this.removeIdevice(idevice.name);
+                },
+            });
+        });
+
+        return button;
     }
 
     /**
@@ -598,6 +681,24 @@ export default class ModalIdeviceManager extends Modal {
             : `<p>${defErrorText}</p>`;
         this.modalElementAlertText.innerHTML = errorText;
         this.modalElementAlert.classList.add('show');
+    }
+
+    showSuccessMessage(message) {
+        const toasts = eXeLearning?.app?.toasts;
+        if (toasts?.createToast) {
+            toasts.createToast({
+                title: _('iDevice manager'),
+                body: message,
+                icon: 'check',
+            });
+            return;
+        }
+        if (typeof eXe !== 'undefined' && eXe?.app?.alert)
+            eXe.app.alert(`<p>${message}</p>`);
+    }
+
+    getIdeviceDisplayName(idevice, fallbackName) {
+        return idevice?.title || idevice?.name || idevice?.id || fallbackName;
     }
 
     /*******************************************************************************
@@ -665,42 +766,49 @@ export default class ModalIdeviceManager extends Modal {
      * Upload/Import idevice to app
      *
      */
-    uploadIdevice(fileName, fileData) {
+    async uploadIdevice(fileName, fileData) {
         let params = {};
         params.filename = fileName;
         params.file = fileData;
-        eXeLearning.app.api.postUploadIdevice(params).then((response) => {
-            if (response && response.responseMessage == 'OK') {
-                // Load idevice in client
-                this.idevices.loadIdevice(response.idevice);
-                this.idevicesBase = this.getBaseIdevices(
-                    this.idevices.installed
-                );
-                this.idevicesUser = this.getUserIdevices(
-                    this.idevices.installed
-                );
-                // Make body element idevices table
-                let bodyContent = this.makeBodyElement();
-                this.setBodyElement(bodyContent);
-                if (Object.keys(this.idevicesUser).length == 0)
-                    bodyContent.classList.add('only-base-idevices');
-                // Set visibility in installed idevice
-                let newIdeviceInput = this.modalElementBody.querySelector(
-                    `tr[idevice-id="${response.idevice.name}"] input`
-                );
-                if (newIdeviceInput) newIdeviceInput.click();
-                // Tab events
-                this.addBehaviourExeTabs();
-                // Save idevice visibility
-                this.saveIdevicesVisibility();
+        let response = await eXeLearning.app.api.postUploadIdevice(params);
+        if (response && response.responseMessage == 'OK') {
+            // Reload iDevices from the installed endpoint so the User tab only
+            // reflects folders that physically exist under users/{id}.
+            if (this.idevices.loadIdevicesInstalled) {
+                await this.idevices.loadIdevicesInstalled();
             } else {
-                // Show alert
-                this.showElementAlert(
-                    _('Failed to install the new iDevice'),
-                    response
-                );
+                this.idevices.loadIdevice(response.idevice);
             }
-        });
+            this.idevicesBase = this.getBaseIdevices(this.idevices.installed);
+            this.idevicesUser = this.getUserIdevices(this.idevices.installed);
+            // Make body element idevices table
+            let bodyContent = this.makeBodyElement();
+            this.setBodyElement(bodyContent);
+            if (Object.keys(this.idevicesUser).length == 0)
+                bodyContent.classList.add('only-base-idevices');
+            // Set visibility in installed idevice
+            let newIdeviceInput = this.modalElementBody.querySelector(
+                `.toggle-item[idevice-id="${response.idevice.name}"] input`
+            );
+            if (newIdeviceInput) newIdeviceInput.click();
+            // Tab events
+            this.addBehaviourExeTabs();
+            this.refreshIdevicesMenus();
+            this.showSuccessMessage(
+                _('The iDevice "%s" has been installed correctly.').replace(
+                    '%s',
+                    this.getIdeviceDisplayName(response.idevice, fileName)
+                )
+            );
+            // Save idevice visibility
+            this.saveIdevicesVisibility();
+        } else {
+            // Show alert
+            this.showElementAlert(
+                _('Failed to install the new iDevice'),
+                response
+            );
+        }
     }
 
     /**
@@ -708,32 +816,84 @@ export default class ModalIdeviceManager extends Modal {
      *
      * @param {*} id
      */
-    removeIdevice(id) {
+    async removeIdevice(id) {
         let params = {};
         params.id = id;
-        eXeLearning.app.api.deleteIdeviceInstalled(params).then((response) => {
-            if (
-                response &&
-                response.responseMessage == 'OK' &&
-                response.deleted &&
-                response.deleted.name
-            ) {
-                // Load idevices in client
-                this.idevices.removeIdevice(response.deleted.name);
-                // Show modal
-                setTimeout(() => {
-                    if (!this.modal._isShown) this.show(false);
-                }, this.timeMax);
-            } else {
-                // Show modal width alert
-                setTimeout(() => {
-                    if (!this.modal._isShown) this.show(false);
-                    this.showElementAlert(
-                        _('Could not remove the iDevice'),
-                        response
-                    );
-                }, this.timeMax);
+        const response = await eXeLearning.app.api.deleteIdeviceInstalled(
+            params
+        );
+        if (
+            response &&
+            response.responseMessage == 'OK' &&
+            response.deleted &&
+            response.deleted.name
+        ) {
+            const deletedName = response.deleted.name;
+            this.idevices.removeIdevice(deletedName);
+            try {
+                await this.removeIdeviceFromUserTables(deletedName);
+            } catch (err) {
+                console.error('Error cleaning iDevice references:', err);
             }
-        });
+            this.idevicesBase = this.getBaseIdevices(this.idevices.installed);
+            this.idevicesUser = this.getUserIdevices(this.idevices.installed);
+            this.refreshIdevicesMenus();
+            this.refreshManagerBody('#user-idevices-tab');
+            this.showSuccessMessage(
+                _('The iDevice "%s" has been uninstalled correctly.').replace(
+                    '%s',
+                    deletedName
+                )
+            );
+        } else {
+            this.showElementAlert(_('Could not remove the iDevice'), response);
+        }
+    }
+
+    /**
+     * Remove the given iDevice name from any user-side tables that may still
+     * reference it. Currently the only such table is the IndexedDB
+     * `idevicesSettings` store, which keeps the per-user favourites list.
+     *
+     * @param {string} ideviceName
+     * @returns {Promise<void>}
+     */
+    async removeIdeviceFromUserTables(ideviceName) {
+        const favourites = await this.getUserListIdevices();
+        if (!Array.isArray(favourites)) return;
+        const index = favourites.indexOf(ideviceName);
+        if (index === -1) return;
+        favourites.splice(index, 1);
+        await this.saveIdevices(favourites);
+    }
+
+    /**
+     * Recompose the bottom iDevices menu so uninstalled iDevices disappear.
+     */
+    refreshIdevicesMenus() {
+        const menus = eXeLearning?.app?.menus;
+        const menuIdevices = menus?.menuIdevices;
+        if (!menuIdevices) return;
+        if (menuIdevices.compose) {
+            menuIdevices.compose();
+        }
+        if (menuIdevices.menuIdevicesBottomContent) {
+            menuIdevices.menuIdevicesBottomContent.innerHTML = '';
+        }
+        if (menuIdevices.behaviour) {
+            menuIdevices.behaviour();
+        }
+    }
+
+    /**
+     * Rebuild the manager contents after a user iDevice is removed.
+     *
+     * @param {string} selectedTab
+     */
+    refreshManagerBody(selectedTab) {
+        this.tabSelectedLink = selectedTab;
+        this.setBodyElement(this.makeBodyElement());
+        this.addBehaviourExeTabs();
+        this.clickSelectedTab();
     }
 }

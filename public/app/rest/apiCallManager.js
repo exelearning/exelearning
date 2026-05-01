@@ -714,7 +714,22 @@ export default class ApiCallManager {
      */
     async postUploadIdevice(params) {
         let url = this.endpoints.api_idevices_upload.path;
-        return await this.func.post(url, params);
+        const formData = new FormData();
+        const filename = params?.filename || params?.file?.name || 'idevice.zip';
+        const file = await this._normalizeIdeviceUploadFile(params?.file);
+
+        if (file) {
+            formData.append('file', file, filename);
+        }
+        if (params?.confirmOverwrite !== undefined) {
+            formData.append(
+                'confirmOverwrite',
+                params.confirmOverwrite ? 'true' : 'false'
+            );
+        }
+
+        const response = await this.func.fileSendPost(url, formData);
+        return this._normalizeIdeviceInstallResponse(response);
     }
 
     /**
@@ -725,7 +740,66 @@ export default class ApiCallManager {
      */
     async deleteIdeviceInstalled(params) {
         let url = this.endpoints.api_idevices_installed_delete.path;
-        return await this.func.delete(url, params);
+        const ideviceId = params?.id || params?.ideviceId || '';
+        url = url.replace('{ideviceId}', encodeURIComponent(ideviceId));
+        const response = await this.func.delete(url);
+        return this._normalizeIdeviceDeleteResponse(response, ideviceId);
+    }
+
+    async _normalizeIdeviceUploadFile(file) {
+        if (!file) return null;
+        if (typeof Blob !== 'undefined' && file instanceof Blob) return file;
+        if (file instanceof Uint8Array) {
+            return new Blob([file], { type: 'application/zip' });
+        }
+        if (typeof file === 'string') {
+            if (file.startsWith('data:')) {
+                const response = await fetch(file);
+                return await response.blob();
+            }
+            return new Blob([file], { type: 'application/zip' });
+        }
+        return new Blob([file], { type: 'application/zip' });
+    }
+
+    _normalizeIdeviceInstallResponse(response) {
+        if (!response || response.responseMessage) return response;
+        if (response.success) {
+            const id = response.id || response.name;
+            const config = response.config || {};
+            return {
+                ...response,
+                responseMessage: 'OK',
+                idevice: {
+                    ...config,
+                    id,
+                    name: id,
+                    title: config.title || response.title || id,
+                    type: 'user',
+                },
+            };
+        }
+        return {
+            ...response,
+            responseMessage: 'ERROR',
+            error: response.message || response.code || 'ERROR',
+        };
+    }
+
+    _normalizeIdeviceDeleteResponse(response, ideviceId) {
+        if (!response || response.responseMessage) return response;
+        if (response.success) {
+            return {
+                ...response,
+                responseMessage: 'OK',
+                deleted: { name: ideviceId },
+            };
+        }
+        return {
+            ...response,
+            responseMessage: 'ERROR',
+            error: response.message || response.code || 'ERROR',
+        };
     }
 
     /**

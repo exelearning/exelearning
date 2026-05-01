@@ -118,9 +118,37 @@ describe('IdeviceList', () => {
       });
 
       const list = new IdeviceList(mockManager);
+      list.installed.stale = { id: 'stale' };
       await list.loadIdevicesInstalled();
 
       expect(Object.keys(list.installed)).toHaveLength(0);
+    });
+
+    it('clears stale entries while preserving installed object reference', async () => {
+      mockManager.app.api.getIdevicesInstalled.mockResolvedValue({
+        idevices: [
+          {
+            name: 'active-user-idevice',
+            title: 'Active User iDevice',
+            type: 'user',
+            url: '/files/perm/idevices/users/active-user-idevice',
+            editionJs: [],
+            editionCss: [],
+            exportJs: [],
+            exportCss: [],
+          },
+        ],
+      });
+
+      const list = new IdeviceList(mockManager);
+      const installedReference = list.installed;
+      list.installed.stale = { id: 'stale', type: 'user' };
+
+      await list.loadIdevicesInstalled();
+
+      expect(list.installed).toBe(installedReference);
+      expect(list.installed.stale).toBeUndefined();
+      expect(list.installed['active-user-idevice']).toBeDefined();
     });
 
     it('handles null API response', async () => {

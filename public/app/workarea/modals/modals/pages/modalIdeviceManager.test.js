@@ -151,6 +151,9 @@ describe('ModalIdeviceManager', () => {
             behaviour: vi.fn(),
           },
         },
+        toasts: {
+          createToast: vi.fn(),
+        },
         idevices: {
           selectIdevice: vi.fn(),
           list: {
@@ -699,6 +702,59 @@ describe('ModalIdeviceManager', () => {
       const icon = result.querySelector('.search-icon');
       expect(icon).toBeDefined();
     });
+
+    it('should render System and User tabs with System active by default', () => {
+      modalIdeviceManager.makeElementTableIdevices.mockRestore();
+      vi.spyOn(modalIdeviceManager, 'getUserListIdevices').mockResolvedValue([]);
+      modalIdeviceManager.idevicesBase = { text: { id: 'text', name: 'text', title: 'Text', type: 'base' } };
+      modalIdeviceManager.idevicesUser = {
+        custom: { id: 'custom', name: 'custom', title: 'Custom', type: 'user' },
+      };
+
+      const result = modalIdeviceManager.makeBodyElement();
+      const tabLinks = result.querySelectorAll('.exe-form-tabs li a');
+      expect(tabLinks.length).toBe(2);
+      expect(tabLinks[0].getAttribute('href')).toBe('#base-idevices-tab');
+      expect(tabLinks[0].classList.contains('exe-form-active-tab')).toBe(true);
+      expect(tabLinks[1].getAttribute('href')).toBe('#user-idevices-tab');
+      expect(tabLinks[1].classList.contains('exe-form-active-tab')).toBe(false);
+    });
+
+    it('should pass base iDevices to System tab and user iDevices to User tab', () => {
+      modalIdeviceManager.idevicesBase = { text: { id: 'text', name: 'text', title: 'Text', type: 'base' } };
+      modalIdeviceManager.idevicesUser = {
+        custom: { id: 'custom', name: 'custom', title: 'Custom', type: 'user' },
+      };
+
+      modalIdeviceManager.makeBodyElement();
+
+      expect(modalIdeviceManager.makeElementTableIdevices).toHaveBeenCalledWith(
+        modalIdeviceManager.idevicesBase,
+        expect.objectContaining({ id: 'base-idevices-tab', active: true }),
+      );
+      expect(modalIdeviceManager.makeElementTableIdevices).toHaveBeenCalledWith(
+        modalIdeviceManager.idevicesUser,
+        expect.objectContaining({ id: 'user-idevices-tab' }),
+      );
+    });
+  });
+
+  describe('makeIdevicesFormTabs', () => {
+    it('should build a <ul.exe-form-tabs> with one link per tab', () => {
+      const tabs = [
+        { id: 'base-idevices-tab', title: 'System', active: true },
+        { id: 'user-idevices-tab', title: 'User' },
+      ];
+
+      const result = modalIdeviceManager.makeIdevicesFormTabs(tabs);
+
+      expect(result.classList.contains('exe-form-tabs')).toBe(true);
+      const links = result.querySelectorAll('a.exe-tab');
+      expect(links.length).toBe(2);
+      expect(links[0].getAttribute('href')).toBe('#base-idevices-tab');
+      expect(links[0].classList.contains('exe-form-active-tab')).toBe(true);
+      expect(links[1].classList.contains('exe-form-active-tab')).toBe(false);
+    });
   });
 
   describe('makeFilterTableIdevices', () => {
@@ -738,6 +794,34 @@ describe('ModalIdeviceManager', () => {
       const items = container.querySelectorAll('.toggle-item');
       expect(items[0].style.display).toBe('none');
       expect(items[1].style.display).toBe('');
+    });
+
+    it('should only filter items inside the active tab pane', () => {
+      const tabsContainer = document.createElement('div');
+      tabsContainer.innerHTML = `
+        <div class="idevices-toggle-container exe-form-content exe-form-active-content">
+          <div class="toggle-item"><span class="idevice-title">Active Pane Item</span></div>
+        </div>
+        <div class="idevices-toggle-container exe-form-content">
+          <div class="toggle-item"><span class="idevice-title">Inactive Pane Item</span></div>
+        </div>
+      `;
+      document.body.appendChild(tabsContainer);
+
+      const wrapper = modalIdeviceManager.makeFilterTableIdevices(tabsContainer, '.idevice-title', 'Search');
+      const input = wrapper.querySelector('input');
+      input.value = 'inactive';
+      input.dispatchEvent(new Event('keyup'));
+
+      const activeItem = tabsContainer.querySelector(
+        '.exe-form-active-content .toggle-item'
+      );
+      const inactiveItem = tabsContainer.querySelector(
+        '.exe-form-content:not(.exe-form-active-content) .toggle-item'
+      );
+      // Active pane: hidden because text doesn't match. Inactive pane: untouched.
+      expect(activeItem.style.display).toBe('none');
+      expect(inactiveItem.style.display).toBe('');
     });
 
     it('should create label with visually-hidden class', () => {
@@ -965,6 +1049,41 @@ describe('ModalIdeviceManager', () => {
       const input = result.querySelector('input[type="checkbox"]');
       expect(input.checked).toBe(false);
     });
+
+    it('should not include an uninstall button for base idevices', () => {
+      const result = modalIdeviceManager.makeRowTableIdevicesElement(idevice, ['text']);
+      expect(result.querySelector('.idevice-uninstall')).toBeNull();
+    });
+
+    it('should include an uninstall button for user idevices', () => {
+      idevice.type = 'user';
+      const result = modalIdeviceManager.makeRowTableIdevicesElement(idevice, ['text']);
+      const button = result.querySelector('.idevice-uninstall');
+      expect(button).not.toBeNull();
+      expect(button.firstChild.classList.contains('delete-icon-red')).toBe(true);
+      // Button must be the first child so it appears on the left of the row
+      expect(result.firstChild).toBe(button);
+    });
+
+    it('uninstall button should open a confirmation modal that triggers removeIdevice', () => {
+      idevice.type = 'user';
+      const confirmShow = vi.fn();
+      window.eXeLearning.app.modals = { confirm: { show: confirmShow } };
+      const removeSpy = vi.spyOn(modalIdeviceManager, 'removeIdevice').mockImplementation(() => {});
+
+      const result = modalIdeviceManager.makeRowTableIdevicesElement(idevice, ['text']);
+      const button = result.querySelector('.idevice-uninstall');
+      button.click();
+
+      expect(confirmShow).toHaveBeenCalledTimes(1);
+      const args = confirmShow.mock.calls[0][0];
+      expect(args.title).toBe('Uninstall iDevice');
+      expect(typeof args.confirmExec).toBe('function');
+      // Until the user confirms, removeIdevice must not run
+      expect(removeSpy).not.toHaveBeenCalled();
+      args.confirmExec();
+      expect(removeSpy).toHaveBeenCalledWith('text');
+    });
   });
 
   describe('IndexedDB methods', () => {
@@ -1177,6 +1296,7 @@ describe('ModalIdeviceManager', () => {
       modalIdeviceManager.idevices = {
         installed: {},
         loadIdevice: vi.fn(),
+        loadIdevicesInstalled: vi.fn().mockResolvedValue(undefined),
       };
       vi.spyOn(modalIdeviceManager, 'getBaseIdevices').mockReturnValue({});
       vi.spyOn(modalIdeviceManager, 'getUserIdevices').mockReturnValue({});
@@ -1195,44 +1315,53 @@ describe('ModalIdeviceManager', () => {
       });
     });
 
-    it('should load idevice on success', async () => {
+    it('should reload installed iDevices on success', async () => {
       uploadPromise = new Promise(resolve => { resolveUpload = resolve; });
       eXeLearning.app.api.postUploadIdevice.mockReturnValue(uploadPromise);
-      modalIdeviceManager.uploadIdevice('test.zip', 'filedata');
+      const result = modalIdeviceManager.uploadIdevice('test.zip', 'filedata');
       resolveUpload({
         responseMessage: 'OK',
         idevice: { name: 'test-idevice', title: 'Test iDevice', type: 'user' },
       });
-      await uploadPromise;
-      await Promise.resolve(); // Flush microtasks
-      expect(modalIdeviceManager.idevices.loadIdevice).toHaveBeenCalledWith({
-        name: 'test-idevice',
-        title: 'Test iDevice',
-        type: 'user',
-      });
+      await result;
+      expect(modalIdeviceManager.idevices.loadIdevicesInstalled).toHaveBeenCalled();
+      expect(modalIdeviceManager.idevices.loadIdevice).not.toHaveBeenCalled();
     });
 
     it('should refresh body element on success', async () => {
       uploadPromise = new Promise(resolve => { resolveUpload = resolve; });
       eXeLearning.app.api.postUploadIdevice.mockReturnValue(uploadPromise);
-      modalIdeviceManager.uploadIdevice('test.zip', 'filedata');
+      const result = modalIdeviceManager.uploadIdevice('test.zip', 'filedata');
       resolveUpload({
         responseMessage: 'OK',
         idevice: { name: 'test-idevice', title: 'Test iDevice', type: 'user' },
       });
-      await uploadPromise;
-      await Promise.resolve(); // Flush microtasks
+      await result;
       expect(modalIdeviceManager.setBodyElement).toHaveBeenCalled();
+    });
+
+    it('should show a success message after installing', async () => {
+      eXeLearning.app.api.postUploadIdevice.mockResolvedValue({
+        responseMessage: 'OK',
+        idevice: { name: 'test-idevice', title: 'Test iDevice', type: 'user' },
+      });
+
+      await modalIdeviceManager.uploadIdevice('test.zip', 'filedata');
+
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith({
+        title: 'iDevice manager',
+        body: 'The iDevice "Test iDevice" has been installed correctly.',
+        icon: 'check',
+      });
     });
 
     it('should show alert on failure', async () => {
       uploadPromise = new Promise(resolve => { resolveUpload = resolve; });
       eXeLearning.app.api.postUploadIdevice.mockReturnValue(uploadPromise);
       const spy = vi.spyOn(modalIdeviceManager, 'showElementAlert');
-      modalIdeviceManager.uploadIdevice('test.zip', 'filedata');
+      const result = modalIdeviceManager.uploadIdevice('test.zip', 'filedata');
       resolveUpload({ responseMessage: 'ERROR', error: 'Invalid file' });
-      await uploadPromise;
-      await Promise.resolve(); // Flush microtasks
+      await result;
       expect(spy).toHaveBeenCalledWith('Failed to install the new iDevice', { responseMessage: 'ERROR', error: 'Invalid file' });
     });
   });
@@ -1250,6 +1379,9 @@ describe('ModalIdeviceManager', () => {
       modalIdeviceManager.idevicesUser = {};
       vi.spyOn(modalIdeviceManager, 'show').mockImplementation(() => {});
       vi.spyOn(modalIdeviceManager, 'showElementAlert');
+      vi.spyOn(modalIdeviceManager, 'getUserListIdevices').mockResolvedValue(null);
+      vi.spyOn(modalIdeviceManager, 'saveIdevices').mockResolvedValue();
+      vi.spyOn(modalIdeviceManager, 'refreshManagerBody').mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -1266,22 +1398,57 @@ describe('ModalIdeviceManager', () => {
       expect(modalIdeviceManager.idevices.removeIdevice).toHaveBeenCalledWith('test-idevice');
     });
 
-    it('should show modal after successful deletion', async () => {
-      mockBootstrapModal._isShown = false;
+    it('should refresh the manager body after successful deletion', async () => {
+      const refreshBodySpy = modalIdeviceManager.refreshManagerBody;
       await modalIdeviceManager.removeIdevice('test-idevice');
-      vi.advanceTimersByTime(600);
-      expect(modalIdeviceManager.show).toHaveBeenCalledWith(false);
+      expect(refreshBodySpy).toHaveBeenCalledWith('#user-idevices-tab');
+    });
+
+    it('should show a success message after uninstalling', async () => {
+      await modalIdeviceManager.removeIdevice('test-idevice');
+
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith({
+        title: 'iDevice manager',
+        body: 'The iDevice "test-idevice" has been uninstalled correctly.',
+        icon: 'check',
+      });
     });
 
     it('should show alert on failure', async () => {
       eXeLearning.app.api.deleteIdeviceInstalled.mockResolvedValue({ responseMessage: 'ERROR', error: 'Cannot delete' });
       mockBootstrapModal._isShown = false;
       await modalIdeviceManager.removeIdevice('test-idevice');
-      vi.advanceTimersByTime(600);
       expect(modalIdeviceManager.showElementAlert).toHaveBeenCalledWith(
         'Could not remove the iDevice',
         { responseMessage: 'ERROR', error: 'Cannot delete' }
       );
+    });
+
+    it('should drop the iDevice from favourites and refresh the bottom menu', async () => {
+      vi.useRealTimers();
+      const favourites = ['test-idevice', 'other'];
+      modalIdeviceManager.getUserListIdevices.mockResolvedValue(favourites);
+      const saveSpy = modalIdeviceManager.saveIdevices;
+      const refreshSpy = vi.spyOn(modalIdeviceManager, 'refreshIdevicesMenus');
+
+      await modalIdeviceManager.removeIdevice('test-idevice');
+
+      expect(saveSpy).toHaveBeenCalledWith(['other']);
+      expect(refreshSpy).toHaveBeenCalled();
+      expect(eXeLearning.app.menus.menuIdevices.compose).toHaveBeenCalled();
+      expect(eXeLearning.app.menus.menuIdevices.behaviour).toHaveBeenCalled();
+    });
+
+    it('should refresh the bottom menu even when there are no favourites to clean', async () => {
+      vi.useRealTimers();
+      modalIdeviceManager.getUserListIdevices.mockResolvedValue(null);
+      const saveSpy = modalIdeviceManager.saveIdevices;
+      const refreshSpy = vi.spyOn(modalIdeviceManager, 'refreshIdevicesMenus');
+
+      await modalIdeviceManager.removeIdevice('test-idevice');
+
+      expect(saveSpy).not.toHaveBeenCalled();
+      expect(refreshSpy).toHaveBeenCalled();
     });
   });
 });

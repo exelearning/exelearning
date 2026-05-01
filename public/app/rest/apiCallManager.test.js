@@ -1397,8 +1397,10 @@ describe('ApiCallManager', () => {
       apiManager.endpoints.api_ode_theme_import = { path: 'http://localhost/theme/import' };
       apiManager.endpoints.api_themes_installed_delete = { path: 'http://localhost/theme/delete' };
       apiManager.endpoints.api_themes_new = { path: 'http://localhost/theme/new' };
-      apiManager.endpoints.api_idevices_upload = { path: 'http://localhost/idevices/upload' };
-      apiManager.endpoints.api_idevices_installed_delete = { path: 'http://localhost/idevices/delete' };
+      apiManager.endpoints.api_idevices_upload = { path: 'http://localhost/idevices/install' };
+      apiManager.endpoints.api_idevices_installed_delete = {
+        path: 'http://localhost/idevices/installed/{ideviceId}',
+      };
       apiManager.endpoints.api_user_set_lopd_accepted = { path: 'http://localhost/lopd' };
       apiManager.endpoints.api_user_preferences_get = { path: 'http://localhost/prefs' };
       apiManager.endpoints.api_user_preferences_save = { path: 'http://localhost/prefs/save' };
@@ -1407,7 +1409,8 @@ describe('ApiCallManager', () => {
       // postOdeImportTheme uses fetch directly (not mockFunc), tested separately
       await apiManager.deleteTheme({ id: 1 });
       await apiManager.postNewTheme({ name: 'new' });
-      await apiManager.postUploadIdevice({ data: 'idevice' });
+      const ideviceZip = new File(['idevice'], 'idevice.zip', { type: 'application/zip' });
+      await apiManager.postUploadIdevice({ filename: 'idevice.zip', file: ideviceZip });
       await apiManager.deleteIdeviceInstalled({ id: 2 });
       await apiManager.postUserSetLopdAccepted();
       await apiManager.getUserPreferences();
@@ -1416,11 +1419,78 @@ describe('ApiCallManager', () => {
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/upload', { data: 'theme' });
       expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/theme/delete', { id: 1 });
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/new', { name: 'new' });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/idevices/upload', { data: 'idevice' });
-      expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/idevices/delete', { id: 2 });
+      expect(mockFunc.fileSendPost).toHaveBeenCalledWith(
+        'http://localhost/idevices/install',
+        expect.any(FormData),
+      );
+      expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/idevices/installed/2');
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/lopd');
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/prefs');
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/prefs/save', { mode: 'dark' });
+    });
+
+    it('should normalize successful iDevice install responses for existing UI code', async () => {
+      apiManager.endpoints.api_idevices_upload = { path: 'http://localhost/idevices/install' };
+      mockFunc.fileSendPost.mockResolvedValue({
+        success: true,
+        id: 'custom-idevice',
+        title: 'Custom iDevice',
+        version: '1.0',
+        config: {
+          id: 'custom-idevice',
+          title: 'Custom iDevice',
+          category: 'Activity',
+          editionJs: ['custom-idevice.js'],
+          exportJs: ['custom-idevice.js'],
+          url: '/v1/files/perm/idevices/users/custom-idevice',
+        },
+      });
+
+      const result = await apiManager.postUploadIdevice({
+        filename: 'custom-idevice.zip',
+        file: new File(['zip'], 'custom-idevice.zip', { type: 'application/zip' }),
+      });
+
+      expect(result.responseMessage).toBe('OK');
+      expect(result.idevice).toMatchObject({
+        id: 'custom-idevice',
+        name: 'custom-idevice',
+        title: 'Custom iDevice',
+        category: 'Activity',
+        url: '/v1/files/perm/idevices/users/custom-idevice',
+        type: 'user',
+      });
+      expect(result.idevice.editionJs).toEqual(['custom-idevice.js']);
+      expect(result.idevice.exportJs).toEqual(['custom-idevice.js']);
+    });
+
+    it('should normalize failed iDevice install responses for existing UI code', async () => {
+      apiManager.endpoints.api_idevices_upload = { path: 'http://localhost/idevices/install' };
+      mockFunc.fileSendPost.mockResolvedValue({
+        success: false,
+        code: 'MISSING_ICON_FILE',
+        message: 'Package is missing custom-idevice-icon.svg.',
+      });
+
+      const result = await apiManager.postUploadIdevice({
+        filename: 'custom-idevice.zip',
+        file: new File(['zip'], 'custom-idevice.zip', { type: 'application/zip' }),
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.error).toBe('Package is missing custom-idevice-icon.svg.');
+    });
+
+    it('should normalize successful iDevice delete responses for existing UI code', async () => {
+      apiManager.endpoints.api_idevices_installed_delete = {
+        path: 'http://localhost/idevices/installed/{ideviceId}',
+      };
+      mockFunc.delete.mockResolvedValue({ success: true });
+
+      const result = await apiManager.deleteIdeviceInstalled({ id: 'custom-idevice' });
+
+      expect(result.responseMessage).toBe('OK');
+      expect(result.deleted).toEqual({ name: 'custom-idevice' });
     });
 
     it('should call structure and diagnostics endpoints', async () => {

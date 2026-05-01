@@ -3925,9 +3925,17 @@
         <source>Failed to install the new iDevice</source>
         <target>La instalación del nuevo iDevice no se pudo completar</target>
       </trans-unit>
+      <trans-unit id="F9idevOk" resname="The iDevice &quot;%s&quot; has been installed correctly.">
+        <source>The iDevice "%s" has been installed correctly.</source>
+        <target>El iDevice "%s" se ha instalado correctamente.</target>
+      </trans-unit>
       <trans-unit id="cmVmfRk" resname="Could not remove the iDevice">
         <source>Could not remove the iDevice</source>
         <target>No se pudo eliminar el iDevice</target>
+      </trans-unit>
+      <trans-unit id="U9idevOk" resname="The iDevice &quot;%s&quot; has been uninstalled correctly.">
+        <source>The iDevice "%s" has been uninstalled correctly.</source>
+        <target>El iDevice "%s" se ha desinstalado correctamente.</target>
       </trans-unit>
       <trans-unit id="Jp3BFhF" resname="Export">
         <source>Export</source>
@@ -4211,7 +4219,7 @@
       </trans-unit>
       <trans-unit id="32aThvc" resname="iDevice manager">
         <source>iDevice manager</source>
-        <target>Administrador de iDevices</target>
+        <target>Gestionar iDevices</target>
       </trans-unit>
       <trans-unit id="fMxz8c4" resname="Search iDevices">
         <source>Search iDevices</source>
