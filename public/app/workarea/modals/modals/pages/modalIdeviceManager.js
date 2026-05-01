@@ -425,7 +425,7 @@ export default class ModalIdeviceManager extends Modal {
             'align-items-center',
             'justify-content-start'
         );
-        buttonImportIdevice.innerHTML = _('Import iDevice');
+        buttonImportIdevice.innerHTML = _('Install iDevice');
 
         const icon = document.createElement('span');
         icon.classList.add('small-icon', 'import-icon');

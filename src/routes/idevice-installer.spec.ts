@@ -42,13 +42,14 @@ const createApp = (options: {
     canInstall?: () => boolean;
     installResult?: InstallOutcome;
     uninstallResult?: UninstallResult;
-    onInstall?: (buffer: Buffer, confirmOverwrite: boolean) => void;
-    onUninstall?: (ideviceId: string) => void;
+    currentUser?: { id: number } | null;
+    onInstall?: (buffer: Buffer, confirmOverwrite: boolean, userId: number | string | undefined) => void;
+    onUninstall?: (ideviceId: string, userId: number | string | undefined) => void;
     appVersion?: () => string;
 }) => {
     const installer: IdeviceInstallerService = {
         installFromBuffer: async (buffer, installOptions = {}) => {
-            options.onInstall?.(buffer, !!installOptions.confirmOverwrite);
+            options.onInstall?.(buffer, !!installOptions.confirmOverwrite, installOptions.userId);
             return (
                 options.installResult ?? {
                     success: true,
@@ -62,8 +63,8 @@ const createApp = (options: {
                 }
             );
         },
-        uninstall: async ideviceId => {
-            options.onUninstall?.(ideviceId);
+        uninstall: async (ideviceId, uninstallOptions = {}) => {
+            options.onUninstall?.(ideviceId, uninstallOptions.userId);
             return options.uninstallResult ?? { success: true, backupPath: 'backup/custom-idevice' };
         },
     };
@@ -73,6 +74,7 @@ const createApp = (options: {
             installer,
             canInstall: options.canInstall ?? (() => true),
             appVersion: options.appVersion ?? (() => 'v1.2.3'),
+            currentUser: options.currentUser === undefined ? { id: 42 } : options.currentUser,
         }),
     );
 };
@@ -101,10 +103,12 @@ describe('iDevice installer routes', () => {
         it('passes uploaded ZIP bytes and confirmOverwrite to the installer', async () => {
             let receivedBuffer: Buffer | null = null;
             let receivedConfirmOverwrite = false;
+            let receivedUserId: number | string | undefined;
             const app = createApp({
-                onInstall: (buffer, confirmOverwrite) => {
+                onInstall: (buffer, confirmOverwrite, userId) => {
                     receivedBuffer = buffer;
                     receivedConfirmOverwrite = confirmOverwrite;
+                    receivedUserId = userId;
                 },
             });
             const formData = new FormData();
@@ -121,13 +125,30 @@ describe('iDevice installer routes', () => {
             expect(res.status).toBe(200);
             expect(receivedBuffer?.toString()).toBe('zip-data');
             expect(receivedConfirmOverwrite).toBe(true);
+            expect(receivedUserId).toBe(42);
             const body = await res.json();
             expect(body).toMatchObject({
                 success: true,
                 id: 'custom-idevice',
             });
-            expect(body.config.url).toBe('/v1.2.3/files/perm/idevices/users/custom-idevice');
+            expect(body.config.url).toBe('/v1.2.3/files/perm/idevices/users/42/custom-idevice');
             expect(body.config.name).toBe('custom-idevice');
+        });
+
+        it('returns 401 when no authenticated user is available', async () => {
+            const app = createApp({ currentUser: null });
+            const formData = new FormData();
+            formData.append('file', new File(['zip-data'], 'custom.idevice.zip'));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/idevices/install', {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(401);
+            expect(await res.json()).toMatchObject({ success: false, code: 'AUTH_REQUIRED' });
         });
 
         it('returns 400 when no file is provided', async () => {
@@ -192,9 +213,11 @@ describe('iDevice installer routes', () => {
 
         it('passes the route id to the installer', async () => {
             let receivedId = '';
+            let receivedUserId: number | string | undefined;
             const app = createApp({
-                onUninstall: ideviceId => {
+                onUninstall: (ideviceId, userId) => {
                     receivedId = ideviceId;
+                    receivedUserId = userId;
                 },
             });
 
@@ -206,7 +229,21 @@ describe('iDevice installer routes', () => {
 
             expect(res.status).toBe(200);
             expect(receivedId).toBe('custom-idevice');
+            expect(receivedUserId).toBe(42);
             expect(await res.json()).toMatchObject({ success: true });
+        });
+
+        it('returns 401 when uninstalling without an authenticated user', async () => {
+            const app = createApp({ currentUser: null });
+
+            const res = await app.handle(
+                new Request('http://localhost/api/idevices/installed/custom-idevice', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(401);
+            expect(await res.json()).toMatchObject({ success: false, code: 'AUTH_REQUIRED' });
         });
 
         it('maps missing user iDevices to 404', async () => {

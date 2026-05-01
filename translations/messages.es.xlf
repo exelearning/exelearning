@@ -4219,7 +4219,7 @@
       </trans-unit>
       <trans-unit id="32aThvc" resname="iDevice manager">
         <source>iDevice manager</source>
-        <target>Gestionar iDevices</target>
+        <target>Gestor de iDevices</target>
       </trans-unit>
       <trans-unit id="fMxz8c4" resname="Search iDevices">
         <source>Search iDevices</source>
@@ -4233,9 +4233,9 @@
         <source>Filter items</source>
         <target>Filtrar elementos</target>
       </trans-unit>
-      <trans-unit id="yIQeeyS" resname="Import iDevice">
-        <source>Import iDevice</source>
-        <target>Importar iDevices</target>
+      <trans-unit id="yIQeeyS" resname="Install iDevice">
+        <source>Install iDevice</source>
+        <target>Instalar iDevice</target>
       </trans-unit>
       <trans-unit id="dRNHWgg" resname="Activate">
         <source>Activate</source>

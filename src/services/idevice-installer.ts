@@ -79,9 +79,14 @@ export type InstallErrorCode =
 
 export interface InstallOptions {
     confirmOverwrite?: boolean;
+    userId?: number | string;
     maxZipBytes?: number;
     maxUncompressedBytes?: number;
     maxFiles?: number;
+}
+
+export interface UserIdeviceScopeOptions {
+    userId?: number | string;
 }
 
 export interface InstallSuccess {
@@ -133,7 +138,7 @@ export interface IdeviceInstallerDeps {
 
 export interface IdeviceInstallerService {
     installFromBuffer: (zipBuffer: Buffer, options?: InstallOptions) => Promise<InstallOutcome>;
-    uninstall: (ideviceId: string) => Promise<UninstallResult>;
+    uninstall: (ideviceId: string, options?: UserIdeviceScopeOptions) => Promise<UninstallResult>;
 }
 
 // ============================================================================
@@ -164,7 +169,16 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
     const randomId = deps.randomId ?? (() => crypto.randomUUID());
     const baseDir = deps.baseIdevicesPath ?? path.join(getCwd(), IDEVICES_BASE_PATH);
     const usersDir = deps.userIdevicesPath ?? path.join(getCwd(), IDEVICES_USERS_PATH);
-    const backupsDir = path.join(usersDir, '.backups');
+    const normalizeUserDirName = (userId: number | string | undefined): string | null => {
+        if (userId === undefined || userId === null || userId === '') return null;
+        const userDirName = String(userId);
+        return /^\d+$/.test(userDirName) && fileHelper.isPathSafe(usersDir, userDirName) ? userDirName : null;
+    };
+
+    const getScopedUsersDir = (userId: number | string | undefined): string => {
+        const userDirName = normalizeUserDirName(userId);
+        return userDirName ? path.join(usersDir, userDirName) : usersDir;
+    };
 
     const fail = (code: InstallErrorCode, message: string, details?: Record<string, unknown>): InstallFailure => ({
         success: false,
@@ -277,7 +291,7 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
         return false;
     };
 
-    const pruneOldBackups = async (id: string, keep: number): Promise<void> => {
+    const pruneOldBackups = async (id: string, keep: number, backupsDir: string): Promise<void> => {
         if (!(await fs.pathExists(backupsDir))) return;
         const entries = await fs.readdir(backupsDir);
         const matching = entries.filter(name => name.startsWith(`${id}_`)).sort();
@@ -287,8 +301,9 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
         }
     };
 
-    const backupExisting = async (id: string): Promise<string> => {
-        const target = path.join(usersDir, id);
+    const backupExisting = async (id: string, userInstallDir: string): Promise<string> => {
+        const target = path.join(userInstallDir, id);
+        const backupsDir = path.join(userInstallDir, '.backups');
         const stamp = formatTimestamp(now());
         const backupPath = path.join(backupsDir, `${id}_${stamp}`);
         await fs.ensureDir(backupsDir);
@@ -296,8 +311,8 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
         return backupPath;
     };
 
-    const restoreBackup = async (id: string, backupPath: string): Promise<void> => {
-        const target = path.join(usersDir, id);
+    const restoreBackup = async (id: string, backupPath: string, userInstallDir: string): Promise<void> => {
+        const target = path.join(userInstallDir, id);
         await fs.remove(target).catch(() => {});
         await fs.move(backupPath, target, { overwrite: true });
     };
@@ -309,6 +324,11 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
         const maxZipBytes = options.maxZipBytes ?? DEFAULT_MAX_ZIP_BYTES;
         const maxUncompressedBytes = options.maxUncompressedBytes ?? DEFAULT_MAX_UNCOMPRESSED_BYTES;
         const maxFiles = options.maxFiles ?? DEFAULT_MAX_FILES;
+        const userInstallDir = getScopedUsersDir(options.userId);
+
+        if (options.userId !== undefined && normalizeUserDirName(options.userId) === null) {
+            return fail('INVALID_NAME', `Unsafe user id: "${options.userId}".`);
+        }
 
         if (!zipBuffer || zipBuffer.length === 0) {
             return fail('INVALID_ZIP', 'Empty ZIP buffer.');
@@ -459,9 +479,9 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
                 );
             }
 
-            // 9. Conflict detection against base/ and users/.
+            // 9. Conflict detection against base/ and the current user's install dir.
             const baseInstalled = scan(baseDir);
-            const userInstalled = scan(usersDir);
+            const userInstalled = scan(userInstallDir);
             if (baseInstalled.some(d => d.id === id)) {
                 return fail(
                     'IDEVICE_OVERLAPS_BUILTIN',
@@ -485,31 +505,31 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
             if (existingUser && !options.confirmOverwrite) {
                 return fail(
                     'IDEVICE_ALREADY_EXISTS_NEEDS_CONFIRM',
-                    `iDevice "${id}" already exists in users/. Re-send with confirmOverwrite=true to update.`,
+                    `iDevice "${id}" already exists in the user's iDevices folder. Re-send with confirmOverwrite=true to update.`,
                     { id, existingVersion: existingUser.version },
                 );
             }
 
             // 10. Backup if overwriting.
-            await fs.ensureDir(usersDir);
-            const finalDest = path.join(usersDir, id);
+            await fs.ensureDir(userInstallDir);
+            const finalDest = path.join(userInstallDir, id);
 
             // Final safety check (should never trigger because id is regex-validated).
-            if (!fileHelper.isPathSafe(usersDir, id)) {
+            if (!fileHelper.isPathSafe(userInstallDir, id)) {
                 return fail('INVALID_NAME', `Unsafe iDevice id: "${id}".`);
             }
 
             if (existingUser) {
-                backupPath = await backupExisting(id);
+                backupPath = await backupExisting(id, userInstallDir);
                 movedExisting = true;
             }
 
-            // 11. Copy temp -> users/{id}.
+            // 11. Copy temp -> users/{userId}/{id} when scoped, or users/{id} for fallback/local use.
             await fs.copy(pkgRoot, finalDest, { overwrite: true, errorOnExist: false });
             installedId = id;
 
             // 12. Prune old backups.
-            await pruneOldBackups(id, DEFAULT_BACKUPS_TO_KEEP);
+            await pruneOldBackups(id, DEFAULT_BACKUPS_TO_KEEP, path.join(userInstallDir, '.backups'));
 
             // 13. Re-parse from the final destination so `url`, `editionJs`,
             // `exportJs`, etc. reflect the on-disk install (the temp pkgRoot
@@ -531,7 +551,7 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
             // Roll back if we already moved the previous version aside.
             if (movedExisting && backupPath && installedId) {
                 try {
-                    await restoreBackup(installedId, backupPath);
+                    await restoreBackup(installedId, backupPath, userInstallDir);
                 } catch (rollbackErr) {
                     const message = rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr);
                     return fail('ROLLBACK_ERROR', `Install failed and rollback failed: ${message}`);
@@ -547,15 +567,19 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
     // ========================================================================
     // uninstall
     // ========================================================================
-    const uninstall = async (ideviceId: string): Promise<UninstallResult> => {
+    const uninstall = async (ideviceId: string, options: UserIdeviceScopeOptions = {}): Promise<UninstallResult> => {
         if (!ID_REGEX.test(ideviceId)) {
             return { success: false, code: 'NOT_FOUND', message: `Invalid iDevice id: "${ideviceId}".` };
+        }
+        const userInstallDir = getScopedUsersDir(options.userId);
+        if (options.userId !== undefined && normalizeUserDirName(options.userId) === null) {
+            return { success: false, code: 'NOT_FOUND', message: `Unsafe user id: "${options.userId}".` };
         }
         // Built-in iDevices cannot be uninstalled.
         const builtin = path.join(baseDir, ideviceId);
         if (await fs.pathExists(builtin)) {
             // Only block if it does NOT also exist in users (would be impossible normally).
-            const userPath = path.join(usersDir, ideviceId);
+            const userPath = path.join(userInstallDir, ideviceId);
             if (!(await fs.pathExists(userPath))) {
                 return {
                     success: false,
@@ -564,7 +588,7 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
                 };
             }
         }
-        const target = path.join(usersDir, ideviceId);
+        const target = path.join(userInstallDir, ideviceId);
         if (!(await fs.pathExists(target))) {
             return { success: false, code: 'NOT_FOUND', message: `iDevice "${ideviceId}" is not installed.` };
         }

@@ -6,7 +6,9 @@
  */
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
-import { idevicesRoutes } from './idevices';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+import { createIdevicesRoutes, idevicesRoutes } from './idevices';
 
 describe('iDevices Routes', () => {
     let app: Elysia;
@@ -142,6 +144,59 @@ describe('iDevices Routes', () => {
 
             // URL should start with /v followed by version number (e.g., /v0.0.0-alpha/files/perm/idevices/...)
             expect(idevice.url).toMatch(/^\/v[\d.]+[^/]*\/files\/perm\/idevices\//);
+        });
+
+        it('should list only user iDevices from the authenticated user folder', async () => {
+            const runDir = path.join(process.cwd(), 'test', 'temp', `idevices-route-${crypto.randomUUID()}`);
+            const baseDir = path.join(runDir, 'base');
+            const usersDir = path.join(runDir, 'users');
+            await fs.ensureDir(baseDir);
+            await fs.ensureDir(usersDir);
+
+            const makeConfig = (id: string, title: string) => `<?xml version="1.0"?>
+<idevice>
+    <name>${id}</name>
+    <title>${title}</title>
+    <category>Activity</category>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <export-object>$${id.replace(/-/g, '')}</export-object>
+    <icon><name>${id}-icon</name><url>${id}-icon.svg</url><type>img</type></icon>
+</idevice>`;
+
+            try {
+                for (const [userId, ideviceId] of [
+                    ['42', 'current-user-idevice'],
+                    ['84', 'other-user-idevice'],
+                ]) {
+                    const ideviceDir = path.join(usersDir, userId, ideviceId);
+                    await fs.ensureDir(path.join(ideviceDir, 'edition'));
+                    await fs.ensureDir(path.join(ideviceDir, 'export'));
+                    await fs.writeFile(path.join(ideviceDir, 'config.xml'), makeConfig(ideviceId, ideviceId));
+                    await fs.writeFile(path.join(ideviceDir, 'edition', `${ideviceId}.js`), 'var $edition = {};');
+                    await fs.writeFile(path.join(ideviceDir, 'export', `${ideviceId}.js`), 'var $export = {};');
+                }
+
+                const scopedApp = new Elysia().use(
+                    createIdevicesRoutes({
+                        baseIdevicesPath: baseDir,
+                        userIdevicesPath: usersDir,
+                        appVersion: () => 'vtest',
+                        currentUser: { id: 42 },
+                    }),
+                );
+
+                const res = await scopedApp.handle(new Request('http://localhost/api/idevices/installed'));
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                const userIds = body.idevices.filter((i: any) => i.type === 'user').map((i: any) => i.id);
+                expect(userIds).toEqual(['current-user-idevice']);
+                expect(body.idevices[0].url).toContain('/files/perm/idevices/users/42/current-user-idevice');
+            } finally {
+                await fs.remove(runDir);
+            }
         });
     });
 

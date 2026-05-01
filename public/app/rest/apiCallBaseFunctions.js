@@ -197,9 +197,8 @@ export default class ApiCallBaseFunctions {
         if (waiting) this.addWaitingPetition();
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
-        let response = {};
         try {
-            response = await $.ajax({
+            return await $.ajax({
                 url: url,
                 method: method,
                 data: data,
@@ -220,11 +219,9 @@ export default class ApiCallBaseFunctions {
                 this.handleAccessError(err.status, err.responseText);
             }
             throw err;
+        } finally {
+            this.scheduleRemoveWaitingPetition(waiting);
         }
-        setTimeout(() => {
-            this.removeWaitingPetition();
-        }, 100);
-        return response;
     }
 
     /**
@@ -240,9 +237,8 @@ export default class ApiCallBaseFunctions {
         if (waiting) this.addWaitingPetition();
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
-        let response = {};
         try {
-            response = await $.ajax({
+            return await $.ajax({
                 url: url,
                 method: method,
                 data: JSON.stringify(data),
@@ -264,11 +260,9 @@ export default class ApiCallBaseFunctions {
                 this.handleAccessError(err.status, err.responseText);
             }
             throw err;
+        } finally {
+            this.scheduleRemoveWaitingPetition(waiting);
         }
-        setTimeout(() => {
-            this.removeWaitingPetition();
-        }, 100);
-        return response;
     }
 
     /**
@@ -282,9 +276,8 @@ export default class ApiCallBaseFunctions {
         if (waiting) this.addWaitingPetition();
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
-        let response = {};
         try {
-            response = await $.ajax({
+            return await $.ajax({
                 url: url,
                 method: method,
                 data: data,
@@ -308,11 +301,9 @@ export default class ApiCallBaseFunctions {
                 this.handleAccessError(err.status, err.responseText);
             }
             throw err;
+        } finally {
+            this.scheduleRemoveWaitingPetition(waiting);
         }
-        setTimeout(() => {
-            this.removeWaitingPetition();
-        }, 100);
-        return response;
     }
 
     /**
@@ -322,23 +313,29 @@ export default class ApiCallBaseFunctions {
      */
     async getText(url, waiting = true) {
         if (waiting) this.addWaitingPetition();
-        let response = {};
-        response = await $.ajax({
-            url: url,
-            dataType: 'text',
-            mimeType: 'text/plain',
-            async: false,
-            success: (response) => {
-                return response;
-            },
-            error: function (XMLHttpRequest, textStatus, errorThrown) {
-                return { error: errorThrown };
-            },
-        });
+        try {
+            return await $.ajax({
+                url: url,
+                dataType: 'text',
+                mimeType: 'text/plain',
+                async: false,
+                success: (response) => {
+                    return response;
+                },
+                error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    return { error: errorThrown };
+                },
+            });
+        } finally {
+            this.scheduleRemoveWaitingPetition(waiting);
+        }
+    }
+
+    scheduleRemoveWaitingPetition(waiting = true) {
+        if (!waiting) return;
         setTimeout(() => {
             this.removeWaitingPetition();
         }, 100);
-        return response;
     }
 
     /**

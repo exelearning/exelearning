@@ -919,6 +919,7 @@ describe('ModalIdeviceManager', () => {
       eXeLearning.config.userIdevices = false;
       const result = modalIdeviceManager.makeElementButtonImportIdevice();
       expect(result.tagName).toBe('BUTTON');
+      expect(result.textContent).toContain('Install iDevice');
     });
 
     it('should create button if userIdevices is true', () => {

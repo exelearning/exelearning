@@ -378,6 +378,8 @@ describe('ApiCallBaseFunctions', () => {
       });
 
       expect(api.handleAccessError).toHaveBeenCalledWith(401, 'Unauthorized');
+      vi.advanceTimersByTime(100);
+      expect(mockBody.classList.remove).toHaveBeenCalledWith('ajax-petition-on');
     });
 
     it('returns response on success', async () => {
@@ -439,6 +441,19 @@ describe('ApiCallBaseFunctions', () => {
           type: 'POST',
         })
       );
+    });
+
+    it('removes waiting class after upload errors', async () => {
+      const api = new ApiCallBaseFunctions();
+      const formData = new FormData();
+      mockAjax.mockRejectedValue({ statusText: 'Upload failed' });
+
+      await expect(api.doFileSendAjax('/api/upload', 'POST', formData, true)).rejects.toEqual({
+        statusText: 'Upload failed',
+      });
+      vi.advanceTimersByTime(100);
+
+      expect(mockBody.classList.remove).toHaveBeenCalledWith('ajax-petition-on');
     });
   });
 

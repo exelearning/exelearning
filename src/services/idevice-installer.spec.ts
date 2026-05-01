@@ -99,6 +99,17 @@ describe('IdeviceInstallerService', () => {
             expect(result.config.url).toBe(path.join(usersDir, 'my-test-idevice'));
         });
 
+        it('installs a valid iDevice into the scoped user directory', async () => {
+            const zip = buildZip(validPackageFiles());
+            const result = await createService().installFromBuffer(zip, { userId: 42 });
+
+            expect(result.success).toBe(true);
+            if (!result.success) return;
+            expect(await fs.pathExists(path.join(usersDir, '42', 'my-test-idevice', 'config.xml'))).toBe(true);
+            expect(await fs.pathExists(path.join(usersDir, 'my-test-idevice', 'config.xml'))).toBe(false);
+            expect(result.config.url).toBe(path.join(usersDir, '42', 'my-test-idevice'));
+        });
+
         it('accepts a ZIP without a top-level folder', async () => {
             const zip = buildZip({
                 'config.xml': validConfigXml(),
@@ -447,6 +458,16 @@ describe('IdeviceInstallerService', () => {
             if (!result.success) expect(result.code).toBe('IDEVICE_ALREADY_EXISTS_NEEDS_CONFIRM');
         });
 
+        it('does not treat another user installation as an overwrite', async () => {
+            await createService().installFromBuffer(buildZip(validPackageFiles()), { userId: 42 });
+
+            const result = await createService().installFromBuffer(buildZip(validPackageFiles()), { userId: 84 });
+
+            expect(result.success).toBe(true);
+            expect(await fs.pathExists(path.join(usersDir, '42', 'my-test-idevice', 'config.xml'))).toBe(true);
+            expect(await fs.pathExists(path.join(usersDir, '84', 'my-test-idevice', 'config.xml'))).toBe(true);
+        });
+
         it('overwrites and creates a backup when confirmOverwrite=true', async () => {
             await createService().installFromBuffer(buildZip(validPackageFiles()));
             const result = await createService().installFromBuffer(buildZip(validPackageFiles({ version: '2.0' })), {
@@ -504,6 +525,17 @@ describe('IdeviceInstallerService', () => {
             const result = await createService().uninstall('my-test-idevice');
             expect(result.success).toBe(true);
             expect(await fs.pathExists(path.join(usersDir, 'my-test-idevice'))).toBe(false);
+        });
+
+        it('removes only the scoped user iDevice folder', async () => {
+            await createService().installFromBuffer(buildZip(validPackageFiles()), { userId: 42 });
+            await createService().installFromBuffer(buildZip(validPackageFiles()), { userId: 84 });
+
+            const result = await createService().uninstall('my-test-idevice', { userId: 42 });
+
+            expect(result.success).toBe(true);
+            expect(await fs.pathExists(path.join(usersDir, '42', 'my-test-idevice'))).toBe(false);
+            expect(await fs.pathExists(path.join(usersDir, '84', 'my-test-idevice'))).toBe(true);
         });
     });
 });

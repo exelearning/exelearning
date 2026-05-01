@@ -3,12 +3,15 @@
  * Handles installed iDevices listing and management
  */
 import { Elysia } from 'elysia';
+import { cookie } from '@elysiajs/cookie';
+import { jwt } from '@elysiajs/jwt';
 import * as fs from 'fs';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import { getFilesDir } from '../services/file-helper';
 import { getAppVersion } from '../utils/version';
 import { getBasePath } from '../utils/basepath.util';
+import type { JwtPayload } from './auth';
 import type { IdeviceFileUploadRequest } from './types/request-payloads';
 
 /**
@@ -34,6 +37,27 @@ interface FileWithName extends Blob {
 // Base path for iDevices
 export const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
 export const IDEVICES_USERS_PATH = 'public/files/perm/idevices/users';
+
+interface CurrentUser {
+    id: number;
+}
+
+interface JwtVerifier {
+    verify: (token: string) => Promise<JwtPayload | false>;
+}
+
+interface CookieStore {
+    auth?: { value?: string };
+}
+
+type CurrentUserResolver = () => CurrentUser | null | Promise<CurrentUser | null>;
+
+export interface IdevicesRouteDeps {
+    baseIdevicesPath?: string;
+    userIdevicesPath?: string;
+    appVersion?: () => string;
+    currentUser?: CurrentUser | null | CurrentUserResolver;
+}
 
 export interface IdeviceConfig {
     id: string;
@@ -245,348 +269,393 @@ export function scanIdevices(basePath: string): IdeviceConfig[] {
     return idevices;
 }
 
+const getJwtSecret = (): string => {
+    return process.env.API_JWT_SECRET || process.env.JWT_SECRET || process.env.APP_SECRET || 'dev_secret_change_me';
+};
+
+const userDirNameFromId = (userId: number | string | undefined): string | null => {
+    if (userId === undefined || userId === null || userId === '') return null;
+    const userDirName = String(userId);
+    return /^\d+$/.test(userDirName) ? userDirName : null;
+};
+
 /**
  * iDevices routes
  */
-export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
-    // GET /api/idevices/installed - Get list of installed iDevices
-    .get('/api/idevices/installed', () => {
-        const baseIdevices = scanIdevices(IDEVICES_BASE_PATH);
-        const userIdevices = scanIdevices(IDEVICES_USERS_PATH);
+export function createIdevicesRoutes(deps: IdevicesRouteDeps = {}) {
+    const baseIdevicesPath = deps.baseIdevicesPath ?? IDEVICES_BASE_PATH;
+    const userIdevicesPath = deps.userIdevicesPath ?? IDEVICES_USERS_PATH;
+    const appVersion = deps.appVersion ?? getAppVersion;
 
-        // Merge user iDevices with base, user takes priority. The `type` field
-        // is required by the frontend's modalIdeviceManager to split System vs.
-        // User tabs (matches eXeLearning.config.ideviceTypeBase/User).
-        const ideviceMap = new Map<string, IdeviceConfig & { type: 'base' | 'user' }>();
-        const version = getAppVersion();
+    const resolveCurrentUser = async (
+        jwtVerifier: JwtVerifier,
+        cookieStore: CookieStore,
+    ): Promise<CurrentUser | null> => {
+        if (typeof deps.currentUser === 'function') return deps.currentUser();
+        if (deps.currentUser !== undefined) return deps.currentUser;
 
-        for (const idevice of baseIdevices) {
-            ideviceMap.set(idevice.id, {
-                ...idevice,
-                url: `/${version}/files/perm/idevices/base/${idevice.id}`,
-                type: 'base',
-            });
-        }
+        const token = cookieStore.auth?.value;
+        if (!token) return null;
+        const payload = (await jwtVerifier.verify(token)) as JwtPayload | false;
+        if (!payload || !payload.sub) return null;
+        return { id: payload.sub };
+    };
 
-        for (const idevice of userIdevices) {
-            ideviceMap.set(idevice.id, {
-                ...idevice,
-                url: `/${version}/files/perm/idevices/users/${idevice.id}`,
-                type: 'user',
-            });
-        }
+    return (
+        new Elysia({ name: 'idevices-routes' })
+            .use(cookie())
+            .use(jwt({ name: 'jwt', secret: getJwtSecret(), exp: '7d' }))
+            // GET /api/idevices/installed - Get list of installed iDevices
+            .get('/api/idevices/installed', async ({ jwt, cookie }) => {
+                const baseIdevices = scanIdevices(baseIdevicesPath);
+                const currentUser = await resolveCurrentUser(jwt, cookie);
+                const userDirName = userDirNameFromId(currentUser?.id);
+                const scopedUserIdevicesPath = userDirName ? path.join(userIdevicesPath, userDirName) : null;
+                const userIdevices = scopedUserIdevicesPath ? scanIdevices(scopedUserIdevicesPath) : [];
 
-        const result = Array.from(ideviceMap.values());
+                // Merge user iDevices with base, user takes priority. The `type` field
+                // is required by the frontend's modalIdeviceManager to split System vs.
+                // User tabs (matches eXeLearning.config.ideviceTypeBase/User).
+                const ideviceMap = new Map<string, IdeviceConfig & { type: 'base' | 'user' }>();
+                const version = appVersion();
 
-        // Sort by category then title
-        result.sort((a, b) => {
-            if (a.category !== b.category) {
-                return a.category.localeCompare(b.category);
-            }
-            return a.title.localeCompare(b.title);
-        });
+                for (const idevice of baseIdevices) {
+                    ideviceMap.set(idevice.id, {
+                        ...idevice,
+                        url: `/${version}/files/perm/idevices/base/${idevice.id}`,
+                        type: 'base',
+                    });
+                }
 
-        // Frontend expects { idevices: [...] } format with 'name' property
-        return {
-            idevices: result.map(idevice => ({
-                ...idevice,
-                name: idevice.id, // Frontend uses 'name' to identify iDevices
-            })),
-        };
-    })
+                for (const idevice of userIdevices) {
+                    ideviceMap.set(idevice.id, {
+                        ...idevice,
+                        url: `/${version}/files/perm/idevices/users/${userDirName}/${idevice.id}`,
+                        type: 'user',
+                    });
+                }
 
-    // GET /api/idevices/installed/:ideviceId - Get specific iDevice
-    .get('/api/idevices/installed/:ideviceId', ({ params, set }) => {
-        const { ideviceId } = params;
+                const result = Array.from(ideviceMap.values());
 
-        // Check user iDevices first
-        let configPath = path.join(IDEVICES_USERS_PATH, ideviceId, 'config.xml');
-        let basePath = path.join(IDEVICES_USERS_PATH, ideviceId);
+                // Sort by category then title
+                result.sort((a, b) => {
+                    if (a.category !== b.category) {
+                        return a.category.localeCompare(b.category);
+                    }
+                    return a.title.localeCompare(b.title);
+                });
 
-        if (!fs.existsSync(configPath)) {
-            // Fall back to base iDevices
-            configPath = path.join(IDEVICES_BASE_PATH, ideviceId, 'config.xml');
-            basePath = path.join(IDEVICES_BASE_PATH, ideviceId);
-        }
+                // Frontend expects { idevices: [...] } format with 'name' property
+                return {
+                    idevices: result.map(idevice => ({
+                        ...idevice,
+                        name: idevice.id, // Frontend uses 'name' to identify iDevices
+                    })),
+                };
+            })
 
-        if (!fs.existsSync(configPath)) {
-            set.status = 404;
-            return { error: 'Not Found', message: `iDevice ${ideviceId} not found` };
-        }
+            // GET /api/idevices/installed/:ideviceId - Get specific iDevice
+            .get('/api/idevices/installed/:ideviceId', async ({ params, set, jwt, cookie }) => {
+                const { ideviceId } = params;
+                const currentUser = await resolveCurrentUser(jwt, cookie);
+                const userDirName = userDirNameFromId(currentUser?.id);
 
-        const xmlContent = fs.readFileSync(configPath, 'utf-8');
-        const config = parseIdeviceConfig(xmlContent, ideviceId, basePath);
+                // Check user iDevices first
+                let configPath = userDirName
+                    ? path.join(userIdevicesPath, userDirName, ideviceId, 'config.xml')
+                    : path.join(userIdevicesPath, ideviceId, 'config.xml');
+                let basePath = userDirName
+                    ? path.join(userIdevicesPath, userDirName, ideviceId)
+                    : path.join(userIdevicesPath, ideviceId);
 
-        if (!config) {
-            set.status = 500;
-            return { error: 'Parse Error', message: 'Failed to parse iDevice config' };
-        }
+                if (!fs.existsSync(configPath)) {
+                    // Fall back to base iDevices
+                    configPath = path.join(baseIdevicesPath, ideviceId, 'config.xml');
+                    basePath = path.join(baseIdevicesPath, ideviceId);
+                }
 
-        return config;
-    })
+                if (!fs.existsSync(configPath)) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: `iDevice ${ideviceId} not found` };
+                }
 
-    // GET /api/idevices/download-file-resources - Download iDevice/theme file resources
-    .get('/api/idevices/download-file-resources', async ({ query, set }) => {
-        const resource = query.resource as string;
+                const xmlContent = fs.readFileSync(configPath, 'utf-8');
+                const config = parseIdeviceConfig(xmlContent, ideviceId, basePath);
 
-        if (!resource) {
-            set.status = 400;
-            return { error: 'Bad Request', message: 'resource parameter required' };
-        }
+                if (!config) {
+                    set.status = 500;
+                    return { error: 'Parse Error', message: 'Failed to parse iDevice config' };
+                }
 
-        // Security: prevent path traversal
-        const cleanResource = resource.replace(/\.\./g, '').replace(/^\/+/, '');
-        // Note: User themes are stored client-side in IndexedDB, not on server
-        const filePath = path.join('public/files', cleanResource);
-        const resolvedPath = path.resolve(filePath);
-        const basePath = path.resolve('public/files');
+                return config;
+            })
 
-        // Additional security check
-        if (!resolvedPath.startsWith(basePath)) {
-            set.status = 403;
-            return { error: 'Forbidden', message: 'Access denied' };
-        }
+            // GET /api/idevices/download-file-resources - Download iDevice/theme file resources
+            .get('/api/idevices/download-file-resources', async ({ query, set }) => {
+                const resource = query.resource as string;
 
-        if (!fs.existsSync(filePath)) {
-            set.status = 404;
-            return { error: 'Not Found', message: `Resource not found: ${cleanResource}` };
-        }
+                if (!resource) {
+                    set.status = 400;
+                    return { error: 'Bad Request', message: 'resource parameter required' };
+                }
 
-        const ext = path.extname(filePath).toLowerCase();
+                // Security: prevent path traversal
+                const cleanResource = resource.replace(/\.\./g, '').replace(/^\/+/, '');
+                // Note: User themes are stored client-side in IndexedDB, not on server
+                const filePath = path.join('public/files', cleanResource);
+                const resolvedPath = path.resolve(filePath);
+                const basePath = path.resolve('public/files');
 
-        // Set content type based on extension
-        const mimeTypes: Record<string, string> = {
-            '.css': 'text/css',
-            '.js': 'application/javascript',
-            '.json': 'application/json',
-            '.html': 'text/html',
-            '.htm': 'text/html',
-            '.xml': 'application/xml',
-            '.svg': 'image/svg+xml',
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.gif': 'image/gif',
-            '.ico': 'image/x-icon',
-            '.woff': 'font/woff',
-            '.woff2': 'font/woff2',
-            '.ttf': 'font/ttf',
-            '.eot': 'application/vnd.ms-fontobject',
-        };
+                // Additional security check
+                if (!resolvedPath.startsWith(basePath)) {
+                    set.status = 403;
+                    return { error: 'Forbidden', message: 'Access denied' };
+                }
 
-        set.headers['Content-Type'] = mimeTypes[ext] || 'application/octet-stream';
+                if (!fs.existsSync(filePath)) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: `Resource not found: ${cleanResource}` };
+                }
 
-        // For CSS files, rewrite relative URLs to absolute API endpoint URLs
-        if (ext === '.css') {
-            const content = fs.readFileSync(filePath, 'utf-8');
-            return rewriteCSSUrls(content, cleanResource);
-        }
+                const ext = path.extname(filePath).toLowerCase();
 
-        return fs.readFileSync(filePath);
-    })
-
-    // POST /api/idevices/upload/file/resources - Upload file resource (base64)
-    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request }) => {
-        // Debug: log what we're receiving
-        console.log('[idevices/upload] Content-Type:', request.headers.get('content-type'));
-        console.log('[idevices/upload] Body type:', typeof body);
-        const bodyObj = body as Record<string, unknown> | null;
-        console.log('[idevices/upload] Body keys:', bodyObj ? Object.keys(bodyObj) : 'null');
-
-        const data = body as IdeviceFileUploadRequest;
-        const odeIdeviceId = data?.odeIdeviceId;
-        // Support both 'file' (legacy) and 'base64String' fields for base64 data
-        const dataRecord = data as Record<string, unknown>;
-        const fileFieldValue = dataRecord?.file;
-        const fileAsString = typeof fileFieldValue === 'string' ? fileFieldValue : undefined;
-        const base64String = data?.base64String || fileAsString;
-        const filename = data?.filename;
-        // Support both boolean and string 'true' for createThumbnail
-        const createThumbnailRaw = data?.createThumbnail;
-        const createThumbnail = createThumbnailRaw === true || createThumbnailRaw === 'true';
-
-        // Validate required parameters
-        if (!odeIdeviceId || !base64String || !filename) {
-            set.status = 400;
-            console.log('[idevices/upload] Missing params:', {
-                odeIdeviceId: !!odeIdeviceId,
-                file: !!base64String,
-                filename: !!filename,
-            });
-            return {
-                code: 'error: invalid data',
-                details: { odeIdeviceId: !!odeIdeviceId, file: !!base64String, filename: !!filename },
-            };
-        }
-
-        // Get session ID from cookie or body
-        // In Yjs mode, we use projectId cookie instead of odeSessionId
-        let odeSessionId = data.odeSessionId || cookie.odeSessionId?.value || cookie.projectId?.value;
-
-        // If no session ID, use a default based on the idevice ID
-        // This allows uploads to work even without a traditional session
-        if (!odeSessionId) {
-            // Extract project ID from odeIdeviceId if it contains one, or use a temp directory
-            odeSessionId = 'uploads';
-        }
-
-        // Clean filename
-        let cleanFilename = filename.replace(/ /g, '_');
-        cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
-
-        // Ensure we have a valid filename
-        if (!cleanFilename) {
-            cleanFilename = 'file_' + Date.now();
-        }
-
-        // Get iDevice directory
-        const filesDir = getFilesDir();
-        const iDeviceDir = path.join(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
-
-        // Ensure directory exists
-        await fse.ensureDir(iDeviceDir);
-
-        // Generate unique filename if file already exists
-        let savedFilename = cleanFilename;
-        let counter = 0;
-        const ext = path.extname(cleanFilename);
-        const baseName = path.basename(cleanFilename, ext);
-        while (await fse.pathExists(path.join(iDeviceDir, savedFilename))) {
-            counter++;
-            savedFilename = `${baseName}_${counter}${ext}`;
-        }
-
-        const outputFile = path.join(iDeviceDir, savedFilename);
-
-        // Decode base64 and write file
-        const dataParts = base64String.split(',');
-        const base64Data = dataParts.length > 1 ? dataParts[1] : dataParts[0];
-        const buffer = Buffer.from(base64Data, 'base64');
-
-        await fse.writeFile(outputFile, buffer);
-
-        // Get file size
-        const stats = await fse.stat(outputFile);
-        const fileSize = stats.size;
-        const fileSizeFormatted = formatFileSize(fileSize);
-
-        // Build response
-        const responseData: UploadResponseData = {
-            odeSessionId,
-            odeIdeviceId,
-            originalFilename: filename,
-            savedPath: `/files/tmp/${odeSessionId}/content/resources/${odeIdeviceId}/`,
-            savedFilename,
-            savedFileSize: fileSizeFormatted,
-        };
-
-        // Create thumbnail for images if requested
-        if (createThumbnail) {
-            // Try to detect mime type from data URL
-            let mimeType = dataParts[0]?.match(/data:([^;]+)/)?.[1] || '';
-
-            // Fallback: detect from filename extension if data URL doesn't have mime
-            if (!mimeType && filename) {
-                const ext = path.extname(filename).toLowerCase();
-                const extToMime: Record<string, string> = {
+                // Set content type based on extension
+                const mimeTypes: Record<string, string> = {
+                    '.css': 'text/css',
+                    '.js': 'application/javascript',
+                    '.json': 'application/json',
+                    '.html': 'text/html',
+                    '.htm': 'text/html',
+                    '.xml': 'application/xml',
+                    '.svg': 'image/svg+xml',
+                    '.png': 'image/png',
                     '.jpg': 'image/jpeg',
                     '.jpeg': 'image/jpeg',
-                    '.png': 'image/png',
                     '.gif': 'image/gif',
+                    '.ico': 'image/x-icon',
+                    '.woff': 'font/woff',
+                    '.woff2': 'font/woff2',
+                    '.ttf': 'font/ttf',
+                    '.eot': 'application/vnd.ms-fontobject',
                 };
-                mimeType = extToMime[ext] || '';
-            }
 
-            const thumbValidMimeTypes = ['image/jpeg', 'image/gif', 'image/png'];
-            if (thumbValidMimeTypes.includes(mimeType)) {
-                // Simple thumbnail: just use the same file for now
-                // TODO: Implement proper thumbnail generation with sharp or similar
-                const thumbFilename = `thumb_${savedFilename}`;
-                const thumbPath = path.join(iDeviceDir, thumbFilename);
-                await fse.copyFile(outputFile, thumbPath);
-                responseData.savedThumbnailName = thumbFilename;
-            }
-        }
+                set.headers['Content-Type'] = mimeTypes[ext] || 'application/octet-stream';
 
-        return responseData;
-    })
+                // For CSS files, rewrite relative URLs to absolute API endpoint URLs
+                if (ext === '.css') {
+                    const content = fs.readFileSync(filePath, 'utf-8');
+                    return rewriteCSSUrls(content, cleanResource);
+                }
 
-    // POST /api/idevices/upload/large/file/resources - Upload large file resource (FormData)
-    .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set }) => {
-        const data = body as IdeviceFileUploadRequest;
-        const odeIdeviceId = data.odeIdeviceId;
-        const file = data.file;
-        const filename = data.filename || (file as FileWithName)?.name;
+                return fs.readFileSync(filePath);
+            })
 
-        // Validate required parameters
-        if (!odeIdeviceId || !file || !filename) {
-            set.status = 400;
-            return { code: 'error: invalid data' };
-        }
+            // POST /api/idevices/upload/file/resources - Upload file resource (base64)
+            .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request }) => {
+                // Debug: log what we're receiving
+                console.log('[idevices/upload] Content-Type:', request.headers.get('content-type'));
+                console.log('[idevices/upload] Body type:', typeof body);
+                const bodyObj = body as Record<string, unknown> | null;
+                console.log('[idevices/upload] Body keys:', bodyObj ? Object.keys(bodyObj) : 'null');
 
-        // Get session ID from cookie or body
-        // In Yjs mode, we use projectId cookie instead of odeSessionId
-        let odeSessionId = data.odeSessionId || cookie.odeSessionId?.value || cookie.projectId?.value;
+                const data = body as IdeviceFileUploadRequest;
+                const odeIdeviceId = data?.odeIdeviceId;
+                // Support both 'file' (legacy) and 'base64String' fields for base64 data
+                const dataRecord = data as Record<string, unknown>;
+                const fileFieldValue = dataRecord?.file;
+                const fileAsString = typeof fileFieldValue === 'string' ? fileFieldValue : undefined;
+                const base64String = data?.base64String || fileAsString;
+                const filename = data?.filename;
+                // Support both boolean and string 'true' for createThumbnail
+                const createThumbnailRaw = data?.createThumbnail;
+                const createThumbnail = createThumbnailRaw === true || createThumbnailRaw === 'true';
 
-        // If no session ID, use a default
-        if (!odeSessionId) {
-            odeSessionId = 'uploads';
-        }
+                // Validate required parameters
+                if (!odeIdeviceId || !base64String || !filename) {
+                    set.status = 400;
+                    console.log('[idevices/upload] Missing params:', {
+                        odeIdeviceId: !!odeIdeviceId,
+                        file: !!base64String,
+                        filename: !!filename,
+                    });
+                    return {
+                        code: 'error: invalid data',
+                        details: { odeIdeviceId: !!odeIdeviceId, file: !!base64String, filename: !!filename },
+                    };
+                }
 
-        // Clean filename
-        let cleanFilename = filename.replace(/ /g, '_');
-        cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
+                // Get session ID from cookie or body
+                // In Yjs mode, we use projectId cookie instead of odeSessionId
+                let odeSessionId = data.odeSessionId || cookie.odeSessionId?.value || cookie.projectId?.value;
 
-        // Ensure we have a valid filename
-        if (!cleanFilename) {
-            cleanFilename = 'file_' + Date.now();
-        }
+                // If no session ID, use a default based on the idevice ID
+                // This allows uploads to work even without a traditional session
+                if (!odeSessionId) {
+                    // Extract project ID from odeIdeviceId if it contains one, or use a temp directory
+                    odeSessionId = 'uploads';
+                }
 
-        // Get iDevice directory
-        const filesDir = getFilesDir();
-        const iDeviceDir = path.join(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+                // Clean filename
+                let cleanFilename = filename.replace(/ /g, '_');
+                cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
 
-        // Ensure directory exists
-        await fse.ensureDir(iDeviceDir);
+                // Ensure we have a valid filename
+                if (!cleanFilename) {
+                    cleanFilename = 'file_' + Date.now();
+                }
 
-        // Generate unique filename if file already exists
-        let savedFilename = cleanFilename;
-        let counter = 0;
-        const ext = path.extname(cleanFilename);
-        const baseName = path.basename(cleanFilename, ext);
-        while (await fse.pathExists(path.join(iDeviceDir, savedFilename))) {
-            counter++;
-            savedFilename = `${baseName}_${counter}${ext}`;
-        }
+                // Get iDevice directory
+                const filesDir = getFilesDir();
+                const iDeviceDir = path.join(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
 
-        const outputFile = path.join(iDeviceDir, savedFilename);
+                // Ensure directory exists
+                await fse.ensureDir(iDeviceDir);
 
-        // Get file buffer
-        let buffer: Buffer;
-        if (file instanceof Blob) {
-            buffer = Buffer.from(await file.arrayBuffer());
-        } else if (Buffer.isBuffer(file)) {
-            buffer = file;
-        } else {
-            buffer = Buffer.from(file);
-        }
+                // Generate unique filename if file already exists
+                let savedFilename = cleanFilename;
+                let counter = 0;
+                const ext = path.extname(cleanFilename);
+                const baseName = path.basename(cleanFilename, ext);
+                while (await fse.pathExists(path.join(iDeviceDir, savedFilename))) {
+                    counter++;
+                    savedFilename = `${baseName}_${counter}${ext}`;
+                }
 
-        await fse.writeFile(outputFile, buffer);
+                const outputFile = path.join(iDeviceDir, savedFilename);
 
-        // Get file size
-        const stats = await fse.stat(outputFile);
-        const fileSize = stats.size;
-        const fileSizeFormatted = formatFileSize(fileSize);
+                // Decode base64 and write file
+                const dataParts = base64String.split(',');
+                const base64Data = dataParts.length > 1 ? dataParts[1] : dataParts[0];
+                const buffer = Buffer.from(base64Data, 'base64');
 
-        return {
-            odeSessionId,
-            odeIdeviceId,
-            originalFilename: filename,
-            savedPath: `/files/tmp/${odeSessionId}/content/resources/${odeIdeviceId}/`,
-            savedFilename,
-            savedFileSize: fileSizeFormatted,
-        };
-    });
+                await fse.writeFile(outputFile, buffer);
+
+                // Get file size
+                const stats = await fse.stat(outputFile);
+                const fileSize = stats.size;
+                const fileSizeFormatted = formatFileSize(fileSize);
+
+                // Build response
+                const responseData: UploadResponseData = {
+                    odeSessionId,
+                    odeIdeviceId,
+                    originalFilename: filename,
+                    savedPath: `/files/tmp/${odeSessionId}/content/resources/${odeIdeviceId}/`,
+                    savedFilename,
+                    savedFileSize: fileSizeFormatted,
+                };
+
+                // Create thumbnail for images if requested
+                if (createThumbnail) {
+                    // Try to detect mime type from data URL
+                    let mimeType = dataParts[0]?.match(/data:([^;]+)/)?.[1] || '';
+
+                    // Fallback: detect from filename extension if data URL doesn't have mime
+                    if (!mimeType && filename) {
+                        const ext = path.extname(filename).toLowerCase();
+                        const extToMime: Record<string, string> = {
+                            '.jpg': 'image/jpeg',
+                            '.jpeg': 'image/jpeg',
+                            '.png': 'image/png',
+                            '.gif': 'image/gif',
+                        };
+                        mimeType = extToMime[ext] || '';
+                    }
+
+                    const thumbValidMimeTypes = ['image/jpeg', 'image/gif', 'image/png'];
+                    if (thumbValidMimeTypes.includes(mimeType)) {
+                        // Simple thumbnail: just use the same file for now
+                        // TODO: Implement proper thumbnail generation with sharp or similar
+                        const thumbFilename = `thumb_${savedFilename}`;
+                        const thumbPath = path.join(iDeviceDir, thumbFilename);
+                        await fse.copyFile(outputFile, thumbPath);
+                        responseData.savedThumbnailName = thumbFilename;
+                    }
+                }
+
+                return responseData;
+            })
+
+            // POST /api/idevices/upload/large/file/resources - Upload large file resource (FormData)
+            .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set }) => {
+                const data = body as IdeviceFileUploadRequest;
+                const odeIdeviceId = data.odeIdeviceId;
+                const file = data.file;
+                const filename = data.filename || (file as FileWithName)?.name;
+
+                // Validate required parameters
+                if (!odeIdeviceId || !file || !filename) {
+                    set.status = 400;
+                    return { code: 'error: invalid data' };
+                }
+
+                // Get session ID from cookie or body
+                // In Yjs mode, we use projectId cookie instead of odeSessionId
+                let odeSessionId = data.odeSessionId || cookie.odeSessionId?.value || cookie.projectId?.value;
+
+                // If no session ID, use a default
+                if (!odeSessionId) {
+                    odeSessionId = 'uploads';
+                }
+
+                // Clean filename
+                let cleanFilename = filename.replace(/ /g, '_');
+                cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
+
+                // Ensure we have a valid filename
+                if (!cleanFilename) {
+                    cleanFilename = 'file_' + Date.now();
+                }
+
+                // Get iDevice directory
+                const filesDir = getFilesDir();
+                const iDeviceDir = path.join(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+
+                // Ensure directory exists
+                await fse.ensureDir(iDeviceDir);
+
+                // Generate unique filename if file already exists
+                let savedFilename = cleanFilename;
+                let counter = 0;
+                const ext = path.extname(cleanFilename);
+                const baseName = path.basename(cleanFilename, ext);
+                while (await fse.pathExists(path.join(iDeviceDir, savedFilename))) {
+                    counter++;
+                    savedFilename = `${baseName}_${counter}${ext}`;
+                }
+
+                const outputFile = path.join(iDeviceDir, savedFilename);
+
+                // Get file buffer
+                let buffer: Buffer;
+                if (file instanceof Blob) {
+                    buffer = Buffer.from(await file.arrayBuffer());
+                } else if (Buffer.isBuffer(file)) {
+                    buffer = file;
+                } else {
+                    buffer = Buffer.from(file);
+                }
+
+                await fse.writeFile(outputFile, buffer);
+
+                // Get file size
+                const stats = await fse.stat(outputFile);
+                const fileSize = stats.size;
+                const fileSizeFormatted = formatFileSize(fileSize);
+
+                return {
+                    odeSessionId,
+                    odeIdeviceId,
+                    originalFilename: filename,
+                    savedPath: `/files/tmp/${odeSessionId}/content/resources/${odeIdeviceId}/`,
+                    savedFilename,
+                    savedFileSize: fileSizeFormatted,
+                };
+            })
+    );
+}
+
+export const idevicesRoutes = createIdevicesRoutes();
 
 /**
  * Rewrite relative URLs in CSS to absolute API endpoint URLs
