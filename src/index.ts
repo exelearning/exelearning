@@ -22,6 +22,7 @@ import { resourcesRoutes } from './routes/resources';
 import { userRoutes } from './routes/user';
 import { adminRoutes } from './routes/admin';
 import { adminThemesRoutes } from './routes/admin-themes';
+import { adminIdevicesRoutes } from './routes/admin-idevices';
 import { adminTemplatesRoutes } from './routes/admin-templates';
 import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
@@ -598,6 +599,7 @@ app.use(healthRoutes)
     .use(userRoutes)
     .use(adminRoutes)
     .use(adminThemesRoutes)
+    .use(adminIdevicesRoutes)
     .use(adminTemplatesRoutes)
     .use(yjsRoutes)
     .use(apiV1Routes)
@@ -636,6 +638,7 @@ if (routePrefix) {
             .use(userRoutes)
             .use(adminRoutes)
             .use(adminThemesRoutes)
+            .use(adminIdevicesRoutes)
             .use(adminTemplatesRoutes)
             .use(yjsRoutes)
             .use(apiV1Routes)

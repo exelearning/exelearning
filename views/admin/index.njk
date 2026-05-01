@@ -462,6 +462,32 @@
             border-left: 3px solid transparent;
         }
 
+        .admin-table tbody tr.idevice-row-base {
+            background: linear-gradient(to right, rgba(11, 161, 161, 0.08), transparent);
+            border-left: 3px solid var(--admin-primary);
+        }
+
+        .admin-table tbody tr.idevice-row-base:hover {
+            background: linear-gradient(to right, rgba(11, 161, 161, 0.12), var(--gray-50, #f9fafb));
+        }
+
+        .idevice-icon-preview {
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: var(--gray-50, #f9fafb);
+            border: 1px solid var(--admin-border);
+        }
+
+        .idevice-icon-preview img {
+            max-width: 24px;
+            max-height: 24px;
+            object-fit: contain;
+        }
+
         .ext-toolbar {
             display: flex;
             justify-content: space-between;
@@ -1277,6 +1303,10 @@
                 <span class="mi">palette</span>
                 {{ t.styles or 'Styles' }}
             </a>
+            <a href="#idevices" class="admin-nav-link" data-section="idevices">
+                <span class="mi">extension</span>
+                {{ t.idevices or 'iDevices' }}
+            </a>
             <a href="#templates" class="admin-nav-link" data-section="templates">
                 <span class="mi">description</span>
                 {{ t.templates or 'Templates' }}
@@ -1597,6 +1627,66 @@
                                     </tr>
                                 </thead>
                                 <tbody id="themesTableBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center">
+                                            <span class="mi mi-spin">sync</span>
+                                            {{ t.loading or 'Loading...' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- iDevices Section -->
+            <section id="idevices" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">extension</span>
+                            {{ t.idevices_management or 'iDevices Management' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="ext-toolbar">
+                            <div class="ext-toolbar-left">
+                                <button id="uploadIdeviceBtn" class="btn-admin-primary">
+                                    <span class="mi mi-sm">upload</span>
+                                    {{ t.install_idevice or 'Install iDevice' }}
+                                </button>
+                            </div>
+                            <div class="admin-filter-group">
+                                <input type="search" class="admin-input" id="ideviceTextFilter" placeholder="{{ t.search or 'Search' }}" style="width: 260px;">
+                            </div>
+                            <input type="file" id="ideviceFileInput" accept=".zip" style="display: none;">
+                        </div>
+                        <div id="idevicesTableContainer">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60px;">{{ t.preview or 'Preview' }}</th>
+                                        <th class="sortable sorted" data-sort-idevice="id" aria-sort="ascending">
+                                            ID (Name) <span class="mi mi-sm sort-icon">expand_less</span>
+                                        </th>
+                                        <th class="sortable" data-sort-idevice="title" aria-sort="none">
+                                            {{ t.title or 'Title' }} <span class="mi mi-sm sort-icon">unfold_more</span>
+                                        </th>
+                                        <th class="sortable" data-sort-idevice="category" aria-sort="none">
+                                            {{ t.category or 'Category' }} <span class="mi mi-sm sort-icon">unfold_more</span>
+                                        </th>
+                                        <th class="sortable" data-sort-idevice="author" aria-sort="none">
+                                            {{ t.author or 'Author' }} <span class="mi mi-sm sort-icon">unfold_more</span>
+                                        </th>
+                                        <th class="sortable" data-sort-idevice="componentType" aria-sort="none">
+                                            {{ t.type or 'Type' }} <span class="mi mi-sm sort-icon">unfold_more</span>
+                                        </th>
+                                        <th style="width: 80px;">{{ t.enabled or 'Enabled' }}</th>
+                                        <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="idevicesTableBody">
                                     <tr>
                                         <td colspan="8" class="text-center">
                                             <span class="mi mi-spin">sync</span>
@@ -2188,6 +2278,7 @@ window.$eXeLearningCustom = {
             dashboard: '{{ t.dashboard or "Dashboard" }}',
             users: '{{ t.users or "Users" }}',
             projects: '{{ t.projects or "Projects" }}',
+            idevices: '{{ t.idevices or "iDevices" }}',
             extensions: '{{ t.extensions or "Extensions" }}',
             settings: '{{ t.settings or "Settings" }}',
             active: '{{ t.active or "Active" }}',
@@ -2203,6 +2294,14 @@ window.$eXeLearningCustom = {
             unlimited: '{{ t.unlimited or "Unlimited" }}',
             base: '{{ t.base or "Base" }}',
             site: '{{ t.site or "Site" }}',
+            idevice_enabled: '{{ t.idevice_enabled or "iDevice enabled" }}',
+            idevice_disabled: '{{ t.idevice_disabled or "iDevice disabled" }}',
+            idevice_installed: '{{ t.idevice_installed or "iDevice installed" }}',
+            idevice_uninstalled: '{{ t.idevice_uninstalled or "iDevice uninstalled" }}',
+            install_idevice_failed: '{{ t.install_idevice_failed or "Failed to install iDevice" }}',
+            confirm_update_idevice: '{{ t.confirm_update_idevice or "Este iDevice ya existe. \u00bfDeseas actualizarlo?" }}',
+            uninstall_idevice: '{{ t.uninstall_idevice or "Uninstall iDevice" }}',
+            confirm_uninstall_idevice: '{{ t.confirm_uninstall_idevice or "Uninstall iDevice {id}?" }}',
             log_in_as: '{{ t.log_in_as or "Log in as" }}',
             cannot_impersonate_admin: '{{ t.cannot_impersonate_admin or "Cannot impersonate administrator users" }}',
             cannot_impersonate_self: '{{ t.cannot_impersonate_self or "Cannot impersonate your own account" }}',
@@ -2253,6 +2352,7 @@ window.$eXeLearningCustom = {
                 dashboard: T.dashboard,
                 users: T.users,
                 projects: T.projects,
+                idevices: T.idevices,
                 extensions: T.extensions,
                 settings: T.settings,
                 presentation: T.customization,
@@ -2264,6 +2364,7 @@ window.$eXeLearningCustom = {
             if (section === 'dashboard') { loadSystemInfo(); }
             if (section === 'users') loadUsers();
             if (section === 'projects') loadProjects();
+            if (section === 'idevices') loadAdminIdevices();
 
             // Close mobile sidebar
             document.getElementById('adminSidebar').classList.remove('show');
@@ -3931,6 +4032,237 @@ window.$eXeLearningCustom = {
         });
 
         // ==========================================
+        // Admin iDevices Management
+        // ==========================================
+
+        let adminIdevices = [];
+        let adminIdeviceSortBy = 'id';
+        let adminIdeviceSortOrder = 'asc';
+        let adminIdeviceFilterText = '';
+
+        function getAdminIdeviceSortValue(idevice, field) {
+            if (field === 'author') return idevice.author || '';
+            if (field === 'category') return idevice.category || '';
+            if (field === 'componentType') return idevice.componentType || '';
+            if (field === 'title') return idevice.title || '';
+            return idevice.id || '';
+        }
+
+        function getAdminIdeviceSearchText(idevice) {
+            return [
+                idevice.id,
+                idevice.title,
+                idevice.category,
+                idevice.author,
+                idevice.componentType,
+            ].join(' ').toLocaleLowerCase();
+        }
+
+        function filterAdminIdevices(idevices) {
+            const searchText = adminIdeviceFilterText.trim().toLocaleLowerCase();
+            if (!searchText) return idevices;
+            return idevices.filter(idevice => getAdminIdeviceSearchText(idevice).includes(searchText));
+        }
+
+        function sortAdminIdevices(idevices) {
+            return [...idevices].sort((a, b) => {
+                const valueA = String(getAdminIdeviceSortValue(a, adminIdeviceSortBy));
+                const valueB = String(getAdminIdeviceSortValue(b, adminIdeviceSortBy));
+                const primary = valueA.localeCompare(valueB, undefined, { sensitivity: 'base', numeric: true });
+                const fallback = String(a.id || '').localeCompare(String(b.id || ''), undefined, { sensitivity: 'base', numeric: true });
+                const result = primary || fallback;
+                return adminIdeviceSortOrder === 'asc' ? result : -result;
+            });
+        }
+
+        function updateAdminIdeviceSortIcons() {
+            document.querySelectorAll('.admin-table th.sortable[data-sort-idevice]').forEach(th => {
+                const col = th.dataset.sortIdevice;
+                const icon = th.querySelector('.sort-icon');
+
+                if (col === adminIdeviceSortBy) {
+                    th.classList.add('sorted');
+                    th.setAttribute('aria-sort', adminIdeviceSortOrder === 'asc' ? 'ascending' : 'descending');
+                    icon.textContent = adminIdeviceSortOrder === 'asc' ? 'expand_less' : 'expand_more';
+                } else {
+                    th.classList.remove('sorted');
+                    th.setAttribute('aria-sort', 'none');
+                    icon.textContent = 'unfold_more';
+                }
+            });
+        }
+
+        function renderIdeviceIcon(idevice) {
+            if (idevice.icon?.type === 'img' && idevice.icon.url) {
+                const iconUrl = `${idevice.url}/${idevice.icon.url}`;
+                return `<span class="idevice-icon-preview"><img src="${escapeHtml(iconUrl)}" alt="" onerror="this.style.display='none'"></span>`;
+            }
+
+            const iconName = idevice.icon?.name || 'extension';
+            return `<span class="idevice-icon-preview"><span class="mi mi-sm">${escapeHtml(iconName)}</span></span>`;
+        }
+
+        function renderAdminIdevices() {
+            const tbody = document.getElementById('idevicesTableBody');
+
+            updateAdminIdeviceSortIcons();
+
+            const visibleIdevices = filterAdminIdevices(adminIdevices || []);
+
+            if (visibleIdevices.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center">{{ t.no_idevices or 'No iDevices available.' }}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = sortAdminIdevices(visibleIdevices).map(idevice => {
+                const sourceLabel = idevice.source === 'site' ? T.site : T.base;
+                const sourceBadge = '<span class="badge badge-primary">' + sourceLabel + '</span>';
+                const ideviceIdArg = JSON.stringify(idevice.id || '');
+                const actions = idevice.source === 'site'
+                    ? `<button class="btn-admin-outline btn-admin-danger" onclick='uninstallIdevice(${ideviceIdArg})' title="${T.uninstall_idevice}"><span class="mi mi-sm">delete</span></button>`
+                    : '<span class="text-muted">-</span>';
+
+                return `
+                <tr data-idevice-id="${escapeHtml(idevice.id)}" class="idevice-row-${escapeHtml(idevice.source || 'base')}">
+                    <td>${renderIdeviceIcon(idevice)}</td>
+                    <td><code>${escapeHtml(idevice.id)}</code><br>${sourceBadge}</td>
+                    <td><strong>${escapeHtml(idevice.title)}</strong></td>
+                    <td>${escapeHtml(idevice.category || '-')}</td>
+                    <td>${escapeHtml(idevice.author || '-')}</td>
+                    <td>${escapeHtml(idevice.componentType || '-')}</td>
+                    <td>
+                        <label class="toggle-switch">
+                            <input type="checkbox" ${idevice.isEnabled ? 'checked' : ''} onchange='toggleIdeviceEnabled(${ideviceIdArg}, this.checked)'>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </td>
+                    <td>${actions}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        document.querySelectorAll('.admin-table th.sortable[data-sort-idevice]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sortIdevice;
+                if (adminIdeviceSortBy === col) {
+                    adminIdeviceSortOrder = adminIdeviceSortOrder === 'asc' ? 'desc' : 'asc';
+                } else {
+                    adminIdeviceSortBy = col;
+                    adminIdeviceSortOrder = 'asc';
+                }
+                renderAdminIdevices();
+            });
+        });
+
+        document.getElementById('ideviceTextFilter')?.addEventListener('input', (event) => {
+            adminIdeviceFilterText = event.target.value || '';
+            renderAdminIdevices();
+        });
+
+        document.getElementById('uploadIdeviceBtn')?.addEventListener('click', () => {
+            document.getElementById('ideviceFileInput').click();
+        });
+
+        document.getElementById('ideviceFileInput')?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                uploadIdevice(file);
+                e.target.value = '';
+            }
+        });
+
+        async function loadAdminIdevices() {
+            const tbody = document.getElementById('idevicesTableBody');
+            try {
+                const response = await fetch('/api/admin/idevices', { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load iDevices');
+
+                const data = await response.json();
+
+                adminIdevices = data.idevices || [];
+                renderAdminIdevices();
+            } catch (error) {
+                console.error('Error loading iDevices:', error);
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">{{ t.error_loading or 'Error loading data' }}</td></tr>`;
+            }
+        }
+
+        async function uploadIdevice(file, confirmOverwrite = false) {
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+            if (confirmOverwrite) {
+                formData.append('confirmOverwrite', 'true');
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/idevices/upload`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    if (result.error === 'IDEVICE_ALREADY_EXISTS_NEEDS_CONFIRM' && !confirmOverwrite) {
+                        if (confirm(T.confirm_update_idevice)) {
+                            return uploadIdevice(file, true);
+                        }
+                        return;
+                    }
+                    throw new Error(result.message || result.error || T.install_idevice_failed);
+                }
+
+                showNotification(T.idevice_installed, 'success');
+                loadAdminIdevices();
+            } catch (error) {
+                showNotification(error.message || T.install_idevice_failed, 'error');
+            }
+        }
+
+        async function uninstallIdevice(id) {
+            if (!confirm(T.confirm_uninstall_idevice.replace('{id}', id))) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/idevices/${encodeURIComponent(id)}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || result.error || 'Failed to uninstall iDevice');
+                }
+
+                showNotification(T.idevice_uninstalled, 'success');
+                loadAdminIdevices();
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function toggleIdeviceEnabled(id, isEnabled) {
+            try {
+                const response = await fetch(`/api/admin/idevices/${encodeURIComponent(id)}/enabled`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ isEnabled })
+                });
+
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.message || 'Failed to update iDevice');
+                }
+
+                showNotification(isEnabled ? T.idevice_enabled : T.idevice_disabled, 'success');
+                loadAdminIdevices();
+            } catch (error) {
+                showNotification(error.message, 'error');
+                loadAdminIdevices();
+            }
+        }
+
+        // ==========================================
         // Admin Templates Management
         // ==========================================
 
@@ -4073,6 +4405,11 @@ window.$eXeLearningCustom = {
         // Load themes when Styles section is shown
         document.querySelector('.admin-nav-link[data-section="styles"]')?.addEventListener('click', () => {
             setTimeout(() => loadAdminThemes(), 100);
+        });
+
+        // Load iDevices when iDevices section is shown
+        document.querySelector('.admin-nav-link[data-section="idevices"]')?.addEventListener('click', () => {
+            setTimeout(() => loadAdminIdevices(), 100);
         });
 
         // Load templates when Templates section is shown

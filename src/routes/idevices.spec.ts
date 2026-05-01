@@ -198,6 +198,107 @@ describe('iDevices Routes', () => {
                 await fs.remove(runDir);
             }
         });
+
+        it('should list site iDevices for every user as system iDevices', async () => {
+            const runDir = path.join(process.cwd(), 'test', 'temp', `idevices-site-${crypto.randomUUID()}`);
+            const baseDir = path.join(runDir, 'base');
+            const siteDir = path.join(runDir, 'site');
+            const usersDir = path.join(runDir, 'users');
+            await fs.ensureDir(baseDir);
+            await fs.ensureDir(siteDir);
+            await fs.ensureDir(usersDir);
+
+            const makeConfig = (id: string, title: string) => `<?xml version="1.0"?>
+<idevice>
+    <name>${id}</name>
+    <title>${title}</title>
+    <category>Activity</category>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <export-object>$${id.replace(/-/g, '')}</export-object>
+    <icon><name>${id}-icon</name><url>${id}-icon.svg</url><type>img</type></icon>
+</idevice>`;
+
+            try {
+                const ideviceDir = path.join(siteDir, 'site-activity');
+                await fs.ensureDir(path.join(ideviceDir, 'edition'));
+                await fs.ensureDir(path.join(ideviceDir, 'export'));
+                await fs.writeFile(path.join(ideviceDir, 'config.xml'), makeConfig('site-activity', 'Site Activity'));
+                await fs.writeFile(path.join(ideviceDir, 'edition', 'site-activity.js'), 'var $edition = {};');
+                await fs.writeFile(path.join(ideviceDir, 'export', 'site-activity.js'), 'var $export = {};');
+
+                const scopedApp = new Elysia().use(
+                    createIdevicesRoutes({
+                        baseIdevicesPath: baseDir,
+                        siteIdevicesPath: siteDir,
+                        userIdevicesPath: usersDir,
+                        appVersion: () => 'vtest',
+                        currentUser: { id: 42 },
+                    }),
+                );
+
+                const res = await scopedApp.handle(new Request('http://localhost/api/idevices/installed'));
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.idevices).toHaveLength(1);
+                expect(body.idevices[0].id).toBe('site-activity');
+                expect(body.idevices[0].type).toBe('base');
+                expect(body.idevices[0].source).toBe('site');
+                expect(body.idevices[0].url).toContain('/files/perm/idevices/site/site-activity');
+            } finally {
+                await fs.remove(runDir);
+            }
+        });
+
+        it('should exclude iDevices disabled by admin settings', async () => {
+            const runDir = path.join(process.cwd(), 'test', 'temp', `idevices-disabled-${crypto.randomUUID()}`);
+            const baseDir = path.join(runDir, 'base');
+            const usersDir = path.join(runDir, 'users');
+            await fs.ensureDir(baseDir);
+            await fs.ensureDir(usersDir);
+
+            const makeConfig = (id: string, title: string) => `<?xml version="1.0"?>
+<idevice>
+    <name>${id}</name>
+    <title>${title}</title>
+    <category>Activity</category>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>html</component-type>
+    <icon><name>${id}-icon</name><url>${id}-icon.svg</url><type>img</type></icon>
+</idevice>`;
+
+            try {
+                for (const ideviceId of ['visible-idevice', 'hidden-idevice']) {
+                    const ideviceDir = path.join(baseDir, ideviceId);
+                    await fs.ensureDir(path.join(ideviceDir, 'edition'));
+                    await fs.ensureDir(path.join(ideviceDir, 'export'));
+                    await fs.writeFile(path.join(ideviceDir, 'config.xml'), makeConfig(ideviceId, ideviceId));
+                    await fs.writeFile(path.join(ideviceDir, 'edition', `${ideviceId}.js`), 'var $edition = {};');
+                    await fs.writeFile(path.join(ideviceDir, 'export', `${ideviceId}.js`), 'var $export = {};');
+                }
+
+                const scopedApp = new Elysia().use(
+                    createIdevicesRoutes({
+                        baseIdevicesPath: baseDir,
+                        userIdevicesPath: usersDir,
+                        appVersion: () => 'vtest',
+                        getDisabledIdeviceIds: async () => new Set(['hidden-idevice']),
+                    }),
+                );
+
+                const res = await scopedApp.handle(new Request('http://localhost/api/idevices/installed'));
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                const ids = body.idevices.map((idevice: { id: string }) => idevice.id);
+                expect(ids).toEqual(['visible-idevice']);
+            } finally {
+                await fs.remove(runDir);
+            }
+        });
     });
 
     describe('GET /api/idevices/installed/:ideviceId', () => {

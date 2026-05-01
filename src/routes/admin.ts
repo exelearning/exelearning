@@ -214,6 +214,7 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         filename: trans('Filename', {}, locale),
         created: trans('Created', {}, locale),
         visibility: trans('Visibility', {}, locale),
+        category: trans('Category', {}, locale),
         // Selection / bulk actions
         select_all: trans('Select All', {}, locale),
         clear_selection: trans('Clear', {}, locale),
@@ -262,6 +263,7 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         extensions: trans('Extensions', {}, locale),
         settings: trans('Settings', {}, locale),
         styles: trans('Styles', {}, locale),
+        idevices: trans('iDevices', {}, locale),
         templates: trans('Templates', {}, locale),
         global_settings: trans('Global Settings', {}, locale),
         system_info: trans('System Info', {}, locale),
@@ -301,6 +303,16 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         theme_uploaded: trans('Style uploaded successfully', {}, locale),
         theme_deleted: trans('Style deleted', {}, locale),
         upload_theme: trans('Upload style', {}, locale),
+        // iDevices management
+        idevices_management: trans('iDevices Management', {}, locale),
+        no_idevices: trans('No iDevices available.', {}, locale),
+        css_class: trans('CSS class', {}, locale),
+        component_type: trans('Component type', {}, locale),
+        api_version: trans('API version', {}, locale),
+        files: trans('Files', {}, locale),
+        downloadable: trans('Downloadable', {}, locale),
+        idevice_enabled: trans('iDevice enabled', {}, locale),
+        idevice_disabled: trans('iDevice disabled', {}, locale),
         // Templates management
         templates_management: trans('Templates Management', {}, locale),
         no_templates: trans('No templates for this locale.', {}, locale),

@@ -11,6 +11,8 @@ import * as path from 'path';
 import { getFilesDir } from '../services/file-helper';
 import { getAppVersion } from '../utils/version';
 import { getBasePath } from '../utils/basepath.util';
+import { db as defaultDb } from '../db/client';
+import { getDisabledIdeviceIds as getDisabledIdeviceIdsDefault } from '../services/idevice-admin-settings';
 import type { JwtPayload } from './auth';
 import type { IdeviceFileUploadRequest } from './types/request-payloads';
 
@@ -36,6 +38,7 @@ interface FileWithName extends Blob {
 
 // Base path for iDevices
 export const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
+export const IDEVICES_SITE_PATH = 'public/files/perm/idevices/site';
 export const IDEVICES_USERS_PATH = 'public/files/perm/idevices/users';
 
 interface CurrentUser {
@@ -54,9 +57,11 @@ type CurrentUserResolver = () => CurrentUser | null | Promise<CurrentUser | null
 
 export interface IdevicesRouteDeps {
     baseIdevicesPath?: string;
+    siteIdevicesPath?: string;
     userIdevicesPath?: string;
     appVersion?: () => string;
     currentUser?: CurrentUser | null | CurrentUserResolver;
+    getDisabledIdeviceIds?: () => Promise<Set<string>>;
 }
 
 export interface IdeviceConfig {
@@ -284,8 +289,10 @@ const userDirNameFromId = (userId: number | string | undefined): string | null =
  */
 export function createIdevicesRoutes(deps: IdevicesRouteDeps = {}) {
     const baseIdevicesPath = deps.baseIdevicesPath ?? IDEVICES_BASE_PATH;
+    const siteIdevicesPath = deps.siteIdevicesPath ?? IDEVICES_SITE_PATH;
     const userIdevicesPath = deps.userIdevicesPath ?? IDEVICES_USERS_PATH;
     const appVersion = deps.appVersion ?? getAppVersion;
+    const getDisabledIdeviceIds = deps.getDisabledIdeviceIds ?? (() => getDisabledIdeviceIdsDefault(defaultDb));
 
     const resolveCurrentUser = async (
         jwtVerifier: JwtVerifier,
@@ -308,15 +315,20 @@ export function createIdevicesRoutes(deps: IdevicesRouteDeps = {}) {
             // GET /api/idevices/installed - Get list of installed iDevices
             .get('/api/idevices/installed', async ({ jwt, cookie }) => {
                 const baseIdevices = scanIdevices(baseIdevicesPath);
+                const siteIdevices = scanIdevices(siteIdevicesPath);
                 const currentUser = await resolveCurrentUser(jwt, cookie);
                 const userDirName = userDirNameFromId(currentUser?.id);
                 const scopedUserIdevicesPath = userDirName ? path.join(userIdevicesPath, userDirName) : null;
                 const userIdevices = scopedUserIdevicesPath ? scanIdevices(scopedUserIdevicesPath) : [];
+                const disabledIdeviceIds = await getDisabledIdeviceIds();
 
-                // Merge user iDevices with base, user takes priority. The `type` field
+                // Merge site/user iDevices with base, user takes priority. The `type` field
                 // is required by the frontend's modalIdeviceManager to split System vs.
                 // User tabs (matches eXeLearning.config.ideviceTypeBase/User).
-                const ideviceMap = new Map<string, IdeviceConfig & { type: 'base' | 'user' }>();
+                const ideviceMap = new Map<
+                    string,
+                    IdeviceConfig & { type: 'base' | 'user'; source: 'base' | 'site' | 'user' }
+                >();
                 const version = appVersion();
 
                 for (const idevice of baseIdevices) {
@@ -324,6 +336,16 @@ export function createIdevicesRoutes(deps: IdevicesRouteDeps = {}) {
                         ...idevice,
                         url: `/${version}/files/perm/idevices/base/${idevice.id}`,
                         type: 'base',
+                        source: 'base',
+                    });
+                }
+
+                for (const idevice of siteIdevices) {
+                    ideviceMap.set(idevice.id, {
+                        ...idevice,
+                        url: `/${version}/files/perm/idevices/site/${idevice.id}`,
+                        type: 'base',
+                        source: 'site',
                     });
                 }
 
@@ -332,10 +354,11 @@ export function createIdevicesRoutes(deps: IdevicesRouteDeps = {}) {
                         ...idevice,
                         url: `/${version}/files/perm/idevices/users/${userDirName}/${idevice.id}`,
                         type: 'user',
+                        source: 'user',
                     });
                 }
 
-                const result = Array.from(ideviceMap.values());
+                const result = Array.from(ideviceMap.values()).filter(idevice => !disabledIdeviceIds.has(idevice.id));
 
                 // Sort by category then title
                 result.sort((a, b) => {
@@ -369,12 +392,24 @@ export function createIdevicesRoutes(deps: IdevicesRouteDeps = {}) {
                     : path.join(userIdevicesPath, ideviceId);
 
                 if (!fs.existsSync(configPath)) {
+                    // Fall back to site iDevices installed by administrators
+                    configPath = path.join(siteIdevicesPath, ideviceId, 'config.xml');
+                    basePath = path.join(siteIdevicesPath, ideviceId);
+                }
+
+                if (!fs.existsSync(configPath)) {
                     // Fall back to base iDevices
                     configPath = path.join(baseIdevicesPath, ideviceId, 'config.xml');
                     basePath = path.join(baseIdevicesPath, ideviceId);
                 }
 
                 if (!fs.existsSync(configPath)) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: `iDevice ${ideviceId} not found` };
+                }
+
+                const disabledIdeviceIds = await getDisabledIdeviceIds();
+                if (disabledIdeviceIds.has(ideviceId)) {
                     set.status = 404;
                     return { error: 'Not Found', message: `iDevice ${ideviceId} not found` };
                 }
