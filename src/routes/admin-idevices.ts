@@ -86,7 +86,8 @@ const defaultDependencies: AdminIdevicesDependencies = {
     siteIdevicesPath: IDEVICES_SITE_PATH,
     userIdevicesPath: IDEVICES_USERS_PATH,
     scanIdevices: scanIdevicesDefault,
-    listDirectory: directoryPath => (fs.existsSync(directoryPath) ? fs.readdirSync(directoryPath, { withFileTypes: true }) : []),
+    listDirectory: directoryPath =>
+        fs.existsSync(directoryPath) ? fs.readdirSync(directoryPath, { withFileTypes: true }) : [],
     appVersion: getAppVersion,
     getDisabledIdeviceIds: getDisabledIdeviceIdsDefault,
     setDisabledIdeviceIds: setDisabledIdeviceIdsDefault,

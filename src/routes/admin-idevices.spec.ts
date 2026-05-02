@@ -224,7 +224,11 @@ describe('Admin iDevices Routes', () => {
         const app = new Elysia().use(
             createAdminIdevicesRoutes(
                 createDeps({
-                    listDirectory: mock(() => [createDirent('42'), createDirent('not-a-user'), createDirent('99', false)]),
+                    listDirectory: mock(() => [
+                        createDirent('42'),
+                        createDirent('not-a-user'),
+                        createDirent('99', false),
+                    ]),
                     scanIdevices: mock((scanPath: string) => {
                         const normalizedPath = scanPath.replaceAll('\\', '/');
                         return normalizedPath.endsWith('/users/42') ? [mockUserIdevice] : [];
