@@ -399,6 +399,15 @@ describe('MenuIdevicesCompose', () => {
             });
         });
 
+        it('should render the Science category title without typo', () => {
+            const result = menuIdevicesCompose.elementDivIdevicesParent(mockIdevices, 'science');
+            const title = result.querySelector('.idevices-category-title');
+
+            expect(title.textContent).toBe('Science');
+            expect(global._).toHaveBeenCalledWith('Science');
+            expect(global._).not.toHaveBeenCalledWith('Sciencie');
+        });
+
         it('should filter out example idevice', () => {
             const idevicesWithExample = [
                 { id: 'text', title: 'Text', icon: { type: 'exe-icon', name: 'text-icon' } },
@@ -765,30 +774,64 @@ describe('MenuIdevicesCompose', () => {
     });
 
     describe('downloadIdeviceZip', () => {
-        it('should call API with session and dirName', async () => {
+        it('should call API with the iDevice id and download the ZIP', async () => {
             const mockIdevice = { dirName: 'custom-idevice' };
+            const click = vi.fn();
+            const remove = vi.fn();
+            const originalCreateObjectURL = URL.createObjectURL;
+            const originalRevokeObjectURL = URL.revokeObjectURL;
+            URL.createObjectURL = vi.fn(() => 'blob:custom-idevice');
+            URL.revokeObjectURL = vi.fn();
+            const originalCreateElement = document.createElement.bind(document);
+            vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+                const element = originalCreateElement(tagName);
+                if (tagName === 'a') {
+                    element.click = click;
+                    element.remove = remove;
+                }
+                return element;
+            });
             eXeLearning.app.api.getIdeviceInstalledZip.mockResolvedValue({
                 zipFileName: 'custom.zip',
-                zipBase64: 'base64data',
+                zipBase64: 'emlwLWRhdGE=',
             });
 
             await menuIdevicesCompose.downloadIdeviceZip(mockIdevice);
 
             expect(eXeLearning.app.api.getIdeviceInstalledZip).toHaveBeenCalledWith(
-                'test-session-123',
                 'custom-idevice'
             );
+            expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+            expect(click).toHaveBeenCalled();
+            expect(remove).toHaveBeenCalled();
+            expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:custom-idevice');
+
+            document.createElement.mockRestore();
+            URL.createObjectURL = originalCreateObjectURL;
+            URL.revokeObjectURL = originalRevokeObjectURL;
         });
 
-        it('should not throw on empty response', async () => {
+        it('should show an alert on empty response', async () => {
             const mockIdevice = { dirName: 'custom-idevice' };
+            const spy = vi.spyOn(menuIdevicesCompose, 'showElementAlert');
             eXeLearning.app.api.getIdeviceInstalledZip.mockResolvedValue(null);
 
-            // downloadIdeviceZip doesn't return a promise, just uses internal .then()
-            // We just verify it doesn't throw by waiting for the API call
-            menuIdevicesCompose.downloadIdeviceZip(mockIdevice);
-            await new Promise(resolve => setTimeout(resolve, 0));
+            await menuIdevicesCompose.downloadIdeviceZip(mockIdevice);
+
             expect(eXeLearning.app.api.getIdeviceInstalledZip).toHaveBeenCalled();
+            expect(spy).toHaveBeenCalledWith('Could not download the iDevice', null);
+        });
+
+        it('should show an alert when the API rejects', async () => {
+            const mockIdevice = { dirName: 'custom-idevice' };
+            const spy = vi.spyOn(menuIdevicesCompose, 'showElementAlert');
+            eXeLearning.app.api.getIdeviceInstalledZip.mockRejectedValue(new Error('Download failed'));
+
+            await menuIdevicesCompose.downloadIdeviceZip(mockIdevice);
+
+            expect(spy).toHaveBeenCalledWith('Could not download the iDevice', {
+                error: 'Download failed',
+            });
         });
     });
 

@@ -152,6 +152,57 @@ describe('IdeviceConfig Service', () => {
             const config = getIdeviceConfig('my-idevice');
             expect(config.cssClass).toBe('my-idevice');
         });
+
+        it('should skip malformed config.xml files using the shared parser validation', async () => {
+            const brokenDir = path.join(idevicesDir, 'broken');
+            await fs.ensureDir(brokenDir);
+            await fs.writeFile(
+                path.join(brokenDir, 'config.xml'),
+                `<idevice>
+                    <name>broken</name>
+                    <component-type>json
+                </idevice>`,
+            );
+
+            loadIdeviceConfigs(idevicesDir);
+
+            const config = getIdeviceConfig('broken');
+            expect(config.componentType).toBe('html');
+            expect(config.sourcePath).toBeNull();
+        });
+
+        it('should scan multiple paths and let site override base', async () => {
+            const rootDir = path.join(testDir, 'multi-source');
+            const baseDir = path.join(rootDir, 'base');
+            const siteDir = path.join(rootDir, 'site');
+            await fs.ensureDir(path.join(baseDir, 'shared'));
+            await fs.writeFile(
+                path.join(baseDir, 'shared', 'config.xml'),
+                `<idevice>
+                    <name>shared</name>
+                    <css-class>base-shared</css-class>
+                    <component-type>html</component-type>
+                </idevice>`,
+            );
+            await fs.ensureDir(path.join(siteDir, 'shared'));
+            await fs.writeFile(
+                path.join(siteDir, 'shared', 'config.xml'),
+                `<idevice>
+                    <name>shared</name>
+                    <css-class>site-shared</css-class>
+                    <component-type>json</component-type>
+                    <export-template-filename>shared.html</export-template-filename>
+                </idevice>`,
+            );
+
+            loadIdeviceConfigs([baseDir, siteDir]);
+
+            const config = getIdeviceConfig('shared');
+            expect(config.cssClass).toBe('site-shared');
+            expect(config.componentType).toBe('json');
+            expect(config.template).toBe('shared.html');
+            expect(config.sourcePath).toBe(path.join(siteDir, 'shared'));
+        });
     });
 
     describe('getIdeviceConfig', () => {

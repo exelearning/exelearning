@@ -3,10 +3,13 @@
  *
  * Parses iDevice config.xml files. Used by:
  * - Server routes (src/routes/idevices.ts)
+ * - Server export config cache (src/services/idevice-config.ts)
  * - Static build script (scripts/build-static-bundle.ts)
  *
  * @module shared/parsers/idevice-parser
  */
+
+import { XMLValidator } from 'fast-xml-parser';
 
 /**
  * iDevice icon structure
@@ -82,6 +85,16 @@ export interface ParseIdeviceOptions {
     fs?: FileSystemReader;
     /** Path utilities (defaults to Node's path) */
     path?: PathUtils;
+}
+
+export const DEFAULT_IDEVICE_CATEGORY = 'Uncategorized';
+export const DEFAULT_IDEVICE_COMPONENT_TYPE = 'html';
+
+function isValidIdeviceXml(xmlContent: string): boolean {
+    const validation = XMLValidator.validate(xmlContent);
+    if (validation !== true) return false;
+
+    return /^\s*(?:<\?xml[\s\S]*?\?>\s*)?<(idevice|idevice-config)(?:\s|>)/.test(xmlContent);
 }
 
 /**
@@ -253,6 +266,8 @@ export function parseIdeviceConfig(xmlContent: string, options: ParseIdeviceOpti
     };
 
     try {
+        if (!isValidIdeviceXml(xmlContent)) return null;
+
         const icon = parseIcon(xmlContent, ideviceId);
 
         // Get template filenames
@@ -272,14 +287,14 @@ export function parseIdeviceConfig(xmlContent: string, options: ParseIdeviceOpti
 
         return {
             id: ideviceId,
-            name: ideviceId,
+            name: getValue(xmlContent, 'name') || ideviceId,
             title: getValue(xmlContent, 'title') || ideviceId,
             cssClass: getValue(xmlContent, 'css-class') || ideviceId,
-            category: getValue(xmlContent, 'category') || 'Uncategorized',
+            category: getValue(xmlContent, 'category') || DEFAULT_IDEVICE_CATEGORY,
             icon,
             version: getValue(xmlContent, 'version') || '1.0',
             apiVersion: getValue(xmlContent, 'api-version') || '3.0',
-            componentType: getValue(xmlContent, 'component-type') || 'html',
+            componentType: getValue(xmlContent, 'component-type') || DEFAULT_IDEVICE_COMPONENT_TYPE,
             author: getValue(xmlContent, 'author') || '',
             authorUrl: getValue(xmlContent, 'author-url') || '',
             license: getValue(xmlContent, 'license') || '',
@@ -316,18 +331,20 @@ export function parseIdeviceConfig(xmlContent: string, options: ParseIdeviceOpti
  */
 export function parseIdeviceConfigBasic(xmlContent: string, ideviceId: string): Partial<IdeviceConfig> | null {
     try {
+        if (!isValidIdeviceXml(xmlContent)) return null;
+
         const icon = parseIcon(xmlContent, ideviceId);
 
         return {
             id: ideviceId,
-            name: ideviceId,
+            name: getValue(xmlContent, 'name') || ideviceId,
             title: getValue(xmlContent, 'title') || ideviceId,
             cssClass: getValue(xmlContent, 'css-class') || ideviceId,
-            category: getValue(xmlContent, 'category') || 'Uncategorized',
+            category: getValue(xmlContent, 'category') || DEFAULT_IDEVICE_CATEGORY,
             icon,
             version: getValue(xmlContent, 'version') || '1.0',
             apiVersion: getValue(xmlContent, 'api-version') || '3.0',
-            componentType: getValue(xmlContent, 'component-type') || 'html',
+            componentType: getValue(xmlContent, 'component-type') || DEFAULT_IDEVICE_COMPONENT_TYPE,
             author: getValue(xmlContent, 'author') || '',
             authorUrl: getValue(xmlContent, 'author-url') || '',
             license: getValue(xmlContent, 'license') || '',

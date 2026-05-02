@@ -32,6 +32,10 @@ import { buildConfigParams } from '../src/routes/config-params';
 import { STATIC_ROUTES } from '../src/routes/api-routes';
 import { buildParameterResponse } from '../src/routes/parameter-response';
 import { VOID_ELEMENTS } from '../src/shared/utils/html-constants';
+import {
+    parseIdeviceConfig as parseSharedIdeviceConfig,
+    type IdeviceConfig,
+} from '../src/shared/parsers/idevice-parser';
 
 // Re-export config for external use
 export { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES };
@@ -268,197 +272,72 @@ function loadAllTranslations(): Record<string, { translations: Record<string, st
     return result;
 }
 
-export interface IdeviceConfig {
-    name: string;
-    id: string;
-    title: string;
-    cssClass: string;
-    category: string;
-    icon: { name: string; url: string; type: string };
-    version: string;
-    apiVersion: string;
-    componentType: string;
-    author: string;
-    authorUrl: string;
-    license: string;
-    licenseUrl: string;
-    description: string;
-    downloadable: boolean;
-    url: string;
-    editionJs: string[];
-    editionCss: string[];
-    exportJs: string[];
-    exportCss: string[];
-    editionTemplateFilename: string;
-    exportTemplateFilename: string;
-    editionTemplateContent: string;
-    exportTemplateContent: string;
-    exportObject: string;
-    location: string;
-    locationType: string;
-}
-
-/**
- * Read template file content safely
- */
-function readTemplateContent(basePath: string, folder: string, filename: string): string {
-    if (!filename) return '';
-    try {
-        const templatePath = path.join(basePath, folder, filename);
-        if (fs.existsSync(templatePath)) {
-            return fs.readFileSync(templatePath, 'utf-8');
-        }
-    } catch {
-        // Ignore errors, return empty string
-    }
-    return '';
-}
-
 /**
  * Parse iDevice config.xml (same logic as server)
  */
 export function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: string): IdeviceConfig | null {
-    try {
-        const getValue = (tag: string): string => {
-            const match = xmlContent.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
-            return match ? match[1].trim() : '';
-        };
-
-        const getNestedValue = (parent: string, child: string): string => {
-            const parentMatch = xmlContent.match(new RegExp(`<${parent}>([\\s\\S]*?)<\\/${parent}>`));
-            if (!parentMatch) return '';
-            const childMatch = parentMatch[1].match(new RegExp(`<${child}>([\\s\\S]*?)<\\/${child}>`));
-            return childMatch ? childMatch[1].trim() : '';
-        };
-
-        // Parse list of filenames and verify they exist on disk
-        const getValidFilenames = (tag: string, subfolder: 'edition' | 'export'): string[] => {
-            const parentMatch = xmlContent.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
-            let filenames: string[];
-
-            if (!parentMatch) {
-                const folderPath = path.join(basePath, subfolder);
-                const extension = tag.includes('js') ? '.js' : '.css';
-                if (fs.existsSync(folderPath)) {
-                    try {
-                        filenames = fs
-                            .readdirSync(folderPath)
-                            .filter(
-                                file =>
-                                    file.endsWith(extension) && !file.includes('.test.') && !file.includes('.spec.'),
-                            )
-                            .sort((a, b) => {
-                                if (a === `${ideviceId}${extension}`) return -1;
-                                if (b === `${ideviceId}${extension}`) return 1;
-                                return a.localeCompare(b);
-                            });
-                    } catch {
-                        filenames = [`${ideviceId}${extension}`];
-                    }
-                } else {
-                    filenames = [`${ideviceId}${extension}`];
-                }
-            } else {
-                filenames = [];
-                const filenameMatches = parentMatch[1].matchAll(/<filename>([^<]+)<\/filename>/g);
-                for (const match of filenameMatches) {
-                    filenames.push(match[1].trim());
-                }
-                if (filenames.length === 0) {
-                    filenames = [`${ideviceId}.${tag.includes('js') ? 'js' : 'css'}`];
-                }
-            }
-
-            return filenames.filter(filename => {
-                const filePath = path.join(basePath, subfolder, filename);
-                return fs.existsSync(filePath);
-            });
-        };
-
-        // Handle icon
-        let icon = { name: `${ideviceId}-icon`, url: `${ideviceId}-icon.svg`, type: 'img' };
-        const iconContent = getValue('icon');
-        if (iconContent && !iconContent.includes('<')) {
-            icon = { name: iconContent, url: iconContent, type: 'icon' };
-        } else if (iconContent) {
-            icon = {
-                name: getNestedValue('icon', 'name') || `${ideviceId}-icon`,
-                url: getNestedValue('icon', 'url') || `${ideviceId}-icon.svg`,
-                type: getNestedValue('icon', 'type') || 'img',
-            };
-        }
-
-        // Get template filenames
-        const editionTemplateFilename = getValue('edition-template-filename') || '';
-        const exportTemplateFilename = getValue('export-template-filename') || '';
-
-        // Read template content from files
-        const editionTemplateContent = readTemplateContent(basePath, 'edition', editionTemplateFilename);
-        const exportTemplateContent = readTemplateContent(basePath, 'export', exportTemplateFilename);
-
-        // exportObject is the global JS object name used for rendering (e.g., '$text')
-        // Can be specified in config.xml or defaults to '$' + ideviceId (without dashes)
-        const exportObject = getValue('export-object') || `$${ideviceId.split('-').join('')}`;
-
-        return {
-            name: ideviceId,
-            id: ideviceId,
-            title: getValue('title') || ideviceId,
-            cssClass: getValue('css-class') || ideviceId,
-            category: getValue('category') || 'Uncategorized',
-            icon,
-            version: getValue('version') || '1.0',
-            apiVersion: getValue('api-version') || '3.0',
-            componentType: getValue('component-type') || 'html',
-            author: getValue('author') || '',
-            authorUrl: getValue('author-url') || '',
-            license: getValue('license') || '',
-            licenseUrl: getValue('license-url') || '',
-            description: getValue('description') || '',
-            downloadable: getValue('downloadable') === '1',
-            url: `/files/perm/idevices/base/${ideviceId}`,
-            editionJs: getValidFilenames('edition-js', 'edition'),
-            editionCss: getValidFilenames('edition-css', 'edition'),
-            exportJs: getValidFilenames('export-js', 'export'),
-            exportCss: getValidFilenames('export-css', 'export'),
-            editionTemplateFilename,
-            exportTemplateFilename,
-            editionTemplateContent,
-            exportTemplateContent,
-            exportObject,
-            location: getValue('location') || '',
-            locationType: getValue('location-type') || '',
-        };
-    } catch {
-        return null;
-    }
+    return parseSharedIdeviceConfig(xmlContent, {
+        ideviceId,
+        basePath,
+        fs: {
+            existsSync: fs.existsSync,
+            readFileSync: fs.readFileSync,
+            readdirSync: fs.readdirSync,
+        },
+        path,
+    });
 }
 
 /**
- * Build iDevices list from directory structure with full config data
+ * Build iDevices list from the on-disk directory structure with full config
+ * data. Scans both `base/` (built-ins) and `site/` (admin-installed) so the
+ * static bundle reflects the same catalogue served by `GET /api/idevices/installed`.
+ *
+ * Per-user `users/{userId}/` iDevices are intentionally excluded: the static
+ * build is a single shared artifact and has no user context.
+ *
+ * If the same id appears in both `base/` and `site/`, the `site/` version
+ * wins — matching the merge precedence in `src/routes/idevices.ts`.
  */
 function buildIdevicesList(): { idevices: IdeviceConfig[] } {
-    const idevicesDir = path.join(projectRoot, 'public/files/perm/idevices/base');
-    const idevices: IdeviceConfig[] = [];
+    const idevicesRoot = path.join(projectRoot, 'public/files/perm/idevices');
+    // Order matters: later sources override earlier ones for the same id.
+    const sources: Array<{ source: 'base' | 'site'; dir: string }> = [
+        { source: 'base', dir: path.join(idevicesRoot, 'base') },
+        { source: 'site', dir: path.join(idevicesRoot, 'site') },
+    ];
 
-    if (!fs.existsSync(idevicesDir)) {
-        console.warn('iDevices directory not found:', idevicesDir);
-        return { idevices };
-    }
+    const ideviceMap = new Map<string, IdeviceConfig>();
 
-    const dirs = fs.readdirSync(idevicesDir, { withFileTypes: true });
-    for (const dir of dirs) {
-        if (dir.isDirectory() && !dir.name.startsWith('.')) {
-            const configPath = path.join(idevicesDir, dir.name, 'config.xml');
-            if (fs.existsSync(configPath)) {
-                const xmlContent = fs.readFileSync(configPath, 'utf-8');
-                const config = parseIdeviceConfig(xmlContent, dir.name, path.join(idevicesDir, dir.name));
-                if (config) {
-                    idevices.push(config);
-                }
-            }
+    for (const { source, dir } of sources) {
+        if (!fs.existsSync(dir)) {
+            // Optional source — site/ is empty by default
+            continue;
+        }
+
+        const dirs = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of dirs) {
+            if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+
+            const configPath = path.join(dir, entry.name, 'config.xml');
+            if (!fs.existsSync(configPath)) continue;
+
+            const xmlContent = fs.readFileSync(configPath, 'utf-8');
+            const config = parseIdeviceConfig(xmlContent, entry.name, path.join(dir, entry.name));
+            if (!config) continue;
+
+            // Override the URL with the actual on-disk source so the static
+            // build serves files from `/files/perm/idevices/site/...` for
+            // admin-installed iDevices, and `/files/perm/idevices/base/...`
+            // for built-ins.
+            ideviceMap.set(entry.name, {
+                ...config,
+                url: `/files/perm/idevices/${source}/${entry.name}`,
+            });
         }
     }
+
+    const idevices = Array.from(ideviceMap.values());
 
     // Sort by category then title
     idevices.sort((a, b) => {

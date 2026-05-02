@@ -13,6 +13,7 @@ import { getAppVersion } from '../utils/version';
 import { getBasePath } from '../utils/basepath.util';
 import { db as defaultDb } from '../db/client';
 import { getDisabledIdeviceIds as getDisabledIdeviceIdsDefault } from '../services/idevice-admin-settings';
+import { parseIdeviceConfig as parseSharedIdeviceConfig, type IdeviceConfig } from '../shared/parsers/idevice-parser';
 import type { JwtPayload } from './auth';
 import type { IdeviceFileUploadRequest } from './types/request-payloads';
 
@@ -64,184 +65,21 @@ export interface IdevicesRouteDeps {
     getDisabledIdeviceIds?: () => Promise<Set<string>>;
 }
 
-export interface IdeviceConfig {
-    id: string;
-    title: string;
-    cssClass: string;
-    category: string;
-    icon: {
-        name: string;
-        url: string;
-        type: string;
-    };
-    version: string;
-    apiVersion: string;
-    componentType: string;
-    author: string;
-    authorUrl: string;
-    license: string;
-    licenseUrl: string;
-    description: string;
-    downloadable: boolean;
-    url: string;
-    editionJs: string[];
-    editionCss: string[];
-    exportJs: string[];
-    exportCss: string[];
-    editionTemplateFilename: string;
-    exportTemplateFilename: string;
-    editionTemplateContent: string;
-    exportTemplateContent: string;
-    location: string;
-    locationType: string;
-    exportObject: string; // Global JS object name for export rendering (e.g., '$text')
-}
-
-/**
- * Read template file content safely
- */
-function readTemplateContent(basePath: string, folder: string, filename: string): string {
-    if (!filename) return '';
-    try {
-        const templatePath = path.join(basePath, folder, filename);
-        if (fs.existsSync(templatePath)) {
-            return fs.readFileSync(templatePath, 'utf-8');
-        }
-    } catch {
-        // Ignore errors, return empty string
-    }
-    return '';
-}
-
 /**
  * Parse iDevice config.xml
  */
 export function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: string): IdeviceConfig | null {
-    try {
-        // Simple XML parsing (no external dependency needed)
-        const getValue = (tag: string): string => {
-            const match = xmlContent.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
-            return match ? match[1].trim() : '';
-        };
-
-        const getNestedValue = (parent: string, child: string): string => {
-            const parentMatch = xmlContent.match(new RegExp(`<${parent}>([\\s\\S]*?)<\\/${parent}>`));
-            if (!parentMatch) return '';
-            const childMatch = parentMatch[1].match(new RegExp(`<${child}>([\\s\\S]*?)<\\/${child}>`));
-            return childMatch ? childMatch[1].trim() : '';
-        };
-
-        // Parse list of filenames and verify they exist on disk
-        const getValidFilenames = (tag: string, subfolder: 'edition' | 'export'): string[] => {
-            const parentMatch = xmlContent.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
-
-            let filenames: string[];
-            if (!parentMatch) {
-                // No explicit files specified - scan folder for all matching files
-                // This ensures dependencies like html2canvas.js are included
-                const folderPath = path.join(basePath, subfolder);
-                const extension = tag.includes('js') ? '.js' : '.css';
-                if (fs.existsSync(folderPath)) {
-                    try {
-                        filenames = fs
-                            .readdirSync(folderPath)
-                            .filter(
-                                file =>
-                                    file.endsWith(extension) && !file.includes('.test.') && !file.includes('.spec.'),
-                            )
-                            .sort((a, b) => {
-                                // Put main iDevice file first, then alphabetically
-                                if (a === `${ideviceId}${extension}`) return -1;
-                                if (b === `${ideviceId}${extension}`) return 1;
-                                return a.localeCompare(b);
-                            });
-                    } catch {
-                        filenames = [`${ideviceId}${extension}`];
-                    }
-                } else {
-                    filenames = [`${ideviceId}${extension}`];
-                }
-            } else {
-                filenames = [];
-                const filenameMatches = parentMatch[1].matchAll(/<filename>([^<]+)<\/filename>/g);
-                for (const match of filenameMatches) {
-                    filenames.push(match[1].trim());
-                }
-                if (filenames.length === 0) {
-                    filenames = [`${ideviceId}.${tag.includes('js') ? 'js' : 'css'}`];
-                }
-            }
-
-            // Filter to only include files that actually exist on disk
-            return filenames.filter(filename => {
-                const filePath = path.join(basePath, subfolder, filename);
-                return fs.existsSync(filePath);
-            });
-        };
-
-        // Handle icon - can be simple string or nested object
-        let icon = {
-            name: `${ideviceId}-icon`,
-            url: `${ideviceId}-icon.svg`,
-            type: 'img',
-        };
-        const iconContent = getValue('icon');
-        if (iconContent && !iconContent.includes('<')) {
-            // Simple icon name (like "lightbulb")
-            icon = { name: iconContent, url: iconContent, type: 'icon' };
-        } else if (iconContent) {
-            // Nested icon structure
-            icon = {
-                name: getNestedValue('icon', 'name') || `${ideviceId}-icon`,
-                url: getNestedValue('icon', 'url') || `${ideviceId}-icon.svg`,
-                type: getNestedValue('icon', 'type') || 'img',
-            };
-        }
-
-        // Get template filenames
-        const editionTemplateFilename = getValue('edition-template-filename') || '';
-        const exportTemplateFilename = getValue('export-template-filename') || '';
-
-        // Read template content from files
-        const editionTemplateContent = readTemplateContent(basePath, 'edition', editionTemplateFilename);
-        const exportTemplateContent = readTemplateContent(basePath, 'export', exportTemplateFilename);
-
-        // exportObject is the global JS object name used for rendering (e.g., '$text')
-        // Can be specified in config.xml or defaults to '$' + ideviceId (without dashes)
-        // This must match frontend's getIdeviceObjectKey(): '$' + this.id.split('-').join('')
-        const exportObject = getValue('export-object') || `$${ideviceId.split('-').join('')}`;
-
-        return {
-            id: ideviceId,
-            title: getValue('title') || getValue('name') || ideviceId,
-            cssClass: getValue('css-class') || ideviceId,
-            category: getValue('category') || 'Uncategorized',
-            icon,
-            version: getValue('version') || '1.0',
-            apiVersion: getValue('api-version') || '3.0',
-            componentType: getValue('component-type') || 'html',
-            author: getValue('author') || '',
-            authorUrl: getValue('author-url') || '',
-            license: getValue('license') || '',
-            licenseUrl: getValue('license-url') || '',
-            description: getValue('description') || '',
-            downloadable: getValue('downloadable') === '1',
-            url: basePath,
-            editionJs: getValidFilenames('edition-js', 'edition'),
-            editionCss: getValidFilenames('edition-css', 'edition'),
-            exportJs: getValidFilenames('export-js', 'export'),
-            exportCss: getValidFilenames('export-css', 'export'),
-            editionTemplateFilename,
-            exportTemplateFilename,
-            editionTemplateContent,
-            exportTemplateContent,
-            location: getValue('location') || '',
-            locationType: getValue('location-type') || '',
-            exportObject,
-        };
-    } catch {
-        return null;
-    }
+    return parseSharedIdeviceConfig(xmlContent, {
+        ideviceId,
+        basePath,
+        urlPrefix: basePath,
+        fs: {
+            existsSync: fs.existsSync,
+            readFileSync: fs.readFileSync,
+            readdirSync: fs.readdirSync,
+        },
+        path,
+    });
 }
 
 /**

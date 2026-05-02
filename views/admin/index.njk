@@ -503,6 +503,35 @@
             gap: 0.5rem;
         }
 
+        .admin-tabs {
+            display: flex;
+            gap: 0.25rem;
+            border-bottom: 1px solid var(--admin-border);
+            margin-bottom: 1rem;
+        }
+
+        .admin-tab-button {
+            border: 0;
+            border-bottom: 2px solid transparent;
+            background: transparent;
+            color: var(--admin-text-muted);
+            padding: 0.65rem 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .admin-tab-button.active {
+            border-bottom-color: var(--admin-primary);
+            color: var(--admin-primary);
+        }
+
+        .admin-tab-panel[hidden] {
+            display: none;
+        }
+
         .ext-toolbar-left label {
             font-weight: 500;
             color: var(--admin-text-light);
@@ -1662,7 +1691,17 @@
                             </div>
                             <input type="file" id="ideviceFileInput" accept=".zip" style="display: none;">
                         </div>
-                        <div id="idevicesTableContainer">
+                        <div class="admin-tabs" role="tablist" aria-label="{{ t.idevices_management or 'iDevices Management' }}">
+                            <button type="button" class="admin-tab-button active" id="idevicesSystemTab" data-admin-idevice-tab="system" role="tab" aria-selected="true" aria-controls="idevicesSystemPanel">
+                                <span class="mi mi-sm">inventory_2</span>
+                                {{ t.system or 'System' }}
+                            </button>
+                            <button type="button" class="admin-tab-button" id="idevicesUsersTab" data-admin-idevice-tab="users" role="tab" aria-selected="false" aria-controls="idevicesUsersPanel">
+                                <span class="mi mi-sm">person</span>
+                                {{ t.user or 'User' }}
+                            </button>
+                        </div>
+                        <div id="idevicesSystemPanel" class="admin-tab-panel" role="tabpanel" aria-labelledby="idevicesSystemTab">
                             <table class="admin-table">
                                 <thead>
                                     <tr>
@@ -1689,6 +1728,38 @@
                                 <tbody id="idevicesTableBody">
                                     <tr>
                                         <td colspan="8" class="text-center">
+                                            <span class="mi mi-spin">sync</span>
+                                            {{ t.loading or 'Loading...' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="idevicesUsersPanel" class="admin-tab-panel" role="tabpanel" aria-labelledby="idevicesUsersTab" hidden>
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-sort-idevice="userId" aria-sort="none">
+                                            {{ t.user_id or 'User ID' }} <span class="mi mi-sm sort-icon">unfold_more</span>
+                                        </th>
+                                        <th class="sortable sorted" data-sort-idevice="id" aria-sort="ascending">
+                                            ID (Name) <span class="mi mi-sm sort-icon">expand_less</span>
+                                        </th>
+                                        <th class="sortable" data-sort-idevice="title" aria-sort="none">
+                                            {{ t.title or 'Title' }} <span class="mi mi-sm sort-icon">unfold_more</span>
+                                        </th>
+                                        <th class="sortable" data-sort-idevice="category" aria-sort="none">
+                                            {{ t.category or 'Category' }} <span class="mi mi-sm sort-icon">unfold_more</span>
+                                        </th>
+                                        <th class="sortable" data-sort-idevice="componentType" aria-sort="none">
+                                            {{ t.type or 'Type' }} <span class="mi mi-sm sort-icon">unfold_more</span>
+                                        </th>
+                                        <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userIdevicesTableBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center">
                                             <span class="mi mi-spin">sync</span>
                                             {{ t.loading or 'Loading...' }}
                                         </td>
@@ -2294,11 +2365,15 @@ window.$eXeLearningCustom = {
             unlimited: '{{ t.unlimited or "Unlimited" }}',
             base: '{{ t.base or "Base" }}',
             site: '{{ t.site or "Site" }}',
+            system: '{{ t.system or "System" }}',
+            user: '{{ t.user or "User" }}',
             idevice_enabled: '{{ t.idevice_enabled or "iDevice enabled" }}',
             idevice_disabled: '{{ t.idevice_disabled or "iDevice disabled" }}',
             idevice_installed: '{{ t.idevice_installed or "iDevice installed" }}',
             idevice_uninstalled: '{{ t.idevice_uninstalled or "iDevice uninstalled" }}',
             install_idevice_failed: '{{ t.install_idevice_failed or "Failed to install iDevice" }}',
+            download_idevice: '{{ t.download_idevice or "Download iDevice" }}',
+            download_idevice_failed: '{{ t.download_idevice_failed or "Failed to download iDevice" }}',
             confirm_update_idevice: '{{ t.confirm_update_idevice or "Este iDevice ya existe. \u00bfDeseas actualizarlo?" }}',
             uninstall_idevice: '{{ t.uninstall_idevice or "Uninstall iDevice" }}',
             confirm_uninstall_idevice: '{{ t.confirm_uninstall_idevice or "Uninstall iDevice {id}?" }}',
@@ -4036,11 +4111,13 @@ window.$eXeLearningCustom = {
         // ==========================================
 
         let adminIdevices = [];
+        let adminUserIdevices = [];
         let adminIdeviceSortBy = 'id';
         let adminIdeviceSortOrder = 'asc';
         let adminIdeviceFilterText = '';
 
         function getAdminIdeviceSortValue(idevice, field) {
+            if (field === 'userId') return idevice.userId || '';
             if (field === 'author') return idevice.author || '';
             if (field === 'category') return idevice.category || '';
             if (field === 'componentType') return idevice.componentType || '';
@@ -4051,6 +4128,7 @@ window.$eXeLearningCustom = {
         function getAdminIdeviceSearchText(idevice) {
             return [
                 idevice.id,
+                idevice.userId,
                 idevice.title,
                 idevice.category,
                 idevice.author,
@@ -4119,7 +4197,10 @@ window.$eXeLearningCustom = {
                 const sourceBadge = '<span class="badge badge-primary">' + sourceLabel + '</span>';
                 const ideviceIdArg = JSON.stringify(idevice.id || '');
                 const actions = idevice.source === 'site'
-                    ? `<button class="btn-admin-outline btn-admin-danger" onclick='uninstallIdevice(${ideviceIdArg})' title="${T.uninstall_idevice}"><span class="mi mi-sm">delete</span></button>`
+                    ? `<div class="d-flex gap-1">
+                            <button class="btn-admin-outline" onclick='downloadAdminIdevice(${ideviceIdArg})' title="${T.download_idevice}" aria-label="${T.download_idevice}"><span class="mi mi-sm">download</span></button>
+                            <button class="btn-admin-outline btn-admin-danger" onclick='uninstallIdevice(${ideviceIdArg})' title="${T.uninstall_idevice}" aria-label="${T.uninstall_idevice}"><span class="mi mi-sm">delete</span></button>
+                       </div>`
                     : '<span class="text-muted">-</span>';
 
                 return `
@@ -4141,6 +4222,48 @@ window.$eXeLearningCustom = {
             }).join('');
         }
 
+        function renderAdminUserIdevices() {
+            const tbody = document.getElementById('userIdevicesTableBody');
+
+            updateAdminIdeviceSortIcons();
+
+            const visibleIdevices = filterAdminIdevices(adminUserIdevices || []);
+
+            if (visibleIdevices.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center">{{ t.no_idevices or 'No iDevices available.' }}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = sortAdminIdevices(visibleIdevices).map(idevice => {
+                const userIdArg = JSON.stringify(idevice.userId || '');
+                const ideviceIdArg = JSON.stringify(idevice.id || '');
+                const actions = `<div class="d-flex gap-1">
+                        <button class="btn-admin-outline" onclick='downloadAdminUserIdevice(${userIdArg}, ${ideviceIdArg})' title="${T.download_idevice}" aria-label="${T.download_idevice}"><span class="mi mi-sm">download</span></button>
+                        <button class="btn-admin-outline btn-admin-danger" onclick='uninstallUserIdevice(${userIdArg}, ${ideviceIdArg})' title="${T.uninstall_idevice}" aria-label="${T.uninstall_idevice}"><span class="mi mi-sm">delete</span></button>
+                   </div>`;
+
+                return `
+                <tr data-user-id="${escapeHtml(idevice.userId)}" data-idevice-id="${escapeHtml(idevice.id)}" class="idevice-row-user">
+                    <td><code>${escapeHtml(idevice.userId)}</code></td>
+                    <td><code>${escapeHtml(idevice.name || idevice.id)}</code></td>
+                    <td><strong>${escapeHtml(idevice.title || '-')}</strong></td>
+                    <td>${escapeHtml(idevice.category || '-')}</td>
+                    <td>${escapeHtml(idevice.componentType || '-')}</td>
+                    <td>${actions}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function setAdminIdeviceTab(activeTab) {
+            document.querySelectorAll('[data-admin-idevice-tab]').forEach(button => {
+                const isActive = button.dataset.adminIdeviceTab === activeTab;
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-selected', String(isActive));
+            });
+            document.getElementById('idevicesSystemPanel').hidden = activeTab !== 'system';
+            document.getElementById('idevicesUsersPanel').hidden = activeTab !== 'users';
+        }
+
         document.querySelectorAll('.admin-table th.sortable[data-sort-idevice]').forEach(th => {
             th.addEventListener('click', () => {
                 const col = th.dataset.sortIdevice;
@@ -4151,12 +4274,18 @@ window.$eXeLearningCustom = {
                     adminIdeviceSortOrder = 'asc';
                 }
                 renderAdminIdevices();
+                renderAdminUserIdevices();
             });
+        });
+
+        document.querySelectorAll('[data-admin-idevice-tab]').forEach(button => {
+            button.addEventListener('click', () => setAdminIdeviceTab(button.dataset.adminIdeviceTab));
         });
 
         document.getElementById('ideviceTextFilter')?.addEventListener('input', (event) => {
             adminIdeviceFilterText = event.target.value || '';
             renderAdminIdevices();
+            renderAdminUserIdevices();
         });
 
         document.getElementById('uploadIdeviceBtn')?.addEventListener('click', () => {
@@ -4181,9 +4310,26 @@ window.$eXeLearningCustom = {
 
                 adminIdevices = data.idevices || [];
                 renderAdminIdevices();
+                await loadAdminUserIdevices();
             } catch (error) {
                 console.error('Error loading iDevices:', error);
                 tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">{{ t.error_loading or 'Error loading data' }}</td></tr>`;
+            }
+        }
+
+        async function loadAdminUserIdevices() {
+            const tbody = document.getElementById('userIdevicesTableBody');
+            try {
+                const response = await fetch(`${API_BASE}/idevices/users`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load user iDevices');
+
+                const data = await response.json();
+
+                adminUserIdevices = data.idevices || [];
+                renderAdminUserIdevices();
+            } catch (error) {
+                console.error('Error loading user iDevices:', error);
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">{{ t.error_loading or 'Error loading data' }}</td></tr>`;
             }
         }
 
@@ -4237,6 +4383,69 @@ window.$eXeLearningCustom = {
                 loadAdminIdevices();
             } catch (error) {
                 showNotification(error.message, 'error');
+            }
+        }
+
+        async function uninstallUserIdevice(userId, id) {
+            if (!confirm(T.confirm_uninstall_idevice.replace('{id}', `${id} (${T.user} ${userId})`))) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/idevices/users/${encodeURIComponent(userId)}/${encodeURIComponent(id)}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || result.error || 'Failed to uninstall iDevice');
+                }
+
+                showNotification(T.idevice_uninstalled, 'success');
+                loadAdminUserIdevices();
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function downloadAdminIdevice(id) {
+            try {
+                const response = await fetch(`${API_BASE}/idevices/${encodeURIComponent(id)}/download`, {
+                    credentials: 'include'
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.zipFileName || !result.zipBase64) {
+                    throw new Error(result.message || result.error || T.download_idevice_failed);
+                }
+
+                const link = document.createElement('a');
+                link.href = `data:application/zip;base64,${result.zipBase64}`;
+                link.download = result.zipFileName;
+                link.click();
+                link.remove();
+            } catch (error) {
+                showNotification(error.message || T.download_idevice_failed, 'error');
+            }
+        }
+
+        async function downloadAdminUserIdevice(userId, id) {
+            try {
+                const response = await fetch(`${API_BASE}/idevices/users/${encodeURIComponent(userId)}/${encodeURIComponent(id)}/download`, {
+                    credentials: 'include'
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.zipFileName || !result.zipBase64) {
+                    throw new Error(result.message || result.error || T.download_idevice_failed);
+                }
+
+                const link = document.createElement('a');
+                link.href = `data:application/zip;base64,${result.zipBase64}`;
+                link.download = result.zipFileName;
+                link.click();
+                link.remove();
+            } catch (error) {
+                showNotification(error.message || T.download_idevice_failed, 'error');
             }
         }
 

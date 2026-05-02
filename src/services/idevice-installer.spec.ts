@@ -538,4 +538,49 @@ describe('IdeviceInstallerService', () => {
             expect(await fs.pathExists(path.join(usersDir, '84', 'my-test-idevice'))).toBe(true);
         });
     });
+
+    // ========================================================================
+    // Download
+    // ========================================================================
+    describe('download', () => {
+        it('returns NOT_FOUND for an iDevice that is not installed', async () => {
+            const result = await createService().download('not-installed');
+
+            expect(result.success).toBe(false);
+            expect(result.code).toBe('NOT_FOUND');
+        });
+
+        it('rejects invalid ids', async () => {
+            const result = await createService().download('../escape');
+
+            expect(result.success).toBe(false);
+            expect(result.code).toBe('NOT_FOUND');
+        });
+
+        it('downloads an installed user iDevice as a ZIP', async () => {
+            const service = createService();
+            await service.installFromBuffer(buildZip(validPackageFiles()), { userId: 42 });
+
+            const result = await service.download('my-test-idevice', { userId: 42 });
+
+            expect(result.success).toBe(true);
+            if (!result.success) return;
+            expect(result.zipFileName).toBe('my-test-idevice.zip');
+            const zipBuffer = Buffer.from(result.zipBase64 as string, 'base64');
+            const contents = fflate.unzipSync(new Uint8Array(zipBuffer));
+            expect(Object.keys(contents)).toContain('config.xml');
+            expect(Object.keys(contents)).toContain('edition/my-test-idevice.js');
+            expect(Object.keys(contents)).toContain('export/my-test-idevice.js');
+        });
+
+        it('downloads only from the scoped user directory', async () => {
+            const service = createService();
+            await service.installFromBuffer(buildZip(validPackageFiles()), { userId: 42 });
+
+            const result = await service.download('my-test-idevice', { userId: 84 });
+
+            expect(result.success).toBe(false);
+            expect(result.code).toBe('NOT_FOUND');
+        });
+    });
 });

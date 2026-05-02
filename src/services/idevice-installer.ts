@@ -122,6 +122,14 @@ export interface UninstallResult {
     backupPath?: string;
 }
 
+export interface DownloadResult {
+    success: boolean;
+    code?: 'NOT_FOUND' | 'COPY_ERROR';
+    message?: string;
+    zipFileName?: string;
+    zipBase64?: string;
+}
+
 export interface IdeviceInstallerDeps {
     fs?: typeof fsExtra;
     path?: typeof pathModule;
@@ -139,6 +147,7 @@ export interface IdeviceInstallerDeps {
 export interface IdeviceInstallerService {
     installFromBuffer: (zipBuffer: Buffer, options?: InstallOptions) => Promise<InstallOutcome>;
     uninstall: (ideviceId: string, options?: UserIdeviceScopeOptions) => Promise<UninstallResult>;
+    download: (ideviceId: string, options?: UserIdeviceScopeOptions) => Promise<DownloadResult>;
 }
 
 // ============================================================================
@@ -601,7 +610,37 @@ export function createIdeviceInstallerService(deps: IdeviceInstallerDeps = {}): 
         }
     };
 
-    return { installFromBuffer, uninstall };
+    // ========================================================================
+    // download
+    // ========================================================================
+    const download = async (ideviceId: string, options: UserIdeviceScopeOptions = {}): Promise<DownloadResult> => {
+        if (!ID_REGEX.test(ideviceId)) {
+            return { success: false, code: 'NOT_FOUND', message: `Invalid iDevice id: "${ideviceId}".` };
+        }
+        const userInstallDir = getScopedUsersDir(options.userId);
+        if (options.userId !== undefined && normalizeUserDirName(options.userId) === null) {
+            return { success: false, code: 'NOT_FOUND', message: `Unsafe user id: "${options.userId}".` };
+        }
+
+        const target = path.join(userInstallDir, ideviceId);
+        if (!(await fs.pathExists(target))) {
+            return { success: false, code: 'NOT_FOUND', message: `iDevice "${ideviceId}" is not installed.` };
+        }
+
+        try {
+            const zipBuffer = await zipService.createZipBuffer(target);
+            return {
+                success: true,
+                zipFileName: `${ideviceId}.zip`,
+                zipBase64: zipBuffer.toString('base64'),
+            };
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            return { success: false, code: 'COPY_ERROR', message };
+        }
+    };
+
+    return { installFromBuffer, uninstall, download };
 }
 
 // ============================================================================

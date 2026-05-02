@@ -20,6 +20,8 @@ import {
     readFile as readFileDefault,
 } from '../services/file-helper';
 
+import { loadIdeviceConfigs } from '../services/idevice-config';
+
 // Centralized export system - same as CLI and frontend
 import {
     FileSystemResourceProvider as FileSystemResourceProviderDefault,
@@ -327,12 +329,21 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
      * Uses the same exporters as CLI and frontend for consistency
      *
      * @param virtualSession - Optional virtual session for Yjs-only exports
+     * @param scope - Optional resolution scope. When `userId` is provided, the
+     *   exporter resolves iDevices from `users/{userId}/` (per-user installs),
+     *   then `site/` (admin installs), then `base/` (built-ins). Without it
+     *   only `site/` and `base/` are searched.
+     *
+     *   TODO: the export route currently does not extract userId from JWT, so
+     *   per-user installs are reachable only when the caller passes `userId`
+     *   explicitly. Wiring it from `cookie.auth` is left as a follow-up.
      */
     async function prepareExport(
         sessionId: string,
         exportType: string,
         options: ExportOptionsRequest = {},
         virtualSession?: ProjectSession,
+        scope: { userId?: number | string } = {},
     ): Promise<ExportResult & { zipPath?: string }> {
         const session = virtualSession || getSession(sessionId);
         if (!session) {
@@ -505,9 +516,34 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 }
             }
 
-            // Create providers using injected classes
-            console.log('[Export] Using publicDir:', publicDir);
-            const resources: ResourceProvider = new FileSystemResourceProvider(publicDir);
+            // Refresh the iDevice config cache for this request so that
+            // `IdeviceRenderer` resolves the correct `componentType`/`template`
+            // for site- and (when scoped) user-installed iDevices.
+            //
+            // Note: the cache is module-global. With concurrent exports for
+            // different users this is racy — two simultaneous exports could
+            // see each other's user iDevices. In practice exports are short
+            // and sequential per-request; if that changes, refactor to a
+            // request-scoped service.
+            const ideviceScanPaths = [
+                pathModule.join(publicDir, 'files/perm/idevices/base'),
+                pathModule.join(publicDir, 'files/perm/idevices/site'),
+            ];
+            const userIdStr =
+                typeof scope.userId === 'number' || typeof scope.userId === 'string' ? String(scope.userId) : '';
+            if (/^\d+$/.test(userIdStr)) {
+                ideviceScanPaths.push(pathModule.join(publicDir, 'files/perm/idevices/users', userIdStr));
+            }
+            loadIdeviceConfigs(ideviceScanPaths);
+
+            // Create providers using injected classes.
+            // `scope.userId` (when set) lets the resource provider resolve
+            // per-user installed iDevices in `users/{userId}/` before falling
+            // back to `site/` (admin installs) and `base/` (built-ins).
+            console.log('[Export] Using publicDir:', publicDir, 'scope:', scope);
+            const resources: ResourceProvider = new FileSystemResourceProvider(publicDir, null, {
+                userId: scope.userId,
+            });
             const zip: ZipProvider = new FflateZipProvider();
 
             // Ensure temp directory exists to prevent ENOENT errors in FileSystemAssetProvider

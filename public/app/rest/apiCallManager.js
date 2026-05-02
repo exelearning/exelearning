@@ -805,14 +805,12 @@ export default class ApiCallManager {
     /**
      * Get installed idevice zip
      *
-     * @param {*} odeSessionId
-     * @param {*} $ideviceDirName
+     * @param {*} ideviceId
      * @returns
      */
-    async getIdeviceInstalledZip(odeSessionId, ideviceDirName) {
+    async getIdeviceInstalledZip(ideviceId) {
         let url = this.endpoints.api_idevices_installed_download.path;
-        url = url.replace('{odeSessionId}', odeSessionId);
-        url = url.replace('{ideviceDirName}', ideviceDirName);
+        url = url.replace('{ideviceId}', encodeURIComponent(ideviceId));
         return await this.func.get(url);
     }
 

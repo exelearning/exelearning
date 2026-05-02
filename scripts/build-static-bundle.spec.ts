@@ -412,6 +412,17 @@ describe('parseIdeviceConfig', () => {
         expect(result).not.toBeNull();
         expect(result!.exportObject).toBe('$multiwordname');
     });
+
+    it('should return null for malformed config.xml', () => {
+        const xml = `<?xml version="1.0"?>
+<idevice-config>
+    <title>Broken
+</idevice-config>`;
+
+        const result = parseIdeviceConfig(xml, 'broken', mockBasePath);
+
+        expect(result).toBeNull();
+    });
 });
 
 // =============================================================================

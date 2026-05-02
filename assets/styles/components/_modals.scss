@@ -1905,6 +1905,16 @@
             }
         }
 
+        .toggle-item :is(.idevice-download, .idevice-uninstall) {
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+        }
+
         .idevices-properties-title {
             border-bottom: 2px solid var(--dark-exe-color);
             margin-bottom: 30px;

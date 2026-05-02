@@ -60,7 +60,7 @@ export default class Idevice {
         apiVersion: '3.0',
         author: '',
         authorUrl: '',
-        category: 'Others',
+        category: 'Uncategorized',
         componentType: 'html',
         cssClass: 'default',
         description: '',

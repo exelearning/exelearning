@@ -48,6 +48,17 @@ const mockSiteIdevice: IdeviceConfig = {
     exportObject: '$siteactivity',
 };
 
+const mockUserIdevice: IdeviceConfig = {
+    ...mockIdevice,
+    id: 'user-activity',
+    title: 'User Activity',
+    cssClass: 'user-activity',
+    url: 'public/files/perm/idevices/users/42/user-activity',
+    editionJs: ['user-activity.js'],
+    exportJs: ['user-activity.js'],
+    exportObject: '$useractivity',
+};
+
 beforeAll(() => {
     originalJwtSecret = process.env.JWT_SECRET;
     process.env.JWT_SECRET = TEST_JWT_SECRET;
@@ -84,6 +95,13 @@ function createAuthRequest(url: string, token: string, options: RequestInit = {}
     return new Request(url, { ...options, headers });
 }
 
+function createDirent(name: string, isDirectory = true): import('fs').Dirent {
+    return {
+        name,
+        isDirectory: () => isDirectory,
+    } as import('fs').Dirent;
+}
+
 function createDeps(overrides: Partial<AdminIdevicesDependencies> = {}): AdminIdevicesDependencies {
     const installer: IdeviceInstallerService = {
         installFromBuffer: mock(async () => ({
@@ -97,17 +115,44 @@ function createDeps(overrides: Partial<AdminIdevicesDependencies> = {}): AdminId
             config: mockSiteIdevice,
         })),
         uninstall: mock(async () => ({ success: true })),
+        download: mock(async id => ({
+            success: true,
+            zipFileName: `${id}.zip`,
+            zipBase64: Buffer.from('zip-data').toString('base64'),
+        })),
+    };
+
+    const userInstaller: IdeviceInstallerService = {
+        installFromBuffer: mock(async () => ({
+            success: true,
+            id: mockUserIdevice.id,
+            name: mockUserIdevice.id,
+            title: mockUserIdevice.title,
+            version: mockUserIdevice.version,
+            exportObject: mockUserIdevice.exportObject,
+            overwritten: false,
+            config: mockUserIdevice,
+        })),
+        uninstall: mock(async () => ({ success: true })),
+        download: mock(async id => ({
+            success: true,
+            zipFileName: `${id}.zip`,
+            zipBase64: Buffer.from('zip-data').toString('base64'),
+        })),
     };
 
     return {
         db: {} as AdminIdevicesDependencies['db'],
         baseIdevicesPath: 'public/files/perm/idevices/base',
         siteIdevicesPath: 'public/files/perm/idevices/site',
+        userIdevicesPath: 'public/files/perm/idevices/users',
         scanIdevices: mock((scanPath: string) => (scanPath.includes('/site') ? [] : [mockIdevice])),
+        listDirectory: mock(() => []),
         appVersion: () => 'vtest',
         getDisabledIdeviceIds: mock(() => Promise.resolve(new Set<string>())),
         setDisabledIdeviceIds: mock(() => Promise.resolve()),
         installer,
+        userInstaller,
         ...overrides,
     };
 }
@@ -175,6 +220,35 @@ describe('Admin iDevices Routes', () => {
         expect(siteIdevice.url).toBe('/vtest/files/perm/idevices/site/site-activity');
     });
 
+    it('lists user iDevices grouped by numeric user directory', async () => {
+        const app = new Elysia().use(
+            createAdminIdevicesRoutes(
+                createDeps({
+                    listDirectory: mock(() => [createDirent('42'), createDirent('not-a-user'), createDirent('99', false)]),
+                    scanIdevices: mock((scanPath: string) => {
+                        const normalizedPath = scanPath.replaceAll('\\', '/');
+                        return normalizedPath.endsWith('/users/42') ? [mockUserIdevice] : [];
+                    }),
+                }),
+            ),
+        );
+        const token = await generateToken(['ROLE_ADMIN']);
+
+        const response = await app.handle(createAuthRequest('http://localhost/api/admin/idevices/users', token));
+
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body.idevices).toHaveLength(1);
+        expect(body.idevices[0]).toMatchObject({
+            userId: '42',
+            id: 'user-activity',
+            name: 'user-activity',
+            title: 'User Activity',
+            source: 'user',
+            url: '/vtest/files/perm/idevices/users/42/user-activity',
+        });
+    });
+
     it('installs a site iDevice through the existing installer', async () => {
         let receivedBuffer: Buffer | null = null;
         let receivedConfirmOverwrite = false;
@@ -194,6 +268,7 @@ describe('Admin iDevices Routes', () => {
                 };
             }),
             uninstall: mock(async () => ({ success: true })),
+            download: mock(async () => ({ success: false, code: 'NOT_FOUND' })),
         };
         const app = new Elysia().use(createAdminIdevicesRoutes(createDeps({ installer })));
         const token = await generateToken(['ROLE_ADMIN']);
@@ -224,6 +299,7 @@ describe('Admin iDevices Routes', () => {
                 message: 'Cannot overwrite built-in iDevice.',
             })),
             uninstall: mock(async () => ({ success: true })),
+            download: mock(async () => ({ success: false, code: 'NOT_FOUND' })),
         };
         const app = new Elysia().use(createAdminIdevicesRoutes(createDeps({ installer })));
         const token = await generateToken(['ROLE_ADMIN']);
@@ -261,6 +337,7 @@ describe('Admin iDevices Routes', () => {
                 receivedId = id;
                 return { success: true };
             }),
+            download: mock(async () => ({ success: false, code: 'NOT_FOUND' })),
         };
         const app = new Elysia().use(
             createAdminIdevicesRoutes(
@@ -292,6 +369,146 @@ describe('Admin iDevices Routes', () => {
         );
 
         expect(response.status).toBe(409);
+    });
+
+    it('downloads only site iDevices from admin actions', async () => {
+        let receivedId = '';
+        const installer: IdeviceInstallerService = {
+            installFromBuffer: mock(async () => ({
+                success: true,
+                id: mockSiteIdevice.id,
+                name: mockSiteIdevice.id,
+                title: mockSiteIdevice.title,
+                version: mockSiteIdevice.version,
+                exportObject: mockSiteIdevice.exportObject,
+                overwritten: false,
+                config: mockSiteIdevice,
+            })),
+            uninstall: mock(async () => ({ success: true })),
+            download: mock(async id => {
+                receivedId = id;
+                return {
+                    success: true,
+                    zipFileName: `${id}.zip`,
+                    zipBase64: Buffer.from('zip-data').toString('base64'),
+                };
+            }),
+        };
+        const app = new Elysia().use(
+            createAdminIdevicesRoutes(
+                createDeps({
+                    installer,
+                    scanIdevices: mock((scanPath: string) =>
+                        scanPath.includes('/site') ? [mockSiteIdevice] : [mockIdevice],
+                    ),
+                }),
+            ),
+        );
+        const token = await generateToken(['ROLE_ADMIN']);
+
+        const response = await app.handle(
+            createAuthRequest('http://localhost/api/admin/idevices/site-activity/download', token),
+        );
+
+        expect(response.status).toBe(200);
+        expect(receivedId).toBe('site-activity');
+        expect(await response.json()).toMatchObject({
+            success: true,
+            zipFileName: 'site-activity.zip',
+            zipBase64: Buffer.from('zip-data').toString('base64'),
+        });
+    });
+
+    it('does not download built-in iDevices from admin actions', async () => {
+        const app = new Elysia().use(createAdminIdevicesRoutes(createDeps()));
+        const token = await generateToken(['ROLE_ADMIN']);
+
+        const response = await app.handle(
+            createAuthRequest('http://localhost/api/admin/idevices/rubric/download', token),
+        );
+
+        expect(response.status).toBe(409);
+    });
+
+    it('downloads user iDevices for the selected user directory', async () => {
+        let receivedId = '';
+        let receivedUserId: number | string | undefined;
+        const userInstaller: IdeviceInstallerService = {
+            installFromBuffer: mock(async () => ({
+                success: true,
+                id: mockUserIdevice.id,
+                name: mockUserIdevice.id,
+                title: mockUserIdevice.title,
+                version: mockUserIdevice.version,
+                exportObject: mockUserIdevice.exportObject,
+                overwritten: false,
+                config: mockUserIdevice,
+            })),
+            uninstall: mock(async () => ({ success: true })),
+            download: mock(async (id, options = {}) => {
+                receivedId = id;
+                receivedUserId = options.userId;
+                return {
+                    success: true,
+                    zipFileName: `${id}.zip`,
+                    zipBase64: Buffer.from('zip-data').toString('base64'),
+                };
+            }),
+        };
+        const app = new Elysia().use(createAdminIdevicesRoutes(createDeps({ userInstaller })));
+        const token = await generateToken(['ROLE_ADMIN']);
+
+        const response = await app.handle(
+            createAuthRequest('http://localhost/api/admin/idevices/users/42/user-activity/download', token),
+        );
+
+        expect(response.status).toBe(200);
+        expect(receivedId).toBe('user-activity');
+        expect(receivedUserId).toBe('42');
+        expect(await response.json()).toMatchObject({
+            success: true,
+            zipFileName: 'user-activity.zip',
+            zipBase64: Buffer.from('zip-data').toString('base64'),
+        });
+    });
+
+    it('uninstalls user iDevices for the selected user directory', async () => {
+        let receivedId = '';
+        let receivedUserId: number | string | undefined;
+        const userInstaller: IdeviceInstallerService = {
+            installFromBuffer: mock(async () => ({
+                success: true,
+                id: mockUserIdevice.id,
+                name: mockUserIdevice.id,
+                title: mockUserIdevice.title,
+                version: mockUserIdevice.version,
+                exportObject: mockUserIdevice.exportObject,
+                overwritten: false,
+                config: mockUserIdevice,
+            })),
+            uninstall: mock(async (id, options = {}) => {
+                receivedId = id;
+                receivedUserId = options.userId;
+                return { success: true };
+            }),
+            download: mock(async () => ({ success: false, code: 'NOT_FOUND' })),
+        };
+        const app = new Elysia().use(createAdminIdevicesRoutes(createDeps({ userInstaller })));
+        const token = await generateToken(['ROLE_ADMIN']);
+
+        const response = await app.handle(
+            createAuthRequest('http://localhost/api/admin/idevices/users/42/user-activity', token, {
+                method: 'DELETE',
+            }),
+        );
+
+        expect(response.status).toBe(200);
+        expect(receivedId).toBe('user-activity');
+        expect(receivedUserId).toBe('42');
+        expect(await response.json()).toMatchObject({
+            success: true,
+            deleted: { userId: '42', name: 'user-activity' },
+        });
     });
 
     it('toggles an iDevice enabled state', async () => {

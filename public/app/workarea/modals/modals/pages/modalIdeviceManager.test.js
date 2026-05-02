@@ -127,6 +127,10 @@ describe('ModalIdeviceManager', () => {
             responseMessage: 'OK',
             deleted: { name: 'test-idevice' },
           }),
+          getIdeviceInstalledZip: vi.fn().mockResolvedValue({
+            zipFileName: 'test-idevice.zip',
+            zipBase64: 'emlwLWRhdGE=',
+          }),
         },
         user: {
           name: 'testuser',
@@ -497,6 +501,12 @@ describe('ModalIdeviceManager', () => {
       modalIdeviceManager.show(idevices);
       vi.advanceTimersByTime(100);
       expect(mockBootstrapModal.show).toHaveBeenCalled();
+    });
+
+    it('should clear confirm action because toggle changes save immediately', () => {
+      modalIdeviceManager.show(idevices);
+      vi.advanceTimersByTime(100);
+      expect(modalIdeviceManager.setConfirmExec).toHaveBeenCalledWith(null);
     });
 
     it('should remove show class from alert if idevices provided', () => {
@@ -1056,14 +1066,37 @@ describe('ModalIdeviceManager', () => {
       expect(result.querySelector('.idevice-uninstall')).toBeNull();
     });
 
+    it('should not include a download button for base idevices', () => {
+      const result = modalIdeviceManager.makeRowTableIdevicesElement(idevice, ['text']);
+      expect(result.querySelector('.idevice-download')).toBeNull();
+    });
+
     it('should include an uninstall button for user idevices', () => {
       idevice.type = 'user';
       const result = modalIdeviceManager.makeRowTableIdevicesElement(idevice, ['text']);
       const button = result.querySelector('.idevice-uninstall');
       expect(button).not.toBeNull();
       expect(button.firstChild.classList.contains('delete-icon-red')).toBe(true);
-      // Button must be the first child so it appears on the left of the row
+    });
+
+    it('should include a leftmost download button for user idevices', () => {
+      idevice.type = 'user';
+      const result = modalIdeviceManager.makeRowTableIdevicesElement(idevice, ['text']);
+      const button = result.querySelector('.idevice-download');
+      expect(button).not.toBeNull();
+      expect(button.firstChild.classList.contains('download-icon-green')).toBe(true);
       expect(result.firstChild).toBe(button);
+    });
+
+    it('download button should request a ZIP for the user iDevice', () => {
+      idevice.type = 'user';
+      const downloadSpy = vi.spyOn(modalIdeviceManager, 'downloadIdeviceZip').mockImplementation(() => {});
+
+      const result = modalIdeviceManager.makeRowTableIdevicesElement(idevice, ['text']);
+      const button = result.querySelector('.idevice-download');
+      button.click();
+
+      expect(downloadSpy).toHaveBeenCalledWith(idevice);
     });
 
     it('uninstall button should open a confirmation modal that triggers removeIdevice', () => {
@@ -1084,6 +1117,61 @@ describe('ModalIdeviceManager', () => {
       expect(removeSpy).not.toHaveBeenCalled();
       args.confirmExec();
       expect(removeSpy).toHaveBeenCalledWith('text');
+    });
+  });
+
+  describe('downloadIdeviceZip', () => {
+    it('should call API getIdeviceInstalledZip with the iDevice name', async () => {
+      const click = vi.fn();
+      const remove = vi.fn();
+      const originalCreateObjectURL = URL.createObjectURL;
+      const originalRevokeObjectURL = URL.revokeObjectURL;
+      URL.createObjectURL = vi.fn(() => 'blob:test-idevice');
+      URL.revokeObjectURL = vi.fn();
+      const originalCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+        const element = originalCreateElement(tagName);
+        if (tagName === 'a') {
+          element.click = click;
+          element.remove = remove;
+        }
+        return element;
+      });
+
+      await modalIdeviceManager.downloadIdeviceZip({ name: 'test-idevice', title: 'Test iDevice' });
+
+      expect(eXeLearning.app.api.getIdeviceInstalledZip).toHaveBeenCalledWith('test-idevice');
+      expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+      expect(click).toHaveBeenCalled();
+      expect(remove).toHaveBeenCalled();
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-idevice');
+
+      document.createElement.mockRestore();
+      URL.createObjectURL = originalCreateObjectURL;
+      URL.revokeObjectURL = originalRevokeObjectURL;
+    });
+
+    it('should show an alert when the ZIP response is invalid', async () => {
+      eXeLearning.app.api.getIdeviceInstalledZip.mockResolvedValue({ responseMessage: 'ERROR', error: 'No ZIP' });
+      const alertSpy = vi.spyOn(modalIdeviceManager, 'showElementAlert').mockImplementation(() => {});
+
+      await modalIdeviceManager.downloadIdeviceZip({ name: 'test-idevice', title: 'Test iDevice' });
+
+      expect(alertSpy).toHaveBeenCalledWith('Could not download the iDevice', {
+        responseMessage: 'ERROR',
+        error: 'No ZIP',
+      });
+    });
+
+    it('should show an alert when the ZIP request fails', async () => {
+      eXeLearning.app.api.getIdeviceInstalledZip.mockRejectedValue(new Error('Download failed'));
+      const alertSpy = vi.spyOn(modalIdeviceManager, 'showElementAlert').mockImplementation(() => {});
+
+      await modalIdeviceManager.downloadIdeviceZip({ name: 'test-idevice', title: 'Test iDevice' });
+
+      expect(alertSpy).toHaveBeenCalledWith('Could not download the iDevice', {
+        error: 'Download failed',
+      });
     });
   });
 
@@ -1354,6 +1442,17 @@ describe('ModalIdeviceManager', () => {
         body: 'The iDevice "Test iDevice" has been installed correctly.',
         icon: 'check',
       });
+    });
+
+    it('should not run legacy user preference sync after installing', async () => {
+      eXeLearning.app.api.postUploadIdevice.mockResolvedValue({
+        responseMessage: 'OK',
+        idevice: { name: 'test-idevice', title: 'Test iDevice', type: 'user' },
+      });
+
+      await modalIdeviceManager.uploadIdevice('test.zip', 'filedata');
+
+      expect(modalIdeviceManager.saveIdevicesVisibility).not.toHaveBeenCalled();
     });
 
     it('should show alert on failure', async () => {

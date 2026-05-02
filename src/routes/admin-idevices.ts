@@ -5,6 +5,8 @@
 import { Elysia, t } from 'elysia';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
+import * as fs from 'fs';
+import * as path from 'path';
 import { db as defaultDb } from '../db/client';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
@@ -12,6 +14,7 @@ import type { JwtPayload } from './auth';
 import {
     IDEVICES_BASE_PATH,
     IDEVICES_SITE_PATH,
+    IDEVICES_USERS_PATH,
     type IdeviceConfig,
     scanIdevices as scanIdevicesDefault,
 } from './idevices';
@@ -28,11 +31,14 @@ export interface AdminIdevicesDependencies {
     db: Kysely<Database>;
     baseIdevicesPath: string;
     siteIdevicesPath: string;
+    userIdevicesPath: string;
     scanIdevices: typeof scanIdevicesDefault;
+    listDirectory: (directoryPath: string) => fs.Dirent[];
     appVersion: () => string;
     getDisabledIdeviceIds: typeof getDisabledIdeviceIdsDefault;
     setDisabledIdeviceIds: typeof setDisabledIdeviceIdsDefault;
     installer: IdeviceInstallerService;
+    userInstaller: IdeviceInstallerService;
 }
 
 export interface SerializedAdminIdevice {
@@ -60,15 +66,32 @@ export interface SerializedAdminIdevice {
     source: 'base' | 'site';
 }
 
+export interface SerializedAdminUserIdevice {
+    userId: string;
+    id: string;
+    name: string;
+    title: string;
+    category: string;
+    author: string;
+    version: string;
+    componentType: string;
+    icon: IdeviceConfig['icon'];
+    url: string;
+    source: 'user';
+}
+
 const defaultDependencies: AdminIdevicesDependencies = {
     db: defaultDb,
     baseIdevicesPath: IDEVICES_BASE_PATH,
     siteIdevicesPath: IDEVICES_SITE_PATH,
+    userIdevicesPath: IDEVICES_USERS_PATH,
     scanIdevices: scanIdevicesDefault,
+    listDirectory: directoryPath => (fs.existsSync(directoryPath) ? fs.readdirSync(directoryPath, { withFileTypes: true }) : []),
     appVersion: getAppVersion,
     getDisabledIdeviceIds: getDisabledIdeviceIdsDefault,
     setDisabledIdeviceIds: setDisabledIdeviceIdsDefault,
     installer: createIdeviceInstallerService({ userIdevicesPath: IDEVICES_SITE_PATH }),
+    userInstaller: createIdeviceInstallerService({ userIdevicesPath: IDEVICES_USERS_PATH }),
 };
 
 const httpStatusForInstallerCode: Record<string, number> = {
@@ -80,6 +103,11 @@ const httpStatusForInstallerCode: Record<string, number> = {
     COPY_ERROR: 500,
     ROLLBACK_ERROR: 500,
     UNKNOWN_ERROR: 500,
+};
+
+const httpStatusForDownloadCode: Record<string, number> = {
+    NOT_FOUND: 404,
+    COPY_ERROR: 500,
 };
 
 async function bufferFromUpload(file: unknown): Promise<Buffer | null> {
@@ -128,6 +156,22 @@ function serializeIdevice(
     };
 }
 
+function serializeUserIdevice(idevice: IdeviceConfig, version: string, userId: string): SerializedAdminUserIdevice {
+    return {
+        userId,
+        id: idevice.id,
+        name: idevice.id,
+        title: idevice.title,
+        category: idevice.category,
+        author: idevice.author,
+        version: idevice.version,
+        componentType: idevice.componentType,
+        icon: idevice.icon,
+        url: `/${version}/files/perm/idevices/users/${userId}/${idevice.id}`,
+        source: 'user',
+    };
+}
+
 function getAllIdevices(
     scanIdevices: typeof scanIdevicesDefault,
     baseIdevicesPath: string,
@@ -139,16 +183,34 @@ function getAllIdevices(
     ];
 }
 
+function getUserIdevices(
+    scanIdevices: typeof scanIdevicesDefault,
+    listDirectory: (directoryPath: string) => fs.Dirent[],
+    userIdevicesPath: string,
+): Array<{ userId: string; idevice: IdeviceConfig }> {
+    return listDirectory(userIdevicesPath)
+        .filter(entry => entry.isDirectory() && /^\d+$/.test(entry.name))
+        .flatMap(entry =>
+            scanIdevices(path.join(userIdevicesPath, entry.name)).map(idevice => ({
+                userId: entry.name,
+                idevice,
+            })),
+        );
+}
+
 export function createAdminIdevicesRoutes(deps: AdminIdevicesDependencies = defaultDependencies) {
     const {
         db,
         baseIdevicesPath,
         siteIdevicesPath,
+        userIdevicesPath,
         scanIdevices,
+        listDirectory,
         appVersion,
         getDisabledIdeviceIds,
         setDisabledIdeviceIds,
         installer,
+        userInstaller,
     } = deps;
 
     return new Elysia({ name: 'admin-idevices-routes' })
@@ -191,6 +253,18 @@ export function createAdminIdevicesRoutes(deps: AdminIdevicesDependencies = defa
                 idevices,
                 categories: [...new Set(idevices.map(idevice => idevice.category))].sort((a, b) => a.localeCompare(b)),
             };
+        })
+        .get('/api/admin/idevices/users', async () => {
+            const version = appVersion();
+            const idevices = getUserIdevices(scanIdevices, listDirectory, userIdevicesPath)
+                .map(({ userId, idevice }) => serializeUserIdevice(idevice, version, userId))
+                .sort((a, b) => {
+                    const userComparison = a.userId.localeCompare(b.userId, undefined, { numeric: true });
+                    if (userComparison !== 0) return userComparison;
+                    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+                });
+
+            return { idevices };
         })
         .get('/api/admin/idevices/:id', async ({ params, set }) => {
             const disabledIds = await getDisabledIdeviceIds(db);
@@ -255,6 +329,48 @@ export function createAdminIdevicesRoutes(deps: AdminIdevicesDependencies = defa
             }
 
             return { success: true, deleted: { name: params.id } };
+        })
+        .delete('/api/admin/idevices/users/:userId/:id', async ({ params, set }) => {
+            const result = await userInstaller.uninstall(params.id, { userId: params.userId });
+            if (!result.success) {
+                set.status = result.code === 'NOT_FOUND' ? 404 : result.code === 'IDEVICE_OVERLAPS_BUILTIN' ? 409 : 500;
+                return { error: result.code ?? 'Error', message: result.message ?? 'Could not uninstall iDevice' };
+            }
+
+            return { success: true, deleted: { userId: params.userId, name: params.id } };
+        })
+        .get('/api/admin/idevices/:id/download', async ({ params, set }) => {
+            const baseIdevice = scanIdevices(baseIdevicesPath).find(idevice => idevice.id === params.id);
+            if (baseIdevice) {
+                set.status = 409;
+                return {
+                    error: 'Built-in iDevice',
+                    message: 'Built-in iDevices cannot be downloaded from admin installs',
+                };
+            }
+
+            const siteIdevice = scanIdevices(siteIdevicesPath).find(idevice => idevice.id === params.id);
+            if (!siteIdevice) {
+                set.status = 404;
+                return { error: 'Not Found', message: 'iDevice not found' };
+            }
+
+            const result = await installer.download(params.id);
+            if (!result.success) {
+                set.status = httpStatusForDownloadCode[result.code ?? 'COPY_ERROR'] ?? 500;
+                return { error: result.code ?? 'Error', message: result.message ?? 'Could not download iDevice' };
+            }
+
+            return result;
+        })
+        .get('/api/admin/idevices/users/:userId/:id/download', async ({ params, set }) => {
+            const result = await userInstaller.download(params.id, { userId: params.userId });
+            if (!result.success) {
+                set.status = httpStatusForDownloadCode[result.code ?? 'COPY_ERROR'] ?? 500;
+                return { error: result.code ?? 'Error', message: result.message ?? 'Could not download iDevice' };
+            }
+
+            return result;
         })
         .patch(
             '/api/admin/idevices/:id/enabled',

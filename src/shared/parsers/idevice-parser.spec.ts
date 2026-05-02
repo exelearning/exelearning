@@ -443,9 +443,23 @@ describe('idevice-parser', () => {
                 path: mockPath,
             });
 
-            // Should still parse (regex-based), just return defaults
-            expect(config).not.toBeNull();
-            expect(config!.title).toBe('bad'); // Falls back to ideviceId
+            expect(config).toBeNull();
+        });
+
+        it('should return null for malformed config XML', () => {
+            const xmlContent = `<?xml version="1.0"?>
+<idevice>
+    <title>Broken
+</idevice>`;
+
+            const config = parseIdeviceConfig(xmlContent, {
+                ideviceId: 'broken',
+                basePath: '/idevices/broken',
+                fs: createMockFs(),
+                path: mockPath,
+            });
+
+            expect(config).toBeNull();
         });
 
         it('should use defaults for missing values', () => {

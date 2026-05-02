@@ -159,7 +159,7 @@ export default class MenuIdevicesCompose {
                 );
                 break;
             case 'science':
-                titleElement.textContent = _('Sciencie');
+                titleElement.textContent = _('Science');
                 descriptionElement.textContent = _(
                     'Resources designed to work on specific subject areas or topics.'
                 );
@@ -358,22 +358,35 @@ export default class MenuIdevicesCompose {
         return idevice?.title || idevice?.name || idevice?.id || fallbackName;
     }
 
-    downloadIdeviceZip(idevice) {
-        eXeLearning.app.api
-            .getIdeviceInstalledZip(
-                eXeLearning.app.project.odeSession,
-                idevice.dirName
-            )
-            .then((response) => {
-                if (response && response.zipFileName && response.zipBase64) {
-                    let link = document.createElement('a');
-                    link.setAttribute('type', 'hidden');
-                    link.href = 'data:text/plain;base64,' + response.zipBase64;
-                    link.download = response.zipFileName;
-                    link.click();
-                    link.remove();
-                }
+    async downloadIdeviceZip(idevice) {
+        try {
+            const response = await eXeLearning.app.api.getIdeviceInstalledZip(
+                idevice.name || idevice.id || idevice.dirName
+            );
+            if (response && response.zipFileName && response.zipBase64) {
+                this.downloadZipBase64(response.zipFileName, response.zipBase64);
+            } else {
+                this.showElementAlert(_('Could not download the iDevice'), response);
+            }
+        } catch (error) {
+            this.showElementAlert(_('Could not download the iDevice'), {
+                error: error?.message || String(error),
             });
+        }
+    }
+
+    downloadZipBase64(zipFileName, zipBase64) {
+        const bytes = Uint8Array.from(atob(zipBase64), (char) => char.charCodeAt(0));
+        const blobUrl = URL.createObjectURL(
+            new Blob([bytes], { type: 'application/zip' })
+        );
+        const link = document.createElement('a');
+        link.setAttribute('type', 'hidden');
+        link.href = blobUrl;
+        link.download = zipFileName;
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(blobUrl);
     }
 
     rebuildImportedIdevices() {

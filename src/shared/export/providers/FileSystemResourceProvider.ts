@@ -27,20 +27,63 @@ export interface ResourceFile {
 }
 
 /**
+ * Optional resource scoping (e.g. per-user iDevices installed in
+ * `users/{userId}/`).
+ */
+export interface ResourceProviderScope {
+    /**
+     * User id whose `users/{userId}/` iDevice folder should be searched
+     * before falling back to `site/` and `base/`. Coerced to string and
+     * required to be numeric (matches the on-disk convention used by the
+     * iDevice installer).
+     */
+    userId?: number | string;
+}
+
+/**
  * FileSystemResourceProvider class
  * Implements ResourceProvider for backend/CLI usage
  */
 export class FileSystemResourceProvider implements ResourceProvider {
     private publicDir: string;
     private extractedDir: string | null;
+    private userId: string | null;
 
     /**
      * @param publicDir - Path to the public/ directory containing themes and libs
      * @param extractedDir - Optional path to extracted ELP/ELPX directory (for embedded themes)
+     * @param scope - Optional scoping (e.g. `{ userId }` so per-user iDevices in
+     *   `users/{userId}/` are resolved alongside `site/` and `base/`)
      */
-    constructor(publicDir: string, extractedDir: string | null = null) {
+    constructor(publicDir: string, extractedDir: string | null = null, scope: ResourceProviderScope = {}) {
         this.publicDir = publicDir;
         this.extractedDir = extractedDir;
+        this.userId = FileSystemResourceProvider.normalizeUserId(scope.userId);
+    }
+
+    /**
+     * iDevices are looked up in this order; first match wins. User installs
+     * override admin (`site/`) installs, which override built-ins (`base/`).
+     */
+    private getIdeviceSearchDirs(): string[] {
+        const dirs: string[] = [];
+        if (this.userId) {
+            dirs.push(path.join(this.publicDir, 'files', 'perm', 'idevices', 'users', this.userId));
+        }
+        dirs.push(path.join(this.publicDir, 'files', 'perm', 'idevices', 'site'));
+        dirs.push(path.join(this.publicDir, 'files', 'perm', 'idevices', 'base'));
+        return dirs;
+    }
+
+    /**
+     * Numeric-only userId is allowed (matches the installer's directory naming
+     * rule). Anything else (empty, non-numeric, traversal characters) falls
+     * back to `null`, meaning "no per-user scoping".
+     */
+    private static normalizeUserId(userId: number | string | undefined): string | null {
+        if (userId === undefined || userId === null || userId === '') return null;
+        const userDirName = String(userId);
+        return /^\d+$/.test(userDirName) ? userDirName : null;
     }
 
     /**
@@ -98,18 +141,26 @@ export class FileSystemResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Fetch resources for an iDevice type
+     * Fetch resources for an iDevice type.
+     *
+     * Searches `users/{userId}/`, `site/`, `base/` (in that priority order)
+     * and returns the first match. This ensures admin- and user-installed
+     * iDevices export their bundled files, not just the built-ins.
+     *
      * @param ideviceType - Type of iDevice (e.g., 'FreeTextIdevice', 'text')
-     * @returns Map of file paths to content
+     * @returns Map of file paths to content (without `idevices/{type}/` prefix —
+     *   the caller adds that)
      */
     async fetchIdeviceResources(ideviceType: string): Promise<Map<string, Buffer>> {
-        // iDevices export files are in public/files/perm/idevices/base/{type}/export/
         // First check for legacy iDevice name mapping
         const mappedType = LEGACY_IDEVICE_MAPPING[ideviceType] || ideviceType;
         // Then normalize type name (e.g., 'FreeTextIdevice' -> 'text')
         const typeName = this.normalizeIdeviceType(mappedType);
-        const idevicePath = path.join(this.publicDir, 'files', 'perm', 'idevices', 'base', typeName, 'export');
-        if (await fs.pathExists(idevicePath)) {
+
+        for (const baseDir of this.getIdeviceSearchDirs()) {
+            const idevicePath = path.join(baseDir, typeName, 'export');
+            if (!(await fs.pathExists(idevicePath))) continue;
+
             // No prefix - files go to idevices/{type}/ folder (prefix added by caller)
             const files = await this.readDirectoryRecursive(idevicePath, '');
             // Filter out test files (should not be included in exports)

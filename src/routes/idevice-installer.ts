@@ -173,6 +173,26 @@ export function createIdeviceInstallerRoutes(deps: IdeviceInstallerRouteDeps = {
                 set.status = 200;
                 return result;
             })
+
+            // GET /api/idevices/:ideviceId/download — download a user iDevice package as ZIP.
+            .get('/api/idevices/:ideviceId/download', async ({ params, set, jwt, cookie }) => {
+                const blocked = await guard(set);
+                if (blocked) return { success: false, ...blocked };
+
+                const currentUser = await resolveCurrentUser(jwt, cookie);
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, code: 'AUTH_REQUIRED', message: 'Authentication required.' };
+                }
+
+                const result = await installer.download(params.ideviceId, { userId: currentUser.id });
+                if (!result.success) {
+                    set.status = result.code === 'NOT_FOUND' ? 404 : 500;
+                    return result;
+                }
+                set.status = 200;
+                return result;
+            })
     );
 }
 

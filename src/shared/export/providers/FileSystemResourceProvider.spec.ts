@@ -209,6 +209,88 @@ describe('FileSystemResourceProvider', () => {
 
             expect(files.size).toBe(0);
         });
+
+        it('should fetch iDevices installed in site/ (admin installs)', async () => {
+            // Admin installs `adaptative-quiz` into site/, not base/.
+            const siteDir = path.join(testDir, 'files', 'perm', 'idevices', 'site', 'adaptative-quiz', 'export');
+            await fs.ensureDir(siteDir);
+            await fs.writeFile(path.join(siteDir, 'adaptative-quiz.css'), '.aq {}');
+            await fs.writeFile(path.join(siteDir, 'adaptative-quiz.js'), '/* aq */');
+
+            const files = await provider.fetchIdeviceResources('adaptative-quiz');
+
+            expect(files.size).toBe(2);
+            expect(files.has('adaptative-quiz.css')).toBe(true);
+            expect(files.has('adaptative-quiz.js')).toBe(true);
+        });
+
+        it('should prefer site/ over base/ when the same id exists in both', async () => {
+            // Add a site/text/export/text.js so both base/ and site/ have it.
+            const siteDir = path.join(testDir, 'files', 'perm', 'idevices', 'site', 'text', 'export');
+            await fs.ensureDir(siteDir);
+            await fs.writeFile(path.join(siteDir, 'text.js'), '/* SITE OVERRIDE */');
+            await fs.writeFile(path.join(siteDir, 'text.css'), '.text-site {}');
+
+            const files = await provider.fetchIdeviceResources('text');
+
+            expect(files.has('text.js')).toBe(true);
+            expect(files.get('text.js')?.toString()).toBe('/* SITE OVERRIDE */');
+        });
+
+        describe('with userId scope', () => {
+            it('should fetch iDevices from users/{userId}/ when scoped', async () => {
+                const userDir = path.join(testDir, 'files', 'perm', 'idevices', 'users', '42', 'my-custom', 'export');
+                await fs.ensureDir(userDir);
+                await fs.writeFile(path.join(userDir, 'my-custom.js'), '/* user 42 */');
+                await fs.writeFile(path.join(userDir, 'my-custom.css'), '.my-custom {}');
+
+                const userScopedProvider = new FileSystemResourceProvider(testDir, null, { userId: 42 });
+                const files = await userScopedProvider.fetchIdeviceResources('my-custom');
+
+                expect(files.size).toBe(2);
+                expect(files.get('my-custom.js')?.toString()).toBe('/* user 42 */');
+            });
+
+            it('should prefer users/{userId}/ over site/ and base/ for the same id', async () => {
+                // Same id 'text' lives in base (created in beforeEach), site, and users/42.
+                const siteDir = path.join(testDir, 'files', 'perm', 'idevices', 'site', 'text', 'export');
+                await fs.ensureDir(siteDir);
+                await fs.writeFile(path.join(siteDir, 'text.js'), '/* SITE */');
+
+                const userDir = path.join(testDir, 'files', 'perm', 'idevices', 'users', '7', 'text', 'export');
+                await fs.ensureDir(userDir);
+                await fs.writeFile(path.join(userDir, 'text.js'), '/* USER 7 */');
+                await fs.writeFile(path.join(userDir, 'text.css'), '.text-u7 {}');
+
+                const userScopedProvider = new FileSystemResourceProvider(testDir, null, { userId: 7 });
+                const files = await userScopedProvider.fetchIdeviceResources('text');
+
+                expect(files.get('text.js')?.toString()).toBe('/* USER 7 */');
+            });
+
+            it('should not search users/ when no userId is set', async () => {
+                const userDir = path.join(testDir, 'files', 'perm', 'idevices', 'users', '99', 'leaky', 'export');
+                await fs.ensureDir(userDir);
+                await fs.writeFile(path.join(userDir, 'leaky.js'), '/* should not leak */');
+
+                const files = await provider.fetchIdeviceResources('leaky');
+
+                // Without userId scoping the user iDevice must not be visible.
+                expect(files.size).toBe(0);
+            });
+
+            it('should reject non-numeric userId (path traversal protection)', async () => {
+                // Non-numeric userIds collapse to "no scoping" — site/base only.
+                const traversalDir = path.join(testDir, 'files', 'perm', 'idevices', 'users', '../../../etc');
+                await fs.ensureDir(path.join(traversalDir, 'evil', 'export'));
+                await fs.writeFile(path.join(traversalDir, 'evil', 'export', 'evil.js'), '/* evil */');
+
+                const provider = new FileSystemResourceProvider(testDir, null, { userId: '../../../etc' });
+                const files = await provider.fetchIdeviceResources('evil');
+
+                expect(files.size).toBe(0);
+            });
+        });
     });
 
     describe('normalizeIdeviceType', () => {

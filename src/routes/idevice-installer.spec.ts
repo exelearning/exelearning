@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { Elysia } from 'elysia';
 import { createIdeviceInstallerRoutes } from './idevice-installer';
 import type {
+    DownloadResult,
     IdeviceConfig,
     IdeviceInstallerService,
     InstallOutcome,
@@ -42,9 +43,11 @@ const createApp = (options: {
     canInstall?: () => boolean;
     installResult?: InstallOutcome;
     uninstallResult?: UninstallResult;
+    downloadResult?: DownloadResult;
     currentUser?: { id: number } | null;
     onInstall?: (buffer: Buffer, confirmOverwrite: boolean, userId: number | string | undefined) => void;
     onUninstall?: (ideviceId: string, userId: number | string | undefined) => void;
+    onDownload?: (ideviceId: string, userId: number | string | undefined) => void;
     appVersion?: () => string;
 }) => {
     const installer: IdeviceInstallerService = {
@@ -66,6 +69,16 @@ const createApp = (options: {
         uninstall: async (ideviceId, uninstallOptions = {}) => {
             options.onUninstall?.(ideviceId, uninstallOptions.userId);
             return options.uninstallResult ?? { success: true, backupPath: 'backup/custom-idevice' };
+        },
+        download: async (ideviceId, downloadOptions = {}) => {
+            options.onDownload?.(ideviceId, downloadOptions.userId);
+            return (
+                options.downloadResult ?? {
+                    success: true,
+                    zipFileName: `${ideviceId}.zip`,
+                    zipBase64: Buffer.from('zip-data').toString('base64'),
+                }
+            );
         },
     };
 
@@ -266,6 +279,63 @@ describe('iDevice installer routes', () => {
                 success: false,
                 code: 'NOT_FOUND',
             });
+        });
+    });
+
+    describe('GET /api/idevices/:ideviceId/download', () => {
+        it('returns 403 when installation features are not allowed', async () => {
+            const app = createApp({ canInstall: () => false });
+
+            const res = await app.handle(new Request('http://localhost/api/idevices/custom-idevice/download'));
+
+            expect(res.status).toBe(403);
+            expect(await res.json()).toMatchObject({ success: false, code: 'LOCAL_MODE_REQUIRED' });
+        });
+
+        it('passes the route id and authenticated user to the installer', async () => {
+            let receivedId = '';
+            let receivedUserId: number | string | undefined;
+            const app = createApp({
+                onDownload: (ideviceId, userId) => {
+                    receivedId = ideviceId;
+                    receivedUserId = userId;
+                },
+            });
+
+            const res = await app.handle(new Request('http://localhost/api/idevices/custom-idevice/download'));
+
+            expect(res.status).toBe(200);
+            expect(receivedId).toBe('custom-idevice');
+            expect(receivedUserId).toBe(42);
+            expect(await res.json()).toMatchObject({
+                success: true,
+                zipFileName: 'custom-idevice.zip',
+                zipBase64: Buffer.from('zip-data').toString('base64'),
+            });
+        });
+
+        it('returns 401 when downloading without an authenticated user', async () => {
+            const app = createApp({ currentUser: null });
+
+            const res = await app.handle(new Request('http://localhost/api/idevices/custom-idevice/download'));
+
+            expect(res.status).toBe(401);
+            expect(await res.json()).toMatchObject({ success: false, code: 'AUTH_REQUIRED' });
+        });
+
+        it('maps missing user iDevices to 404', async () => {
+            const app = createApp({
+                downloadResult: {
+                    success: false,
+                    code: 'NOT_FOUND',
+                    message: 'iDevice is not installed.',
+                },
+            });
+
+            const res = await app.handle(new Request('http://localhost/api/idevices/missing-idevice/download'));
+
+            expect(res.status).toBe(404);
+            expect(await res.json()).toMatchObject({ success: false, code: 'NOT_FOUND' });
         });
     });
 });

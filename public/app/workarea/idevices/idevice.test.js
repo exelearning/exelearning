@@ -160,9 +160,9 @@ describe('Idevice', () => {
       expect(idevice.default.apiVersion).toBe('3.0');
     });
 
-    it('has default category of Others', () => {
+    it('has default category of Uncategorized', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
-      expect(idevice.default.category).toBe('Others');
+      expect(idevice.default.category).toBe('Uncategorized');
     });
 
     it('has default componentType of html', () => {

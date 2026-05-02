@@ -5,95 +5,150 @@
  */
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { XMLParser } from 'fast-xml-parser';
+import { parseIdeviceConfig } from '../shared/parsers/idevice-parser';
 
 export interface IdeviceConfigCache {
     cssClass: string;
     componentType: 'json' | 'html';
     template: string;
+    /**
+     * Absolute path to the iDevice directory on disk (the folder that contains
+     * `config.xml`, `edition/`, `export/`). `null` for fallback configs that
+     * were not loaded from disk.
+     */
+    sourcePath: string | null;
 }
 
 // In-memory cache - null means not loaded
 let configCache: Map<string, IdeviceConfigCache> | null = null;
 
-// Base path for iDevices (can be overridden for testing)
-let idevicesBasePath: string | null = null;
-
-const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    textNodeName: '#text',
-});
+// Configured scan paths in priority order (later overrides earlier).
+// `null` means "use defaults" (base + site).
+let idevicesScanPaths: string[] | null = null;
 
 /**
- * Set the base path for iDevices directory
- * Used for testing or custom installations
+ * Default scan paths in priority order: base first, then site.
+ * Site iDevices (admin-installed) override base iDevices with the same id.
  */
-export function setIdevicesBasePath(basePath: string): void {
-    idevicesBasePath = basePath;
-    // Reset cache when path changes
+function getDefaultPaths(): string[] {
+    const root = path.join(process.cwd(), 'public/files/perm/idevices');
+    return [path.join(root, 'base'), path.join(root, 'site')];
+}
+
+/**
+ * Set the scan paths for iDevices. Pass an array in priority order — later
+ * paths override earlier ones for iDevices with the same id. Resets cache.
+ *
+ * Typical usage:
+ *   - Server start: `setIdevicesPaths([base, site])` (the default if unset)
+ *   - Per-user export: `setIdevicesPaths([base, site, users/{userId}])`
+ *   - Tests: `setIdevicesPaths([testFixtureDir])`
+ */
+export function setIdevicesPaths(paths: string[]): void {
+    idevicesScanPaths = [...paths];
     configCache = null;
 }
 
 /**
- * Get the base path for iDevices
+ * Set a single base path for iDevices directory. Equivalent to
+ * `setIdevicesPaths([basePath])`. Kept for back-compat with tests and callers
+ * that scoped the service to a single fixture directory.
  */
-function getBasePath(): string {
-    return idevicesBasePath || path.join(process.cwd(), 'public/files/perm/idevices/base');
+export function setIdevicesBasePath(basePath: string): void {
+    setIdevicesPaths([basePath]);
 }
 
 /**
- * Load all iDevice configs from config.xml files
+ * Get the configured scan paths, falling back to defaults (base + site).
  */
-export function loadIdeviceConfigs(customBasePath?: string): void {
-    const basePath = customBasePath || getBasePath();
-    configCache = new Map();
+function getPaths(): string[] {
+    return idevicesScanPaths ?? getDefaultPaths();
+}
 
-    if (!fs.existsSync(basePath)) {
-        console.warn(`[IdeviceConfig] iDevices path not found: ${basePath}`);
-        return;
+/**
+ * Parse a single iDevice directory and return its cache entry, or `null` if
+ * the directory does not contain a usable `config.xml`.
+ */
+function parseIdeviceDir(ideviceDir: string, dirName: string): { name: string; entry: IdeviceConfigCache } | null {
+    const configPath = path.join(ideviceDir, 'config.xml');
+    if (!fs.existsSync(configPath)) return null;
+
+    try {
+        const xmlContent = fs.readFileSync(configPath, 'utf-8');
+        const config = parseIdeviceConfig(xmlContent, {
+            ideviceId: dirName,
+            basePath: ideviceDir,
+            fs: {
+                existsSync: fs.existsSync,
+                readFileSync: fs.readFileSync,
+                readdirSync: target => fs.readdirSync(target) as string[],
+            },
+            path,
+        });
+        if (!config) return null;
+
+        const entry: IdeviceConfigCache = {
+            cssClass: config.cssClass,
+            componentType: config.componentType === 'json' ? 'json' : 'html',
+            template: config.exportTemplateFilename || `${dirName}.html`,
+            sourcePath: ideviceDir,
+        };
+
+        return { name: config.name, entry };
+    } catch (err) {
+        console.warn(`[IdeviceConfig] Failed to parse ${configPath}:`, err);
+        return null;
     }
+}
 
-    const entries = fs.readdirSync(basePath, { withFileTypes: true });
+/**
+ * Load all iDevice configs from `config.xml` files across the configured
+ * scan paths. Later paths override earlier ones for the same id.
+ *
+ * @param customPaths Optional override:
+ *   - `string`: single-path scan (back-compat for tests scoping to a fixture)
+ *   - `string[]`: list of paths in priority order
+ *   - `undefined`: use the configured scan paths (defaults to base + site)
+ */
+export function loadIdeviceConfigs(customPaths?: string | string[]): void {
+    const paths: string[] = customPaths ? (Array.isArray(customPaths) ? customPaths : [customPaths]) : getPaths();
 
-    for (const entry of entries) {
-        if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    configCache = new Map();
+    let loaded = 0;
+    const missing: string[] = [];
 
-        const configPath = path.join(basePath, entry.name, 'config.xml');
-        if (!fs.existsSync(configPath)) continue;
+    for (const basePath of paths) {
+        if (!fs.existsSync(basePath)) {
+            missing.push(basePath);
+            continue;
+        }
 
-        try {
-            const xmlContent = fs.readFileSync(configPath, 'utf-8');
-            const parsed = parser.parse(xmlContent);
-            const idevice = parsed.idevice || {};
+        const entries = fs.readdirSync(basePath, { withFileTypes: true });
+        for (const dirEntry of entries) {
+            if (!dirEntry.isDirectory() || dirEntry.name.startsWith('.')) continue;
 
-            const getValue = (key: string): string => {
-                const val = idevice[key];
-                if (typeof val === 'string') return val;
-                if (val && typeof val === 'object' && '#text' in val) return val['#text'];
-                return '';
-            };
+            const result = parseIdeviceDir(path.join(basePath, dirEntry.name), dirEntry.name);
+            if (!result) continue;
 
-            const config: IdeviceConfigCache = {
-                cssClass: getValue('css-class') || entry.name,
-                componentType: (getValue('component-type') || 'html') as 'json' | 'html',
-                template: getValue('export-template-filename') || `${entry.name}.html`,
-            };
-
-            // Store by iDevice name (from config.xml)
-            const name = getValue('name') || entry.name;
-            configCache.set(name, config);
-            configCache.set(name.toLowerCase(), config);
-
-            // Also store by directory name (for legacy compatibility)
-            configCache.set(entry.name, config);
-            configCache.set(entry.name.toLowerCase(), config);
-        } catch (err) {
-            console.warn(`[IdeviceConfig] Failed to parse ${configPath}:`, err);
+            const { name, entry } = result;
+            configCache.set(name, entry);
+            configCache.set(name.toLowerCase(), entry);
+            // Also store by directory name for legacy compatibility
+            configCache.set(dirEntry.name, entry);
+            configCache.set(dirEntry.name.toLowerCase(), entry);
+            loaded += 1;
         }
     }
 
-    console.log(`[IdeviceConfig] Loaded ${configCache.size} iDevice configs`);
+    if (missing.length > 0) {
+        // Only warn if NO path exists; missing optional paths (e.g. site/ before
+        // any admin install) are normal and should not be noisy.
+        if (missing.length === paths.length) {
+            console.warn(`[IdeviceConfig] No iDevices paths found: ${missing.join(', ')}`);
+        }
+    }
+
+    console.log(`[IdeviceConfig] Loaded ${loaded} iDevice configs from ${paths.length - missing.length} paths`);
 }
 
 /**
@@ -155,6 +210,7 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         cssClass: normalizedType,
         componentType: 'html', // Default to HTML for unknown iDevices
         template: `${normalizedType}.html`,
+        sourcePath: null,
     };
 }
 
@@ -170,6 +226,7 @@ export function isJsonIdevice(type: string): boolean {
  */
 export function resetIdeviceConfigCache(): void {
     configCache = null;
+    idevicesScanPaths = null;
 }
 
 /**
@@ -177,6 +234,31 @@ export function resetIdeviceConfigCache(): void {
  */
 export function getAllIdeviceConfigs(): Map<string, IdeviceConfigCache> | null {
     return configCache;
+}
+
+/**
+ * Resolve the on-disk `export/` folder for an iDevice type.
+ *
+ * Looks first at the cached `sourcePath` (set when the iDevice was loaded
+ * from a real `config.xml`). Falls back to scanning the configured paths
+ * for `{path}/{typeName}/export/` so callers don't need to load the cache
+ * first.
+ */
+function resolveExportPath(typeName: string): string | null {
+    if (!configCache) loadIdeviceConfigs();
+
+    const cached = configCache?.get(typeName) ?? configCache?.get(typeName.toLowerCase());
+    if (cached?.sourcePath) {
+        const candidate = path.join(cached.sourcePath, 'export');
+        if (fs.existsSync(candidate)) return candidate;
+    }
+
+    for (const basePath of getPaths()) {
+        const candidate = path.join(basePath, typeName, 'export');
+        if (fs.existsSync(candidate)) return candidate;
+    }
+
+    return null;
 }
 
 /**
@@ -191,10 +273,8 @@ export function getAllIdeviceConfigs(): Map<string, IdeviceConfigCache> | null {
  * @returns Array of filenames (e.g., ['checklist.js', 'html2canvas.js'])
  */
 export function getIdeviceExportFiles(typeName: string, extension: '.js' | '.css'): string[] {
-    const basePath = getBasePath();
-    const exportPath = path.join(basePath, typeName, 'export');
-
-    if (!fs.existsSync(exportPath)) {
+    const exportPath = resolveExportPath(typeName);
+    if (!exportPath) {
         // Fallback: return just the main file
         return [`${typeName}${extension}`];
     }

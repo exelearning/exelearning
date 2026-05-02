@@ -280,13 +280,13 @@ describe('ApiCallManager', () => {
 
     it('should replace params in idevice zip download', async () => {
       apiManager.endpoints.api_idevices_installed_download = {
-        path: 'http://localhost/idevices/{odeSessionId}/{ideviceDirName}',
+        path: 'http://localhost/idevices/{ideviceId}/download',
       };
 
-      await apiManager.getIdeviceInstalledZip('session-1', 'idevice-1');
+      await apiManager.getIdeviceInstalledZip('idevice-1');
 
       expect(mockFunc.get).toHaveBeenCalledWith(
-        'http://localhost/idevices/session-1/idevice-1'
+        'http://localhost/idevices/idevice-1/download'
       );
     });
   });
@@ -1401,6 +1401,9 @@ describe('ApiCallManager', () => {
       apiManager.endpoints.api_idevices_installed_delete = {
         path: 'http://localhost/idevices/installed/{ideviceId}',
       };
+      apiManager.endpoints.api_idevices_installed_download = {
+        path: 'http://localhost/idevices/{ideviceId}/download',
+      };
       apiManager.endpoints.api_user_set_lopd_accepted = { path: 'http://localhost/lopd' };
       apiManager.endpoints.api_user_preferences_get = { path: 'http://localhost/prefs' };
       apiManager.endpoints.api_user_preferences_save = { path: 'http://localhost/prefs/save' };
@@ -1412,6 +1415,7 @@ describe('ApiCallManager', () => {
       const ideviceZip = new File(['idevice'], 'idevice.zip', { type: 'application/zip' });
       await apiManager.postUploadIdevice({ filename: 'idevice.zip', file: ideviceZip });
       await apiManager.deleteIdeviceInstalled({ id: 2 });
+      await apiManager.getIdeviceInstalledZip('custom idevice');
       await apiManager.postUserSetLopdAccepted();
       await apiManager.getUserPreferences();
       await apiManager.putSaveUserPreferences({ mode: 'dark' });
@@ -1424,6 +1428,7 @@ describe('ApiCallManager', () => {
         expect.any(FormData),
       );
       expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/idevices/installed/2');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/idevices/custom%20idevice/download');
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/lopd');
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/prefs');
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/prefs/save', { mode: 'dark' });
@@ -1491,6 +1496,18 @@ describe('ApiCallManager', () => {
 
       expect(result.responseMessage).toBe('OK');
       expect(result.deleted).toEqual({ name: 'custom-idevice' });
+    });
+
+    it('should request installed iDevice ZIPs by ideviceId', async () => {
+      apiManager.endpoints.api_idevices_installed_download = {
+        path: 'http://localhost/idevices/{ideviceId}/download',
+      };
+      mockFunc.get.mockResolvedValue({ zipFileName: 'custom-idevice.zip', zipBase64: 'emlw' });
+
+      const result = await apiManager.getIdeviceInstalledZip('custom-idevice');
+
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/idevices/custom-idevice/download');
+      expect(result).toEqual({ zipFileName: 'custom-idevice.zip', zipBase64: 'emlw' });
     });
 
     it('should call structure and diagnostics endpoints', async () => {

@@ -8,13 +8,29 @@ import { describe, it, expect, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { createIdevicesRoutes, idevicesRoutes } from './idevices';
+import { createIdevicesRoutes, idevicesRoutes, parseIdeviceConfig } from './idevices';
 
 describe('iDevices Routes', () => {
     let app: Elysia;
 
     beforeEach(() => {
         app = new Elysia().use(idevicesRoutes);
+    });
+
+    describe('parseIdeviceConfig', () => {
+        it('should return null for malformed config.xml instead of silent defaults', () => {
+            const config = parseIdeviceConfig('<idevice><title>Broken</idevice>', 'broken', '/tmp/broken');
+
+            expect(config).toBeNull();
+        });
+
+        it('should use the shared category and component type defaults', () => {
+            const config = parseIdeviceConfig('<idevice></idevice>', 'empty', '/tmp/empty');
+
+            expect(config).not.toBeNull();
+            expect(config!.category).toBe('Uncategorized');
+            expect(config!.componentType).toBe('html');
+        });
     });
 
     describe('GET /api/idevices/installed', () => {
@@ -255,8 +271,10 @@ describe('iDevices Routes', () => {
         it('should exclude iDevices disabled by admin settings', async () => {
             const runDir = path.join(process.cwd(), 'test', 'temp', `idevices-disabled-${crypto.randomUUID()}`);
             const baseDir = path.join(runDir, 'base');
+            const siteDir = path.join(runDir, 'site');
             const usersDir = path.join(runDir, 'users');
             await fs.ensureDir(baseDir);
+            await fs.ensureDir(siteDir);
             await fs.ensureDir(usersDir);
 
             const makeConfig = (id: string, title: string) => `<?xml version="1.0"?>
@@ -283,6 +301,7 @@ describe('iDevices Routes', () => {
                 const scopedApp = new Elysia().use(
                     createIdevicesRoutes({
                         baseIdevicesPath: baseDir,
+                        siteIdevicesPath: siteDir,
                         userIdevicesPath: usersDir,
                         appVersion: () => 'vtest',
                         getDisabledIdeviceIds: async () => new Set(['hidden-idevice']),

@@ -144,9 +144,7 @@ export default class ModalIdeviceManager extends Modal {
             this.setBodyElement(bodyContent);
             this.showButtonsConfirmCancel();
             this.addBehaviourExeTabs();
-            this.setConfirmExec(() => {
-                //this.saveIdevicesVisibility();
-            });
+            this.setConfirmExec(null);
             if (idevices) this.modalElementAlert.classList.remove('show');
             this.modal.show();
         }, time);
@@ -622,8 +620,10 @@ export default class ModalIdeviceManager extends Modal {
         // For user-installed iDevices, append an uninstall button on the left
         // of the row that asks for confirmation before removing the iDevice.
         if (idevice.type === eXeLearning.config.ideviceTypeUser) {
+            const downloadButton = this.makeDownloadIdeviceButton(idevice);
             const uninstallButton = this.makeUninstallIdeviceButton(idevice);
             row.prepend(uninstallButton);
+            row.prepend(downloadButton);
         }
 
         return row;
@@ -648,7 +648,7 @@ export default class ModalIdeviceManager extends Modal {
         button.title = ariaLabel;
 
         const icon = document.createElement('span');
-        icon.classList.add('small-icon', 'delete-icon-red');
+        icon.classList.add('medium-icon', 'delete-icon-red');
         button.append(icon);
 
         button.addEventListener('click', (event) => {
@@ -668,6 +668,64 @@ export default class ModalIdeviceManager extends Modal {
         });
 
         return button;
+    }
+
+    /**
+     * Build the download button shown next to user-installed iDevices.
+     *
+     * @param {*} idevice
+     * @returns {HTMLButtonElement}
+     */
+    makeDownloadIdeviceButton(idevice) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.classList.add('idevice-download', 'btn', 'btn-link', 'p-0');
+        const ideviceLabel = idevice.title || idevice.id;
+        const ariaLabel = `${_('Download iDevice')}: ${ideviceLabel}`;
+        button.setAttribute('aria-label', ariaLabel);
+        button.title = ariaLabel;
+
+        const icon = document.createElement('span');
+        icon.classList.add('medium-icon', 'download-icon-green');
+        button.append(icon);
+
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.downloadIdeviceZip(idevice);
+        });
+
+        return button;
+    }
+
+    async downloadIdeviceZip(idevice) {
+        const ideviceId = idevice.name || idevice.id || idevice.dirName;
+        try {
+            const response = await eXeLearning.app.api.getIdeviceInstalledZip(ideviceId);
+            if (response && response.zipFileName && response.zipBase64) {
+                this.downloadZipBase64(response.zipFileName, response.zipBase64);
+            } else {
+                this.showElementAlert(_('Could not download the iDevice'), response);
+            }
+        } catch (error) {
+            this.showElementAlert(_('Could not download the iDevice'), {
+                error: error?.message || String(error),
+            });
+        }
+    }
+
+    downloadZipBase64(zipFileName, zipBase64) {
+        const bytes = Uint8Array.from(atob(zipBase64), (char) => char.charCodeAt(0));
+        const blobUrl = URL.createObjectURL(
+            new Blob([bytes], { type: 'application/zip' })
+        );
+        const link = document.createElement('a');
+        link.setAttribute('type', 'hidden');
+        link.href = blobUrl;
+        link.download = zipFileName;
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(blobUrl);
     }
 
     /**
@@ -800,8 +858,6 @@ export default class ModalIdeviceManager extends Modal {
                     this.getIdeviceDisplayName(response.idevice, fileName)
                 )
             );
-            // Save idevice visibility
-            this.saveIdevicesVisibility();
         } else {
             // Show alert
             this.showElementAlert(
