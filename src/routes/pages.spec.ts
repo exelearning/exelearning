@@ -2571,6 +2571,62 @@ describe('Pages Routes', () => {
             expect(templateData.config.userIdevices).toBe(1);
         });
 
+        it('should keep user iDevices enabled when env allows it and stored settings disable it', async () => {
+            process.env.APP_AUTH_METHODS = 'form,guest';
+            process.env.APP_ONLINE_MODE = '1';
+            process.env.ONLINE_IDEVICES_INSTALL = '1';
+
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+                settings: {
+                    ...createMockSettings(),
+                    getSettingBoolean: async (_db: any, key: string, fallback: boolean) =>
+                        key === 'ONLINE_IDEVICES_INSTALL' ? false : fallback,
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            mockSessions.set('env-overrides-stored-idevices-test', {
+                sessionId: 'env-overrides-stored-idevices-test',
+                fileName: 'Test.elp',
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=env-overrides-stored-idevices-test', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(templateData.config.isOfflineInstallation).toBe(false);
+            expect(templateData.config.userIdevices).toBe(1);
+        });
+
         it('should enable user iDevices in dev mode', async () => {
             process.env.APP_AUTH_METHODS = 'form,guest';
             process.env.APP_ONLINE_MODE = '1';

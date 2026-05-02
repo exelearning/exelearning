@@ -8,11 +8,14 @@
  * Uses Dependency Injection pattern for testability
  */
 import { Elysia } from 'elysia';
+import { cookie } from '@elysiajs/cookie';
+import { jwt } from '@elysiajs/jwt';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
+import type { JwtPayload } from './auth';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -133,7 +136,22 @@ export interface ExportDependencies {
     database?: ExportDatabaseDeps;
     yjsPersistence?: ExportYjsDeps;
     publicDir?: string;
+    currentUser?: CurrentUser | null | CurrentUserResolver;
 }
+
+interface CurrentUser {
+    id: number;
+}
+
+interface JwtVerifier {
+    verify: (token: string) => Promise<JwtPayload | false>;
+}
+
+interface CookieStore {
+    auth?: { value?: string };
+}
+
+type CurrentUserResolver = () => CurrentUser | null | Promise<CurrentUser | null>;
 
 // Default dependencies
 const defaultSessionManager: ExportSessionManagerDeps = {
@@ -191,6 +209,25 @@ const EXPORT_FORMATS = [
     { id: 'elp', name: 'eXeLearning Project', extension: 'elp', mimeType: 'application/zip' },
     { id: 'elpx-page', name: 'eXeLearning Page Package', extension: 'elpx', mimeType: 'application/zip' },
 ];
+
+const getJwtSecret = (): string => {
+    return process.env.API_JWT_SECRET || process.env.JWT_SECRET || process.env.APP_SECRET || 'dev_secret_change_me';
+};
+
+const resolveCurrentUser = async (
+    configuredUser: ExportDependencies['currentUser'],
+    jwtVerifier: JwtVerifier,
+    cookieStore: CookieStore,
+): Promise<CurrentUser | null> => {
+    if (typeof configuredUser === 'function') return configuredUser();
+    if (configuredUser !== undefined) return configuredUser;
+
+    const token = cookieStore.auth?.value;
+    if (!token) return null;
+    const payload = (await jwtVerifier.verify(token)) as JwtPayload | false;
+    if (!payload || !payload.sub) return null;
+    return { id: payload.sub };
+};
 
 // ============================================================================
 // Yjs Structure Population
@@ -333,10 +370,6 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
      *   exporter resolves iDevices from `users/{userId}/` (per-user installs),
      *   then `site/` (admin installs), then `base/` (built-ins). Without it
      *   only `site/` and `base/` are searched.
-     *
-     *   TODO: the export route currently does not extract userId from JWT, so
-     *   per-user installs are reachable only when the caller passes `userId`
-     *   explicitly. Wiring it from `cookie.auth` is left as a follow-up.
      */
     async function prepareExport(
         sessionId: string,
@@ -644,6 +677,8 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
 
     return (
         new Elysia({ prefix: '/api/export' })
+            .use(cookie())
+            .use(jwt({ name: 'jwt', secret: getJwtSecret(), exp: '7d' }))
 
             // =====================================================
             // Get Available Formats
@@ -662,7 +697,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // =====================================================
 
             // GET /api/export/:odeSessionId/:exportType/download - Download export
-            .get('/:odeSessionId/:exportType/download', async ({ params, set }) => {
+            .get('/:odeSessionId/:exportType/download', async ({ params, set, jwt, cookie }) => {
                 const { odeSessionId, exportType } = params;
 
                 const session = getSession(odeSessionId);
@@ -683,8 +718,11 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 }
 
                 try {
+                    const currentUser = await resolveCurrentUser(deps.currentUser, jwt, cookie);
                     // Prepare export
-                    const exportResult = await prepareExport(odeSessionId, exportType);
+                    const exportResult = await prepareExport(odeSessionId, exportType, undefined, undefined, {
+                        userId: currentUser?.id,
+                    });
 
                     if (!exportResult.success) {
                         set.status = 500;
@@ -721,7 +759,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // =====================================================
 
             // POST /api/export/:odeSessionId/:exportType/download - Download export with options
-            .post('/:odeSessionId/:exportType/download', async ({ params, body, set }) => {
+            .post('/:odeSessionId/:exportType/download', async ({ params, body, set, jwt, cookie }) => {
                 const { odeSessionId, exportType } = params;
                 const options = body as ExportOptionsRequest;
 
@@ -759,8 +797,11 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 }
 
                 try {
+                    const currentUser = await resolveCurrentUser(deps.currentUser, jwt, cookie);
                     // Prepare export with options (pass virtual session for Yjs-only exports)
-                    const exportResult = await prepareExport(odeSessionId, exportType, options, session);
+                    const exportResult = await prepareExport(odeSessionId, exportType, options, session, {
+                        userId: currentUser?.id,
+                    });
 
                     if (!exportResult.success) {
                         set.status = 500;

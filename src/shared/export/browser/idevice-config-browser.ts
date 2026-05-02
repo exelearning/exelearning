@@ -69,7 +69,9 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'scrambled-list',
         'magnifier',
     ];
-    const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
+    const isKnownType =
+        Object.hasOwn(typeMap, normalized) || jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
+    const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized) || !isKnownType;
 
     return {
         cssClass,

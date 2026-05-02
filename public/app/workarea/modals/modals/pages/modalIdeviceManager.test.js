@@ -730,6 +730,24 @@ describe('ModalIdeviceManager', () => {
       expect(tabLinks[1].classList.contains('exe-form-active-tab')).toBe(false);
     });
 
+    it('should hide User tab and System tab title when iDevice installation is unavailable', () => {
+      modalIdeviceManager.makeElementTableIdevices.mockRestore();
+      vi.spyOn(modalIdeviceManager, 'getUserListIdevices').mockResolvedValue([]);
+      eXeLearning.config.isOfflineInstallation = false;
+      eXeLearning.config.userIdevices = false;
+      modalIdeviceManager.idevicesBase = { text: { id: 'text', name: 'text', title: 'Text', type: 'base' } };
+      modalIdeviceManager.idevicesUser = {
+        custom: { id: 'custom', name: 'custom', title: 'Custom', type: 'user' },
+      };
+
+      const result = modalIdeviceManager.makeBodyElement();
+
+      expect(result.querySelector('.idevices-button-import')).toBeNull();
+      expect(result.querySelector('.exe-form-tabs')).toBeNull();
+      expect(result.querySelector('#user-idevices-tab')).toBeNull();
+      expect(result.querySelector('#base-idevices-tab')).not.toBeNull();
+    });
+
     it('should pass base iDevices to System tab and user iDevices to User tab', () => {
       modalIdeviceManager.idevicesBase = { text: { id: 'text', name: 'text', title: 'Text', type: 'base' } };
       modalIdeviceManager.idevicesUser = {

@@ -42,5 +42,7 @@ export const canInstallIdevicesFromEnv = (): boolean => {
  */
 export const canInstallIdevices = async (db: Kysely<Database>): Promise<boolean> => {
     if (isLocalMode() || isDevEnv()) return true;
-    return getSettingBoolean(db, 'ONLINE_IDEVICES_INSTALL', parseBoolean(process.env.ONLINE_IDEVICES_INSTALL, false));
+    const envAllowsInstall = parseBoolean(process.env.ONLINE_IDEVICES_INSTALL, false);
+    if (envAllowsInstall) return true;
+    return getSettingBoolean(db, 'ONLINE_IDEVICES_INSTALL', false);
 };

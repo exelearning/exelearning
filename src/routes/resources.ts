@@ -4,15 +4,19 @@
  * Used by ResourceFetcher.js to discover files that need to be included in exports.
  */
 import { Elysia } from 'elysia';
+import { cookie } from '@elysiajs/cookie';
+import { jwt } from '@elysiajs/jwt';
 import * as fs from 'fs';
 import * as path from 'path';
 import { LEGACY_IDEVICE_MAPPING } from '../shared/export/constants';
+import type { JwtPayload } from './auth';
 
 // Base paths for resources
 const PUBLIC_PATH = 'public';
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
 // Note: User themes are stored client-side in IndexedDB, not on server
 const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
+const IDEVICES_SITE_PATH = 'public/files/perm/idevices/site';
 const IDEVICES_USERS_PATH = 'public/files/perm/idevices/users';
 const LIBS_PATH = 'public/libs';
 const COMMON_PATH = 'public/app/common';
@@ -35,7 +39,22 @@ export interface ResourcesRouteDependencies {
         readFileSync: typeof fs.readFileSync;
     };
     getEnv: (key: string) => string | undefined;
+    currentUser?: CurrentUser | null | CurrentUserResolver;
 }
+
+interface CurrentUser {
+    id: number;
+}
+
+interface JwtVerifier {
+    verify: (token: string) => Promise<JwtPayload | false>;
+}
+
+interface CookieStore {
+    auth?: { value?: string };
+}
+
+type CurrentUserResolver = () => CurrentUser | null | Promise<CurrentUser | null>;
 
 const defaultDeps: ResourcesRouteDependencies = {
     fs: {
@@ -74,6 +93,32 @@ const getAppVersion = (): string => {
 // Get base path from environment (for subdirectory installs)
 const getBasePath = (): string => {
     return deps.getEnv('BASE_PATH') || '';
+};
+
+const getJwtSecret = (): string => {
+    return (
+        deps.getEnv('API_JWT_SECRET') ||
+        deps.getEnv('JWT_SECRET') ||
+        deps.getEnv('APP_SECRET') ||
+        'dev_secret_change_me'
+    );
+};
+
+const userDirNameFromId = (userId: number | string | undefined): string | null => {
+    if (userId === undefined || userId === null || userId === '') return null;
+    const userDirName = String(userId);
+    return /^\d+$/.test(userDirName) ? userDirName : null;
+};
+
+const resolveCurrentUser = async (jwtVerifier: JwtVerifier, cookieStore: CookieStore): Promise<CurrentUser | null> => {
+    if (typeof deps.currentUser === 'function') return deps.currentUser();
+    if (deps.currentUser !== undefined) return deps.currentUser;
+
+    const token = cookieStore.auth?.value;
+    if (!token) return null;
+    const payload = (await jwtVerifier.verify(token)) as JwtPayload | false;
+    if (!payload || !payload.sub) return null;
+    return { id: payload.sub };
 };
 
 interface ResourceFile {
@@ -132,10 +177,31 @@ function buildFileList(dirPath: string, urlPrefix: string, pathPrefix?: string):
     }));
 }
 
+function findIdeviceExportPath(
+    searchRoots: Array<{ dirPath: string; urlPrefix: string }>,
+    typeVariants: string[],
+): { dirPath: string; urlPrefix: string } | null {
+    for (const root of searchRoots) {
+        for (const typeName of typeVariants) {
+            const dirPath = path.join(root.dirPath, typeName, 'export');
+            if (deps.fs.existsSync(dirPath)) {
+                return {
+                    dirPath,
+                    urlPrefix: `${root.urlPrefix}/${typeName}/export`,
+                };
+            }
+        }
+    }
+
+    return null;
+}
+
 /**
  * Resources routes
  */
 export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
+    .use(cookie())
+    .use(jwt({ name: 'jwt', secret: getJwtSecret(), exp: '7d' }))
     // GET /api/resources/theme/:themeName - Get all files for a theme
     // Note: User themes are stored client-side in IndexedDB and served via ResourceFetcher
     .get('/api/resources/theme/:themeName', ({ params, set }) => {
@@ -171,8 +237,10 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     })
 
     // GET /api/resources/idevice/:ideviceType - Get export files for an iDevice
-    .get('/api/resources/idevice/:ideviceType', ({ params, set }) => {
+    .get('/api/resources/idevice/:ideviceType', async ({ params, set, jwt, cookie }) => {
         const { ideviceType } = params;
+        const currentUser = await resolveCurrentUser(jwt, cookie);
+        const userDirName = userDirNameFromId(currentUser?.id);
 
         // First check for legacy iDevice name mapping
         const mappedType = LEGACY_IDEVICE_MAPPING[ideviceType] || ideviceType;
@@ -186,39 +254,30 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
             .replace(/([a-z])([A-Z])/g, '$1-$2')
             .toLowerCase();
 
-        // Check user iDevices first, then base iDevices
-        let idevicePath = path.join(IDEVICES_USERS_PATH, normalizedType, 'export');
-        let urlPrefix = `/files/perm/idevices/users/${normalizedType}/export`;
+        const searchRoots = [
+            ...(userDirName
+                ? [
+                      {
+                          dirPath: path.join(IDEVICES_USERS_PATH, userDirName),
+                          urlPrefix: `/files/perm/idevices/users/${userDirName}`,
+                      },
+                  ]
+                : []),
+            { dirPath: IDEVICES_SITE_PATH, urlPrefix: '/files/perm/idevices/site' },
+            { dirPath: IDEVICES_BASE_PATH, urlPrefix: '/files/perm/idevices/base' },
+        ];
+        const typeVariants = Array.from(
+            new Set([normalizedType, kebabVariant, normalizedType.replace(/_/g, '-')]),
+        ).filter(Boolean);
+        const resolvedPath = findIdeviceExportPath(searchRoots, typeVariants);
 
-        if (!deps.fs.existsSync(idevicePath)) {
-            idevicePath = path.join(IDEVICES_BASE_PATH, normalizedType, 'export');
-            urlPrefix = `/files/perm/idevices/base/${normalizedType}/export`;
-        }
-
-        // Try with hyphenated version (e.g., 'FreeText' -> 'free-text')
-        if (!deps.fs.existsSync(idevicePath)) {
-            // Try common variations
-            const variations = [
-                kebabVariant, // camelCase to kebab (computed before lowercase)
-                normalizedType.replace(/_/g, '-'), // snake_case to kebab
-            ];
-
-            for (const variant of variations) {
-                idevicePath = path.join(IDEVICES_BASE_PATH, variant, 'export');
-                if (deps.fs.existsSync(idevicePath)) {
-                    urlPrefix = `/files/perm/idevices/base/${variant}/export`;
-                    break;
-                }
-            }
-        }
-
-        if (!deps.fs.existsSync(idevicePath)) {
+        if (!resolvedPath) {
             // Not all iDevices have export files - this is normal
             set.status = 404;
             return [];
         }
 
-        return buildFileList(idevicePath, urlPrefix);
+        return buildFileList(resolvedPath.dirPath, resolvedPath.urlPrefix);
     })
 
     // GET /api/resources/libs/base - Get base JavaScript libraries (jQuery, common, etc.)

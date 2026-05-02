@@ -62,6 +62,15 @@ describe('common.js $exe helpers', () => {
     expect(global.$exe.getIdeviceInstalledExportPath('text')).toBe('/export/path');
   });
 
+  it('getIdeviceInstalledExportPath prefers exported data attributes even when eXeLearning exists', () => {
+    global.eXeLearning = {};
+    document.body.innerHTML = `
+      <div class="idevice_node adaptative-quiz" data-idevice-type="adaptative-quiz" data-idevice-path="idevices/adaptative-quiz/"></div>
+    `;
+
+    expect(global.$exe.getIdeviceInstalledExportPath('adaptative-quiz')).toBe('idevices/adaptative-quiz/');
+  });
+
   it('hasTooltips loads tooltip script when tooltips are present', () => {
     global.eXeLearning = { symfony: { fullURL: 'http://example.com' } };
     document.body.innerHTML = '<a class="exe-tooltip" href="#"></a>';

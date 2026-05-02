@@ -124,6 +124,7 @@ describe('idevice-config-browser', () => {
         it('handles unknown types by normalizing the name', () => {
             const config = getIdeviceConfig('CustomIdevice');
             expect(config.cssClass).toBe('custom');
+            expect(config.componentType).toBe('json');
             expect(config.template).toBe('custom.html');
         });
 
@@ -143,9 +144,12 @@ describe('idevice-config-browser', () => {
             expect(getIdeviceConfig('freetext').componentType).toBe('json');
             expect(getIdeviceConfig('reflection').componentType).toBe('json');
 
-            // HTML idevices (no JS initialization needed)
+            // Known HTML idevices (no JS initialization needed)
             expect(getIdeviceConfig('multi-choice').componentType).toBe('html');
-            expect(getIdeviceConfig('unknown').componentType).toBe('html');
+
+            // Unknown browser-side iDevices may be user-installed JSON iDevices.
+            // Mark them as JSON-capable so their properties are serialized for export.
+            expect(getIdeviceConfig('unknown').componentType).toBe('json');
         });
 
         it('generates template name from cssClass', () => {

@@ -825,14 +825,12 @@ var $exe = {
 
     // Export idevice path - To review
     getIdeviceInstalledExportPath: function (ideviceType) {
-        let ideviceNode;
-        if (this.isInExe()) {
-            ideviceNode = $(`article.idevice_node[idevice-type="${ideviceType}"]`);
-            return ideviceNode.attr('idevice-path');
-        } else {
-            ideviceNode = $(`article.idevice_node[data-idevice-type="${ideviceType}"]`);
-            return ideviceNode.attr('data-idevice-path');
-        }
+        let ideviceNode = $('.idevice_node').filter(function () {
+            return $(this).attr('data-idevice-type') === ideviceType || $(this).attr('idevice-type') === ideviceType;
+        });
+        let dataPath = ideviceNode.filter('[data-idevice-path]').first().attr('data-idevice-path');
+        if (dataPath) return dataPath;
+        return ideviceNode.first().attr('idevice-path');
     }
 
 };

@@ -897,14 +897,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     'ONLINE_THEMES_INSTALL',
                     parseAppSettingBoolean(process.env.ONLINE_THEMES_INSTALL, false),
                 );
-                const userIdevicesEnabled =
-                    isOfflineInstallation ||
-                    isDevEnv() ||
-                    (await getSettingBoolean(
-                        db,
-                        'ONLINE_IDEVICES_INSTALL',
-                        parseAppSettingBoolean(process.env.ONLINE_IDEVICES_INSTALL, false),
-                    ));
+                const envUserIdevicesEnabled = parseAppSettingBoolean(process.env.ONLINE_IDEVICES_INSTALL, false);
+                const storedUserIdevicesEnabled = envUserIdevicesEnabled
+                    ? true
+                    : await getSettingBoolean(db, 'ONLINE_IDEVICES_INSTALL', false);
+                const userIdevicesEnabled = isOfflineInstallation || isDevEnv() || storedUserIdevicesEnabled;
 
                 // Check for platform integration (jwt_token in URL means user came from platform)
                 const jwtToken = query.jwt_token as string | undefined;

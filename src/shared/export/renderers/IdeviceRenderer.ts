@@ -368,6 +368,18 @@ ${contentHtml}
             return `"${basePath}content/resources/${path}"`;
         });
 
+        if (!isPreviewMode) {
+            result = result.replace(
+                /(src|href)=(['"])(?:https?:\/\/[^'"]+)?(?:\/[^'"]*)?\/files\/perm\/idevices\/(?:base|site|users\/[^/]+)\/([^/'"]+)\/export\/([^'"]+)\2/g,
+                (_match, attr, quote, ideviceType, filePath) => {
+                    if (filePath.startsWith('blob:') || filePath.startsWith('data:')) {
+                        return _match;
+                    }
+                    return `${attr}=${quote}${basePath}idevices/${ideviceType}/${filePath}${quote}`;
+                },
+            );
+        }
+
         // Fix legacy ELP format: src="resources/filename.png"
         // These are relative paths without asset:// or {{context_path}} prefix
         // Must be transformed to content/resources/ path

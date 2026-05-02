@@ -23,6 +23,7 @@ const testSessionId = '20250116testexport';
 
 // Mock session data store
 let mockSessions: Map<string, any>;
+let capturedResourceScopes: any[];
 
 // Mock ParsedOdeStructure for testing
 const mockParsedStructure = {
@@ -88,6 +89,10 @@ function createMockExportSystem(): ExportSystemDeps {
 
     return {
         FileSystemResourceProvider: class MockResourceProvider {
+            constructor(_publicDir: string, _extractedDir: string | null, scope?: any) {
+                capturedResourceScopes.push(scope);
+            }
+
             fetchTheme = async () => new Map();
             fetchBaseLibraries = async () => new Map();
             fetchLibraryFiles = async () => new Map();
@@ -159,6 +164,7 @@ describe('Export Routes', () => {
 
     beforeEach(async () => {
         mockSessions = new Map();
+        capturedResourceScopes = [];
 
         // Create mock dependencies and app
         mockDeps = createMockDependencies();
@@ -306,6 +312,18 @@ describe('Export Routes', () => {
 
             expect(res.headers.get('content-length')).toBeDefined();
         });
+
+        it('should scope server-side export resources to the authenticated user', async () => {
+            const scopedDeps = { ...createMockDependencies(), currentUser: { id: 42 } };
+            const scopedApp = new Elysia().use(createExportRoutes(scopedDeps));
+
+            const res = await scopedApp.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(200);
+            expect(capturedResourceScopes.at(-1)).toEqual({ userId: 42 });
+        });
     });
 
     describe('POST /api/export/:odeSessionId/:exportType/download', () => {
@@ -359,6 +377,22 @@ describe('Export Routes', () => {
             );
 
             expect(postRes.headers.get('content-type')).toBe(getRes.headers.get('content-type'));
+        });
+
+        it('should scope POST server-side export resources to the authenticated user', async () => {
+            const scopedDeps = { ...createMockDependencies(), currentUser: { id: 42 } };
+            const scopedApp = new Elysia().use(createExportRoutes(scopedDeps));
+
+            const res = await scopedApp.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/scorm12/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({ includeNavigation: true }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(capturedResourceScopes.at(-1)).toEqual({ userId: 42 });
         });
     });
 

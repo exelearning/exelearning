@@ -9,6 +9,8 @@ import { Elysia } from 'elysia';
 import { resourcesRoutes, configure, resetDependencies } from './resources';
 import * as fs from 'fs';
 
+const normalizePath = (filePath: string): string => filePath.replace(/\\/g, '/');
+
 describe('Resources Routes', () => {
     let app: Elysia;
 
@@ -87,14 +89,18 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
+                        const normalizedPath = normalizePath(filePath);
                         // Base theme doesn't exist
-                        if (filePath === 'public/files/perm/themes/base/site-custom-theme') return false;
+                        if (normalizedPath === 'public/files/perm/themes/base/site-custom-theme') return false;
                         // Site theme exists
-                        if (filePath === '/tmp/test-files/themes/site/site-custom-theme') return true;
+                        if (normalizedPath === '/tmp/test-files/themes/site/site-custom-theme') return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('themes/site/site-custom-theme')) {
+                        if (
+                            typeof dirPath === 'string' &&
+                            normalizePath(dirPath).includes('themes/site/site-custom-theme')
+                        ) {
                             return [
                                 { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                 { name: 'config.xml', isFile: () => true, isDirectory: () => false },
@@ -177,6 +183,89 @@ describe('Resources Routes', () => {
                 expect(file.url).toContain('/export/');
             }
         });
+
+        it('should return authenticated user iDevice export files from scoped folder', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        const normalizedPath = filePath.replace(/\\/g, '/');
+                        if (normalizedPath === 'public/files/perm/idevices/users/42/custom-activity/export')
+                            return true;
+                        if (normalizedPath.includes('public/files/perm/idevices/users/84')) return true;
+                        if (normalizedPath === 'public/files/perm/idevices/site/custom-activity/export') return false;
+                        if (normalizedPath === 'public/files/perm/idevices/base/custom-activity/export') return false;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: (dirPath: any, options?: any) => {
+                        const normalizedPath = typeof dirPath === 'string' ? dirPath.replace(/\\/g, '/') : dirPath;
+                        if (normalizedPath === 'public/files/perm/idevices/users/42/custom-activity/export') {
+                            return [
+                                { name: 'custom-activity.js', isFile: () => true, isDirectory: () => false },
+                                { name: 'custom-activity.css', isFile: () => true, isDirectory: () => false },
+                            ] as unknown as fs.Dirent[];
+                        }
+                        if (typeof normalizedPath === 'string' && normalizedPath.includes('users/84')) {
+                            return [
+                                { name: 'other-user.js', isFile: () => true, isDirectory: () => false },
+                            ] as unknown as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+                currentUser: { id: 42 },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/idevice/custom-activity'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.map((file: any) => file.path)).toEqual(['custom-activity.js', 'custom-activity.css']);
+            expect(body[0].url).toContain('/files/perm/idevices/users/42/custom-activity/export/custom-activity.js');
+            expect(body.some((file: any) => file.url.includes('/users/84/'))).toBe(false);
+        });
+
+        it('should fall back to site iDevice export files before base files', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        const normalizedPath = filePath.replace(/\\/g, '/');
+                        if (normalizedPath === 'public/files/perm/idevices/users/42/site-activity/export') return false;
+                        if (normalizedPath === 'public/files/perm/idevices/site/site-activity/export') return true;
+                        if (normalizedPath === 'public/files/perm/idevices/base/site-activity/export') return true;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: (dirPath: any, options?: any) => {
+                        const normalizedPath = typeof dirPath === 'string' ? dirPath.replace(/\\/g, '/') : dirPath;
+                        if (normalizedPath === 'public/files/perm/idevices/site/site-activity/export') {
+                            return [
+                                { name: 'site.js', isFile: () => true, isDirectory: () => false },
+                            ] as unknown as fs.Dirent[];
+                        }
+                        if (normalizedPath === 'public/files/perm/idevices/base/site-activity/export') {
+                            return [
+                                { name: 'base.js', isFile: () => true, isDirectory: () => false },
+                            ] as unknown as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+                currentUser: { id: 42 },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/idevice/site-activity'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body).toHaveLength(1);
+            expect(body[0].path).toBe('site.js');
+            expect(body[0].url).toContain('/files/perm/idevices/site/site-activity/export/site.js');
+        });
     });
 
     describe('GET /api/resources/libs/base', () => {
@@ -255,7 +344,7 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        if (filePath.includes('common/scorm')) return false;
+                        if (normalizePath(filePath).includes('common/scorm')) return false;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: fs.readdirSync,
@@ -276,11 +365,11 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        if (filePath === 'public/app/common/scorm') return true;
+                        if (normalizePath(filePath) === 'public/app/common/scorm') return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('common/scorm')) {
+                        if (typeof dirPath === 'string' && normalizePath(dirPath).includes('common/scorm')) {
                             return [
                                 { name: 'SCORM_API.js', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
@@ -432,7 +521,7 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-hidden') return true;
+                        if (normalizePath(filePath) === 'public/files/perm/themes/base/test-hidden') return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
@@ -463,20 +552,22 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/test-recursive') return true;
+                        const normalizedPath = normalizePath(filePath);
+                        if (normalizedPath === 'public/files/perm/themes/base/test-recursive') return true;
                         // Also need to say the img subdirectory exists for the recursive call
-                        if (filePath.includes('test-recursive/img')) return true;
+                        if (normalizedPath.includes('test-recursive/img')) return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
                         if (typeof dirPath === 'string') {
-                            if (dirPath.endsWith('test-recursive')) {
+                            const normalizedPath = normalizePath(dirPath);
+                            if (normalizedPath.endsWith('test-recursive')) {
                                 return [
                                     { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                     { name: 'img', isFile: () => false, isDirectory: () => true },
                                 ] as unknown as fs.Dirent[];
                             }
-                            if (dirPath.includes('test-recursive') && dirPath.endsWith('img')) {
+                            if (normalizedPath.includes('test-recursive') && normalizedPath.endsWith('img')) {
                                 return [
                                     { name: 'logo.png', isFile: () => true, isDirectory: () => false },
                                 ] as unknown as fs.Dirent[];
@@ -503,7 +594,7 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/base/error-theme') return true;
+                        if (normalizePath(filePath) === 'public/files/perm/themes/base/error-theme') return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
@@ -558,14 +649,18 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
+                        const normalizedPath = filePath.replace(/\\/g, '/');
                         // Only kebab-case version exists
-                        if (filePath.includes('idevices/users')) return false;
-                        if (filePath === 'public/files/perm/idevices/base/camelcase/export') return false;
-                        if (filePath === 'public/files/perm/idevices/base/camel-case/export') return true;
+                        if (normalizedPath.includes('idevices/users')) return false;
+                        if (normalizedPath === 'public/files/perm/idevices/site/camelcase/export') return false;
+                        if (normalizedPath === 'public/files/perm/idevices/site/camel-case/export') return false;
+                        if (normalizedPath === 'public/files/perm/idevices/base/camelcase/export') return false;
+                        if (normalizedPath === 'public/files/perm/idevices/base/camel-case/export') return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('camel-case/export')) {
+                        const normalizedPath = typeof dirPath === 'string' ? dirPath.replace(/\\/g, '/') : dirPath;
+                        if (typeof normalizedPath === 'string' && normalizedPath.includes('camel-case/export')) {
                             return [
                                 { name: 'script.js', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
@@ -787,11 +882,14 @@ describe('Resources Routes', () => {
                     fs: {
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
-                            if (filePath === '/tmp/test-files/themes/site/site-theme-test') return true;
+                            if (normalizePath(filePath) === '/tmp/test-files/themes/site/site-theme-test') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
-                            if (typeof dirPath === 'string' && dirPath.includes('site/site-theme-test')) {
+                            if (
+                                typeof dirPath === 'string' &&
+                                normalizePath(dirPath).includes('site/site-theme-test')
+                            ) {
                                 return [
                                     { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                 ] as unknown as fs.Dirent[];
@@ -827,7 +925,7 @@ describe('Resources Routes', () => {
                     fs: {
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
-                            if (filePath === '/tmp/test-files/themes/site/theme-with-error') return true;
+                            if (normalizePath(filePath) === '/tmp/test-files/themes/site/theme-with-error') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
@@ -873,11 +971,14 @@ describe('Resources Routes', () => {
                             // No prebuilt bundle
                             if (filePath.includes('bundles')) return false;
                             // Site theme exists
-                            if (filePath === '/tmp/test-files/themes/site/site-theme') return true;
+                            if (normalizePath(filePath) === '/tmp/test-files/themes/site/site-theme') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
-                            if (typeof dirPath === 'string' && dirPath.includes('themes/site/site-theme')) {
+                            if (
+                                typeof dirPath === 'string' &&
+                                normalizePath(dirPath).includes('themes/site/site-theme')
+                            ) {
                                 return [
                                     { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                     { name: 'config.xml', isFile: () => true, isDirectory: () => false },

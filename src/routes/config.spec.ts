@@ -207,6 +207,45 @@ describe('Config Routes', () => {
             }
         });
 
+        it('should enable iDevice installation flag when env allows it and stored settings disable it', async () => {
+            const prevAppEnv = process.env.APP_ENV;
+            const prevOnlineMode = process.env.APP_ONLINE_MODE;
+            const prevOnlineIdevicesInstall = process.env.ONLINE_IDEVICES_INSTALL;
+            const prevIdevices = await getSetting(db as any, 'ONLINE_IDEVICES_INSTALL');
+
+            try {
+                process.env.APP_ENV = 'prod';
+                process.env.APP_ONLINE_MODE = '1';
+                process.env.ONLINE_IDEVICES_INSTALL = '1';
+                await setSetting(db as any, 'ONLINE_IDEVICES_INSTALL', '0', 'boolean');
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/parameter-management/parameters/data/list'),
+                );
+
+                const data = await response.json();
+                expect(data.canInstallIdevices).toBe(1);
+            } finally {
+                if (prevAppEnv === undefined) delete process.env.APP_ENV;
+                else process.env.APP_ENV = prevAppEnv;
+                if (prevOnlineMode === undefined) delete process.env.APP_ONLINE_MODE;
+                else process.env.APP_ONLINE_MODE = prevOnlineMode;
+                if (prevOnlineIdevicesInstall === undefined) delete process.env.ONLINE_IDEVICES_INSTALL;
+                else process.env.ONLINE_IDEVICES_INSTALL = prevOnlineIdevicesInstall;
+
+                if (prevIdevices) {
+                    await setSetting(
+                        db as any,
+                        'ONLINE_IDEVICES_INSTALL',
+                        prevIdevices.value,
+                        prevIdevices.type as any,
+                    );
+                } else {
+                    await db.deleteFrom('app_settings').where('key', '=', 'ONLINE_IDEVICES_INSTALL').execute();
+                }
+            }
+        });
+
         it('should return API routes without BASE_PATH prefix when not set', async () => {
             const originalBasePath = process.env.BASE_PATH;
             delete process.env.BASE_PATH;

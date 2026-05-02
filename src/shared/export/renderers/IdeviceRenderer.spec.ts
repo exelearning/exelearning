@@ -708,6 +708,30 @@ describe('IdeviceRenderer', () => {
             expect(fixed).toBe('<img src="content/resources/image1.png"><img src="content/resources/image2.jpg">');
         });
 
+        it('should convert absolute user iDevice export URLs to packaged relative URLs', () => {
+            const content =
+                '<img src="/v0.0.0-alpha/files/perm/idevices/users/94/adaptative-quiz/export/exequextreply.svg">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="idevices/adaptative-quiz/exequextreply.svg">');
+        });
+
+        it('should apply basePath to converted user iDevice export URLs', () => {
+            const content =
+                '<a href="/v0.0.0-alpha/files/perm/idevices/users/94/adaptative-quiz/export/icons/reply.svg">Open</a>';
+            const fixed = renderer.fixAssetUrls(content, '../');
+
+            expect(fixed).toBe('<a href="../idevices/adaptative-quiz/icons/reply.svg">Open</a>');
+        });
+
+        it('should convert site and base iDevice export URLs to packaged relative URLs', () => {
+            const content =
+                '<img src="/files/perm/idevices/site/custom/export/icon.svg"><img src="/files/perm/idevices/base/guess/export/adivinaHome.png">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="idevices/custom/icon.svg"><img src="idevices/guess/adivinaHome.png">');
+        });
+
         // Preview mode tests
         it('should preserve asset:// URLs in preview mode', () => {
             const content = '<img src="asset://uuid-123/image.png">';
@@ -730,6 +754,14 @@ describe('IdeviceRenderer', () => {
 
             // These are still transformed because they're server-side paths, not asset references
             expect(fixed).toContain('content/resources/');
+        });
+
+        it('should preserve absolute iDevice export URLs in preview mode', () => {
+            const content =
+                '<img src="/v0.0.0-alpha/files/perm/idevices/users/94/adaptative-quiz/export/exequextreply.svg">';
+            const fixed = renderer.fixAssetUrls(content, '', true);
+
+            expect(fixed).toBe(content);
         });
     });
 

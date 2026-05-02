@@ -253,6 +253,7 @@ export default class ModalIdeviceManager extends Modal {
     makeBodyElement() {
         let bodyContainer = document.createElement('div');
         bodyContainer.classList.add('body-idevices-container');
+        const canInstallUserIdevices = this.canInstallUserIdevices();
         // Filter
         let filterTable = this.makeFilterTableIdevices(
             bodyContainer,
@@ -272,14 +273,20 @@ export default class ModalIdeviceManager extends Modal {
         bodyContainer.append(idevicesListContainer);
         const header = this.makeRowTableTheadElements();
         if (header) bodyContainer.prepend(header);
-        // Tabs: System (base) / User (manually installed). System is active by
-        // default. Both tabs render even if Users is empty so the user always
-        // has a place to drop in newly imported iDevices.
         const baseIdevicesTabData = {
             title: _('System'),
             id: 'base-idevices-tab',
             active: true,
         };
+        if (!canInstallUserIdevices) {
+            idevicesListContainer.append(
+                this.makeElementTableIdevices(this.idevicesBase, baseIdevicesTabData)
+            );
+            return bodyContainer;
+        }
+        // Tabs: System (base) / User (manually installed). System is active by
+        // default. Both tabs render when user iDevice installation is available
+        // so the user always has a place to find newly imported iDevices.
         const userIdevicesTabData = {
             title: _('User'),
             id: 'user-idevices-tab',
@@ -372,6 +379,13 @@ export default class ModalIdeviceManager extends Modal {
         return buttonsContainer;
     }
 
+    canInstallUserIdevices() {
+        return !(
+            eXeLearning.config.isOfflineInstallation == false &&
+            eXeLearning.config.userIdevices == false
+        );
+    }
+
     /**
      * Generate input file import
      *
@@ -409,11 +423,7 @@ export default class ModalIdeviceManager extends Modal {
      * @returns
      */
     makeElementButtonImportIdevice() {
-        if (
-            eXeLearning.config.isOfflineInstallation == false &&
-            eXeLearning.config.userIdevices == false
-        )
-            return false;
+        if (!this.canInstallUserIdevices()) return false;
         let buttonImportIdevice = document.createElement('button');
         buttonImportIdevice.classList.add(
             'idevices-button-import',
