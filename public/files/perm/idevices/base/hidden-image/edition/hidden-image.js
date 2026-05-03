@@ -833,7 +833,9 @@ var $exeDevice = {
 
         html += linksImages;
         html += linksAudios;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = $exeDevicesEdition.iDevice.common.sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter !== '') {
             html += `<div class="hiddenimage-extra-content">${textAfter}</div>`;
         }
@@ -869,25 +871,27 @@ var $exeDevice = {
             optionEmpy = false,
             p = {};
         const msgs = $exeDevice.msgs;
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         p.numberOptions = parseInt($('input[name=qxtnumber]:checked').val());
-        p.author = $('#hiEAuthor').val();
-        p.alt = $('#hiEAlt').val();
+        p.author = sanitizeText($('#hiEAuthor').val());
+        p.alt = sanitizeText($('#hiEAlt').val());
         p.customScore = parseFloat($('#hiEScoreQuestion').val());
-        p.url = $('#hiEURLImage').val().trim();
-        p.audio = $('#hiEURLAudio').val();
+        p.url = sanitizeUrl($('#hiEURLImage').val().trim());
+        p.audio = sanitizeUrl($('#hiEURLAudio').val());
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
-        p.question = $('#hiEQuestion').val().trim();
+        p.question = sanitizeText($('#hiEQuestion').val().trim());
         p.options = [];
         p.solution = parseInt($('input[name=hisoluiton]:checked').val());
-        p.msgHit = $('#hiEMessageOK').val();
-        p.msgError = $('#hiEMessageKO').val();
+        p.msgHit = sanitizeText($('#hiEMessageOK').val());
+        p.msgError = sanitizeText($('#hiEMessageKO').val());
         p.time = parseInt($('#hiETimeQuestion').val());
         p.rows = parseInt($('#hiERows').val());
         p.columns = parseInt($('#hiEColumns').val());
         p.attempts = parseInt($('#hiEAttempts').val());
 
         $('.HIE-AnwersOptions').each(function (i) {
-            const option = $(this).val().trim();
+            const option = sanitizeText($(this).val().trim());
             if (i < p.numberOptions && option.length === 0) {
                 optionEmpy = true;
             }
@@ -953,11 +957,12 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
                 tinyMCE.get('eXeGameInstructions').getContent()
             ),
-            textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
+            textAfter = escape(sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent())),
             showMinimize = $('#hiEShowMinimize').is(':checked'),
             optionsRamdon = $('#hiEQuestionsRamdon').is(':checked'),
             answersRamdon = $('#hiEAnswersRamdon').is(':checked'),

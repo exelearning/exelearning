@@ -84,6 +84,23 @@ var $exeDevice = {
         this.createForm();
     },
 
+    escapeAttribute: function (value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    sanitizeAttributionValue: function (key, value) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        if (key === 'linktitle' || key === 'linkauthor') {
+            return sanitizeUrl(value || '');
+        }
+        return sanitizeText(value || '');
+    },
+
     /**
      * Create form main function
      * @called by exeDevice.init
@@ -121,6 +138,8 @@ var $exeDevice = {
      * @param {*} field
      */
     loadPreviousValues: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let data = this.idevicePreviousData;
         let incrementalId = 0;
         if (Object.keys(data).length > 1) {
@@ -133,19 +152,22 @@ var $exeDevice = {
                 let imageData = {};
                 this.attributionDataKeys.forEach((attrkey) => {
                     if (attrkey === 'license') {
-                        imageData[attrkey] = this.getLicenseTitle(
-                            value[attrkey]
+                        imageData[attrkey] = sanitizeText(
+                            this.getLicenseTitle(value[attrkey])
                         );
                     } else {
-                        imageData[attrkey] = value[attrkey];
+                        imageData[attrkey] = this.sanitizeAttributionValue(
+                            attrkey,
+                            value[attrkey]
+                        );
                     }
                 });
                 $exeDevice.attributionData[`img_${incrementalId}`] = imageData;
 
                 // Asset URLs are now centrally converted by YjsStructureBinding.prepareJsonForSync()
                 // No need for local blob URL recovery - data should already have asset:// URLs
-                const imgUrl = value.img;
-                const thumbnailUrl = value.thumbnail;
+                const imgUrl = sanitizeUrl(value.img || '');
+                const thumbnailUrl = sanitizeUrl(value.thumbnail || '') || imgUrl;
 
                 this.addImageHTML(incrementalId, imgUrl, thumbnailUrl);
                 incrementalId++;
@@ -162,6 +184,8 @@ var $exeDevice = {
      * @returns {String}
      */
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let divImages = this.ideviceBody.querySelectorAll(
             '.imgSelectContainer'
         );
@@ -176,10 +200,14 @@ var $exeDevice = {
             // Use data-asset-* attributes directly to ensure we get asset:// URLs
             // The MutationObserver doesn't update these when editing existing images,
             // so we set them explicitly in addImageFromAsset() and addImageHTML()
-            let thumbnailURL = imgElement.getAttribute('data-asset-url')
-                || imgElement.getAttribute('src');
-            let imageURL = imgElement.getAttribute('data-asset-origin')
-                || imgElement.getAttribute('origin');
+            let thumbnailURL = sanitizeUrl(
+                imgElement.getAttribute('data-asset-url')
+                    || imgElement.getAttribute('src')
+            );
+            let imageURL = sanitizeUrl(
+                imgElement.getAttribute('data-asset-origin')
+                    || imgElement.getAttribute('origin')
+            );
 
             // FIX: Blob URLs are ephemeral and won't work after page reload.
             if (thumbnailURL && thumbnailURL.startsWith('blob:')) {
@@ -199,13 +227,22 @@ var $exeDevice = {
                     '';
 
             if ($exeDevice.attributionData[element]) {
-                imageTitle = $exeDevice.attributionData[element].title;
-                imageLinkTitle = $exeDevice.attributionData[element].linktitle;
-                imageAuthor = $exeDevice.attributionData[element].author;
-                imageLinkAuthor =
-                    $exeDevice.attributionData[element].linkauthor;
-                imageLicense = this.getLicenseValue(
-                    $exeDevice.attributionData[element].license
+                imageTitle = sanitizeText(
+                    $exeDevice.attributionData[element].title
+                );
+                imageLinkTitle = sanitizeUrl(
+                    $exeDevice.attributionData[element].linktitle
+                );
+                imageAuthor = sanitizeText(
+                    $exeDevice.attributionData[element].author
+                );
+                imageLinkAuthor = sanitizeUrl(
+                    $exeDevice.attributionData[element].linkauthor
+                );
+                imageLicense = sanitizeText(
+                    this.getLicenseValue(
+                        $exeDevice.attributionData[element].license
+                    )
                 );
             }
 
@@ -248,9 +285,12 @@ var $exeDevice = {
      * @returns {Array}
      */
     getDataJson: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         let data = {};
 
-        data.ideviceId = this.ideviceBody.getAttribute('idevice-id');
+        data.ideviceId = sanitizeText(
+            this.ideviceBody.getAttribute('idevice-id')
+        );
 
         this.dataIds.forEach((key) => (data[key] = this[key]));
 
@@ -306,7 +346,10 @@ var $exeDevice = {
      * @param {Object} assetInfo - Object with assetUrl, blobUrl, and asset properties
      */
     addImageFromAsset: function (assetInfo) {
-        const { assetUrl, blobUrl, asset } = assetInfo;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        const assetUrl = sanitizeUrl(assetInfo.assetUrl);
+        const blobUrl = sanitizeUrl(assetInfo.blobUrl || assetInfo.assetUrl);
+        const asset = assetInfo.asset;
 
         // Hide the "no images" message
         this.ideviceBody.querySelector('#textMsxHide').style.display = 'none';
@@ -383,6 +426,7 @@ var $exeDevice = {
      * @param {*} imageName
      */
     addUploadImage: async function (imageData, imageName) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let response = await eXe.app.uploadFile(imageData, imageName);
         if (
             response &&
@@ -390,8 +434,12 @@ var $exeDevice = {
             response.savedFilename &&
             response.savedThumbnailName
         ) {
-            let originPath = `${response.savedPath}/${response.savedFilename}`;
-            let thumbnailPath = `${response.savedPath}/${response.savedThumbnailName}`;
+            let originPath = sanitizeUrl(
+                    `${response.savedPath}/${response.savedFilename}`
+                ),
+                thumbnailPath = sanitizeUrl(
+                    `${response.savedPath}/${response.savedThumbnailName}`
+                );
             // Add image HTML
             if (this.editionId != null && this.editionId >= 0) {
                 let img = this.ideviceBody.querySelector(
@@ -435,24 +483,27 @@ var $exeDevice = {
      * @param {*} displayURL - The blob:// or asset:// URL for immediate display
      */
     addImageHTML: function (id, originURL, displayURL) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         // data-asset-* attributes ensure save() gets asset URLs via the getAttribute interceptor
         // even if the src/origin have been resolved to blob:// URLs
-        const srcUrl = displayURL || originURL;
+                const safeOriginURL = sanitizeUrl(originURL),
+                        srcUrl = sanitizeUrl(displayURL || safeOriginURL) || safeOriginURL,
+                        safeId = Number.isInteger(id) ? id : parseInt(id, 10) || 0;
         let html = `
       <div class="imgSelect">
         <div class="imageElement">
-          <img height=128 width=128 src="${srcUrl}" id="img_${id}" class="image" origin="${originURL}" data-asset-origin="${originURL}" data-asset-url="${originURL}" draggable="false">
+                    <img height=128 width=128 src="${this.escapeAttribute(srcUrl)}" id="img_${safeId}" class="image" origin="${this.escapeAttribute(safeOriginURL)}" data-asset-origin="${this.escapeAttribute(safeOriginURL)}" data-asset-url="${this.escapeAttribute(safeOriginURL)}" draggable="false">
         </div>
       </div>
       <div class="imgButtons">
-        ${$exeDevice.getAttributionButtonHTML(id)}
-        ${$exeDevice.getModiButtonHTML(id)}
-        ${$exeDevice.getUpButtonHTML(id)}
-        ${$exeDevice.getDownButtonHTML(id)}
-        ${$exeDevice.getRemoveButtonHTML(id)}
+                ${$exeDevice.getAttributionButtonHTML(safeId)}
+                ${$exeDevice.getModiButtonHTML(safeId)}
+                ${$exeDevice.getUpButtonHTML(safeId)}
+                ${$exeDevice.getDownButtonHTML(safeId)}
+                ${$exeDevice.getRemoveButtonHTML(safeId)}
       </div>`;
         let imgContainer = document.createElement('div');
-        imgContainer.id = `imgSelectContainer_${id}`;
+                imgContainer.id = `imgSelectContainer_${safeId}`;
         imgContainer.classList.add('imgSelectContainer');
         imgContainer.innerHTML = html;
         this.ideviceBody
@@ -527,16 +578,22 @@ var $exeDevice = {
      * @returns {String}
      */
     createInputHTML: function (id, title, instructions, value, placeholder) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            safeValue = this.escapeAttribute(sanitizeText(value || '')),
+            safePlaceholder = placeholder
+                ? this.escapeAttribute(sanitizeText(placeholder || ''))
+                : '',
+            safeTitle = this.escapeAttribute(sanitizeText(title || ''));
         let instructionsSpan = instructions
             ? `<span class="exe-field-instructions">${instructions}</span>`
             : '';
         let placeholderAttrib = placeholder
-            ? `placeholder="${placeholder}"`
+            ? `placeholder="${safePlaceholder}"`
             : '';
         return `
           <div class="property-row">
-            <label for="${id}">${title}:</label>
-            <input type="text" value="${value}" ${placeholderAttrib} class="ideviceTextfield" name="${id}" id="${id}" onfocus="this.select()" />
+            <label for="${id}">${safeTitle}:</label>
+            <input type="text" value="${safeValue}" ${placeholderAttrib} class="ideviceTextfield" name="${id}" id="${id}" onfocus="this.select()" />
             ${instructionsSpan}
           </div>`;
     },
@@ -584,14 +641,20 @@ var $exeDevice = {
      * @returns {String}
      */
     createDataListHTML: function (id, title, placeholder, options, value) {
+                const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+                        safeTitle = this.escapeAttribute(sanitizeText(title || '')),
+                        safeValue = this.escapeAttribute(sanitizeText(value || '')),
+                        safePlaceholder = this.escapeAttribute(
+                                sanitizeText(placeholder || '')
+                        );
         let optionsHTML = '';
         options.forEach((option) => {
-            optionsHTML += `<option value="${option.value}">`;
+                        optionsHTML += `<option value="${this.escapeAttribute(sanitizeText(option.value || ''))}">`;
         });
         return `
         <div class="property-row">
-          <label for="${id}" class="form-label">${title}</label>
-          <input class="ideviceTextfield " list="${id}-options" value="${value}" id="${id}" placeholder="${placeholder}">
+                    <label for="${id}" class="form-label">${safeTitle}</label>
+                    <input class="ideviceTextfield " list="${id}-options" value="${safeValue}" id="${id}" placeholder="${safePlaceholder}">
           <datalist id="${id}-options">
             ${optionsHTML}
           </datalist>
@@ -606,6 +669,8 @@ var $exeDevice = {
      * @returns {String}
      */
     createAttributionBodyHTML: function (id) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let imgId = `img_${id}`;
         let attrTitle = this.defaultTitle;
         let attrLinkTitle = this.defaultLinkTitle;
@@ -615,11 +680,17 @@ var $exeDevice = {
 
         // Check if exist data of this image
         if (this.attributionData[imgId]) {
-            attrTitle = this.attributionData[imgId].title;
-            attrLinkTitle = this.attributionData[imgId].linktitle;
-            attrAuthor = this.attributionData[imgId].author;
-            attrLinkAuthor = this.attributionData[imgId].linkauthor;
-            attrLicense = this.attributionData[imgId].license;
+            attrTitle = sanitizeText(this.attributionData[imgId].title);
+            attrLinkTitle = sanitizeUrl(
+                this.attributionData[imgId].linktitle
+            );
+            attrAuthor = sanitizeText(this.attributionData[imgId].author);
+            attrLinkAuthor = sanitizeUrl(
+                this.attributionData[imgId].linkauthor
+            );
+            attrLicense = sanitizeText(
+                this.attributionData[imgId].license
+            );
         }
 
         let attrBodyHTML =
@@ -688,20 +759,32 @@ var $exeDevice = {
                     cancelButtonText: _('Close'),
                     confirmExec: () => {
                         // Actions if click Yes
-                        $exeDevice.attributionData[imgId] = {
-                            title: $(`#${imgId}_${$exeDevice.titleId}`)[0]
-                                .value,
-                            linktitle: $(
-                                `#${imgId}_${$exeDevice.linktitleId}`
-                            )[0].value,
-                            author: $(`#${imgId}_${$exeDevice.authorId}`)[0]
-                                .value,
-                            linkauthor: $(
-                                `#${imgId}_${$exeDevice.linkauthorId}`
-                            )[0].value,
-                            license: $(
+                        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+                            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+                            licenseInput = $(
                                 `#${imgId}_${$exeDevice.licenseId}-options`
-                            )[0].previousElementSibling.value,
+                            )[0];
+                        $exeDevice.attributionData[imgId] = {
+                            title: sanitizeText(
+                                $(`#${imgId}_${$exeDevice.titleId}`)[0].value
+                            ),
+                            linktitle: sanitizeUrl(
+                                $(`#${imgId}_${$exeDevice.linktitleId}`)[0]
+                                    .value
+                            ),
+                            author: sanitizeText(
+                                $(`#${imgId}_${$exeDevice.authorId}`)[0].value
+                            ),
+                            linkauthor: sanitizeUrl(
+                                $(`#${imgId}_${$exeDevice.linkauthorId}`)[0]
+                                    .value
+                            ),
+                            license: sanitizeText(
+                                licenseInput &&
+                                    licenseInput.previousElementSibling
+                                    ? licenseInput.previousElementSibling.value
+                                    : ''
+                            ),
                         };
                     },
                 });

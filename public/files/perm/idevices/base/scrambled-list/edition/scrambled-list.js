@@ -86,10 +86,12 @@ var $exeDevice = {
      * @return {String}
      */
     save: function () {
+        const sanitizeText = this.getSanitizeText(),
+            sanitizeHtml = this.getSanitizeHtml();
         this.instructions = '';
         const inst = tinyMCE.get('eXeGameInstructions');
         if (inst) {
-            this.instructions = inst.getContent();
+            this.instructions = sanitizeHtml(inst.getContent());
             inst.getContainer().classList.toggle(
                 'empty',
                 this.instructions === ''
@@ -101,7 +103,7 @@ var $exeDevice = {
         this.ideviceBody
             .querySelectorAll('#sortableListFormList input')
             .forEach((el) => {
-                const val = (el.value || '').trim();
+                const val = sanitizeText((el.value || '').trim());
                 if (val !== '') {
                     this.options.push(val);
                     this.counter++;
@@ -109,18 +111,30 @@ var $exeDevice = {
             });
 
         this.buttonText =
-            (this.ideviceBody.querySelector('#sortableListButtonText') || {})
-                .value || '';
+            sanitizeText(
+                (
+                    this.ideviceBody.querySelector('#sortableListButtonText') ||
+                    {}
+                ).value || ''
+            );
         this.rightText =
-            (this.ideviceBody.querySelector('#sortableListRightText') || {})
-                .value || '';
+            sanitizeText(
+                (
+                    this.ideviceBody.querySelector('#sortableListRightText') ||
+                    {}
+                ).value || ''
+            );
         this.wrongText =
-            (this.ideviceBody.querySelector('#sortableListWrongText') || {})
-                .value || '';
+            sanitizeText(
+                (
+                    this.ideviceBody.querySelector('#sortableListWrongText') ||
+                    {}
+                ).value || ''
+            );
         const progressBar =
             $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
-        this.evaluationID = progressBar.evaluationID;
+        this.evaluationID = sanitizeText(progressBar.evaluationID || '');
         this.evaluation = progressBar.evaluation;
         this.showSolutions = !!(
             this.ideviceBody.querySelector('#sortableShowSolutions') || {}
@@ -135,7 +149,7 @@ var $exeDevice = {
         this.textAfter = '';
         const ta = tinyMCE.get('eXeIdeviceTextAfter');
         if (ta) {
-            this.textAfter = ta.getContent();
+            this.textAfter = sanitizeHtml(ta.getContent());
             ta.getContainer().classList.toggle('empty', this.textAfter === '');
         }
         this.afterElement = this.textAfter
@@ -147,7 +161,9 @@ var $exeDevice = {
         for (const k in base) {
             if (!Object.prototype.hasOwnProperty.call(base, k)) continue;
             const v = $('#ci18n_' + k).val();
-            if (typeof v === 'string' && v.trim() !== '') i18n[k] = v;
+            if (typeof v === 'string' && v.trim() !== '') {
+                i18n[k] = sanitizeText(v);
+            }
         }
         this.msgs = i18n;
 
@@ -387,13 +403,17 @@ var $exeDevice = {
     },
 
     addQuestions: function (options) {
+        const sanitizeText = this.getSanitizeText();
         $('#sortableListFormList ol').empty();
         let inputList = '';
         for (let i = 0; i < this.items_no; i++) {
             const isRequired = i < this.items_min;
             const requiredAttr = isRequired ? 'required' : '';
             const requiredClass = isRequired ? 'required' : '';
-            const value = i < options.length ? options[i] : '';
+            const value =
+                i < options.length
+                    ? this.escapeAttribute(sanitizeText(options[i]))
+                    : '';
             inputList += `
                 <li class="${requiredClass}">
                     <label for="sortableListFormList${i}" class="sr-av"></label>
@@ -471,6 +491,8 @@ var $exeDevice = {
      * @param {*} html
      */
     loadPreviousValues: function () {
+        const sanitizeText = this.getSanitizeText(),
+            sanitizeHtml = this.getSanitizeHtml();
         // Default values
         var buttonText = c_('Check');
         var rightText = c_('Right!');
@@ -489,21 +511,21 @@ var $exeDevice = {
             for (let i = 0; i < data.options.length; i++) {
                 this.ideviceBody.querySelector(
                     '#sortableListFormList' + i
-                ).value = data.options[i];
+                ).value = sanitizeText(data.options[i] || '');
             }
         }
 
         this.ideviceBody.querySelector('#sortableListButtonText').value =
-            data.buttonText || buttonText;
+            sanitizeText(data.buttonText || buttonText);
         this.ideviceBody.querySelector('#sortableListRightText').value =
-            data.rightText || rightText;
+            sanitizeText(data.rightText || rightText);
         this.ideviceBody.querySelector('#sortableListWrongText').value =
-            data.wrongText || wrongText;
+            sanitizeText(data.wrongText || wrongText);
         const evalChecked = !!data.evaluation;
         const evalIDValue =
             typeof data.evaluationID === 'string' &&
             data.evaluationID.trim() !== ''
-                ? data.evaluationID
+                ? sanitizeText(data.evaluationID)
                 : '';
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: evalChecked,
@@ -511,12 +533,14 @@ var $exeDevice = {
         });
 
         this.ideviceBody.querySelector('#eXeGameInstructions').value =
-            data.instructions ||
-            _(
-                'Arrange the following texts in the correct order to complete the activity.'
+            sanitizeHtml(
+                data.instructions ||
+                    _(
+                        'Arrange the following texts in the correct order to complete the activity.'
+                    )
             );
         this.ideviceBody.querySelector('#eXeIdeviceTextAfter').value =
-            data.textAfter || '';
+            sanitizeHtml(data.textAfter || '');
         this.ideviceBody.querySelector('#sortableShowSolutions').checked =
             typeof data.showSolutions !== 'undefined'
                 ? data.showSolutions
@@ -535,8 +559,17 @@ var $exeDevice = {
             data.repeatActivity,
             data.weighted
         );
+        const msgs = {};
+        if (data.msgs && typeof data.msgs === 'object') {
+            for (const key in data.msgs) {
+                if (!Object.prototype.hasOwnProperty.call(data.msgs, key)) {
+                    continue;
+                }
+                msgs[key] = sanitizeText(data.msgs[key]);
+            }
+        }
         $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-            data.msgs
+            msgs
         );
     },
 
@@ -579,6 +612,100 @@ var $exeDevice = {
                 </p>
                 <ol>${inputList}</ol>
             </div>`;
+    },
+
+    getSanitizeText: function () {
+        const common =
+            typeof $exeDevicesEdition !== 'undefined' &&
+            $exeDevicesEdition &&
+            $exeDevicesEdition.iDevice &&
+            $exeDevicesEdition.iDevice.common
+                ? $exeDevicesEdition.iDevice.common
+                : null;
+        if (common && typeof common.sanitizeText === 'function') {
+            return common.sanitizeText;
+        }
+        return (input) => {
+            if (input === null || typeof input === 'undefined') {
+                return '';
+            }
+
+            let str = String(input);
+
+            if (typeof DOMPurify === 'undefined') {
+                let prev;
+                do {
+                    prev = str;
+                    str = str.replace(/<[^>]*>/g, '');
+                } while (str !== prev);
+                return str;
+            }
+
+            const safe = DOMPurify.sanitize(str, {
+                ALLOWED_TAGS: [],
+                ALLOWED_ATTR: [],
+                KEEP_CONTENT: true,
+            });
+
+            if (typeof document !== 'undefined' && document && typeof document.createElement === 'function') {
+                const holder = document.createElement('div');
+                holder.innerHTML = safe;
+                return holder.textContent || '';
+            }
+
+            return safe;
+        };
+    },
+
+    getSanitizeHtml: function () {
+        const common =
+            typeof $exeDevicesEdition !== 'undefined' &&
+            $exeDevicesEdition &&
+            $exeDevicesEdition.iDevice &&
+            $exeDevicesEdition.iDevice.common
+                ? $exeDevicesEdition.iDevice.common
+                : null;
+        if (common && typeof common.sanitizeHtml === 'function') {
+            return common.sanitizeHtml;
+        }
+
+        const sanitizeText = this.getSanitizeText();
+
+        return (input, overrides) => {
+            if (input === null || typeof input === 'undefined') {
+                return '';
+            }
+
+            const str = String(input);
+            const config = {
+                USE_PROFILES: { html: true },
+                FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+                FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
+                ALLOW_DATA_ATTR: false,
+            };
+
+            if (overrides && typeof overrides === 'object') {
+                for (const k in overrides) {
+                    if (Object.prototype.hasOwnProperty.call(overrides, k)) {
+                        config[k] = overrides[k];
+                    }
+                }
+            }
+
+            if (typeof DOMPurify === 'undefined') {
+                return sanitizeText(str);
+            }
+
+            return DOMPurify.sanitize(str, config);
+        };
+    },
+
+    escapeAttribute: function (value) {
+        return String(value === null || typeof value === 'undefined' ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     },
 
     /**

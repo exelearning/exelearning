@@ -473,17 +473,19 @@ var $exeDevice = {
     },
 
     validateCard: function () {
-        const msgs = $exeDevice.msgs;
+        const msgs = $exeDevice.msgs,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let p = {
-            url: $('#bfafEURLImage').val().trim(),
-            author: $('#bfafEAuthor').val(),
-            alt: $('#bfafEAlt').val(),
-            eText: $('#bfafEText').val(),
-            urlBk: $('#bfafEURLImageBack').val().trim(),
-            authorBk: $('#bfafEAuthorBack').val(),
-            altBk: $('#bfafEAltBack').val(),
-            eTextBk: $('#bfafETextBack').val(),
-            description: $('#bfafEDescription').val(),
+            url: sanitizeUrl($('#bfafEURLImage').val().trim()),
+            author: sanitizeText($('#bfafEAuthor').val()),
+            alt: sanitizeText($('#bfafEAlt').val()),
+            eText: sanitizeText($('#bfafEText').val()),
+            urlBk: sanitizeUrl($('#bfafEURLImageBack').val().trim()),
+            authorBk: sanitizeText($('#bfafEAuthorBack').val()),
+            altBk: sanitizeText($('#bfafEAltBack').val()),
+            eTextBk: sanitizeText($('#bfafETextBack').val()),
+            description: sanitizeText($('#bfafEDescription').val()),
             position: $('#bfafEPosition').val(),
             vertical: $('#bfafEVertical').is(':checked'),
         };
@@ -627,7 +629,8 @@ var $exeDevice = {
     save: function () {
         if (!$exeDevice.validateCard()) return false;
 
-        const dataGame = $exeDevice.validateData();
+        const dataGame = $exeDevice.validateData(),
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
 
         if (!dataGame) return false;
 
@@ -648,7 +651,9 @@ var $exeDevice = {
         const linksMedias = $exeDevice.createlinksIMedias(cards);
         let html = `<div class="beforeafter-IDevice">${divContent}<div class="beforeafter-DataGame js-hidden">${json}</div>${linksMedias}`;
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter)
             html += `<div class="beforeafter-extra-content">${textAfter}</div>`;
         html += `<div class="beforeafter-bns js-hidden">${$exeDevice.msgs.msgNoSuportBrowser}</div></div>`;
@@ -673,6 +678,7 @@ var $exeDevice = {
     },
 
     createlinksIMedias: function (cardsGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         return cardsGame
             .map((p, i) => {
                 const properties = [
@@ -681,9 +687,9 @@ var $exeDevice = {
                 ];
                 return properties
                     .map(({ prop, className }) => {
-                        const val = p[prop];
+                        const val = sanitizeUrl(p[prop]);
                         if (val && val.indexOf('http') !== 0) {
-                            return `<a href="${val}" class="js-hidden ${className}">${i}</a>`;
+                            return `<a href="${$exeDevice.escapeAttribute(val)}" class="js-hidden ${className}">${i}</a>`;
                         }
                         return '';
                     })
@@ -705,10 +711,13 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
-            author = $('#bfafEAuthory').val(),
+        const instructions = tinyMCE.get('eXeGameInstructions').getContent(),
+            textAfter = $exeDevicesEdition.iDevice.common.sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
+            author = $exeDevicesEdition.iDevice.common.sanitizeText(
+                $('#bfafEAuthory').val()
+            ),
             cardsGame = $exeDevice.cardsGame,
             id = $exeDevice.getIdeviceID(),
             itinerary =
@@ -738,11 +747,12 @@ var $exeDevice = {
     },
 
     showImage: function (type) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const suffix = type == 0 ? '' : 'Back',
             $image = $(`#bfafEImage${suffix}`),
             $nimage = $(`#bfafENoImage${suffix}`),
             alt = $(`#bfafEAlt${suffix}`).val(),
-            url = $(`#bfafEURLImage${suffix}`).val();
+            url = sanitizeUrl($(`#bfafEURLImage${suffix}`).val());
 
         $image.hide();
         $image.attr('alt', alt);
@@ -975,5 +985,14 @@ var $exeDevice = {
 
     removeTags: function (str) {
         return $('<div>').html(str).text();
+    },
+
+    escapeAttribute: function (str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     },
 };

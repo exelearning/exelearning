@@ -572,7 +572,9 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('ccgmEFeedBackEditor').getContent();
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        const textFeedBack = sanitizeHtml(tinyMCE.get('ccgmEFeedBackEditor').getContent());
 
         let divInstructions = '';
         if (dataGame.instructions !== '') {
@@ -582,12 +584,12 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.wordsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.wordsGame);
 
-        let img = $('#ccgmEURLBack').val();
+        let img = sanitizeUrl($('#ccgmEURLBack').val());
         if (img.trim().length > 4) {
             img = `<a href="${img}" class="js-hidden crucigrama-LinkBack" alt="Back" />Background</a>`;
         }
 
-        let textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        let textAfter = sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent());
         if (textAfter !== '') {
             textAfter = `<div class="crucigrama-extra-content">${textAfter}</div>`;
         }
@@ -660,16 +662,18 @@ var $exeDevice = {
     },
 
     validateQuestion: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let message = '',
             p = {
-                word: $('#ccgmESolutionWord').val().trim(),
-                definition: $('#ccgmEDefinitionWord').val(),
+                word: sanitizeText($('#ccgmESolutionWord').val().trim()),
+                definition: sanitizeText($('#ccgmEDefinitionWord').val()),
                 x: parseFloat($('#ccgmEXImage').val()),
                 y: parseFloat($('#ccgmEYImage').val()),
-                author: $('#ccgmEAuthor').val(),
-                alt: $('#ccgmEAlt').val(),
-                url: $('#ccgmEURLImage').val().trim(),
-                audio: $('#ccgmEURLAudio').val(),
+                author: sanitizeText($('#ccgmEAuthor').val()),
+                alt: sanitizeText($('#ccgmEAlt').val()),
+                url: sanitizeUrl($('#ccgmEURLImage').val().trim()),
+                audio: sanitizeUrl($('#ccgmEURLAudio').val()),
                 percentageShow: parseInt($('#ccgmEPercentageShow').val()),
             };
 
@@ -706,15 +710,18 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         const clear = $exeDevice.removeTags,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('ccgmEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textFeedBack = sanitizeHtml(tinyMCE.get('ccgmEFeedBackEditor').getContent()),
+            textAfter = sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
             time = $('#ccgmETime').val(),
             difficulty = $('#ccgmEDifficulty').val(),
             showMinimize = $('#ccgmEShowMinimize').is(':checked'),
             showSolution = $('#ccgmEShowSolution').is(':checked'),
             hasBack = $('#ccgmBack0').is(':checked'),
-            urlBack = $('#ccgmEURLBack').val().trim(),
+            urlBack = sanitizeUrl($('#ccgmEURLBack').val().trim()),
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#ccgmECaseSensitive').is(':checked'),
@@ -724,7 +731,7 @@ var $exeDevice = {
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             percentajeQuestions = $('#ccgmEPercentajeQuestions').val(),
-            authorBackImage = $('#ccgmAuthorBack').val(),
+            authorBackImage = sanitizeText($('#ccgmAuthorBack').val()),
             id = $exeDevice.getIdeviceID(),
             wordsGame = $exeDevice.wordsGame,
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();

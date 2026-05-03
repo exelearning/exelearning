@@ -479,12 +479,15 @@ var $exeDevice = {
     },
 
     updateTextOverlay: function (index) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const $textDiv = $('#descubreETextDiv-' + index);
         const rawText = $('#descubreEText-' + index).val() || '';
         const text = rawText.trim();
         const color = $('#descubreEColor-' + index).val() || '#000000';
         const backcolor = $('#descubreEBackColor-' + index).val() || '#ffffff';
-        const url = ($('#descubreEURLImage-' + index).val() || '').trim();
+        const url = sanitizeUrl(
+            ($('#descubreEURLImage-' + index).val() || '').trim()
+        );
         const hasImage = url.length > 4;
 
         $textDiv.text(rawText);
@@ -826,9 +829,11 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE
-            .get('descubreEFeedBackEditor')
-            .getContent();
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        const textFeedBack = sanitizeHtml(
+            tinyMCE.get('descubreEFeedBackEditor').getContent()
+        );
         if (dataGame.instructions != '')
             divContent =
                 '<div class="descubre-instructions">' +
@@ -838,7 +843,7 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.wordsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.wordsGame);
 
-        let imgCard = $('#descubreEURLImgCard').val();
+        let imgCard = sanitizeUrl($('#descubreEURLImgCard').val());
         if (imgCard.trim().length > 4) {
             imgCard = `<a href="${imgCard}" class="js-hidden descubre-ImageBack" alt="Back" />Background</a>`;
         } else {
@@ -855,7 +860,7 @@ var $exeDevice = {
         html += linksAudios;
         html += imgCard;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent());
         if (textAfter != '') {
             html +=
                 '<div class="descubre-extra-content">' + textAfter + '</div>';
@@ -949,24 +954,28 @@ var $exeDevice = {
 
         q.data = [];
 
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         for (let k = 0; k < $exeDevice.NUMMAXCARD; k++) {
             const p = {};
             p.x = parseFloat($('#descubreEXImage-' + k).val());
             p.y = parseFloat($('#descubreEYImage-' + k).val());
-            p.author = $('#descubreEAuthor-' + k).val();
-            p.alt = $('#descubreEAlt-' + k).val();
-            p.url = $('#descubreEURLImage-' + k)
-                .val()
-                .trim();
-            p.audio = $('#descubreEURLAudio-' + k).val();
-            p.eText = $('#descubreEText-' + k).val();
-            p.color = $('#descubreEColor-' + k).val();
-            p.backcolor = $('#descubreEBackColor-' + k).val();
+            p.author = sanitizeText($('#descubreEAuthor-' + k).val());
+            p.alt = sanitizeText($('#descubreEAlt-' + k).val());
+            p.url = sanitizeUrl(
+                $('#descubreEURLImage-' + k)
+                    .val()
+                    .trim()
+            );
+            p.audio = sanitizeUrl($('#descubreEURLAudio-' + k).val());
+            p.eText = sanitizeText($('#descubreEText-' + k).val());
+            p.color = sanitizeText($('#descubreEColor-' + k).val());
+            p.backcolor = sanitizeText($('#descubreEBackColor-' + k).val());
             q.data.push(p);
         }
 
-        q.msgHit = $('#descubreEMessageOK').val();
-        q.msgError = $('#descubreEMessageKO').val();
+        q.msgHit = sanitizeText($('#descubreEMessageOK').val());
+        q.msgError = sanitizeText($('#descubreEMessageKO').val());
 
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
@@ -1012,9 +1021,10 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('descubreEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textFeedBack = sanitizeHtml(tinyMCE.get('descubreEFeedBackEditor').getContent()),
+            textAfter = sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
             showMinimize = $('#descubreEShowMinimize').is(':checked'),
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
@@ -1031,7 +1041,7 @@ var $exeDevice = {
             timeShowSolution = parseInt(
                 clear($('#descubreETimeShowSolution').val())
             ),
-            author = $('#descubreEAuthor').val(),
+            author = $exeDevicesEdition.iDevice.common.sanitizeText($('#descubreEAuthor').val()),
             showSolution = $('#descubreEShowSolution').is(':checked'),
             gameMode = parseInt($('input[name=qtxgamemode]:checked').val()),
             gameLevels = parseInt($('input[name=qtxgamelevels]:checked').val()),
@@ -1752,8 +1762,9 @@ var $exeDevice = {
     },
 
     loadImageCard: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#descubreEURLImgCard').val(),
+            url = sanitizeUrl($('#descubreEURLImgCard').val()),
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
@@ -2174,8 +2185,9 @@ var $exeDevice = {
         }
     },
     deleteEmptyQuestion: function () {
-        const url = $('#descubreEURLImage-0').val().trim(),
-            audio = $('#descubreEURLAudio-0').val().trim(),
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            url = sanitizeUrl($('#descubreEURLImage-0').val().trim()),
+            audio = sanitizeUrl($('#descubreEURLAudio-0').val().trim()),
             eText = $('#descubreEText-0').val().trim();
         if ($exeDevice.wordsGame && $exeDevice.wordsGame.length > 1) {
             if (

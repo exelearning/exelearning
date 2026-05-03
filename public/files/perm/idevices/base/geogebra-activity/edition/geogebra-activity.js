@@ -142,8 +142,12 @@ var $exeDevice = {
         });
         $('#geogebraActivityPlayButton').on('click', (e) => {
             e.preventDefault();
+            const sanitizeText =
+                    $exeDevicesEdition.iDevice.common.sanitizeText,
+                sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+            const rawUrl = sanitizeText($('#geogebraActivityURL').val()).trim();
             const urlBase = this.activityURLbase,
-                url = $('#geogebraActivityURL').val(),
+                url = sanitizeUrl(rawUrl) || rawUrl,
                 murl = url.replace('https://ggbm.at/', urlBase),
                 id = $exeDevice.getId(murl);
             if (!url || !id) {
@@ -248,6 +252,9 @@ var $exeDevice = {
             url: 'https://www.geogebra.org/api/json.php',
             data: JSON.stringify(data),
             success: function (res) {
+                const sanitizeText =
+                        $exeDevicesEdition.iDevice.common.sanitizeText,
+                    sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
                 if (
                     res &&
                     res.responses &&
@@ -264,9 +271,9 @@ var $exeDevice = {
                         $('#geogebraActivityWidth').val(w);
                         $('#geogebraActivityHeight').val(h);
                     }
-                    let author = res.author ? res.author : '',
-                        murl = res.url ? res.url : '',
-                        title = res.title ? res.title : '',
+                    let author = sanitizeText(res.author ? res.author : ''),
+                        murl = sanitizeUrl(res.url ? res.url : ''),
+                        title = sanitizeText(res.title ? res.title : ''),
                         visibility = res.visibility ? res.visibility : '';
                     if (visibility.toLowerCase() != 'o') {
                         murl =
@@ -274,9 +281,14 @@ var $exeDevice = {
                                 ? lurl
                                 : 'https://ggbm.at/' + id;
                     }
+                    murl = sanitizeUrl(murl) || '#';
                     $('#geogebraActivityAuthorURL').text(author);
                     $('#geogebraActivityTitle').html(
-                        '<a href="' + murl + '">' + title + '</a>'
+                        '<a href="' +
+                            $exeDevice.escapeHtml(murl) +
+                            '">' +
+                            $exeDevice.escapeHtml(title) +
+                            '</a>'
                     );
                 } else {
                     $exeDevice.errorMessage(false);
@@ -298,6 +310,15 @@ var $exeDevice = {
         if (tipo) {
             eXe.app.alert(_('Provide a valid GeoGebra URL or activity ID.'));
         }
+    },
+
+    escapeHtml: function (string) {
+        return String(string)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     },
 
     getId: function (url) {
@@ -351,6 +372,9 @@ var $exeDevice = {
 
     // Load the saved values in the form fields
     loadPreviousValues: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         // Set default language
         let defaultLang = 'en';
         const langs = ['es', 'en', 'fr', 'de', 'ca', 'eu'];
@@ -378,6 +402,7 @@ var $exeDevice = {
             let id = css.replace('auto-geogebra auto-geogebra-', '');
             id = id.split(' ');
             id = id[0];
+            id = sanitizeText(id);
             if (id != '') {
                 $('#geogebraActivityURL').val(this.activityURLbase + id);
             }
@@ -387,7 +412,7 @@ var $exeDevice = {
                 // scorm-button-text
                 let btn = $('.scorm-button-text', div);
                 if (btn.length == 1) {
-                    btn = btn.html();
+                    btn = sanitizeText(btn.html());
                     btn = btn.replace(' (', '');
                     btn = btn.slice(0, -1);
                     $('#geogebraActivitySCORMbuttonText').val(btn);
@@ -468,21 +493,24 @@ var $exeDevice = {
                 $('#geogebraActivityInstructions').val(instructions.html());
             const textAfter = $('.auto-geogebra-extra-content', wrapper);
             if (textAfter.length == 1)
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                $('#eXeIdeviceTextAfter').val(
+                    sanitizeHtml(textAfter.html() || '')
+                );
 
             const author = $('.auto-geogebra-author', wrapper);
             if (author.length == 1) {
                 let alt = author.text().split(',');
                 if (alt.length == 5 || alt.length == 7) {
-                    $('#geogebraActivityAuthorURL').text(unescape(alt[0]));
-                    const titleText = unescape(alt[2]);
-                    const titleUrl = unescape(alt[1]);
+                    const authorText = sanitizeText(unescape(alt[0]));
+                    const titleText = sanitizeText(unescape(alt[2]));
+                    const titleUrl = sanitizeUrl(unescape(alt[1]));
+                    $('#geogebraActivityAuthorURL').text(authorText);
                     if (titleText !== '') {
                         $('#geogebraActivityTitle').html(
                             '<a href="' +
-                                titleUrl +
+                                $exeDevice.escapeHtml(titleUrl || '#') +
                                 '" target="_blank" rel="noopener noreferrer">' +
-                                titleText +
+                                $exeDevice.escapeHtml(titleText) +
                                 '</a>'
                         );
                     } else {
@@ -500,10 +528,14 @@ var $exeDevice = {
     },
 
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const urlBase = this.activityURLbase;
 
         // URL
-        let url = $('#geogebraActivityURL').val(),
+        const rawUrl = sanitizeText($('#geogebraActivityURL').val()).trim();
+        let url = sanitizeUrl(rawUrl) || rawUrl,
             ideviceID = $exeDevice.getIdeviceID();
 
         url = url.replace('https://ggbm.at/', urlBase);
@@ -545,7 +577,9 @@ var $exeDevice = {
         let css = 'auto-geogebra auto-geogebra-' + url;
 
         if (document.getElementById('geogebraActivitySCORM').checked) {
-            let buttonText = $('#geogebraActivitySCORMbuttonText').val();
+            let buttonText = sanitizeText(
+                $('#geogebraActivitySCORMbuttonText').val()
+            );
             if (buttonText == '') {
                 eXe.app.alert(_('Please write the button text.'));
                 return false;
@@ -566,12 +600,12 @@ var $exeDevice = {
         }
 
         // Border color
-        let borderColor = $('#geogebraActivityBorderColor').val();
+        let borderColor = sanitizeText($('#geogebraActivityBorderColor').val());
         if (borderColor != '' && borderColor != 'ffffff')
             css += ' auto-geogebra-border-' + borderColor;
 
         // Advanced options
-        let lang = $('#geogebraActivityLang').val();
+        let lang = sanitizeText($('#geogebraActivityLang').val());
         if (lang.length == 2 && lang != 'en') css += ' language-' + lang;
 
         let opts = this.trueFalseOptions;
@@ -590,10 +624,16 @@ var $exeDevice = {
         css += ' auto-geogebra-ideviceid-' + ideviceID;
         css += ' auto-geogebra-weight-' + weight;
 
-        let author = $('#geogebraActivityAuthorURL').text() || '';
+        let author = sanitizeText($('#geogebraActivityAuthorURL').text() || '');
         let titleNode = $('#geogebraActivityTitle').find('a').first();
-        let title = titleNode.text() || $('#geogebraActivityTitle').text() || '';
-        let murl = titleNode.prop('href') || urlBase + url;
+        let title =
+            sanitizeText(titleNode.text()) ||
+            sanitizeText($('#geogebraActivityTitle').text()) ||
+            '';
+        let murl = sanitizeUrl(titleNode.prop('href') || urlBase + url);
+        if (!murl) {
+            murl = urlBase + url;
+        }
         if (author != '') {
             let ath = c_('Authorship');
             let ttl = c_('Title');
@@ -647,7 +687,7 @@ var $exeDevice = {
             escape(c_('The last score saved is')) +
             '</div>';
 
-        let textAfter = tinymce.editors[1].getContent();
+        let textAfter = sanitizeHtml(tinymce.editors[1].getContent());
         if (textAfter != '') {
             divContent +=
                 '<div class="auto-geogebra-extra-content">' +

@@ -123,6 +123,7 @@ var $exeDevice = {
      *
      */
     updateProperties: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         var properties = eXe.app.getProjectProperties();
         var data1 = '-';
         var data2 = '-';
@@ -131,19 +132,19 @@ var $exeDevice = {
 
         var _data1 = properties.pp_title;
         if (_data1 && _data1.value && _data1.value != '') {
-            data1 = _data1.value;
+            data1 = sanitizeText(_data1.value);
         }
         var _data2 = properties.pp_description;
         if (_data2 && _data2.value && _data2.value != '') {
-            data2 = _data2.value;
+            data2 = sanitizeText(_data2.value);
         }
         var _data3 = properties.pp_author;
         if (_data3 && _data3.value && _data3.value != '') {
-            data3 = _data3.value;
+            data3 = sanitizeText(_data3.value);
         }
         var _data4 = properties.pp_license;
         if (_data4 && _data4.value && _data4.value != '') {
-            data4 = this.completeLicense(_data4.value);
+            data4 = this.completeLicense(sanitizeText(_data4.value));
         }
 
         if (tinymce.editors.length > 0 && tinymce.editors[0] && tinymce.editors[0].getDoc()) {
@@ -182,6 +183,12 @@ var $exeDevice = {
         this.idevicePath = path;
         //**************************************************************
         this.createForm();
+    },
+
+    sanitizeColorHex: function (value) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        var sanitized = sanitizeText(value || '').trim();
+        return /^#[0-9a-f]{6}$/i.test(sanitized) ? sanitized : '';
     },
 
     // Create the form to insert HTML in the TEXTAREA
@@ -359,6 +366,8 @@ var $exeDevice = {
      *
      */
     loadPreviousValues: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         var originalHTML = this.idevicePreviousData;
         if (originalHTML != '') {
             var wrapper = $('<div></div>');
@@ -393,18 +402,22 @@ var $exeDevice = {
                         ensureTdLocked($(tds[3]), 'exe-prop-license');
                     }
                 }
-                $('#dpiDescription').val(dpiDescription.html());
+                $('#dpiDescription').val(
+                    sanitizeHtml(dpiDescription.html())
+                );
             }
             // Button
             var downloadButton = $('.exe-download-package-link a', wrapper);
             if (downloadButton.length == 1) {
                 // Button text
-                var dpiButtonText = downloadButton.text();
+                var dpiButtonText = sanitizeText(downloadButton.text());
                 if (dpiButtonText != '') {
                     $('#dpiButtonText').val(dpiButtonText);
                 }
                 // Font size
-                var dpiButtonFontSize = downloadButton.css('font-size');
+                var dpiButtonFontSize = sanitizeText(
+                    downloadButton.css('font-size')
+                );
                 if (dpiButtonFontSize != '') {
                     dpiButtonFontSize = dpiButtonFontSize.replace('em', '');
                     if (
@@ -436,10 +449,12 @@ var $exeDevice = {
      * @returns
      */
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         // Get the content
         if (tinymce.editors.length == 0) return $exeDevice.warningMessage; // The .exe-block-info is displayed
         // Instructions
-        var dpiDescription = tinymce.editors[0].getContent();
+        var dpiDescription = sanitizeHtml(tinymce.editors[0].getContent());
         if (dpiDescription == '') {
             eXe.app.alert(
                 _(
@@ -452,10 +467,14 @@ var $exeDevice = {
         // Inject properties into HTML
         var properties = eXe.app.getProjectProperties();
         var data1 = '-'; var data2 = '-'; var data3 = '-'; var data4 = '-';
-        if (properties.pp_title && properties.pp_title.value) data1 = properties.pp_title.value;
-        if (properties.pp_description && properties.pp_description.value) data2 = properties.pp_description.value;
-        if (properties.pp_author && properties.pp_author.value) data3 = properties.pp_author.value;
-        if (properties.pp_license && properties.pp_license.value) data4 = this.completeLicense(properties.pp_license.value);
+        if (properties.pp_title && properties.pp_title.value) data1 = sanitizeText(properties.pp_title.value);
+        if (properties.pp_description && properties.pp_description.value) data2 = sanitizeText(properties.pp_description.value);
+        if (properties.pp_author && properties.pp_author.value) data3 = sanitizeText(properties.pp_author.value);
+        if (properties.pp_license && properties.pp_license.value) {
+            data4 = this.completeLicense(
+                sanitizeText(properties.pp_license.value)
+            );
+        }
 
         var descWrapper = $('<div></div>').html(dpiDescription);
 
@@ -505,27 +524,33 @@ var $exeDevice = {
         $('.exe-prop-license', descWrapper).html(data4);
         
 
-        dpiDescription = descWrapper.html();
+        dpiDescription = sanitizeHtml(descWrapper.html());
         // Button text
-        var dpiButtonText = $('#dpiButtonText').val();
-        // Remove HTML tags (just in case)
-        var wrapper = $('<div></div>');
-        wrapper.html(dpiButtonText);
-        dpiButtonText = wrapper.text();
+        var dpiButtonText = sanitizeText($('#dpiButtonText').val());
         if (dpiButtonText == '') {
             eXe.app.alert(_('You should write the button text.'));
             return false;
         }
         // Extra CSS
         var css = '';
-        var dpiButtonFontSize = $('#dpiButtonFontSize').val();
+        var dpiButtonFontSize = sanitizeText(
+            $('#dpiButtonFontSize').val()
+        );
+        var validFontSizes = ['1', '1.1', '1.2', '1.3', '1.4', '1.5'];
+        if (validFontSizes.indexOf(dpiButtonFontSize) == -1) {
+            dpiButtonFontSize = '1';
+        }
         if (dpiButtonFontSize != '1')
             css += 'font-size:' + dpiButtonFontSize + 'em;';
-        var dpiButtonBGcolor = $('#dpiButtonBGcolor').val();
-        if (dpiButtonBGcolor != '' && dpiButtonBGcolor.length == 7)
+        var dpiButtonBGcolor = this.sanitizeColorHex(
+            $('#dpiButtonBGcolor').val()
+        );
+        if (dpiButtonBGcolor != '')
             css += 'background-color:' + dpiButtonBGcolor + ';';
-        var dpiButtonTextColor = $('#dpiButtonTextColor').val();
-        if (dpiButtonTextColor != '' && dpiButtonTextColor.length == 7)
+        var dpiButtonTextColor = this.sanitizeColorHex(
+            $('#dpiButtonTextColor').val()
+        );
+        if (dpiButtonTextColor != '')
             css += 'color:' + dpiButtonTextColor + ';';
         if (css != '') css = ' style="' + css + '"';
         var html =

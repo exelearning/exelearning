@@ -600,6 +600,165 @@ describe('common_edition.js', () => {
     });
   });
 
+  describe('common.sanitizeText', () => {
+    const sanitizeText = () => globalThis.$exeDevicesEdition.iDevice.common.sanitizeText;
+
+    it('returns empty string for null/undefined/empty input', () => {
+      expect(sanitizeText()(null)).toBe('');
+      expect(sanitizeText()(undefined)).toBe('');
+      expect(sanitizeText()('')).toBe('');
+    });
+
+    it('coerces non-string input to string', () => {
+      expect(sanitizeText()(42)).toBe('42');
+      expect(sanitizeText()(true)).toBe('true');
+    });
+
+    it('strips all HTML tags including nested ones', () => {
+      expect(sanitizeText()('<p>hello <b>world</b></p>')).toBe('hello world');
+      expect(sanitizeText()('<div><span>nested</span></div>')).toBe('nested');
+    });
+
+    it('removes <script> tags entirely (no script content leaked)', () => {
+      const result = sanitizeText()('<script>alert(1)</script>safe');
+      expect(result).not.toContain('<script');
+      expect(result).not.toContain('alert(1)');
+      expect(result).toContain('safe');
+    });
+
+    it('strips event handler attributes embedded in tags', () => {
+      const result = sanitizeText()('<img src=x onerror=alert(1)>visible');
+      expect(result).not.toContain('onerror');
+      expect(result).not.toContain('<img');
+      expect(result).toContain('visible');
+    });
+
+    it('falls back to iterative regex when DOMPurify is unavailable', () => {
+      const original = globalThis.DOMPurify;
+      try {
+        // eslint-disable-next-line no-global-assign
+        DOMPurify = undefined;
+        globalThis.DOMPurify = undefined;
+        // Multi-character bypass: <<x>script>alert(1)<</x>/script>
+        // After one regex pass leaves <script>alert(1)</script>; the loop must keep going.
+        const result = sanitizeText()('<<x>script>alert(1)<</x>/script>');
+        expect(result).not.toContain('<script');
+        expect(result).not.toContain('</script');
+      } finally {
+        globalThis.DOMPurify = original;
+      }
+    });
+  });
+
+  describe('common.sanitizeHtml', () => {
+    const sanitizeHtml = () => globalThis.$exeDevicesEdition.iDevice.common.sanitizeHtml;
+
+    it('returns empty string for null/undefined input', () => {
+      expect(sanitizeHtml()(null)).toBe('');
+      expect(sanitizeHtml()(undefined)).toBe('');
+    });
+
+    it('preserves safe semantic markup', () => {
+      const html = '<p>Hello <strong>world</strong></p>';
+      expect(sanitizeHtml()(html)).toBe(html);
+    });
+
+    it('preserves anchors with safe href', () => {
+      const result = sanitizeHtml()('<a href="https://exelearning.net">link</a>');
+      expect(result).toContain('href="https://exelearning.net"');
+      expect(result).toContain('>link</a>');
+    });
+
+    it('removes <script> tags', () => {
+      const result = sanitizeHtml()('<p>safe</p><script>alert(1)</script>');
+      expect(result).toContain('<p>safe</p>');
+      expect(result).not.toContain('<script');
+      expect(result).not.toContain('alert(1)');
+    });
+
+    it('removes event-handler attributes', () => {
+      const result = sanitizeHtml()('<img src="x" onerror="alert(1)">');
+      expect(result).not.toContain('onerror');
+    });
+
+    it('blocks javascript: URIs in href', () => {
+      // eslint-disable-next-line no-script-url
+      const result = sanitizeHtml()('<a href="javascript:alert(1)">x</a>');
+      expect(result).not.toContain('javascript:');
+    });
+
+    it('respects overrides (allow extra tag)', () => {
+      const html = '<custom-tag data-foo="1">x</custom-tag>';
+      const allowed = sanitizeHtml()(html, { ADD_TAGS: ['custom-tag'], ADD_ATTR: ['data-foo'], ALLOW_DATA_ATTR: true });
+      expect(allowed).toContain('<custom-tag');
+    });
+
+    it('degrades to text when DOMPurify is unavailable', () => {
+      const original = globalThis.DOMPurify;
+      try {
+        globalThis.DOMPurify = undefined;
+        const result = sanitizeHtml()('<p>safe <script>x</script></p>');
+        expect(result).not.toContain('<p>');
+        expect(result).not.toContain('<script');
+        expect(result).toContain('safe');
+      } finally {
+        globalThis.DOMPurify = original;
+      }
+    });
+  });
+
+  describe('common.sanitizeUrl', () => {
+    const sanitizeUrl = () => globalThis.$exeDevicesEdition.iDevice.common.sanitizeUrl;
+
+    it('returns empty string for null/undefined/empty input', () => {
+      expect(sanitizeUrl()(null)).toBe('');
+      expect(sanitizeUrl()(undefined)).toBe('');
+      expect(sanitizeUrl()('')).toBe('');
+      expect(sanitizeUrl()('   ')).toBe('');
+    });
+
+    it('accepts http(s), mailto, tel, ftp', () => {
+      expect(sanitizeUrl()('https://exelearning.net')).toBe('https://exelearning.net');
+      expect(sanitizeUrl()('http://example.com')).toBe('http://example.com');
+      expect(sanitizeUrl()('mailto:hi@example.com')).toBe('mailto:hi@example.com');
+      expect(sanitizeUrl()('tel:+34123456789')).toBe('tel:+34123456789');
+      expect(sanitizeUrl()('ftp://files.example.com')).toBe('ftp://files.example.com');
+    });
+
+    it('accepts relative paths and anchors', () => {
+      expect(sanitizeUrl()('#section')).toBe('#section');
+      expect(sanitizeUrl()('/assets/img.png')).toBe('/assets/img.png');
+      expect(sanitizeUrl()('./img.png')).toBe('./img.png');
+      expect(sanitizeUrl()('../img.png')).toBe('../img.png');
+    });
+
+    it('preserves legacy internal files paths', () => {
+      expect(sanitizeUrl()('files/image.png')).toBe('files/image.png');
+      expect(sanitizeUrl()('files\\image.png')).toBe('files\\image.png');
+    });
+
+    it('preserves editor file-picker asset and blob URLs', () => {
+      expect(sanitizeUrl()('asset://mock-id/image.png')).toBe('asset://mock-id/image.png');
+      expect(sanitizeUrl()('asset://mock-id/audio.mp3')).toBe('asset://mock-id/audio.mp3');
+      expect(sanitizeUrl()('blob:http://localhost/1234')).toBe('blob:http://localhost/1234');
+    });
+
+    it('rejects javascript: and vbscript: URIs', () => {
+      // eslint-disable-next-line no-script-url
+      expect(sanitizeUrl()('javascript:alert(1)')).toBe('');
+      expect(sanitizeUrl()('JaVaScRiPt:alert(1)')).toBe('');
+      expect(sanitizeUrl()('vbscript:msgbox(1)')).toBe('');
+    });
+
+    it('rejects data: URIs', () => {
+      expect(sanitizeUrl()('data:text/html,<script>alert(1)</script>')).toBe('');
+    });
+
+    it('trims surrounding whitespace before validation', () => {
+      expect(sanitizeUrl()('  https://example.com  ')).toBe('https://example.com');
+    });
+  });
+
   describe('gamification.common', () => {
     it('getFieldsets returns empty string', () => {
       expect(globalThis.$exeDevicesEdition.iDevice.gamification.common.getFieldsets()).toBe('');

@@ -1857,6 +1857,9 @@ var $exeDevice = {
     },
 
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         if ($exeDevice.levels.length > 1) {
             $exeDevice.showMessage($exeDevice.msgs.msgCloseMap);
             return false;
@@ -1894,7 +1897,7 @@ var $exeDevice = {
         let fields = this.ci18n,
             i18n = fields;
         for (let i in fields) {
-            let fVal = $('#ci18n_' + i).val();
+            let fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal != '') i18n[i] = fVal;
         }
 
@@ -1929,10 +1932,12 @@ var $exeDevice = {
         html += '<div class="mapa-DataGame js-hidden">' + json + '</div>';
         html +=
             '<img src="' +
-            dataGame.url +
+            $exeDevice.escapeHtml(sanitizeUrl(dataGame.url)) +
             '" class="js-hidden mapa-ImageMap" data-id="0" />';
         html += medias;
-        let textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        let textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter != '') {
             html +=
                 '<div class="mapa-extra-content">' +
@@ -1969,6 +1974,7 @@ var $exeDevice = {
     },
 
     saveMedias: function (pts) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let medias = {
             images: '',
             audios: '',
@@ -1981,15 +1987,18 @@ var $exeDevice = {
         for (let i = 0; i < pts.length; i++) {
             let p = pts[i];
             if (p.type != 5) {
+                const imageUrl = sanitizeUrl(p.url),
+                    audioUrl = sanitizeUrl(p.audio),
+                    questionAudioUrl = sanitizeUrl(p.question_audio);
                 if (
                     p.type == 0 &&
-                    typeof p.url != 'undefined' &&
-                    !p.url.indexOf('http') == 0 &&
-                    p.url.length > 4
+                    imageUrl.length > 0 &&
+                    !imageUrl.indexOf('http') == 0 &&
+                    imageUrl.length > 4
                 ) {
                     medias.images +=
                         '<img src="' +
-                        p.url +
+                        $exeDevice.escapeHtml(imageUrl) +
                         '" class="js-hidden mapa-LinkImagesPoints" data-id="' +
                         p.id +
                         '">';
@@ -2016,25 +2025,25 @@ var $exeDevice = {
                 }
                 if (
                     p.type != 1 &&
-                    typeof p.audio != 'undefined' &&
-                    !p.audio.indexOf('http') == 0 &&
-                    p.audio.length > 4
+                    audioUrl.length > 0 &&
+                    !audioUrl.indexOf('http') == 0 &&
+                    audioUrl.length > 4
                 ) {
                     medias.audios +=
                         '<audio src="' +
-                        p.audio +
+                        $exeDevice.escapeHtml(audioUrl) +
                         '" preload="none" class="js-hidden mapa-LinkAudiosPoints" data-id="' +
                         p.id +
                         '"></audio>';
                 }
                 if (
-                    p.question_audio != 'undefined' &&
-                    !p.question_audio.indexOf('http') == 0 &&
-                    p.question_audio.length > 4
+                    questionAudioUrl.length > 0 &&
+                    !questionAudioUrl.indexOf('http') == 0 &&
+                    questionAudioUrl.length > 4
                 ) {
                     medias.audios +=
                         '<audio src="' +
-                        p.question_audio +
+                        $exeDevice.escapeHtml(questionAudioUrl) +
                         '" preload="none" class="js-hidden mapa-LinkAudiosIdentify" data-id="' +
                         p.id +
                         '"></audio>';
@@ -2045,19 +2054,21 @@ var $exeDevice = {
                     p.slides.length > 0
                 ) {
                     for (let j = 0; j < p.slides.length; j++) {
-                        let s = p.slides[j];
+                        let s = p.slides[j],
+                            slideUrl = sanitizeUrl(s.url);
                         medias.slides +=
                             '<img src="' +
-                            s.url +
+                            $exeDevice.escapeHtml(slideUrl) +
                             '" class=" js-hidden mapa-LinkImagesSlides" data-id="' +
                             s.id +
                             '">';
                     }
                 }
             } else {
+                const mapUrl = sanitizeUrl(p.map.url);
                 medias.maps +=
                     '<img src="' +
-                    p.map.url +
+                    $exeDevice.escapeHtml(mapUrl) +
                     '" class="js-hidden mapa-LinkImagesMapas" data-id="' +
                     p.id +
                     '">';
@@ -2074,9 +2085,11 @@ var $exeDevice = {
     },
 
     validateDataLevel: function () {
-        const url = $('#mapaURLImageMap').val(),
-            author = $('#mapaAuthorImageMap').val(),
-            alt = $('#mapaAltImageMap').val();
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            url = sanitizeUrl($('#mapaURLImageMap').val()),
+            author = sanitizeText($('#mapaAuthorImageMap').val()),
+            alt = sanitizeText($('#mapaAltImageMap').val());
 
         if (url.length < 4) {
             $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
@@ -2096,39 +2109,42 @@ var $exeDevice = {
 
     validatePoint: function (p) {
         const msgs = $exeDevice.msgs,
-            url = $('#mapaURLImageMap').val();
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            url = sanitizeUrl($('#mapaURLImageMap').val());
         let message = '';
 
-        p.title = $('#mapaTitle').val().trim();
+        p.title = sanitizeText($('#mapaTitle').val().trim());
         p.type = parseInt($('#mapaTypePointSelect').val());
         p.x = parseFloat($('#mapaX').val());
         p.y = parseFloat($('#mapaY').val());
         p.points = $exeDevice.currentPoints;
-        p.footer = $('#mapaFooter').val();
-        p.author = $('#mapaPAuthorImage').val();
-        p.alt = $('#mapaPAltImage').val();
-        p.url = $('#mapaURLImage').val().trim();
-        p.video = $('#mapaURLYoutube').val().trim();
+        p.footer = sanitizeText($('#mapaFooter').val());
+        p.author = sanitizeText($('#mapaPAuthorImage').val());
+        p.alt = sanitizeText($('#mapaPAltImage').val());
+        p.url = sanitizeUrl($('#mapaURLImage').val().trim());
+        p.video = sanitizeUrl($('#mapaURLYoutube').val().trim());
         p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
             $('#mapaPInitVideo').val()
         );
         p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
             $('#mapaPEndVideo').val()
         );
-        p.audio = $('#mapaURLAudio').val().trim();
+        p.audio = sanitizeUrl($('#mapaURLAudio').val().trim());
         p.iVideo = isNaN(p.iVideo) ? 0 : p.iVideo;
         p.fVideo = isNaN(p.fVideo) ? 3600 : p.fVideo;
         p.iconType = parseInt($('#mapaBtnDrop').data('value'));
-        p.question = $('#mapaIdentify').val();
-        p.question_audio = $('#mapaURLAudioIdentify').val();
-        p.link = $('#mapaLink').val();
+        p.question = sanitizeText($('#mapaIdentify').val());
+        p.question_audio = sanitizeUrl($('#mapaURLAudioIdentify').val());
+        p.link = sanitizeUrl($('#mapaLink').val());
         p.color = $('#mapaColorTitle').val();
         p.fontSize = $('#mapaFontSizeTitle').val();
 
         if (tinyMCE.get('mapaToolTip')) {
-            p.toolTip = tinyMCE.get('mapaToolTip').getContent();
+            p.toolTip = sanitizeHtml(tinyMCE.get('mapaToolTip').getContent());
         } else {
-            p.toolTip = $('#mapaToolTip').val();
+            p.toolTip = sanitizeText($('#mapaToolTip').val());
         }
 
         if (p.iconType == 1 && p.points.length > 2) {
@@ -2137,11 +2153,11 @@ var $exeDevice = {
         }
 
         if ($('#mapaPContainer').is(':visible')) {
-            p.video = $('#mapaPURLYoutube').val().trim();
-            p.url = $('#mapaPURLImage').val().trim();
-            p.title = $('#mapaPTitle').val().trim();
-            p.footer = $('#mapaPFooter').val();
-            p.toolTip = $('#mapaToolTip').val().trim();
+            p.video = sanitizeUrl($('#mapaPURLYoutube').val().trim());
+            p.url = sanitizeUrl($('#mapaPURLImage').val().trim());
+            p.title = sanitizeText($('#mapaPTitle').val().trim());
+            p.footer = sanitizeText($('#mapaPFooter').val());
+            p.toolTip = sanitizeText($('#mapaToolTip').val().trim());
         }
 
         if (p.fVideo <= p.iVideo) p.fVideo = 36000;
@@ -2153,18 +2169,19 @@ var $exeDevice = {
             return false;
         }
 
-        p.eText = tinyMCE.get('mapaText').getContent();
+        p.eText = sanitizeHtml(tinyMCE.get('mapaText').getContent());
         if (p.type == 1) {
+            const youtubeUrl = sanitizeUrl($('#mapaURLYoutube').val().trim());
             p.video = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                $('#mapaURLYoutube').val().trim()
+                youtubeUrl
             )
-                ? $('#mapaURLYoutube').val()
+                ? youtubeUrl
                 : '';
             if (p.video.length == 0) {
                 p.video = $exeDevice.getIDMediaTeca(
-                    $('#mapaURLYoutube').val().trim()
+                    youtubeUrl
                 )
-                    ? $('#mapaURLYoutube').val()
+                    ? youtubeUrl
                     : '';
             }
         }
@@ -2453,15 +2470,20 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
             showMinimize = $('#mapaEShowMinimize').is(':checked'),
             hideScoreBar = $('#mapaEHideScoreBar').is(':checked'),
             hideAreas = $('#mapaEHideAreas').is(':checked'),
             showActiveAreas = $('#mapaEShowActiveAreas').is(':checked'),
-            url = $('#mapaURLImageMap').val(),
-            authorImage = $('#mapaAuthorImageMap').val(),
-            altImage = $('#mapaAltImageMap').val(),
+            url = sanitizeUrl($('#mapaURLImageMap').val()),
+            authorImage = sanitizeText($('#mapaAuthorImageMap').val()),
+            altImage = sanitizeText($('#mapaAltImageMap').val()),
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             evaluationG = parseInt($('input[name=mpevaluation]:checked').val()),
@@ -2481,7 +2503,7 @@ var $exeDevice = {
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
-            order = $('#mapaSolutionOrder').val();
+            order = sanitizeText($('#mapaSolutionOrder').val());
 
         if (!itinerary) return;
         if (!progressBar) return false;
@@ -3928,10 +3950,11 @@ var $exeDevice = {
     },
 
     validateSlide: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let msg = '';
         if ($('#mapaSTitle').val().trim().length == 0) {
             msg = $exeDevice.msgs.msgTitle;
-        } else if ($('#mapaSURLImage').val().trim().length < 4) {
+        } else if (sanitizeUrl($('#mapaSURLImage').val().trim()).length < 4) {
             msg = $exeDevice.msgs.msgEURLValid;
         }
         if (msg.length > 0) {
@@ -3939,7 +3962,7 @@ var $exeDevice = {
         } else {
             let slide = $exeDevice.slides[$exeDevice.activeSlide];
             slide.title = $('#mapaSTitle').val();
-            slide.url = $('#mapaSURLImage').val();
+            slide.url = sanitizeUrl($('#mapaSURLImage').val());
             slide.author = $('#mapaSAuthorImage').val();
             slide.alt = $('#mapaSAltImage').val();
             slide.footer = $('#mapaSFooter').val();
@@ -4881,7 +4904,8 @@ var $exeDevice = {
             fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                 $('#mapaPEndVideo').val()
             );
-        const url = $('#mapaPURLYoutube').val().trim(),
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            url = sanitizeUrl($('#mapaPURLYoutube').val().trim()),
             id = $exeDevices.iDevice.gamification.media.getIDYoutube(url),
             idLocal = $exeDevice.getIDMediaTeca(url);
 
@@ -5459,8 +5483,9 @@ var $exeDevice = {
     },
 
     saveLevel: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const p = $exeDevice.activeMap.pts[$exeDevice.activeMap.active],
-            url = $('#mapaURLImageMap').val(),
+            url = sanitizeUrl($('#mapaURLImageMap').val()),
             author = $('#mapaAuthorImageMap').val(),
             alt = $('#mapaAltImageMap').val();
 
@@ -5473,17 +5498,17 @@ var $exeDevice = {
         p.footer = $('#mapaFooter').val();
         p.author = $('#mapaPAuthorImage').val();
         p.alt = $('#mapaPAltImage').val();
-        p.url = $('#mapaURLImage').val().trim();
+        p.url = sanitizeUrl($('#mapaURLImage').val().trim());
         p.question = $('#mapaIdentify').val();
-        p.question_audio = $('#mapaURLAudioIdentify').val();
-        p.video = $('#mapaURLYoutube').val().trim();
+        p.question_audio = sanitizeUrl($('#mapaURLAudioIdentify').val());
+        p.video = sanitizeUrl($('#mapaURLYoutube').val().trim());
         p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
             $('#mapaPInitVideo').val()
         );
         p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
             $('#mapaPEndVideo').val()
         );
-        p.audio = $('#mapaURLAudio').val().trim();
+        p.audio = sanitizeUrl($('#mapaURLAudio').val().trim());
         p.iVideo = isNaN(p.iVideo) ? 0 : p.iVideo;
         p.fVideo = isNaN(p.fVideo) ? 3600 : p.fVideo;
         p.iconType = parseInt($('#mapaBtnDrop').data('value'));
@@ -5549,6 +5574,7 @@ var $exeDevice = {
     },
 
     getPointValues: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let p = {};
         p.title = $('#mapaTitle').val().trim();
         p.type = parseInt($('#mapaTypePointSelect').val());
@@ -5559,38 +5585,39 @@ var $exeDevice = {
         p.footer = $('#mapaFooter').val();
         p.author = $('#mapaPAuthorImage').val();
         p.alt = $('#mapaPAltImage').val();
-        p.url = $('#mapaURLImage').val().trim();
-        p.video = $('#mapaURLYoutube').val().trim();
+        p.url = sanitizeUrl($('#mapaURLImage').val().trim());
+        p.video = sanitizeUrl($('#mapaURLYoutube').val().trim());
         p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
             $('#mapaPInitVideo').val()
         );
         p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
             $('#mapaPEndVideo').val()
         );
-        p.audio = $('#mapaURLAudio').val().trim();
+        p.audio = sanitizeUrl($('#mapaURLAudio').val().trim());
         p.iVideo = isNaN(p.iVideo) ? 0 : p.iVideo;
         p.fVideo = isNaN(p.fVideo) ? 3600 : p.fVideo;
         p.iconType = parseInt($('#mapaBtnDrop').data('value'));
         p.question = $('#mapaIdentify').val();
-        p.question_audio = $('#mapaURLAudioIdentify').val();
+        p.question_audio = sanitizeUrl($('#mapaURLAudioIdentify').val());
         if ($('#mapaPContainer').is(':visible')) {
-            p.video = $('#mapaPURLYoutube').val().trim();
-            p.url = $('#mapaPURLImage').val().trim();
+            p.video = sanitizeUrl($('#mapaPURLYoutube').val().trim());
+            p.url = sanitizeUrl($('#mapaPURLImage').val().trim());
             p.title = $('#mapaPTitle').val().trim();
             p.footer = $('#mapaPFooter').val();
         }
         if (p.fVideo <= p.iVideo) p.fVideo = 36000;
         if (p.type == 1) {
+            const selectedVideoUrl = p.video;
             p.video = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                $('#mapaURLYoutube').val().trim()
+                selectedVideoUrl
             )
-                ? $('#mapaURLYoutube').val()
+                ? selectedVideoUrl
                 : '';
             if (p.video == '') {
                 p.video = $exeDevice.getIDMediaTeca(
-                    $('#mapaURLYoutube').val().trim()
+                    selectedVideoUrl
                 )
-                    ? $('#mapaURLYoutube').val()
+                    ? selectedVideoUrl
                     : '';
             }
         }

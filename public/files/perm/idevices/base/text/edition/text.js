@@ -59,9 +59,12 @@ var $exeDevice = {
      * @returns {Object} Extracted values or null if no task info/feedback found
      */
     extractTaskInfoFromHtml: function (html) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         if (!html) {
             return null;
         }
+
+        html = sanitizeHtml(html);
 
         // Check if we have exe-text-activity structure OR simple feedback structure.
         // Use structural markers (js-feedback + iDevice_buttons) instead of button class names
@@ -144,13 +147,21 @@ var $exeDevice = {
      * @returns {string} HTML with task info structure or just content if no task info
      */
     buildTextareaHtml: function () {
-        const durationValue = this[this.infoInputDurationId] || '';
-        const durationLabel = this[this.infoInputDurationTextId] || '';
-        const participantsValue = this[this.infoInputParticipantsId] || '';
-        const participantsLabel = this[this.infoInputParticipantsTextId] || '';
-        const feedbackButton = this[this.feedbakInputId] || '';
-        const feedbackContent = this[this.feedbackTextareaId] || '';
-        const mainContent = this[this.textareaId] || '';
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        const durationValue = sanitizeText(this[this.infoInputDurationId] || '');
+        const durationLabel = sanitizeText(
+            this[this.infoInputDurationTextId] || ''
+        );
+        const participantsValue = sanitizeText(
+            this[this.infoInputParticipantsId] || ''
+        );
+        const participantsLabel = sanitizeText(
+            this[this.infoInputParticipantsTextId] || ''
+        );
+        const feedbackButton = sanitizeText(this[this.feedbakInputId] || '');
+        const feedbackContent = sanitizeHtml(this[this.feedbackTextareaId] || '');
+        const mainContent = sanitizeHtml(this[this.textareaId] || '');
 
         // Check if we have any task info to include
         const hasTaskInfo = durationValue || participantsValue;
@@ -239,10 +250,14 @@ var $exeDevice = {
      * @return {String}
      */
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         // Avoid crash when ideviceBody is undefined (deleted or not yet loaded)
         if (!this.ideviceBody || typeof this.ideviceBody === 'undefined') {
             return;
         }
+
+        this.dataIds = [];
 
         let dataElements = this.ideviceBody.querySelectorAll(`[id^="text"]`);
 
@@ -254,11 +269,14 @@ var $exeDevice = {
 
         this.dataIds.forEach((element) => {
             if (element.includes('Textarea')) {
-                this[element] = tinymce.editors[element].getContent();
+                this[element] = sanitizeHtml(
+                    tinymce.editors[element].getContent()
+                );
             } else if (element.includes('Input')) {
                 this[element] = this.ideviceBody.querySelector(
                     `#${element}`
                 ).value;
+                this[element] = sanitizeText(this[element]);
             }
         });
 
@@ -317,6 +335,8 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         function isValid(val) {
             return (
                 val != null && !(typeof val === 'string' && val.trim() === '')
@@ -334,7 +354,9 @@ var $exeDevice = {
         let data = { ...this.idevicePreviousData };
 
         if (typeof data[this.textareaId] === 'string' && data[this.textareaId]) {
-            data[this.textareaId] = this.stripLegacyExeTextWrapper(data[this.textareaId]);
+            data[this.textareaId] = this.stripLegacyExeTextWrapper(
+                sanitizeHtml(data[this.textareaId])
+            );
         }
 
         // Check for embedded task info or simple feedback in textTextarea.
@@ -390,7 +412,7 @@ var $exeDevice = {
                 el.tagName === 'TEXTAREA' ||
                 key.toLowerCase().includes('textarea')
             ) {
-                $(el).val(val);
+                $(el).val(sanitizeHtml(val || ''));
                 if (`${key}` == this.feedbackTextareaId && val != '') {
                     $('#' + this.feedbackId)
                         .removeClass('exe-fieldset-closed')
@@ -398,10 +420,13 @@ var $exeDevice = {
                 }
             } else if (el.tagName === 'INPUT') {
                 const useTranslation = isValid(data[key]);
-                const displayValue = useTranslation ? c_(val) : val;
+                const safeValue = sanitizeText(val || '');
+                const displayValue = useTranslation
+                    ? sanitizeText(c_(safeValue))
+                    : safeValue;
                 el.setAttribute('value', displayValue);
             } else {
-                el.textContent = val;
+                el.textContent = sanitizeText(val || '');
             }
         }
     },

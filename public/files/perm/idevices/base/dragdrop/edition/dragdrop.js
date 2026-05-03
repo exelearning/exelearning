@@ -470,13 +470,15 @@ var $exeDevice = {
     validateCard: function () {
         let message = '',
             msgs = $exeDevice.msgs,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             p = {};
 
-        p.definition = $('#dadEDefinition').val().trim();
-        p.url = $('#dadEURLImage').val().trim();
-        p.author = $('#dadEAuthor').val();
-        p.alt = $('#dadEAlt').val();
-        p.audio = $('#dadEURLAudio').val();
+        p.definition = sanitizeText($('#dadEDefinition').val().trim());
+        p.url = sanitizeUrl($('#dadEURLImage').val().trim());
+        p.author = sanitizeText($('#dadEAuthor').val());
+        p.alt = sanitizeText($('#dadEAlt').val());
+        p.audio = sanitizeUrl($('#dadEURLAudio').val());
 
         if (p.definition.length == 0) {
             message = msgs.msgCompleteData;
@@ -623,6 +625,8 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+                sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
             const wrapper = $('<div></div>').html(originalHTML);
             let json = $('.dragdrop-DataGame', wrapper).text();
             json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
@@ -638,10 +642,8 @@ var $exeDevice = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < cards.length) {
                     const rlccard = cards[iq];
-                    rlccard.url =
-                        $(this).attr('href').length < 4
-                            ? ''
-                            : $(this).attr('href');
+                    const imageHref = sanitizeUrl($(this).attr('href'));
+                    rlccard.url = imageHref.length < 4 ? '' : imageHref;
                 }
             });
 
@@ -649,10 +651,9 @@ var $exeDevice = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < cards.length) {
                     const rlccard = cards[iq];
+                    const imageBackHref = sanitizeUrl($(this).attr('href'));
                     rlccard.urlBk =
-                        $(this).attr('href').length < 4
-                            ? ''
-                            : $(this).attr('href');
+                        imageBackHref.length < 4 ? '' : imageBackHref;
                 }
             });
 
@@ -660,10 +661,8 @@ var $exeDevice = {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < cards.length) {
                     const rlccard = cards[iqa];
-                    rlccard.audio =
-                        $(this).attr('href').length < 4
-                            ? ''
-                            : $(this).attr('href');
+                    const audioHref = sanitizeUrl($(this).attr('href'));
+                    rlccard.audio = audioHref.length < 4 ? '' : audioHref;
                 }
             });
 
@@ -671,10 +670,9 @@ var $exeDevice = {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < cards.length) {
                     const rlccard = cards[iqa];
+                    const audioBackHref = sanitizeUrl($(this).attr('href'));
                     rlccard.audioBk =
-                        $(this).attr('href').length < 4
-                            ? ''
-                            : $(this).attr('href');
+                        audioBackHref.length < 4 ? '' : audioBackHref;
                 }
             });
 
@@ -688,7 +686,7 @@ var $exeDevice = {
 
             let textAfter = $('.dragdrop-extra-content', wrapper);
             if (textAfter.length === 1) {
-                textAfter = textAfter.html() || '';
+                textAfter = sanitizeHtml(textAfter.html() || '');
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
@@ -711,14 +709,16 @@ var $exeDevice = {
     save: function () {
         if (!$exeDevice.validateCard()) return false;
 
-        const dataGame = $exeDevice.validateData();
+        const dataGame = $exeDevice.validateData(),
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
 
         if (!dataGame) return false;
 
         const i18n = { ...this.ci18n };
 
         Object.keys(this.ci18n).forEach((i) => {
-            const fVal = $('#ci18n_' + i).val();
+            const fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal) i18n[i] = fVal;
         });
 
@@ -734,7 +734,9 @@ var $exeDevice = {
         let html = '<div class="dragdrop-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `${divContent}<div class="dragdrop-DataGame js-hidden">${json}</div>${linksMedias}`;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter) {
             html += `<div class="dragdrop-extra-content">${textAfter}</div>`;
         }
@@ -762,6 +764,7 @@ var $exeDevice = {
     },
 
     createlinksIMedias: function (cardsGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         return cardsGame
             .map((p, i) => {
                 const properties = [
@@ -772,9 +775,9 @@ var $exeDevice = {
                 ];
                 return properties
                     .map(({ prop, className }) => {
-                        const val = p[prop];
+                        const val = sanitizeUrl(p[prop]);
                         if (val && val.indexOf('http') !== 0) {
-                            return `<a href="${val}" class="js-hidden ${className}">${i}</a>`;
+                            return `<a href="${$exeDevice.escapeAttribute(val)}" class="js-hidden ${className}">${i}</a>`;
                         }
                         return '';
                     })
@@ -798,8 +801,13 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
             showMinimize = $('#dadEShowMinimize').is(':checked'),
             showSolution = $('#dadEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
@@ -808,7 +816,7 @@ var $exeDevice = {
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#dadEPercentajeCards').val())),
-            author = $('#dadEAuthory').val(),
+            author = sanitizeText($('#dadEAuthory').val()),
             cardsGame = $exeDevice.cardsGame,
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
@@ -832,6 +840,16 @@ var $exeDevice = {
                 itinerary.messageCodeAccess.length == '')
         ) {
             return false;
+        }
+
+        for (let i = 0; i < cardsGame.length; i++) {
+            cardsGame[i].definition = sanitizeText(cardsGame[i].definition);
+            cardsGame[i].author = sanitizeText(cardsGame[i].author);
+            cardsGame[i].alt = sanitizeText(cardsGame[i].alt);
+            cardsGame[i].url = sanitizeUrl(cardsGame[i].url);
+            cardsGame[i].audio = sanitizeUrl(cardsGame[i].audio);
+            cardsGame[i].urlBk = sanitizeUrl(cardsGame[i].urlBk);
+            cardsGame[i].audioBk = sanitizeUrl(cardsGame[i].audioBk);
         }
 
         return {
@@ -862,10 +880,11 @@ var $exeDevice = {
     },
 
     showImage: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const $image = $('#dadEImage'),
             $nimage = $('#dadENoImage'),
             alt = $('#dadEAlt').val(),
-            url = $('#dadEURLImage').val();
+            url = sanitizeUrl($('#dadEURLImage').val());
 
         $image.hide();
         $image.attr('alt', alt);
@@ -1117,13 +1136,17 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#dadEURLImage').on('change', function () {
-            const url = $(this).val().trim();
+            const url = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $(this).val().trim()
+            );
             $exeDevice.loadImage(url);
         });
 
         $('#dadEPlayImage').on('click', function (e) {
             e.preventDefault();
-            const url = $('#dadEURLImage').val().trim();
+            const url = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#dadEURLImage').val().trim()
+            );
             $exeDevice.loadImage(url);
         });
 
@@ -1133,18 +1156,24 @@ var $exeDevice = {
 
         $('#dadEPlayAudio').on('click', function (e) {
             e.preventDefault();
-            const audio = $('#dadEURLAudio').val();
+            const audio = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#dadEURLAudio').val()
+            );
             $exeDevice.loadAudio(audio);
         });
 
         $('#dadEURLImage').on('change', function () {
-            const url = $(this).val().trim();
+            const url = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $(this).val().trim()
+            );
             $exeDevice.loadImage(url);
         });
 
         $('#dadEPlayImage').on('click', function (e) {
             e.preventDefault();
-            const url = $('#dadEURLImage').val().trim();
+            const url = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#dadEURLImage').val().trim()
+            );
             $exeDevice.loadImage(url);
         });
 
@@ -1154,7 +1183,9 @@ var $exeDevice = {
 
         $('#dadEPlayAudio').on('click', function (e) {
             e.preventDefault();
-            const audio = $('#dadEURLAudio').val();
+            const audio = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#dadEURLAudio').val()
+            );
             $exeDevice.loadAudio(audio);
         });
 
@@ -1180,6 +1211,8 @@ var $exeDevice = {
     },
 
     loadImage: function (url) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
         if (!url || url.length < 3) return;
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
             ext = url.split('.').pop().toLowerCase();
@@ -1194,6 +1227,8 @@ var $exeDevice = {
     },
 
     loadAudio: function (url) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
         const validExt = ['mp3', 'ogg', 'waw'],
             ext = url.split('.').pop().toLowerCase();
 
@@ -1208,6 +1243,8 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         $exeDevice.active = 0;
         $exeDevice.active = 0;
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
@@ -1220,6 +1257,20 @@ var $exeDevice = {
         game.typeDrag = typeof game.typeDrag != 'undefined' ? game.typeDrag : 0;
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.author = sanitizeText(game.author || '');
+        if (!Array.isArray(game.cardsGame)) {
+            game.cardsGame = [];
+        }
+        game.cardsGame = game.cardsGame.map((card) => ({
+            ...card,
+            definition: sanitizeText(card.definition),
+            author: sanitizeText(card.author),
+            alt: sanitizeText(card.alt),
+            url: sanitizeUrl(card.url),
+            audio: sanitizeUrl(card.audio),
+            urlBk: sanitizeUrl(card.urlBk),
+            audioBk: sanitizeUrl(card.audioBk),
+        }));
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#dadEShowMinimize').prop('checked', game.showMinimize);
@@ -1379,6 +1430,7 @@ var $exeDevice = {
     },
 
     handleGame(game) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         $exeDevice.active = 0;
         game.id = $exeDevice.getIdeviceID();
         $exeDevice.updateFieldGame(game);
@@ -1386,7 +1438,7 @@ var $exeDevice = {
         const instructions = unescape(
                 game.instructionsExe || game.instructions
             ),
-            tAfter = unescape(game.textAfter || '');
+            tAfter = sanitizeHtml(unescape(game.textAfter || ''));
 
         tinyMCE.get('eXeGameInstructions')
             ? tinyMCE.get('eXeGameInstructions').setContent(instructions)
@@ -1523,8 +1575,12 @@ var $exeDevice = {
     },
 
     deleteEmptyQuestion: function () {
-        let url = $('#dadEURLImage').val().trim(),
-            audio = $('#dadEURLAudio').val().trim(),
+        let url = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#dadEURLImage').val().trim()
+            ),
+            audio = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#dadEURLAudio').val().trim()
+            ),
             eText = $('#dadEDefinition').val().trim();
         if ($exeDevice.cardsGame.length > 1) {
             if (url.length == 0 && audio.length == 0 && eText.length == 0) {

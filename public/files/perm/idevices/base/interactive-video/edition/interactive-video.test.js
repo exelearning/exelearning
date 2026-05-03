@@ -18,6 +18,9 @@ describe('interactive-video iDevice edition', () => {
   let originalGamificationCommon;
   let originalProgressBar;
   let originalScorm;
+  let sanitizeTextMock;
+  let sanitizeHtmlMock;
+  let sanitizeUrlMock;
 
   beforeEach(() => {
     global.$exeDevice = undefined;
@@ -29,8 +32,22 @@ describe('interactive-video iDevice edition', () => {
     originalProgressBar = $exeDevicesEdition.iDevice.gamification.progressBar;
     originalScorm = $exeDevicesEdition.iDevice.gamification.scorm;
 
+    sanitizeTextMock = vi.fn((value = '') => String(value ?? '').replace(/<[^>]*>/g, ''));
+    sanitizeHtmlMock = vi.fn((value = '') => String(value ?? '').replace(/<script[\s\S]*?<\/script>/gi, ''));
+    sanitizeUrlMock = vi.fn((value = '') => {
+      const str = String(value ?? '').trim();
+      if (str === '') return '';
+      if (/^(https?:|asset:|blob:|mailto:|tel:|ftp:)/i.test(str)) return str;
+      if (/^files[\\/]/i.test(str)) return str;
+      if (str.startsWith('/') || str.startsWith('.') || str.startsWith('#')) return str;
+      return '';
+    });
+
     $exeDevicesEdition.iDevice.common = {
       getTextFieldset: vi.fn(() => ''),
+      sanitizeText: sanitizeTextMock,
+      sanitizeHtml: sanitizeHtmlMock,
+      sanitizeUrl: sanitizeUrlMock,
     };
     $exeDevicesEdition.iDevice.tabs = {
       init: vi.fn(),
@@ -74,5 +91,17 @@ describe('interactive-video iDevice edition', () => {
     expect(helpIcon).not.toBeNull();
     expect(helpIcon.getAttribute('src')).toBe(`${path}quextIEHelp.png`);
     expect(existsSync(join(__dirname, 'quextIEHelp.png'))).toBe(true);
+  });
+
+  it('keeps allowed legacy resources paths and rejects unsafe media URLs', () => {
+    expect($exeDevice.sanitizeMediaUrl('resources/video.mp4')).toBe('resources/video.mp4');
+    expect($exeDevice.sanitizeMediaUrl('content/resources/video.mp4')).toBe('content/resources/video.mp4');
+    expect($exeDevice.sanitizeMediaUrl('javascript:alert(1)')).toBe('');
+  });
+
+  it('escapes closing script tags in serialized JSON content', () => {
+    expect($exeDevice.sanitizeJsonScriptContent('{"k":"</script><img src=x onerror=1>"}')).toBe(
+      '{"k":"<\\/script><img src=x onerror=1>"}'
+    );
   });
 });

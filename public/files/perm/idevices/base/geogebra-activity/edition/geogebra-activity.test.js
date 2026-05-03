@@ -12,10 +12,30 @@ const __dirname = dirname(__filename);
 
 describe('geogebra-activity iDevice (edition)', () => {
   let $exeDevice;
+  let sanitizeTextMock;
+  let sanitizeHtmlMock;
+  let sanitizeUrlMock;
 
   beforeEach(() => {
     global.$exeDevice = undefined;
     document.body.innerHTML = '';
+
+    sanitizeTextMock = vi.fn((value) => String(value || '').replace(/<[^>]*>/g, ''));
+    sanitizeHtmlMock = vi.fn((value) => String(value || '').replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ''));
+    sanitizeUrlMock = vi.fn((value) => {
+      const trimmed = String(value || '').trim();
+      return /^\s*(javascript:|data:|vbscript:)/i.test(trimmed) ? '' : trimmed;
+    });
+
+    global.$exeDevicesEdition = global.$exeDevicesEdition || { iDevice: {} };
+    global.$exeDevicesEdition.iDevice = global.$exeDevicesEdition.iDevice || {};
+    global.$exeDevicesEdition.iDevice.common = {
+      ...(global.$exeDevicesEdition.iDevice.common || {}),
+      sanitizeText: sanitizeTextMock,
+      sanitizeHtml: sanitizeHtmlMock,
+      sanitizeUrl: sanitizeUrlMock,
+    };
+
     $exeDevice = global.loadIdevice(join(__dirname, 'geogebra-activity.js'));
   });
 

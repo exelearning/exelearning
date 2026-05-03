@@ -871,10 +871,12 @@ var $exeDevice = {
         const dataGame = $exeDevice.validateData();
         if (!dataGame) return false;
 
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+
         let fields = this.ci18n,
             i18n = fields;
         for (let i in fields) {
-            var fVal = $('#ci18n_' + i).val();
+            var fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal != '') i18n[i] = fVal;
         }
 
@@ -891,7 +893,8 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const evaluationID = $('#informeEEvaluationID').val(),
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            evaluationID = sanitizeText($('#informeEEvaluationID').val()),
             showDate = $('#informeEShowDate').is(':checked'),
             showTypeGame = $('#informeEShowTypeGame').is(':checked'),
             activeLinks = $('#informeEActiveLinks').is(':checked'),
@@ -936,8 +939,11 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         game.evaluationID =
-            typeof game.evaluationID !== 'undefined' ? game.evaluationID : '';
+            typeof game.evaluationID !== 'undefined'
+                ? sanitizeText(game.evaluationID)
+                : '';
         game.showDate =
             typeof game.showDate !== 'undefined' ? game.showDate : false;
         game.showTypeGame =

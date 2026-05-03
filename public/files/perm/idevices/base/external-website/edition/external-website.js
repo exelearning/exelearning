@@ -73,12 +73,14 @@ var $exeDevice = {
      *
      */
     loadPreviousValues: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         var originalHTML = this.idevicePreviousData;
         if (originalHTML != '') {
             var wrapper = $('<div></div>');
             wrapper.html(originalHTML);
-            var website = $('iframe', wrapper).attr('src');
-            var sizeOption = $('iframe', wrapper).attr('size');
+            var website = sanitizeUrl($('iframe', wrapper).attr('src'));
+            var sizeOption = sanitizeText($('iframe', wrapper).attr('size'));
             if (website && website.length > 0) {
                 $('#websiteUrl').val(website);
             }
@@ -98,14 +100,17 @@ var $exeDevice = {
      * @returns {String}
      */
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         var html = '';
-        var errorMessage = c_(
+        var errorMessage = sanitizeHtml(c_(
             'Unable to display an iframe loaded over HTTP on a website that uses HTTPS.'
-        );
-        var url = $('#websiteUrl').val();
-        var option = $('#sizeSelector').val();
+        ));
+        var url = sanitizeUrl($('#websiteUrl').val());
+        var option = sanitizeText($('#sizeSelector').val());
         // Check url
-        regexp =
+        var regexp =
             /(http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/;
         if (!regexp.test(url)) {
             if (url == '') {
@@ -132,6 +137,12 @@ var $exeDevice = {
      * @returns {String}
      */
     generateHtmlExport: function (url, option, errorMessage) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
+        option = sanitizeText(option);
+        errorMessage = sanitizeHtml(errorMessage);
         var height = this.getHeightByOption(option);
         html =
             '\

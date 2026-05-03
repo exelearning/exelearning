@@ -45,8 +45,19 @@ function loadIdevice() {
     };
 
     // Mock $exeDevicesEdition
+    const sanitizeTextMock = vi.fn((value) => `txt:${String(value)}`);
+    const sanitizeHtmlMock = vi.fn((value) => `html:${String(value)}`);
+    const sanitizeUrlMock = vi.fn((value) => String(value || '').trim());
+
     global.$exeDevicesEdition = {
         iDevice: {
+            common: {
+                sanitizeText: sanitizeTextMock,
+                sanitizeHtml: sanitizeHtmlMock,
+                sanitizeUrl: sanitizeUrlMock,
+                getIdeviceDescription: () => '',
+                getTextFieldset: () => '',
+            },
             gamification: {
                 common: {
                     getLanguageTab: () => '',
@@ -559,4 +570,5 @@ describe('progress-report edition iDevice', () => {
             expect($exeDevice.sessionIdevices).toBeDefined();
         });
     });
+
 });

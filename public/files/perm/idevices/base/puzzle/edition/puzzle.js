@@ -421,7 +421,9 @@ var $exeDevice = {
 
         let puzzle = $exeDevice.getPuzzleDefault();
 
-        puzzle.url = $('#puzzleEURLImageDefinition').val();
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        puzzle.url = sanitizeUrl($('#puzzleEURLImageDefinition').val());
 
         if (puzzle.url.length < 3) {
             $exeDevice.showMessage($exeDevice.msgs.msgSelectImage);
@@ -447,15 +449,15 @@ var $exeDevice = {
         puzzle.showNumber = $('#puzzleEShowNumber').is(':checked');
         puzzle.showTime = $('#puzzleEShowTime').is(':checked');
         puzzle.showAttemps = $('#puzzleEShowAttemps').is(':checked');
-        puzzle.alt = $('#puzzleEAltDefinition').val();
-        puzzle.author = $('#puzzleEAuthorDefinition').val();
-        puzzle.msgHit = $('#puzzleEMessageOK').val();
-        puzzle.msgError = $('#puzzleEMessageKO').val();
-        puzzle.definition = $('#puzzleEDefinition').val();
-        puzzle.audioDefinition = $('#puzzleEURLAudioDefinition').val();
-        puzzle.audioClue = $('#puzzleEURLAudioClue').val();
-        puzzle.audioError = $('#puzzleEURLAudioKO').val();
-        puzzle.clue = $('#puzzleECluePuzzle').val();
+        puzzle.alt = sanitizeText($('#puzzleEAltDefinition').val());
+        puzzle.author = sanitizeText($('#puzzleEAuthorDefinition').val());
+        puzzle.msgHit = sanitizeText($('#puzzleEMessageOK').val());
+        puzzle.msgError = sanitizeText($('#puzzleEMessageKO').val());
+        puzzle.definition = sanitizeText($('#puzzleEDefinition').val());
+        puzzle.audioDefinition = sanitizeUrl($('#puzzleEURLAudioDefinition').val());
+        puzzle.audioClue = sanitizeUrl($('#puzzleEURLAudioClue').val());
+        puzzle.audioError = sanitizeUrl($('#puzzleEURLAudioKO').val());
+        puzzle.clue = sanitizeText($('#puzzleECluePuzzle').val());
         puzzle.type = parseInt($('input[name=pzltype]:checked').val());
         $exeDevice.puzzlesGame[$exeDevice.active] = puzzle;
 
@@ -615,7 +617,8 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('puzzleEFeedBackEditor').getContent();
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        const textFeedBack = sanitizeHtml(tinyMCE.get('puzzleEFeedBackEditor').getContent());
         if (dataGame.instructions != '')
             divContent =
                 '<div class="puzzle-instructions">' +
@@ -632,7 +635,7 @@ var $exeDevice = {
         html += '<div class="puzzle-DataGame js-hidden">' + json + '</div>';
         html += linksImages;
         html += linksAudios;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent());
         if (textAfter != '') {
             html += '<div class="puzzle-extra-content">' + textAfter + '</div>';
         }
@@ -733,9 +736,11 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('puzzleEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textFeedBack = sanitizeHtml(tinyMCE.get('puzzleEFeedBackEditor').getContent()),
+            textAfter = sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
             showMinimize = $('#puzzleEShowMinimize').is(':checked'),
             randomPuzzles = $('#puzzleERandomPuzzles').is(':checked'),
             itinerary =
@@ -746,7 +751,7 @@ var $exeDevice = {
                 clear($('#puzzleEPercentajeQuestions').val()),
                 10
             ),
-            author = $('#puzzleEAuthor').val(),
+            author = sanitizeText($('#puzzleEAuthor').val()),
             puzzlesGame = $exeDevice.puzzlesGame,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
@@ -788,10 +793,11 @@ var $exeDevice = {
     },
 
     showImage: function (id) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const $image = $(`#puzzleEImage-${id}`),
             $nimage = $(`#puzzleENoImage-${id}`),
             alt = $(`#puzzleEAlt-${id}`).val(),
-            url = $(`#puzzleEURLImage-${id}`).val();
+            url = sanitizeUrl($(`#puzzleEURLImage-${id}`).val());
 
         $image.hide();
         $image.attr('alt', alt);
@@ -1009,7 +1015,9 @@ var $exeDevice = {
 
         $('#puzzleEPlayAudioDefinition').on('click', function (e) {
             e.preventDefault();
-            const audio = $('#puzzleEURLAudioDefinition').val();
+            const audio = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#puzzleEURLAudioDefinition').val()
+            );
             $exeDevice.loadAudio(audio);
         });
 
@@ -1019,7 +1027,9 @@ var $exeDevice = {
 
         $('#puzzleEPlayAudioClue').on('click', function (e) {
             e.preventDefault();
-            const audio = $('#puzzleEURLAudioClue').val();
+            const audio = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#puzzleEURLAudioClue').val()
+            );
             $exeDevice.loadAudio(audio);
         });
 
@@ -1057,8 +1067,9 @@ var $exeDevice = {
     },
 
     loadImage: function (id) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#puzzleEURLImage-' + id).val(),
+            url = sanitizeUrl($('#puzzleEURLImage-' + id).val()),
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
@@ -1071,8 +1082,9 @@ var $exeDevice = {
     },
 
     loadImageDefinition: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#puzzleEURLImageDefinition').val(),
+            url = sanitizeUrl($('#puzzleEURLImageDefinition').val()),
             ext = url.split('.').pop().toLowerCase();
 
         if (url.trim().length < 4) return false;
@@ -1086,6 +1098,8 @@ var $exeDevice = {
     },
 
     loadAudio: function (url) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
         const validExt = ['mp3', 'ogg', 'waw'],
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {

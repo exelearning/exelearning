@@ -600,31 +600,43 @@ var $exeDevice = {
         return encodeURIComponent(s.replace('%', '&percnt;'));
     },
 
+    sanitizeCardText: function (text) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        if (typeof text !== 'string') return '';
+        let decodedText = text;
+        try {
+            decodedText = decodeURIComponent(text).replace('&percnt;', '%');
+        } catch {
+            decodedText = text;
+        }
+        return $exeDevice.encodeURIComponentSafe(sanitizeText(decodedText));
+    },
+
     validateCard: function () {
         const msgs = $exeDevice.msgs,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             p = {};
         let message = '';
 
-        p.url = $('#flipcardsEURLImage').val().trim();
+        p.url = sanitizeUrl($('#flipcardsEURLImage').val().trim());
         p.x = parseFloat($('#flipcardsEX').val());
         p.y = parseFloat($('#flipcardsEY').val());
-        p.author = $('#flipcardsEAuthor').val();
-        p.alt = $('#flipcardsEAlt').val();
-        p.audio = $('#flipcardsEURLAudio').val();
-        p.color = $('#flipcardsEColor').val();
-        p.backcolor = $('#flipcardsEBgColor').val();
-        p.eText = $exeDevice.encodeURIComponentSafe($('#flipcardsEText').val());
-        p.urlBk = $('#flipcardsEURLImageBack').val().trim();
+        p.author = sanitizeText($('#flipcardsEAuthor').val());
+        p.alt = sanitizeText($('#flipcardsEAlt').val());
+        p.audio = sanitizeUrl($('#flipcardsEURLAudio').val());
+        p.color = sanitizeText($('#flipcardsEColor').val());
+        p.backcolor = sanitizeText($('#flipcardsEBgColor').val());
+        p.eText = $exeDevice.sanitizeCardText($('#flipcardsEText').val());
+        p.urlBk = sanitizeUrl($('#flipcardsEURLImageBack').val().trim());
         p.xBk = parseFloat($('#flipcardsEXBack').val());
         p.yBk = parseFloat($('#flipcardsEYBack').val());
-        p.authorBk = $('#flipcardsEAuthorBack').val();
-        p.altBk = $('#flipcardsEAltBack').val();
-        p.audioBk = $('#flipcardsEURLAudioBack').val();
-        p.colorBk = $('#flipcardsEColorBack').val();
-        p.backcolorBk = $('#flipcardsEBgColorBack').val();
-        p.eTextBk = $exeDevice.encodeURIComponentSafe(
-            $('#flipcardsETextBack').val()
-        );
+        p.authorBk = sanitizeText($('#flipcardsEAuthorBack').val());
+        p.altBk = sanitizeText($('#flipcardsEAltBack').val());
+        p.audioBk = sanitizeUrl($('#flipcardsEURLAudioBack').val());
+        p.colorBk = sanitizeText($('#flipcardsEColorBack').val());
+        p.backcolorBk = sanitizeText($('#flipcardsEBgColorBack').val());
+        p.eTextBk = $exeDevice.sanitizeCardText($('#flipcardsETextBack').val());
 
         if (p.eText.length == 0 && p.url.length == 0 && p.audio.length == 0) {
             message = msgs.msgCompleteData;
@@ -692,10 +704,11 @@ var $exeDevice = {
 
     addEventCard: function () {
         const toggleElement = (selector) => $(selector).slideToggle(),
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
             updateDivText = (inputSelector, divSelector) => {
-                const text = $(inputSelector).val().trim();
+                const text = sanitizeText($(inputSelector).val().trim());
                 $(divSelector)
-                    .html(text)
+                    .text(text)
                     .toggle(text.length > 0);
             },
             loadAndPlayAudio = (inputSelector) =>
@@ -798,6 +811,8 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+                sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
 
@@ -813,17 +828,15 @@ var $exeDevice = {
 
             dataGame.imgCard = '';
             if ($imageBack.length === 1) {
-                dataGame.imgCard = $imageBack.attr('href') || '';
+                dataGame.imgCard = sanitizeUrl($imageBack.attr('href') || '');
             }
 
             $imagesLink.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < dataGame.cardsGame.length) {
                     const flipcard = dataGame.cardsGame[iq];
-                    flipcard.url = $(this).attr('href');
-                    if (flipcard.url < 4) {
-                        flipcard.url = '';
-                    }
+                    const imageHref = sanitizeUrl($(this).attr('href'));
+                    flipcard.url = imageHref.length < 4 ? '' : imageHref;
                 }
             });
 
@@ -831,10 +844,9 @@ var $exeDevice = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < dataGame.cardsGame.length) {
                     const flipcard = dataGame.cardsGame[iq];
-                    flipcard.urlBk = $(this).attr('href');
-                    if (flipcard.urlBk < 4) {
-                        flipcard.urlBk = '';
-                    }
+                    const imageBackHref = sanitizeUrl($(this).attr('href'));
+                    flipcard.urlBk =
+                        imageBackHref.length < 4 ? '' : imageBackHref;
                 }
             });
 
@@ -842,10 +854,8 @@ var $exeDevice = {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < dataGame.cardsGame.length) {
                     const flipcard = dataGame.cardsGame[iqa];
-                    flipcard.audio = $(this).attr('href');
-                    if (flipcard.audio.length < 4) {
-                        flipcard.audio = '';
-                    }
+                    const audioHref = sanitizeUrl($(this).attr('href'));
+                    flipcard.audio = audioHref.length < 4 ? '' : audioHref;
                 }
             });
 
@@ -853,10 +863,9 @@ var $exeDevice = {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < dataGame.cardsGame.length) {
                     const flipcard = dataGame.cardsGame[iqa];
-                    flipcard.audioBk = $(this).attr('href');
-                    if (flipcard.audioBk.length < 4) {
-                        flipcard.audioBk = '';
-                    }
+                    const audioBackHref = sanitizeUrl($(this).attr('href'));
+                    flipcard.audioBk =
+                        audioBackHref.length < 4 ? '' : audioBackHref;
                 }
             });
 
@@ -868,7 +877,9 @@ var $exeDevice = {
 
             const textAfter = $('.flipcards-extra-content', wrapper);
             if (textAfter.length == 1)
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                $('#eXeIdeviceTextAfter').val(
+                    sanitizeHtml(textAfter.html() || '')
+                );
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
@@ -889,7 +900,10 @@ var $exeDevice = {
     save: function () {
         if (!$exeDevice.validateCard()) return;
 
-        const dataGame = $exeDevice.validateData();
+        const dataGame = $exeDevice.validateData(),
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
 
         if (!dataGame) return;
 
@@ -897,7 +911,7 @@ var $exeDevice = {
             i18n = fields;
 
         for (let i in fields) {
-            let fVal = $('#ci18n_' + i).val();
+            let fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal != '') i18n[i] = fVal;
         }
 
@@ -913,9 +927,9 @@ var $exeDevice = {
                 '</div>';
 
         const linksMedias = $exeDevice.createlinksIMedias(dataGame.cardsGame);
-        let imgCard = $('#flipcardsEURLImgCard').val();
+        let imgCard = sanitizeUrl($('#flipcardsEURLImgCard').val());
         if (imgCard.trim().length > 4) {
-            imgCard = `<a href="${imgCard}" class="js-hidden flipcard-ImageBack" alt="Back" />Background</a>`;
+            imgCard = `<a href="${$exeDevice.escapeHtml(imgCard)}" class="js-hidden flipcard-ImageBack" alt="Back" />Background</a>`;
         } else {
             imgCard = '';
         }
@@ -926,7 +940,9 @@ var $exeDevice = {
         html += linksMedias;
         html += imgCard;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter != '') {
             html +=
                 '<div class="flipcards-extra-content">' + textAfter + '</div>';
@@ -961,6 +977,7 @@ var $exeDevice = {
     },
 
     createlinksIMedias: function (cardsGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
 
         cardsGame.forEach((p, i) => {
@@ -972,8 +989,13 @@ var $exeDevice = {
             ];
 
             mediaLinks.forEach(({ url, className }) => {
-                if (url && url.length > 0 && url.indexOf('http') !== 0) {
-                    html += `<a href="${url}" class="js-hidden ${className}">${i}</a>`;
+                const safeUrl = sanitizeUrl(url);
+                if (
+                    safeUrl &&
+                    safeUrl.length > 0 &&
+                    safeUrl.indexOf('http') !== 0
+                ) {
+                    html += `<a href="${$exeDevice.escapeHtml(safeUrl)}" class="js-hidden ${className}">${i}</a>`;
                 }
             });
         });
@@ -996,8 +1018,13 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
             randomCards = $('#flipcardsERandomCards').is(':checked'),
             showMinimize = $('#flipcardsEShowMinimize').is(':checked'),
             showSolution = $('#flipcardsEShowSolution').is(':checked'),
@@ -1009,7 +1036,7 @@ var $exeDevice = {
             percentajeCards = parseInt(
                 clear($('#flipcardsEPercentajeCards').val())
             ),
-            author = $('#flipcardsEAuthory').val(),
+            author = sanitizeText($('#flipcardsEAuthory').val()),
             cardsGame = $exeDevice.cardsGame,
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
@@ -1017,10 +1044,30 @@ var $exeDevice = {
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID(),
-            imgCard = $('#flipcardsEURLImgCard').val();
+            imgCard = sanitizeUrl($('#flipcardsEURLImgCard').val());
 
         if (!itinerary) return false;
         if (!progressBar) return false;
+
+        for (let i = 0; i < cardsGame.length; i++) {
+            cardsGame[i].url = sanitizeUrl(cardsGame[i].url);
+            cardsGame[i].author = sanitizeText(cardsGame[i].author);
+            cardsGame[i].alt = sanitizeText(cardsGame[i].alt);
+            cardsGame[i].audio = sanitizeUrl(cardsGame[i].audio);
+            cardsGame[i].color = sanitizeText(cardsGame[i].color);
+            cardsGame[i].backcolor = sanitizeText(cardsGame[i].backcolor);
+            cardsGame[i].eText = $exeDevice.sanitizeCardText(cardsGame[i].eText);
+
+            cardsGame[i].urlBk = sanitizeUrl(cardsGame[i].urlBk);
+            cardsGame[i].authorBk = sanitizeText(cardsGame[i].authorBk);
+            cardsGame[i].altBk = sanitizeText(cardsGame[i].altBk);
+            cardsGame[i].audioBk = sanitizeUrl(cardsGame[i].audioBk);
+            cardsGame[i].colorBk = sanitizeText(cardsGame[i].colorBk);
+            cardsGame[i].backcolorBk = sanitizeText(cardsGame[i].backcolorBk);
+            cardsGame[i].eTextBk = $exeDevice.sanitizeCardText(
+                cardsGame[i].eTextBk
+            );
+        }
 
         return {
             typeGame: 'FlipCards',
@@ -1049,7 +1096,9 @@ var $exeDevice = {
     },
 
     showImage: function (type) {
-        const $cursor =
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            $cursor =
                 type == 0 ? $('#flipcardsECursor') : $('#flipcardsECursorBack'),
             $image =
                 type == 0 ? $('#flipcardsEImage') : $('#flipcardsEImageBack'),
@@ -1067,12 +1116,12 @@ var $exeDevice = {
                     : $('#flipcardsEYBack').val(),
             alt =
                 type == 0
-                    ? $('#flipcardsEAlt').val()
-                    : $('#flipcardsEAltBack').val(),
+                    ? sanitizeText($('#flipcardsEAlt').val())
+                    : sanitizeText($('#flipcardsEAltBack').val()),
             url =
                 type == 0
-                    ? $('#flipcardsEURLImage').val()
-                    : $('#flipcardsEURLImageBack').val();
+                    ? sanitizeUrl($('#flipcardsEURLImage').val())
+                    : sanitizeUrl($('#flipcardsEURLImageBack').val());
 
         $image.hide();
         $cursor.hide();
@@ -1106,6 +1155,8 @@ var $exeDevice = {
     },
 
     showImageCard: function (url) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
         $image = $('#flipcardECard');
         $nimage = $('#flipcardENoCard');
         $image.hide();
@@ -1511,12 +1562,14 @@ var $exeDevice = {
     },
 
     loadImage: function (type) {
-        const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url =
-                type == 0
-                    ? $('#flipcardsEURLImage').val()
-                    : $('#flipcardsEURLImageBack').val(),
-            ext = url.split('.').pop().toLowerCase();
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'];
+        let url =
+            type == 0
+                ? $('#flipcardsEURLImage').val()
+                : $('#flipcardsEURLImageBack').val();
+        url = sanitizeUrl(url);
+        const ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
@@ -1528,6 +1581,8 @@ var $exeDevice = {
     },
 
     loadAudio: function (url) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
         const validExt = ['mp3', 'ogg', 'waw'],
             ext = url.split('.').pop().toLowerCase();
 
@@ -1542,9 +1597,11 @@ var $exeDevice = {
     },
 
     loadImageCard: function (type) {
-        const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#flipcardsEURLImgCard').val(),
-            ext = url.split('.').pop().toLowerCase();
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'];
+        let url = $('#flipcardsEURLImgCard').val();
+        url = sanitizeUrl(url);
+        const ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
@@ -1556,6 +1613,8 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         $exeDevice.active = 0;
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
@@ -1566,9 +1625,29 @@ var $exeDevice = {
             typeof game.evaluationID != 'undefined' ? game.evaluationID : '';
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.author = sanitizeText(game.author || '');
+        game.imgCard = sanitizeUrl(game.imgCard ?? '');
+        if (!Array.isArray(game.cardsGame)) {
+            game.cardsGame = [];
+        }
+        game.cardsGame = game.cardsGame.map((card) => ({
+            ...card,
+            eText: $exeDevice.sanitizeCardText(card.eText),
+            author: sanitizeText(card.author),
+            alt: sanitizeText(card.alt),
+            url: sanitizeUrl(card.url),
+            audio: sanitizeUrl(card.audio),
+            color: sanitizeText(card.color),
+            backcolor: sanitizeText(card.backcolor),
+            eTextBk: $exeDevice.sanitizeCardText(card.eTextBk),
+            authorBk: sanitizeText(card.authorBk),
+            altBk: sanitizeText(card.altBk),
+            urlBk: sanitizeUrl(card.urlBk),
+            audioBk: sanitizeUrl(card.audioBk),
+            colorBk: sanitizeText(card.colorBk),
+            backcolorBk: sanitizeText(card.backcolorBk),
+        }));
         $exeDevice.id = $exeDevice.getIdeviceID();
-
-        game.imgCard = game.imgCard ?? '';
 
         $('#flipcardsEShowMinimize').prop('checked', game.showMinimize);
         $('#flipcardsEPercentajeCards').val(game.percentajeCards);
@@ -1798,6 +1877,7 @@ var $exeDevice = {
     },
 
     handleGame(game) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         $exeDevice.active = 0;
         game.id = $exeDevice.getIdeviceID();
         $exeDevice.updateFieldGame(game);
@@ -1805,7 +1885,7 @@ var $exeDevice = {
         const instructions = unescape(
                 game.instructionsExe || game.instructions
             ),
-            tAfter = unescape(game.textAfter || '');
+            tAfter = sanitizeHtml(unescape(game.textAfter || ''));
 
         tinyMCE.get('eXeGameInstructions')
             ? tinyMCE.get('eXeGameInstructions').setContent(instructions)
@@ -1863,9 +1943,21 @@ var $exeDevice = {
     },
 
     importGameData(data, mapFn) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         data.forEach((item) => {
             const cardData = mapFn(item),
                 p = Object.assign($exeDevice.getCardDefault(), cardData);
+            p.eText = $exeDevice.sanitizeCardText(p.eText);
+            p.eTextBk = $exeDevice.sanitizeCardText(p.eTextBk);
+            p.author = sanitizeText(p.author);
+            p.authorBk = sanitizeText(p.authorBk);
+            p.alt = sanitizeText(p.alt);
+            p.altBk = sanitizeText(p.altBk);
+            p.url = sanitizeUrl(p.url);
+            p.urlBk = sanitizeUrl(p.urlBk);
+            p.audio = sanitizeUrl(p.audio);
+            p.audioBk = sanitizeUrl(p.audioBk);
             if (p.eText || p.url || p.audio) {
                 $exeDevice.cardsGame.push(p);
             }

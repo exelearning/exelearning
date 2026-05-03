@@ -260,7 +260,9 @@ var $exeDevice = {
     clickPlay: function () {
         const $player = $('#vquextEVIURL');
         if ($player.length == 1) {
-            const idv = $player.val().trim();
+            const idv = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $player.val().trim()
+            );
             if (idv !== '') $exeDevice.loadVideo(idv);
         }
     },
@@ -308,7 +310,9 @@ var $exeDevice = {
         if ($exeDevice.videoType > 0) return;
 
         $exeDevice.youtubeLoaded = true;
-        const url = $('#vquextEVIURL').val(),
+        const url = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#vquextEVIURL').val()
+            ),
             idV = $exeDevices.iDevice.gamification.media.getIDYoutube(url);
         if (idV) {
             $exeDevice.initClock(0);
@@ -351,6 +355,8 @@ var $exeDevice = {
     },
 
     startVideo: function (url, start, end) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
         const mstart = start < 1 ? 0.1 : start;
 
         if ($exeDevice.videoType == 1) {
@@ -654,6 +660,7 @@ var $exeDevice = {
     },
 
     showQuestion: function (i) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         const {
             questionsGame,
             showTypeQuestion,
@@ -667,6 +674,13 @@ var $exeDevice = {
             numOptions = 0;
 
         p.typeQuestion = p.typeQuestion || 0;
+        p.quextion = sanitizeText(p.quextion || '');
+        p.msgError = sanitizeText(p.msgError || '');
+        p.msgHit = sanitizeText(p.msgHit || '');
+        p.solutionQuestion = sanitizeText(p.solutionQuestion || '');
+        p.options = Array.isArray(p.options)
+            ? p.options.map((option) => sanitizeText(option || ''))
+            : ['', '', '', ''];
 
         if (p.typeQuestion === 0) {
             $('.VDQXTE-EAnwersOptions').each(function (j) {
@@ -728,7 +742,9 @@ var $exeDevice = {
 
         let pointStart = $exeDevice.hourToSeconds($('#vquextEVIStart').val()),
             pointEnd = $exeDevice.hourToSeconds($('#vquextPoint').val()),
-            url = $('#vquextEVIURL').val(),
+            url = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#vquextEVIURL').val()
+            ),
             id = $exeDevice.questionsGame[$exeDevice.active].id,
             active = $exeDevice.randomizeQuestions(id);
 
@@ -1232,6 +1248,9 @@ var $exeDevice = {
     loadPreviousValues: function () {
         const originalHTML = this.idevicePreviousData;
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+                sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+                sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
             $exeDevice.active = 0;
 
             const wrapper = $('<div></div>').html(originalHTML);
@@ -1243,18 +1262,37 @@ var $exeDevice = {
                 json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
             }
 
+            json =
+                $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                    json
+                );
+
             const dataGame =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json);
+            if (!dataGame || !Array.isArray(dataGame.questionsGame)) {
+                return;
+            }
             dataGame.modeBoard = dataGame.modeBoard ?? false;
             $exeDevice.active = 0;
             $exeDevice.questionsGame = dataGame.questionsGame;
 
             $exeDevice.questionsGame.forEach((question) => {
                 question.id = $exeDevice.getId();
+                question.quextion = sanitizeText(question.quextion || '');
+                question.msgHit = sanitizeText(question.msgHit || '');
+                question.msgError = sanitizeText(question.msgError || '');
+                question.solutionQuestion = sanitizeText(
+                    question.solutionQuestion || ''
+                );
+                question.options = Array.isArray(question.options)
+                    ? question.options.map((option) =>
+                          sanitizeText(option || '')
+                      )
+                    : ['', '', '', ''];
             });
 
             if (dataGame.videoType > 0) {
-                dataGame.idVideoQuExt = videoLink;
+                dataGame.idVideoQuExt = sanitizeUrl(videoLink || '');
             }
 
             let instructions = $('.vquext-instructions', wrapper);
@@ -1265,13 +1303,13 @@ var $exeDevice = {
 
             let textFeedBack = $('.vquext-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
-                textFeedBack = textFeedBack.html() || '';
+                textFeedBack = sanitizeHtml(textFeedBack.html() || '');
                 $('#vquextEFeedBackEditor').val(textFeedBack);
             }
 
             let textAfter = $('.vquext-extra-content', wrapper);
             if (textAfter.length === 1) {
-                textAfter = textAfter.html() || '';
+                textAfter = sanitizeHtml(textAfter.html() || '');
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
@@ -1295,6 +1333,8 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
@@ -1369,7 +1409,7 @@ var $exeDevice = {
             game.gameMode != 0 && !game.useLives
         );
         $('#vquextECustomMessages').prop('checked', game.customMessages);
-        $('#vquextEAuthor').val(game.authorVideo);
+        $('#vquextEAuthor').val(sanitizeText(game.authorVideo));
         $('#vquextENavigable').prop('checked', game.isNavigable);
         $('#vquextERepeatQuestion').prop('checked', game.repeatQuestion);
         $('#vquextERepeatQuestion').prop('disabled', !game.isNavigable);
@@ -1390,7 +1430,7 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.videoType =
             typeof game.videoType == 'undefined' ? 0 : game.videoType;
-        $exeDevice.idVideoQuExt = game.idVideoQuExt;
+        $exeDevice.idVideoQuExt = sanitizeUrl(game.idVideoQuExt || '');
         $exeDevice.endVideoQuExt = game.endVideoQuExt;
         $exeDevice.startVideoQuExt = game.startVideoQuExt;
         $exeDevice.pointStart = game.startVideoQuExt;
@@ -1401,11 +1441,11 @@ var $exeDevice = {
             game.questionsGame[i].msgHit =
                 typeof game.questionsGame[i].msgHit == 'undefined'
                     ? ''
-                    : game.questionsGame[i].msgHit;
+                    : sanitizeText(game.questionsGame[i].msgHit);
             game.questionsGame[i].msgError =
                 typeof game.questionsGame[i].msgError == 'undefined'
                     ? ''
-                    : game.questionsGame[i].msgError;
+                    : sanitizeText(game.questionsGame[i].msgError);
         }
         $('#vquextENumQuestions').text($exeDevice.questionsGame.length);
         $('#vquextNumberQuestion').val($exeDevice.active + 1);
@@ -1468,6 +1508,8 @@ var $exeDevice = {
     },
 
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         if (!$exeDevice.validateQuestion()) return false;
 
         const dataGame = this.validateData();
@@ -1489,7 +1531,7 @@ var $exeDevice = {
 
         const i18n = { ...this.ci18n };
         for (const i in i18n) {
-            const fVal = $(`#ci18n_${i}`).val();
+            const fVal = sanitizeText($(`#ci18n_${i}`).val());
             if (fVal !== '') i18n[i] = fVal;
         }
         dataGame.msgs = i18n;
@@ -1498,9 +1540,12 @@ var $exeDevice = {
             linkVideo = $exeDevice.createLinkVideoLocal(),
             instructions =
                 tinyMCE.get('eXeGameInstructions').getContent() || '',
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent() || '',
+            textAfter =
+                sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent()) ||
+                '',
             textFeedBack =
-                tinyMCE.get('vquextEFeedBackEditor').getContent() || '';
+                sanitizeHtml(tinyMCE.get('vquextEFeedBackEditor').getContent()) ||
+                '';
 
         let html = '<div class="vquext-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
@@ -1521,19 +1566,24 @@ var $exeDevice = {
     },
 
     createLinkVideoLocal: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const url =
-            $exeDevice.videoType > 0 ? $('#vquextEVIURL').val().trim() : '#';
-        return `<a href="${url}" class="js-hidden vquext-LinkLocalVideo">0</a>`;
+            $exeDevice.videoType > 0
+                ? sanitizeUrl($('#vquextEVIURL').val().trim())
+                : '#';
+        return `<a href="${$exeDevice.escapeHtml(url)}" class="js-hidden vquext-LinkLocalVideo">0</a>`;
     },
 
     validateQuestion: function () {
         let message = '',
             msgs = $exeDevice.msgs,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             videoType = $exeDevice.videoType,
             questionsGame = $exeDevice.questionsGame,
             active = $exeDevice.active,
             p = {},
-            idVideoQuExt = $('#vquextEVIURL').val().trim(),
+            idVideoQuExt = sanitizeUrl($('#vquextEVIURL').val().trim()),
             startVideoQuExt =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                     $('#vquextEVIStart').val()
@@ -1592,8 +1642,8 @@ var $exeDevice = {
         p.author = '';
         p.alt = '';
         p.url = '';
-        p.msgHit = $('#vquextEMessageOK').val();
-        p.msgError = $('#vquextEMessageKO').val();
+        p.msgHit = sanitizeText($('#vquextEMessageOK').val());
+        p.msgError = sanitizeText($('#vquextEMessageKO').val());
         p.soundVideo = $('#vquextECheckSoundVideo').is(':checked') ? 1 : 0;
         p.imageVideo = $('#vquextECheckImageVideo').is(':checked') ? 1 : 0;
         p.iVideo = 0;
@@ -1604,15 +1654,15 @@ var $exeDevice = {
         );
         p.quextion =
             p.typeQuestion === 1
-                ? $('#vquextEDefinitionWord').val().trim()
-                : $('#vquextEQuestion').val().trim();
+                ? sanitizeText($('#vquextEDefinitionWord').val().trim())
+                : sanitizeText($('#vquextEQuestion').val().trim());
         p.options = [];
         p.solution = parseInt($('input[name=vqxsolution]:checked').val());
-        p.solutionQuestion = $('#vquextESolutionWord').val();
+        p.solutionQuestion = sanitizeText($('#vquextESolutionWord').val());
 
         let optionEmpty = false;
         $('.VDQXTE-EAnwersOptions').each(function (i) {
-            const option = $(this).val().trim();
+            const option = sanitizeText($(this).val().trim());
             if (i < p.numberOptions && option.length === 0) {
                 optionEmpty = true;
             }
@@ -1660,13 +1710,19 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             instructionsExe = escape(
                 tinyMCE.get('eXeGameInstructions').getContent()
             ),
-            textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
-            textFeedBack = escape(
+            textAfter = escape(
+                sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent())
+            ),
+            textFeedBackContent = sanitizeHtml(
                 tinyMCE.get('vquextEFeedBackEditor').getContent()
             ),
+            textFeedBack = escape(textFeedBackContent),
             showMinimize = $('#vquextEShowMinimize').is(':checked'),
             answersRamdon = $('#vquextEAnswersRamdon').is(':checked'),
             reloadQuestion = $('#vquextEReloadQuestion').is(':checked'),
@@ -1678,7 +1734,7 @@ var $exeDevice = {
             ),
             useLives = $('#vquextEUseLives').is(':checked'),
             numberLives = parseInt(clear($('#vquextENumberLives').val())),
-            idVideoQuExt = $('#vquextEVIURL').val().trim(),
+            idVideoQuExt = sanitizeUrl($('#vquextEVIURL').val().trim()),
             endVideoQuExt =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                     $('#vquextEVIEnd').val()
@@ -1712,7 +1768,7 @@ var $exeDevice = {
             isMediaTeca = idVideoQuExt.startsWith(
                 'https://mediateca.educa.madrid.org/'
             ),
-            authorVideo = $('#vquextEAuthor').val(),
+            authorVideo = sanitizeText($('#vquextEAuthor').val()),
             isNavigable = $('#vquextENavigable').is(':checked'),
             repeatQuestion = $('#vquextERepeatQuestion').is(':checked'),
             percentajeQuestions = parseInt(
@@ -1726,7 +1782,10 @@ var $exeDevice = {
 
         if (!itinerary) return false;
         if (!progressBar) return false;
-        if ((gameMode === 2 || feedBack) && textFeedBack.trim().length === 0) {
+        if (
+            (gameMode === 2 || feedBack) &&
+            textFeedBackContent.trim().length === 0
+        ) {
             $exeDevice.showMessage($exeDevice.msgs.msgProvideFB);
             return false;
         }
@@ -1752,6 +1811,15 @@ var $exeDevice = {
 
         const questionsGame = $exeDevice.questionsGame;
         for (const mquestion of questionsGame) {
+            mquestion.quextion = sanitizeText(mquestion.quextion || '');
+            mquestion.msgHit = sanitizeText(mquestion.msgHit || '');
+            mquestion.msgError = sanitizeText(mquestion.msgError || '');
+            mquestion.solutionQuestion = sanitizeText(
+                mquestion.solutionQuestion || ''
+            );
+            mquestion.options = Array.isArray(mquestion.options)
+                ? mquestion.options.map((option) => sanitizeText(option || ''))
+                : [];
             if (mquestion.quextion.length === 0) {
                 $exeDevice.showMessage($exeDevice.msgs.msgECompleteQuestion);
                 return false;
@@ -1793,7 +1861,7 @@ var $exeDevice = {
             idVideoQuExt,
             startVideoQuExt,
             instructionsExe,
-            instructions: $('#eXeGameInstructions').text(),
+            instructions: sanitizeText($('#eXeGameInstructions').text()),
             showMinimize,
             optionsRamdon: false,
             answersRamdon,
@@ -2038,7 +2106,9 @@ var $exeDevice = {
         });
 
         $('#vquextEVIURL').change(function () {
-            const url = $(this).val().trim(),
+            const url = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                    $(this).val().trim()
+                ),
                 id = $exeDevices.iDevice.gamification.media.getIDYoutube(url);
             $('#vquextEVIEnd').val('00:00:00');
 
@@ -2051,7 +2121,9 @@ var $exeDevice = {
 
         $('#vquextEPlayStart').on('click', function (e) {
             e.preventDefault();
-            const url = $('#vquextEVIURL').val().trim(),
+            const url = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                    $('#vquextEVIURL').val().trim()
+                ),
                 id = $exeDevices.iDevice.gamification.media.getIDYoutube(url);
             if (typeof YT == 'undefined' && id) {
                 $exeDevice.loadYoutubeApi();
@@ -2213,6 +2285,8 @@ var $exeDevice = {
     },
 
     loadVideo: function (url) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
         if (!url.trim() || $exeDevice.videoLoading) return;
 
         $exeDevice.videoLoading = true;

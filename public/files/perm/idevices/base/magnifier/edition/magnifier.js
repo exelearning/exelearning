@@ -137,13 +137,15 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (data) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const width = Math.max(200, Math.min(data.width || 600, 1000));
         const height = data.height ?? '';
         const align = data.align ?? 'left';
         const defaultImage = $exeDevice.defaultImage;
         const textTextarea = data.textTextarea;
         const glassSize = data.glassSize ? data.glassSize : 1;
-        const imageResource = data.imageResource;
+        const imageResource = sanitizeUrl(data.imageResource);
         const initialZSize = data.initialZSize ?? 100;
         const isDefaultImage = data.isDefaultImage;
         const pathImage = isDefaultImage == '0' ? imageResource : '';
@@ -152,8 +154,8 @@ var $exeDevice = {
         $('#mnfFileInput').val(pathImage);
         $exeDevice.loadImageWithFallback(data);
         $('#mnfPreviewImage').attr('src', image);
-        $('#mnfAuthor').val(data.author || '');
-        $('#mnfAlt').val(data.alt || '');
+        $('#mnfAuthor').val(sanitizeText(data.author || ''));
+        $('#mnfAlt').val(sanitizeText(data.alt || ''));
 
         $('#mnfWidthInput').val(width);
         $('#mnfHeightInput').val(height);
@@ -167,6 +169,7 @@ var $exeDevice = {
         }
     },
     loadImageWithFallback: function (data) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         $('#mnfPreviewImage')
             .off('error')
             .on('error', function () {
@@ -174,7 +177,7 @@ var $exeDevice = {
                 data.isDefaultImage = '0';
                 $('#mnfFileInput').val('');
             })
-            .attr('src', data.image);
+            .attr('src', sanitizeUrl(data.image) || $exeDevice.defaultImage);
     },
     save: function () {
         let dataGame = $exeDevice.validateData();
@@ -186,8 +189,9 @@ var $exeDevice = {
     },
     addEvents: function () {
         $('#mnfFileInput').on('input change', function () {
+            const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'];
-            const selectedFile = $(this).val().trim();
+            const selectedFile = sanitizeUrl($(this).val().trim());
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
@@ -223,8 +227,10 @@ var $exeDevice = {
     },
 
     validateData: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const id = $exeDevice.id,
-            imageResource = $('#mnfFileInput').val(),
+            imageResource = sanitizeUrl($('#mnfFileInput').val()),
             isDefaultImage = imageResource ? '0' : '1',
             width = $('#mnfWidthInput').val() || '',
             height = $('#mnfHeightInput').val() || '',
@@ -240,8 +246,8 @@ var $exeDevice = {
 
         const textTextarea = html;
 
-        const author = $('#mnfAuthor').val() || '';
-        const alt = $('#mnfAlt').val() || '';
+        const author = sanitizeText($('#mnfAuthor').val() || '');
+        const alt = sanitizeText($('#mnfAlt').val() || '');
 
         return {
             id,

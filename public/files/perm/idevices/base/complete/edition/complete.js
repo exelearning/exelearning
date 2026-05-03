@@ -303,6 +303,8 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+                sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
             let json = $('.completa-DataGame', wrapper).text();
@@ -317,18 +319,22 @@ var $exeDevice = {
                 $imageBack = $('.completa-LinkBack', wrapper);
 
             if ($imageBack.length === 1) {
-                dataGame.urlBack = $imageBack.attr('href') || '';
+                dataGame.urlBack = sanitizeUrl($imageBack.attr('href') || '');
             }
 
             $exeDevice.updateFieldGame(dataGame);
 
-            if (textText.length == 1) $('#cmptEText').val(textText.html());
+            if (textText.length == 1) {
+                $('#cmptEText').val(sanitizeHtml(textText.html()));
+            }
             if (instructions.length === 1)
                 $('#eXeGameInstructions').val(instructions.html());
             if (textAfter.length === 1)
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                $('#eXeIdeviceTextAfter').val(sanitizeHtml(textAfter.html()));
             if (textFeedBack.length === 1)
-                $('#cmptEFeedBackEditor').val(textFeedBack.html());
+                $('#cmptEFeedBackEditor').val(
+                    sanitizeHtml(textFeedBack.html())
+                );
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
@@ -337,6 +343,8 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         game.wordsLimit =
             typeof game.wordsLimit === 'undefined' ? false : game.wordsLimit;
         game.evaluation =
@@ -347,13 +355,19 @@ var $exeDevice = {
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         game.hasBack =
             typeof game.hasBack !== 'undefined' ? game.hasBack : false;
-        game.urlBack = typeof game.urlBack !== 'undefined' ? game.urlBack : '';
+        game.urlBack =
+            typeof game.urlBack !== 'undefined'
+                ? sanitizeUrl(game.urlBack)
+                : '';
         game.authorBackImage =
             typeof game.authorBackImage !== 'undefined'
-                ? game.authorBackImage
+                ? sanitizeText(game.authorBackImage)
                 : '';
         game.fontColor =
-            typeof game.fontColor !== 'undefined' ? game.fontColor : '';
+            typeof game.fontColor !== 'undefined'
+                ? sanitizeText(game.fontColor)
+                : '';
+        game.wordsErrors = sanitizeText(game.wordsErrors || '');
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
@@ -434,17 +448,21 @@ var $exeDevice = {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         } else if (game.typeGame === 'Completa') {
+            const sanitizeHtml =
+                $exeDevicesEdition.iDevice.common.sanitizeHtml;
             game.id = $exeDevice.getIdeviceID();
             $exeDevice.updateFieldGame(game);
             const instructions =
                     game.instructionsExe || game.instructions || '',
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '',
-                textText = game.textText || '';
+                tAfter = sanitizeHtml(unescape(game.textAfter || '')),
+                textFeedBack = sanitizeHtml(
+                    unescape(game.textFeedBack || '')
+                ),
+                textText = sanitizeHtml(unescape(game.textText || ''));
             if (tinyMCE.get('cmptEText')) {
-                tinyMCE.get('cmptEText').setContent(unescape(textText));
+                tinyMCE.get('cmptEText').setContent(textText);
             } else {
-                $('#cmptEText').val(unescape(textText));
+                $('#cmptEText').val(textText);
             }
             if (tinyMCE.get('eXeGameInstructions')) {
                 tinyMCE
@@ -456,14 +474,14 @@ var $exeDevice = {
             if (tinyMCE.get('cmptEFeedBackEditor')) {
                 tinyMCE
                     .get('cmptEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
+                    .setContent(textFeedBack);
             } else {
-                $('#cmptEFeedBackEditor').val(unescape(textFeedBack));
+                $('#cmptEFeedBackEditor').val(textFeedBack);
             }
             if (tinyMCE.get('eXeIdeviceTextAfter')) {
-                tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
+                tinyMCE.get('eXeIdeviceTextAfter').setContent(tAfter);
             } else {
-                $('#eXeIdeviceTextAfter').val(unescape(tAfter));
+                $('#eXeIdeviceTextAfter').val(tAfter);
             }
         } else {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
@@ -482,7 +500,10 @@ var $exeDevice = {
     },
 
     save: function () {
-        const dataGame = $exeDevice.validateData();
+        const dataGame = $exeDevice.validateData(),
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
 
         if (!dataGame) return false;
 
@@ -490,7 +511,7 @@ var $exeDevice = {
             i18n = fields;
 
         for (const i in fields) {
-            const fVal = $('#ci18n_' + i).val();
+            const fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal !== '') i18n[i] = fVal;
         }
 
@@ -500,14 +521,16 @@ var $exeDevice = {
             divContent = '';
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('cmptEFeedBackEditor').getContent();
+        const textFeedBack = sanitizeHtml(
+            tinyMCE.get('cmptEFeedBackEditor').getContent()
+        );
         if (dataGame.instructions !== '') {
             divContent = `<div class="completa-instructions">${dataGame.instructions}</div>`;
         }
 
-        let img = $('#cmptEURLBack').val();
+        let img = sanitizeUrl($('#cmptEURLBack').val());
         if (img.trim().length > 4) {
-            img = `<a href="${img}" class="js-hidden completa-LinkBack" alt="Back" />Background</a>`;
+            img = `<a href="${$exeDevice.escapeAttribute(img)}" class="js-hidden completa-LinkBack" alt="Back" />Background</a>`;
         } else {
             img = '';
         }
@@ -518,14 +541,16 @@ var $exeDevice = {
         html += divContent;
         html += `<div class="completa-DataGame js-hidden">${json}</div>`;
 
-        const textText = tinyMCE.get('cmptEText').getContent();
+        const textText = sanitizeHtml(tinyMCE.get('cmptEText').getContent());
         if (textText !== '') {
             html += `<div class="completa-text-game js-hidden">${textText}</div>`;
         }
 
         html += img;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter !== '') {
             html += `<div class="completa-extra-content">${textAfter}</div>`;
         }
@@ -545,10 +570,17 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textText = tinyMCE.get('cmptEText').getContent(),
-            textFeedBack = tinyMCE.get('cmptEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
+            textText = sanitizeHtml(tinyMCE.get('cmptEText').getContent()),
+            textFeedBack = sanitizeHtml(
+                tinyMCE.get('cmptEFeedBackEditor').getContent()
+            ),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
             showMinimize = $('#cmptEShowMinimize').is(':checked'),
             showSolution = $('#cmptEShowSolution').is(':checked'),
             caseSensitive = $('#cmptECaseSensitive').is(':checked'),
@@ -561,15 +593,15 @@ var $exeDevice = {
             percentajeFB = parseInt($('#cmptEPercentajeFB').val(), 10),
             percentajeError = parseInt($('#cmptEPercentajeError').val(), 10),
             type = parseInt($('input[name=cmpttype]:checked').val(), 10),
-            wordsErrors = $('#cmptEWordsErrors').val(),
+            wordsErrors = sanitizeText($('#cmptEWordsErrors').val()),
             wordsLimit = $('#cmptEWordsLimit').is(':checked'),
             attempsNumber = parseInt($('#cmptAttemptsNumber').val(), 10),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             hasBack = $('#cmptBack0').is(':checked'),
-            urlBack = $('#cmptEURLBack').val().trim(),
-            authorBackImage = $('#cmptAuthorBack').val(),
-            fontColor = $('#cmptEFontColor').val(),
+            urlBack = sanitizeUrl($('#cmptEURLBack').val().trim()),
+            authorBackImage = sanitizeText($('#cmptAuthorBack').val()),
+            fontColor = sanitizeText($('#cmptEFontColor').val()),
             id = $exeDevice.getIdeviceID();
         if (!itinerary) return;
         if (!progressBar) return false;
@@ -790,5 +822,14 @@ var $exeDevice = {
                 })
                 .on('error', function () {});
         }
+    },
+
+    escapeAttribute: function (str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     },
 };

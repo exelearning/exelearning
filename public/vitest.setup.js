@@ -1017,6 +1017,21 @@ try {
 }
 
 // ============================================================================
+// Load Real DOMPurify for frontend tests
+// ============================================================================
+
+try {
+  const dompurifyPath = join(__vitest_setup_dirname, 'app/common/edicuatex/js/DOMPurify/purify.min.js');
+  const dompurifyCode = readFileSync(dompurifyPath, 'utf-8');
+  (0, eval)(dompurifyCode);
+  if (typeof window !== 'undefined' && window.DOMPurify) {
+    global.DOMPurify = window.DOMPurify;
+  }
+} catch (e) {
+  throw new Error(`DOMPurify failed to load: ${e.message}`);
+}
+
+// ============================================================================
 // Mock eXe.app for iDevice tests (Improved with history tracking)
 // ============================================================================
 

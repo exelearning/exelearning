@@ -486,16 +486,18 @@ var $exeDevice = {
     },
 
     jsonToCard: function (p, inload) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const $card = $exeDevice.addCard(!inload);
         // Valores por defecto seguros para versiones antiguas sin color/fondo
         const safe = {
             x: typeof p.x === 'number' ? p.x : 0,
             y: typeof p.y === 'number' ? p.y : 0,
-            author: p.author || '',
-            alt: p.alt || '',
-            url: p.url || '',
-            audio: p.audio || '',
-            eText: p.eText || '',
+            author: sanitizeText(p.author || ''),
+            alt: sanitizeText(p.alt || ''),
+            url: sanitizeUrl(p.url || ''),
+            audio: sanitizeUrl(p.audio || ''),
+            eText: sanitizeText(p.eText || ''),
             color: p.color || '#000000',
             backcolor: p.backcolor || '#ffffff',
         };
@@ -562,6 +564,8 @@ var $exeDevice = {
     },
 
     showPhrase: function (i, inload) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let num = i < 0 ? 0 : i;
 
         $exeDevice.active =
@@ -570,6 +574,14 @@ var $exeDevice = {
                 : num;
 
         const phrase = $exeDevice.phrasesGame[num];
+
+        phrase.msgHit = sanitizeText(phrase.msgHit || '');
+        phrase.msgError = sanitizeText(phrase.msgError || '');
+        phrase.definition = sanitizeText(phrase.definition || '');
+        phrase.audioDefinition = sanitizeUrl(phrase.audioDefinition || '');
+        phrase.audioHit = sanitizeUrl(phrase.audioHit || '');
+        phrase.audioError = sanitizeUrl(phrase.audioError || '');
+        phrase.phrase = sanitizeText(phrase.phrase || '');
 
         $exeDevice.clearPhrase();
 
@@ -848,12 +860,16 @@ var $exeDevice = {
         });
 
         $('#ordenaEURLAudio-' + id).on('change', function () {
-            $exeDevice.loadAudio($(this).val());
+            $exeDevice.loadAudio(
+                $exeDevicesEdition.iDevice.common.sanitizeUrl($(this).val())
+            );
         });
 
         $('#ordenaEPlayAudio-' + id).on('click', function (e) {
             e.preventDefault();
-            const audio = $('#ordenaEURLAudio-' + id).val();
+            const audio = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#ordenaEURLAudio-' + id).val()
+            );
             $exeDevice.loadAudio(audio);
         });
 
@@ -865,7 +881,9 @@ var $exeDevice = {
         });
 
         $('#ordenaEText-' + id).on('keyup', function () {
-            $('#ordenaETextDiv-' + id).text($(this).val());
+            const textValue =
+                $exeDevicesEdition.iDevice.common.sanitizeText($(this).val());
+            $('#ordenaETextDiv-' + id).text(textValue);
             if ($(this).val().trim().length > 0) {
                 $('#ordenaETextDiv-' + $exeDevice.activeID).show();
             } else {
@@ -896,22 +914,26 @@ var $exeDevice = {
     },
 
     cardToJson: function ($card) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         return {
             id: $card.data('id'),
             type: 2,
             x: parseFloat($card.find('.ODNE-EX').eq(0).val()),
             y: parseFloat($card.find('.ODNE-EY').eq(0).val()),
-            author: $card.find('.ODNE-EAuthor').eq(0).val(),
-            alt: $card.find('.ODNE-EAlt').eq(0).val(),
-            url: $card.find('.ODNE-EURLImage').eq(0).val(),
-            audio: $card.find('.ODNE-EURLAudio').eq(0).val(),
-            eText: $card.find('.ODNE-EText').eq(0).val(),
+            author: sanitizeText($card.find('.ODNE-EAuthor').eq(0).val()),
+            alt: sanitizeText($card.find('.ODNE-EAlt').eq(0).val()),
+            url: sanitizeUrl($card.find('.ODNE-EURLImage').eq(0).val()),
+            audio: sanitizeUrl($card.find('.ODNE-EURLAudio').eq(0).val()),
+            eText: sanitizeText($card.find('.ODNE-EText').eq(0).val()),
             color: $card.find('.ODNE-EColor').eq(0).val(),
             backcolor: $card.find('.ODNE-EBackColor').eq(0).val(),
         };
     },
 
     validatePhrase: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let correct = true;
         const phrase = $exeDevice.getPhraseDefault(),
             $cards = $('#ordenaEPhrase').find('div.ODNE-EDatosCarta'),
@@ -947,19 +969,24 @@ var $exeDevice = {
 
         if (!correct) return false;
 
-        phrase.msgHit = $('#ordenaEMessageOK').val();
-        phrase.msgError = $('#ordenaEMessageKO').val();
-        phrase.definition = $('#ordenaEDefinition').val();
-        phrase.audioDefinition = $('#ordenaEURLAudioDefinition').val();
-        phrase.audioHit = $('#ordenaEURLAudioOK').val();
-        phrase.audioError = $('#ordenaEURLAudioKO').val();
-        phrase.phrase = $('#ordenaEPraseI').val();
+        phrase.msgHit = sanitizeText($('#ordenaEMessageOK').val());
+        phrase.msgError = sanitizeText($('#ordenaEMessageKO').val());
+        phrase.definition = sanitizeText($('#ordenaEDefinition').val());
+        phrase.audioDefinition = sanitizeUrl($('#ordenaEURLAudioDefinition').val());
+        phrase.audioHit = sanitizeUrl($('#ordenaEURLAudioOK').val());
+        phrase.audioError = sanitizeUrl($('#ordenaEURLAudioKO').val());
+        phrase.phrase = sanitizeText($('#ordenaEPraseI').val());
         $exeDevice.phrasesGame[$exeDevice.active] = phrase;
 
         return true;
     },
 
     validateCard: function (p) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        p.eText = sanitizeText(p.eText || '');
+        p.url = sanitizeUrl(p.url || '');
+        p.audio = sanitizeUrl(p.audio || '');
         let message = '';
         if (p.eText.length == 0 && p.url.length < 5 && p.audio.length == 0) {
             message = $exeDevice.msgs.msgCompleteData;
@@ -1001,12 +1028,19 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+                sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+                sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
             const wrapper = $('<div></div>');
 
             wrapper.html(originalHTML);
 
             let json = $('.ordena-DataGame', wrapper).text();
             json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
+            json =
+                $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                    json
+                );
 
             const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
@@ -1015,9 +1049,13 @@ var $exeDevice = {
                 $audiosHit = $('.ordena-LinkAudiosHit', wrapper),
                 $imageBack = $('.ordena-ImageBack', wrapper);
 
+            if (!dataGame || !Array.isArray(dataGame.phrasesGame)) {
+                return;
+            }
+
             dataGame.imgCard = '';
             if ($imageBack.length === 1) {
-                dataGame.imgCard = $imageBack.attr('href') || '';
+                dataGame.imgCard = sanitizeUrl($imageBack.attr('href') || '');
             }
 
             for (let i = 0; i < dataGame.phrasesGame.length; i++) {
@@ -1028,7 +1066,7 @@ var $exeDevice = {
                 $imagesLink.each(function () {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < cards.length) {
-                        cards[iq].url = $(this).attr('href');
+                        cards[iq].url = sanitizeUrl($(this).attr('href') || '');
                         if (cards[iq].url < 4) {
                             cards[iq].url = '';
                         }
@@ -1038,23 +1076,52 @@ var $exeDevice = {
                 $audiosLink.each(function () {
                     const iqa = parseInt($(this).text());
                     if (!isNaN(iqa) && iqa < cards.length) {
-                        cards[iqa].audio = $(this).attr('href');
+                        cards[iqa].audio = sanitizeUrl(
+                            $(this).attr('href') || ''
+                        );
                         if (cards[iqa].audio.length < 4) {
                             cards[iqa].audio = '';
                         }
                     }
                 });
+                dataGame.phrasesGame[i].msgHit = sanitizeText(
+                    dataGame.phrasesGame[i].msgHit || ''
+                );
+                dataGame.phrasesGame[i].msgError = sanitizeText(
+                    dataGame.phrasesGame[i].msgError || ''
+                );
+                dataGame.phrasesGame[i].definition = sanitizeText(
+                    dataGame.phrasesGame[i].definition || ''
+                );
+                dataGame.phrasesGame[i].audioDefinition = sanitizeUrl(
+                    dataGame.phrasesGame[i].audioDefinition || ''
+                );
+                dataGame.phrasesGame[i].audioHit = sanitizeUrl(
+                    dataGame.phrasesGame[i].audioHit || ''
+                );
+                dataGame.phrasesGame[i].audioError = sanitizeUrl(
+                    dataGame.phrasesGame[i].audioError || ''
+                );
                 dataGame.phrasesGame[i].phrase =
                     dataGame.phrasesGame[i].phrase == null
                         ? ''
-                        : dataGame.phrasesGame[i].phrase;
+                        : sanitizeText(dataGame.phrasesGame[i].phrase);
+
+                dataGame.phrasesGame[i].cards = (cards || []).map((card) => ({
+                    ...card,
+                    author: sanitizeText(card.author || ''),
+                    alt: sanitizeText(card.alt || ''),
+                    eText: sanitizeText(card.eText || ''),
+                    url: sanitizeUrl(card.url || ''),
+                    audio: sanitizeUrl(card.audio || ''),
+                }));
             }
 
             $audiosDef.each(function () {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < dataGame.phrasesGame.length) {
                     dataGame.phrasesGame[iqa].audioDefinition =
-                        $(this).attr('href');
+                        sanitizeUrl($(this).attr('href') || '');
                     if (dataGame.phrasesGame[iqa].audioDefinition.length < 4) {
                         dataGame.phrasesGame[iqa].audioDefinition = '';
                     }
@@ -1064,7 +1131,9 @@ var $exeDevice = {
             $audiosError.each(function () {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < dataGame.phrasesGame.length) {
-                    dataGame.phrasesGame[iqa].audioError = $(this).attr('href');
+                    dataGame.phrasesGame[iqa].audioError = sanitizeUrl(
+                        $(this).attr('href') || ''
+                    );
                     if (dataGame.phrasesGame[iqa].audioError.length < 4) {
                         dataGame.phrasesGame[iqa].audioError = '';
                     }
@@ -1074,7 +1143,9 @@ var $exeDevice = {
             $audiosHit.each(function () {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < dataGame.phrasesGame.length) {
-                    dataGame.phrasesGame[iqa].audioHit = $(this).attr('href');
+                    dataGame.phrasesGame[iqa].audioHit = sanitizeUrl(
+                        $(this).attr('href') || ''
+                    );
                     if (dataGame.phrasesGame[iqa].audioHit.length < 4) {
                         dataGame.phrasesGame[iqa].audioHit = '';
                     }
@@ -1089,11 +1160,15 @@ var $exeDevice = {
 
             const textAfter = $('.ordena-extra-content', wrapper);
             if (textAfter.length == 1)
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                $('#eXeIdeviceTextAfter').val(
+                    sanitizeHtml(textAfter.html() || '')
+                );
 
             const textFeedBack = $('.ordena-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#ordenaEFeedBackEditor').val(textFeedBack.html());
+                $('#ordenaEFeedBackEditor').val(
+                    sanitizeHtml(textFeedBack.html() || '')
+                );
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
@@ -1112,6 +1187,9 @@ var $exeDevice = {
     },
 
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         if (!$exeDevice.validatePhrase()) return;
 
         const dataGame = $exeDevice.validateData();
@@ -1121,7 +1199,7 @@ var $exeDevice = {
         const fields = this.ci18n,
             i18n = fields;
         for (let i in fields) {
-            let fVal = $('#ci18n_' + i).val();
+            let fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal != '') i18n[i] = fVal;
         }
 
@@ -1132,7 +1210,9 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('ordenaEFeedBackEditor').getContent();
+        const textFeedBack = sanitizeHtml(
+            tinyMCE.get('ordenaEFeedBackEditor').getContent()
+        );
 
         if (dataGame.instructions != '')
             divContent =
@@ -1140,9 +1220,11 @@ var $exeDevice = {
                 dataGame.instructions +
                 '</div>';
 
-        let imgCard = $('#ordenaEURLImgCard').val();
+        let imgCard = sanitizeUrl($('#ordenaEURLImgCard').val());
         if (imgCard.trim().length > 4) {
-            imgCard = `<a href="${imgCard}" class="js-hidden ordena-ImageBack" alt="Back" />Background</a>`;
+            imgCard = `<a href="${$exeDevice.escapeHtml(
+                imgCard
+            )}" class="js-hidden ordena-ImageBack" alt="Back" />Background</a>`;
         } else {
             imgCard = '';
         }
@@ -1159,7 +1241,9 @@ var $exeDevice = {
         html += linksImages;
         html += linksAudios;
         html += imgCard;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter != '') {
             html += '<div class="ordena-extra-content">' + textAfter + '</div>';
         }
@@ -1195,20 +1279,21 @@ var $exeDevice = {
     },
 
     createlinksImage: function (phrasesGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         for (let i = 0; i < phrasesGame.length; i++) {
             const q = phrasesGame[i];
             for (let k = 0; k < q.cards.length; k++) {
                 let p = q.cards[k],
                     linkImage = '';
+                const imageUrl = sanitizeUrl(p.url || '');
                 if (
-                    typeof p.url != 'undefined' &&
-                    p.url.length > 4 &&
-                    p.url.indexOf('http') != 0
+                    imageUrl.length > 4 &&
+                    imageUrl.indexOf('http') != 0
                 ) {
                     linkImage =
                         '<a href="' +
-                        p.url +
+                        $exeDevice.escapeHtml(imageUrl) +
                         '" class="js-hidden ordena-LinkImages-' +
                         i +
                         '">' +
@@ -1222,20 +1307,21 @@ var $exeDevice = {
     },
 
     createlinksAudio: function (phrasesGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         for (let i = 0; i < phrasesGame.length; i++) {
             const q = phrasesGame[i];
             for (let k = 0; k < q.cards.length; k++) {
                 let p = q.cards[k],
                     linkImage = '';
+                const cardAudio = sanitizeUrl(p.audio || '');
                 if (
-                    typeof p.audio != 'undefined' &&
-                    p.audio.indexOf('http') != 0 &&
-                    p.audio.length > 4
+                    cardAudio.indexOf('http') != 0 &&
+                    cardAudio.length > 4
                 ) {
                     linkImage =
                         '<a href="' +
-                        p.audio +
+                        $exeDevice.escapeHtml(cardAudio) +
                         '" class="js-hidden ordena-LinkAudios-' +
                         i +
                         '">' +
@@ -1244,40 +1330,31 @@ var $exeDevice = {
                 }
                 html += linkImage;
             }
-            if (
-                typeof q.audioDefinition != 'undefined' &&
-                q.audioDefinition.indexOf('http') != 0 &&
-                q.audioDefinition.length > 4
-            ) {
+            const audioDefinition = sanitizeUrl(q.audioDefinition || '');
+            if (audioDefinition.indexOf('http') != 0 && audioDefinition.length > 4) {
                 const linkImage =
                     '<a href="' +
-                    q.audioDefinition +
+                    $exeDevice.escapeHtml(audioDefinition) +
                     '" class="js-hidden ordena-LinkAudiosDef">' +
                     i +
                     '</a>';
                 html += linkImage;
             }
-            if (
-                typeof q.audioHit != 'undefined' &&
-                q.audioHit.indexOf('http') != 0 &&
-                q.audioHit.length > 4
-            ) {
+            const audioHit = sanitizeUrl(q.audioHit || '');
+            if (audioHit.indexOf('http') != 0 && audioHit.length > 4) {
                 const linkImage =
                     '<a href="' +
-                    q.audioHit +
+                    $exeDevice.escapeHtml(audioHit) +
                     '" class="js-hidden ordena-LinkAudiosHit">' +
                     i +
                     '</a>';
                 html += linkImage;
             }
-            if (
-                typeof q.audioError != 'undefined' &&
-                q.audioError.indexOf('http') != 0 &&
-                q.audioError.length > 4
-            ) {
+            const audioError = sanitizeUrl(q.audioError || '');
+            if (audioError.indexOf('http') != 0 && audioError.length > 4) {
                 const linkImage =
                     '<a href="' +
-                    q.audioError +
+                    $exeDevice.escapeHtml(audioError) +
                     '" class="js-hidden ordena-LinkAudiosError">' +
                     i +
                     '</a>';
@@ -1302,9 +1379,16 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('ordenaEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textFeedBack = sanitizeHtml(
+                tinyMCE.get('ordenaEFeedBackEditor').getContent()
+            ),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
             showMinimize = $('#ordenaEShowMinimize').is(':checked'),
             wordBorder = $('#ordenaEWordBorder').is(':checked'),
             itinerary =
@@ -1325,7 +1409,7 @@ var $exeDevice = {
             gameColumns = parseInt(
                 $('input.ODNE-EColumns[name=odncolumns]:checked').val()
             ),
-            author = $('#ordenaEAuthor').val(),
+            author = sanitizeText($('#ordenaEAuthor').val()),
             showSolution = $('#ordenaEShowSolution').is(':checked'),
             maxWidth = $('#ordenaMaxWidth').is(':checked'),
             orderedColumns = $('#ordenaOrderedColumns').is(':checked'),
@@ -1341,6 +1425,24 @@ var $exeDevice = {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
+
+        phrasesGame.forEach((phrase) => {
+            phrase.msgHit = sanitizeText(phrase.msgHit || '');
+            phrase.msgError = sanitizeText(phrase.msgError || '');
+            phrase.definition = sanitizeText(phrase.definition || '');
+            phrase.audioDefinition = sanitizeUrl(phrase.audioDefinition || '');
+            phrase.audioHit = sanitizeUrl(phrase.audioHit || '');
+            phrase.audioError = sanitizeUrl(phrase.audioError || '');
+            phrase.phrase = sanitizeText(phrase.phrase || '');
+            phrase.cards = (phrase.cards || []).map((card) => ({
+                ...card,
+                author: sanitizeText(card.author || ''),
+                alt: sanitizeText(card.alt || ''),
+                url: sanitizeUrl(card.url || ''),
+                audio: sanitizeUrl(card.audio || ''),
+                eText: sanitizeText(card.eText || ''),
+            }));
+        });
 
         const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
@@ -1380,13 +1482,15 @@ var $exeDevice = {
     },
 
     showImage: function (id) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const $cursor = $('#ordenaECursor-' + id),
             $image = $('#ordenaEImage-' + id),
             $nimage = $('#ordenaENoImage-' + id),
             x = parseFloat($('#ordenaEX-' + id).val()),
             y = parseFloat($('#ordenaEY-' + id).val()),
-            alt = $('#ordenaEAlt-' + id).val(),
-            url = $('#ordenaEURLImage-' + id).val();
+            alt = sanitizeText($('#ordenaEAlt-' + id).val()),
+            url = sanitizeUrl($('#ordenaEURLImage-' + id).val());
 
         $image.hide();
         $cursor.hide();
@@ -1420,6 +1524,9 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
+        selectedFile = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+            selectedFile
+        );
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
@@ -1740,8 +1847,9 @@ var $exeDevice = {
         $('#ordenaEURLImgCard').on('change', () => $exeDevice.loadImageCard());
     },
     loadImageCard: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#ordenaEURLImgCard').val(),
+            url = sanitizeUrl($('#ordenaEURLImgCard').val()),
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
@@ -1771,8 +1879,9 @@ var $exeDevice = {
     },
 
     loadImage: function (id) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#ordenaEURLImage-' + id).val(),
+            url = sanitizeUrl($('#ordenaEURLImage-' + id).val()),
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
@@ -1784,6 +1893,8 @@ var $exeDevice = {
     },
 
     loadAudio: function (url) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
         const validExt = ['mp3', 'wab', 'ogg'],
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
@@ -1925,6 +2036,8 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         $exeDevice.active = 0;
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
@@ -1960,7 +2073,7 @@ var $exeDevice = {
         $('#ordenaEPercentajeQuestions').val(game.percentajeQuestions);
         $('#ordenaETime').val(game.time);
         $('#ordenaETimeShowSolution').val(game.timeShowSolution);
-        $('#ordenaEAuthor').val(game.author);
+        $('#ordenaEAuthor').val(sanitizeText(game.author));
         $('#ordenaEShowSolution').prop('checked', game.showSolution);
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
@@ -1969,7 +2082,24 @@ var $exeDevice = {
             game.repeatActivity,
             game.weighted
         );
-        $exeDevice.phrasesGame = game.phrasesGame;
+        $exeDevice.phrasesGame = (game.phrasesGame || []).map((phrase) => ({
+            ...phrase,
+            msgHit: sanitizeText(phrase.msgHit || ''),
+            msgError: sanitizeText(phrase.msgError || ''),
+            definition: sanitizeText(phrase.definition || ''),
+            audioDefinition: sanitizeUrl(phrase.audioDefinition || ''),
+            audioHit: sanitizeUrl(phrase.audioHit || ''),
+            audioError: sanitizeUrl(phrase.audioError || ''),
+            phrase: sanitizeText(phrase.phrase || ''),
+            cards: (phrase.cards || []).map((card) => ({
+                ...card,
+                author: sanitizeText(card.author || ''),
+                alt: sanitizeText(card.alt || ''),
+                url: sanitizeUrl(card.url || ''),
+                audio: sanitizeUrl(card.audio || ''),
+                eText: sanitizeText(card.eText || ''),
+            })),
+        }));
         $exeDevice.updateGameMode(game.feedBack);
 
         $('#ordenaENumPhrases').text($exeDevice.phrasesGame.length);
@@ -1982,9 +2112,10 @@ var $exeDevice = {
                 "']"
         ).prop('checked', true);
 
-        $('#ordenaEURLImgCard').val(game.imgCard);
+        const safeImgCard = sanitizeUrl(game.imgCard || '');
+        $('#ordenaEURLImgCard').val(safeImgCard);
 
-        $exeDevice.showImageCard(game.imgCard);
+        $exeDevice.showImageCard(safeImgCard);
 
         $exeDevice.updateQuestionsNumber();
 
@@ -2028,8 +2159,10 @@ var $exeDevice = {
     },
 
     showImageCard: function (url) {
-        $image = $('#ordenaECard');
-        $nimage = $('#ordenaENoCard');
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
+        const $image = $('#ordenaECard');
+        const $nimage = $('#ordenaENoCard');
         $image.hide();
         $nimage.show();
         if (!url) return;
@@ -2054,6 +2187,7 @@ var $exeDevice = {
     },
 
     importGame: function (content) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
@@ -2073,8 +2207,12 @@ var $exeDevice = {
             tAfter = game.textAfter || '',
             textFeedBack = game.textFeedBack || '';
         tinyMCE.get('eXeGameInstructions').setContent(unescape(instructions));
-        tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-        tinyMCE.get('ordenaEFeedBackEditor').setContent(unescape(textFeedBack));
+        tinyMCE
+            .get('eXeIdeviceTextAfter')
+            .setContent(sanitizeHtml(unescape(tAfter)));
+        tinyMCE
+            .get('ordenaEFeedBackEditor')
+            .setContent(sanitizeHtml(unescape(textFeedBack)));
         //$('.exe-form-tabs li:first-child a').click();
         $exeDevice.showPhrase(0, false);
     },

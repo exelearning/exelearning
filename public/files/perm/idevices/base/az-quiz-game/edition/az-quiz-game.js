@@ -718,9 +718,10 @@ var $exeDevice = {
                 '</div>';
         }
 
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const linksImages = $exeDevice.createlinksImage(dataGame.wordsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.wordsGame),
-            textAfter = tinymce.editors[1].getContent();
+            textAfter = sanitizeHtml(tinymce.editors[1].getContent());
 
         let html = '<div class="rosco-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
@@ -946,9 +947,10 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
             msgs = $exeDevice.msgs,
             instructions = tinymce.editors[0].getContent(),
-            textAfter = tinymce.editors[1].getContent(),
+            textAfter = sanitizeHtml(tinymce.editors[1].getContent()),
             showMinimize = $('#roscoShowMinimize').is(':checked'),
             showSolution = $('#roscoShowSolution').is(':checked'),
             modeBoard = $('#roscoModeBoard').is(':checked'),
@@ -971,11 +973,13 @@ var $exeDevice = {
             return false;
         }
 
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let words = [],
             zr = true;
 
         $('.roscoWordEdition').each(function () {
-            const word = clear($(this).val().trim());
+            const word = sanitizeText(clear($(this).val().trim()));
             words.push(word);
             if (word.length > 0) zr = false;
         });
@@ -987,31 +991,31 @@ var $exeDevice = {
 
         const definitions = $('.roscoDefinitionEdition')
             .map(function () {
-                return clear($(this).val());
+                return sanitizeText(clear($(this).val()));
             })
             .get();
 
         const authors = $('.roscoAuthorEdition')
             .map(function () {
-                return clear($(this).val());
+                return sanitizeText(clear($(this).val()));
             })
             .get();
 
         const alts = $('.roscoAlt')
             .map(function () {
-                return clear($(this).val());
+                return sanitizeText(clear($(this).val()));
             })
             .get();
 
         const urls = $('.roscoURLImageEdition')
             .map(function () {
-                return $(this).val();
+                return sanitizeUrl($(this).val());
             })
             .get();
 
         const audios = $('.roscoURLAudioEdition')
             .map(function () {
-                return $(this).val();
+                return sanitizeUrl($(this).val());
             })
             .get();
 
@@ -1397,8 +1401,12 @@ var $exeDevice = {
                     // Evita cola de animaciones si se hace clic repetidamente rápido.
                     $panel.stop(true, true).slideToggle(180);
 
-                    const img = $panel.find('.roscoHomeImageEdition');
-                    const url = $panel.find('.roscoURLImageEdition').val();
+                    const sanitizeUrl =
+                            $exeDevicesEdition.iDevice.common.sanitizeUrl,
+                        img = $panel.find('.roscoHomeImageEdition');
+                    const url = sanitizeUrl(
+                        $panel.find('.roscoURLImageEdition').val()
+                    );
                     const alt = $panel.find('.roscoAlt').val();
                     let y =
                         parseFloat($panel.find('.roscoYImageEdition').val()) ||

@@ -12,9 +12,29 @@ const __dirname = dirname(__filename);
 
 describe('rubric iDevice CSV tools (edition)', () => {
   let $exeDevice;
+  let sanitizeTextMock;
+  let sanitizeHtmlMock;
+  let sanitizeUrlMock;
 
   beforeEach(() => {
     global.$exeDevice = undefined;
+
+    sanitizeTextMock = vi.fn((value) => String(value || '').replace(/<[^>]*>/g, ''));
+    sanitizeHtmlMock = vi.fn((value) => String(value || '').replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ''));
+    sanitizeUrlMock = vi.fn((value) => {
+      const trimmed = String(value || '').trim();
+      return /^\s*(javascript:|data:|vbscript:)/i.test(trimmed) ? '' : trimmed;
+    });
+
+    global.$exeDevicesEdition = global.$exeDevicesEdition || { iDevice: {} };
+    global.$exeDevicesEdition.iDevice = global.$exeDevicesEdition.iDevice || {};
+    global.$exeDevicesEdition.iDevice.common = {
+      ...(global.$exeDevicesEdition.iDevice.common || {}),
+      sanitizeText: sanitizeTextMock,
+      sanitizeHtml: sanitizeHtmlMock,
+      sanitizeUrl: sanitizeUrlMock,
+    };
+
     $exeDevice = global.loadIdevice(join(__dirname, 'rubric.js'));
   });
 
@@ -516,6 +536,25 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect(wrapper.querySelector('a.author')).toBeNull();
     expect(wrapper.querySelector('.author')?.textContent).toBe('Alice ');
     expect(wrapper.querySelector('.title em')?.textContent).toBe('alert(1)Unsafe title');
+  });
+
+  it('sanitizeExternalUrl delegates to common_edition sanitizeUrl helper', () => {
+    expect($exeDevice.sanitizeExternalUrl('javascript:alert(1)')).toBe('');
+    expect(sanitizeUrlMock).toHaveBeenCalledWith('javascript:alert(1)');
+  });
+
+  it('sanitizeDescriptorHtml delegates to common_edition sanitizeHtml with descriptor overrides', () => {
+    const html = '<b onclick="alert(1)">Bold</b><em>No</em><u>Under</u>';
+    sanitizeHtmlMock.mockClear();
+    sanitizeHtmlMock.mockReturnValue('<b>Bold</b>No<u>Under</u>');
+
+    const result = $exeDevice.sanitizeDescriptorHtml(html);
+
+    expect(result).toBe('<b>Bold</b>No<u>Under</u>');
+    expect(sanitizeHtmlMock).toHaveBeenCalledWith(html, {
+      ALLOWED_TAGS: ['b', 'i', 'u'],
+      ALLOWED_ATTR: [],
+    });
   });
 
   it('jsonToTable keeps quoted author values without breaking the author inputs', () => {

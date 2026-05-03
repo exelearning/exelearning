@@ -253,14 +253,14 @@ var $exeDevice = {
     },
 
     clickPlay: function () {
-        const urlvideo = $('#quextEURLYoutube');
-        if (urlvideo.length === 0 || urlvideo.val().trim().length < 3) return;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            urlvideo = $('#quextEURLYoutube'),
+            videoUrl = sanitizeUrl(urlvideo.val().trim());
+        if (urlvideo.length === 0 || videoUrl.length < 3) return;
         if (
-            $exeDevices.iDevice.gamification.media.getIDYoutube(
-                $('#quextEURLYoutube').val().trim()
-            ) ||
+            $exeDevices.iDevice.gamification.media.getIDYoutube(videoUrl) ||
             $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                $('#quextEURLYoutube').val().trim()
+                videoUrl
             )
         ) {
             $exeDevice.showVideoQuestion();
@@ -268,7 +268,8 @@ var $exeDevice = {
     },
 
     playVideoQuestion: function () {
-        const urlvideo = $('#quextEURLYoutube').val().trim();
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            urlvideo = sanitizeUrl($('#quextEURLYoutube').val().trim());
         if (!urlvideo) return;
         if (
             $exeDevices.iDevice.gamification.media.getIDYoutube(urlvideo.trim())
@@ -644,6 +645,9 @@ var $exeDevice = {
     },
 
     showQuestion: function (i) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let num = i < 0 ? 0 : i;
         num =
             num >= $exeDevice.questionsGame.length
@@ -651,6 +655,20 @@ var $exeDevice = {
                 : num;
         const p = $exeDevice.questionsGame[num];
         let numOptions = 0;
+
+        p.quextion = sanitizeText(p.quextion || '');
+        p.author = sanitizeText(p.author || '');
+        p.alt = sanitizeText(p.alt || '');
+        p.url = sanitizeUrl(p.url || '');
+        p.audio = sanitizeUrl(p.audio || '');
+        p.msgError = sanitizeText(p.msgError || '');
+        p.msgHit = sanitizeText(p.msgHit || '');
+        p.options = Array.isArray(p.options)
+            ? p.options.map((option) => sanitizeText(option || ''))
+            : ['', '', '', ''];
+        if (p.type === 3) {
+            p.eText = sanitizeHtml(unescape(p.eText || ''));
+        }
 
         $('.QXTE-EAnwersOptions').each(function (j) {
             numOptions++;
@@ -700,7 +718,7 @@ var $exeDevice = {
             $exeDevice.endSilent = p.silentVideo + p.tSilentVideo;
             $exeDevice.playVideoQuestion();
         } else if (p.type === 3) {
-            tinyMCE.get('quextEText').setContent(unescape(p.eText));
+            tinyMCE.get('quextEText').setContent(p.eText || '');
         }
 
         $('.QXTE-EAnwersOptions').each(function (j) {
@@ -738,6 +756,7 @@ var $exeDevice = {
     },
 
     showVideoQuestion: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const soundVideo = $('#quextECheckSoundVideo').is(':checked') ? 1 : 0,
             imageVideo = $('#quextECheckImageVideo').is(':checked') ? 1 : 0,
             iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
@@ -747,7 +766,7 @@ var $exeDevice = {
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                     $('#quextEEndVideo').val()
                 ),
-            url = $('#quextEURLYoutube').val().trim(),
+            url = sanitizeUrl($('#quextEURLYoutube').val().trim()),
             id = $exeDevices.iDevice.gamification.media.getIDYoutube(url),
             idLocal =
                 $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
@@ -806,13 +825,17 @@ var $exeDevice = {
     },
 
     showImage: function (url, x, y, alt) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const $image = $('#quextEImage'),
             $cursor = $('#quextECursor');
+        const safeAlt = sanitizeText(alt),
+            safeUrl = sanitizeUrl(url);
         $image.hide();
         $cursor.hide();
-        $image.attr('alt', alt);
+        $image.attr('alt', safeAlt);
         $('#quextENoImage').show();
-        url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
+        url = $exeDevices.iDevice.gamification.media.extractURLGD(safeUrl);
         $image
             .prop('src', url)
             .on('load', function () {
@@ -1432,6 +1455,9 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+                sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+                sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
             $exeDevice.active = 0;
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
@@ -1443,15 +1469,26 @@ var $exeDevice = {
                 json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
             }
 
+            json =
+                $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                    json
+                );
+
             const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $imagesLink = $('.quext-LinkImages', wrapper),
                 $audiosLink = $('.quext-LinkAudios', wrapper);
 
+            if (!dataGame || !Array.isArray(dataGame.questionsGame)) {
+                return;
+            }
+
             $imagesLink.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < dataGame.questionsGame.length) {
-                    dataGame.questionsGame[iq].url = $(this).attr('href');
+                    dataGame.questionsGame[iq].url = sanitizeUrl(
+                        $(this).attr('href') || ''
+                    );
                     if (
                         dataGame.questionsGame[iq].url.length < 4 &&
                         dataGame.questionsGame[iq].type === 1
@@ -1462,14 +1499,28 @@ var $exeDevice = {
             });
 
             dataGame.questionsGame.forEach(function (question, index) {
-                question.audio =
-                    typeof question.audio === 'undefined' ? '' : question.audio;
+                question.audio = sanitizeUrl(
+                    typeof question.audio === 'undefined' ? '' : question.audio
+                );
+                question.url = sanitizeUrl(question.url || '');
+                question.author = sanitizeText(question.author || '');
+                question.alt = sanitizeText(question.alt || '');
+                question.quextion = sanitizeText(question.quextion || '');
+                question.msgHit = sanitizeText(question.msgHit || '');
+                question.msgError = sanitizeText(question.msgError || '');
+                question.options = Array.isArray(question.options)
+                    ? question.options.map((option) =>
+                          sanitizeText(option || '')
+                      )
+                    : ['', '', '', ''];
             });
 
             $audiosLink.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < dataGame.questionsGame.length) {
-                    dataGame.questionsGame[iq].audio = $(this).attr('href');
+                    dataGame.questionsGame[iq].audio = sanitizeUrl(
+                        $(this).attr('href') || ''
+                    );
                     if (dataGame.questionsGame[iq].audio.length < 4) {
                         dataGame.questionsGame[iq].audio = '';
                     }
@@ -1479,7 +1530,7 @@ var $exeDevice = {
             $exeDevice.active = 0;
             dataGame.questionsGame.forEach(function (question) {
                 if (question.type === 3) {
-                    question.eText = unescape(question.eText);
+                    question.eText = sanitizeHtml(unescape(question.eText));
                 }
             });
 
@@ -1490,12 +1541,16 @@ var $exeDevice = {
 
             const textAfter = $('.quext-extra-content', wrapper);
             if (textAfter.length === 1) {
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                $('#eXeIdeviceTextAfter').val(
+                    sanitizeHtml(textAfter.html() || '')
+                );
             }
 
             const textFeedBack = $('.quext-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
-                $('#quextEFeedBackEditor').val(textFeedBack.html());
+                $('#quextEFeedBackEditor').val(
+                    sanitizeHtml(textFeedBack.html() || '')
+                );
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
@@ -1657,6 +1712,8 @@ var $exeDevice = {
     },
 
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         if (!$exeDevice.validateQuestion()) return false;
 
         const dataGame = this.validateData();
@@ -1667,7 +1724,7 @@ var $exeDevice = {
         const fields = this.ci18n,
             i18n = Object.assign({}, fields);
         for (const key in fields) {
-            const fVal = $('#ci18n_' + key).val();
+            const fVal = sanitizeText($('#ci18n_' + key).val());
             if (fVal !== '') {
                 i18n[key] = fVal;
             }
@@ -1683,7 +1740,9 @@ var $exeDevice = {
             divContent = `<div class="quext-instructions QXTP-instructions">${instructions}</div>`;
         }
 
-        const textFeedBack = tinyMCE.get('quextEFeedBackEditor').getContent(),
+        const textFeedBack = sanitizeHtml(
+                tinyMCE.get('quextEFeedBackEditor').getContent()
+            ),
             linksImages = $exeDevice.createlinksImage(dataGame.questionsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.questionsGame);
 
@@ -1696,7 +1755,9 @@ var $exeDevice = {
 
         html += linksImages;
         html += linksAudios;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter !== '') {
             html += `<div class="quext-extra-content">${textAfter}</div>`;
         }
@@ -1731,24 +1792,27 @@ var $exeDevice = {
         let message = '',
             optionEmpy = false,
             p = {};
-        const msgs = $exeDevice.msgs;
+        const msgs = $exeDevice.msgs,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
 
         p.type = parseInt($('input[name=qxtype]:checked').val());
         p.time = parseInt($('input[name=qxttime]:checked').val());
         p.numberOptions = parseInt($('input[name=qxtnumber]:checked').val());
         p.x = parseFloat($('#quextEXImage').val());
         p.y = parseFloat($('#quextEYImage').val());
-        p.author = $('#quextEAuthor').val();
-        p.alt = $('#quextEAlt').val();
+        p.author = sanitizeText($('#quextEAuthor').val());
+        p.alt = sanitizeText($('#quextEAlt').val());
         p.customScore = parseFloat($('#quextEScoreQuestion').val());
-        p.url = $('#quextEURLImage').val().trim();
-        p.audio = $('#quextEURLAudio').val();
+        p.url = sanitizeUrl($('#quextEURLImage').val().trim());
+        p.audio = sanitizeUrl($('#quextEURLAudio').val());
 
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type === 2) {
-            const youtubeUrl = $('#quextEURLYoutube').val().trim();
+            const youtubeUrl = sanitizeUrl($('#quextEURLYoutube').val().trim());
             p.url = $exeDevices.iDevice.gamification.media.getIDYoutube(
                 youtubeUrl
             )
@@ -1776,15 +1840,15 @@ var $exeDevice = {
             $('#quextESilenceVideo').val().trim()
         );
         p.tSilentVideo = parseInt($('#quextETimeSilence').val());
-        p.eText = tinyMCE.get('quextEText').getContent();
-        p.quextion = $('#quextEQuestion').val().trim();
+        p.eText = sanitizeHtml(tinyMCE.get('quextEText').getContent());
+        p.quextion = sanitizeText($('#quextEQuestion').val().trim());
         p.options = [];
         p.solution = parseInt($('input[name=qxsolution]:checked').val());
-        p.msgHit = $('#quextEMessageOK').val();
-        p.msgError = $('#quextEMessageKO').val();
+        p.msgHit = sanitizeText($('#quextEMessageOK').val());
+        p.msgError = sanitizeText($('#quextEMessageKO').val());
 
         $('.QXTE-EAnwersOptions').each(function (i) {
-            const option = $(this).val().trim();
+            const option = sanitizeText($(this).val().trim());
             if (i < p.numberOptions && option.length === 0) {
                 optionEmpy = true;
             }
@@ -1837,12 +1901,18 @@ var $exeDevice = {
     },
 
     createlinksImage: function (questionsGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         for (let i = 0; i < questionsGame.length; i++) {
             const question = questionsGame[i];
             let linkImage = '';
-            if (question.type === 1 && !question.url.startsWith('http')) {
-                linkImage = `<a href="${question.url}" class="js-hidden quext-LinkImages">${i}</a>`;
+            const imageUrl = sanitizeUrl(question.url || '');
+            if (
+                question.type === 1 &&
+                !imageUrl.startsWith('http') &&
+                imageUrl.length > 4
+            ) {
+                linkImage = `<a href="${$exeDevice.escapeHtml(imageUrl)}" class="js-hidden quext-LinkImages">${i}</a>`;
             }
             html += linkImage;
         }
@@ -1850,16 +1920,18 @@ var $exeDevice = {
     },
 
     createlinksAudio: function (questionsGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         for (let i = 0; i < questionsGame.length; i++) {
             const question = questionsGame[i];
             let linkAudio = '';
+            const audioUrl = sanitizeUrl(question.audio || '');
             if (
                 question.type !== 2 &&
-                !question.audio.startsWith('http') &&
-                question.audio.length > 4
+                !audioUrl.startsWith('http') &&
+                audioUrl.length > 4
             ) {
-                linkAudio = `<a href="${question.audio}" class="js-hidden quext-LinkAudios">${i}</a>`;
+                linkAudio = `<a href="${$exeDevice.escapeHtml(audioUrl)}" class="js-hidden quext-LinkAudios">${i}</a>`;
             }
             html += linkAudio;
         }
@@ -2031,6 +2103,9 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         if (content && content.includes('\u0000')) {
@@ -2055,9 +2130,37 @@ var $exeDevice = {
             $exeDevice.questionsGame = game.questionsGame;
             game.id = $exeDevice.getIdeviceID();
             for (let i = 0; i < $exeDevice.questionsGame.length; i++) {
+                game.questionsGame[i].quextion = sanitizeText(
+                    game.questionsGame[i].quextion || ''
+                );
+                game.questionsGame[i].url = sanitizeUrl(
+                    game.questionsGame[i].url || ''
+                );
+                game.questionsGame[i].audio = sanitizeUrl(
+                    game.questionsGame[i].audio || ''
+                );
+                game.questionsGame[i].author = sanitizeText(
+                    game.questionsGame[i].author || ''
+                );
+                game.questionsGame[i].alt = sanitizeText(
+                    game.questionsGame[i].alt || ''
+                );
+                game.questionsGame[i].msgHit = sanitizeText(
+                    game.questionsGame[i].msgHit || ''
+                );
+                game.questionsGame[i].msgError = sanitizeText(
+                    game.questionsGame[i].msgError || ''
+                );
+                game.questionsGame[i].options = Array.isArray(
+                    game.questionsGame[i].options
+                )
+                    ? game.questionsGame[i].options.map((option) =>
+                          sanitizeText(option || '')
+                      )
+                    : ['', '', '', ''];
                 if (game.questionsGame[i].type === 3) {
-                    game.questionsGame[i].eText = unescape(
-                        game.questionsGame[i].eText
+                    game.questionsGame[i].eText = sanitizeHtml(
+                        unescape(game.questionsGame[i].eText || '')
                     );
                 }
                 let numOpt = 0;
@@ -2077,10 +2180,12 @@ var $exeDevice = {
             tinyMCE
                 .get('eXeGameInstructions')
                 .setContent(unescape(instructions));
-            tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
+            tinyMCE
+                .get('eXeIdeviceTextAfter')
+                .setContent(sanitizeHtml(unescape(tAfter)));
             tinyMCE
                 .get('quextEFeedBackEditor')
-                .setContent(unescape(textFeedBack));
+                .setContent(sanitizeHtml(unescape(textFeedBack)));
         } else if (game.typeGame !== 'QuExt') {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
             return;
@@ -2103,14 +2208,20 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
-            instructions = $('#eXeGameInstructions').text(),
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            instructions = sanitizeText($('#eXeGameInstructions').text()),
             instructionsExe = escape(
                 tinyMCE.get('eXeGameInstructions').getContent()
             ),
-            textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
-            textFeedBack = escape(
+            textAfter = escape(
+                sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent())
+            ),
+            textFeedBackContent = sanitizeHtml(
                 tinyMCE.get('quextEFeedBackEditor').getContent()
             ),
+            textFeedBack = escape(textFeedBackContent),
             showMinimize = $('#quextEShowMinimize').is(':checked'),
             optionsRamdon = $('#quextEQuestionsRamdon').is(':checked'),
             answersRamdon = $('#quextEAnswersRamdon').is(':checked'),
@@ -2120,7 +2231,7 @@ var $exeDevice = {
             ),
             useLives = $('#quextEUseLives').is(':checked'),
             numberLives = parseInt(clear($('#quextENumberLives').val())),
-            idVideo = $('#quextEVideoIntro').val(),
+            idVideo = sanitizeUrl($('#quextEVideoIntro').val()),
             endVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                 $('#quextEVIEnd').val()
             ),
@@ -2147,7 +2258,10 @@ var $exeDevice = {
         if (!itinerary) return false;
         if (!progressBar) return false;
 
-        if ((gameMode === 2 || feedBack) && textFeedBack.trim().length === 0) {
+        if (
+            (gameMode === 2 || feedBack) &&
+            textFeedBackContent.trim().length === 0
+        ) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
             return false;
         }
@@ -2157,6 +2271,17 @@ var $exeDevice = {
         }
         for (let i = 0; i < questionsGame.length; i++) {
             const mquestion = questionsGame[i];
+            mquestion.quextion = sanitizeText(mquestion.quextion || '');
+            mquestion.url = sanitizeUrl(mquestion.url || '');
+            mquestion.audio = sanitizeUrl(mquestion.audio || '');
+            mquestion.author = sanitizeText(mquestion.author || '');
+            mquestion.alt = sanitizeText(mquestion.alt || '');
+            mquestion.msgHit = sanitizeText(mquestion.msgHit || '');
+            mquestion.msgError = sanitizeText(mquestion.msgError || '');
+            mquestion.eText = sanitizeHtml(mquestion.eText || '');
+            mquestion.options = Array.isArray(mquestion.options)
+                ? mquestion.options.map((option) => sanitizeText(option || ''))
+                : [];
             mquestion.customScore =
                 typeof mquestion.customScore === 'undefined'
                     ? 1
@@ -2367,7 +2492,9 @@ var $exeDevice = {
 
         $('#quextEPlayVideo').on('click', (e) => {
             e.preventDefault();
-            const youtubeUrl = $('#quextEURLYoutube').val().trim();
+            const youtubeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#quextEURLYoutube').val().trim()
+            );
             if (
                 $exeDevices.iDevice.gamification.media.getIDYoutube(youtubeUrl)
             ) {
@@ -2564,8 +2691,11 @@ var $exeDevice = {
         });
 
         $('#quextEURLImage').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $(this).val(),
+            const sanitizeText =
+                    $exeDevicesEdition.iDevice.common.sanitizeText,
+                sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
+                selectedFile = sanitizeUrl($(this).val()),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
@@ -2574,7 +2704,7 @@ var $exeDevice = {
                 return false;
             }
             const url = selectedFile,
-                alt = $('#quextEAlt').val(),
+                alt = sanitizeText($('#quextEAlt').val()),
                 x = parseFloat($('#quextEXImage').val()),
                 y = parseFloat($('#quextEYImage').val());
             $exeDevice.showImage(url, x, y, alt);
@@ -2582,8 +2712,11 @@ var $exeDevice = {
 
         $('#quextEPlayImage').on('click', (e) => {
             e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $('#quextEURLImage').val(),
+            const sanitizeText =
+                    $exeDevicesEdition.iDevice.common.sanitizeText,
+                sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
+                selectedFile = sanitizeUrl($('#quextEURLImage').val()),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
@@ -2592,7 +2725,7 @@ var $exeDevice = {
                 return false;
             }
             const url = selectedFile,
-                alt = $('#quextEAlt').val(),
+                alt = sanitizeText($('#quextEAlt').val()),
                 x = parseFloat($('#quextEXImage').val()),
                 y = parseFloat($('#quextEYImage').val());
             $exeDevice.showImage(url, x, y, alt);
@@ -2627,14 +2760,20 @@ var $exeDevice = {
 
         $('#quextEPlayAudio').on('click', (e) => {
             e.preventDefault();
-            const selectedFile = $('#quextEURLAudio').val().trim();
+            const selectedFile =
+                $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                    $('#quextEURLAudio').val().trim()
+                );
             if (selectedFile.length > 4) {
                 $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
         $('#quextEURLAudio').on('change', function () {
-            const selectedFile = $(this).val().trim();
+            const selectedFile =
+                $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                    $(this).val().trim()
+                );
             if (selectedFile.length === 0) {
                 $exeDevice.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`

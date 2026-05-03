@@ -857,8 +857,9 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            description = tinyMCE.get('desafioEDescription').getContent();
+            description = sanitizeHtml(tinyMCE.get('desafioEDescription').getContent());
         let divContent = '';
         if (instructions !== '') {
             divContent =
@@ -874,7 +875,7 @@ var $exeDevice = {
             '</div>';
         html += '<div class="desafio-EDescription">' + description + '</div>';
         for (let i = 0; i < $exeDevice.challengesGame.length; i++) {
-            const df = tinyMCE.get(`desafioEChallenge-${i}`).getContent();
+            const df = sanitizeHtml(tinyMCE.get(`desafioEChallenge-${i}`).getContent());
             html +=
                 '<div class="desafio-ChallengeDescription">' + df + '</div>';
         }
@@ -893,28 +894,30 @@ var $exeDevice = {
         let message = '';
         const p = {},
             i = $exeDevice.active;
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
 
         if (tinyMCE.get(`desafioEChallenge-${i}`)) {
-            p.description = tinyMCE.get(`desafioEChallenge-${i}`).getContent();
+            p.description = sanitizeHtml(tinyMCE.get(`desafioEChallenge-${i}`).getContent());
         } else {
-            p.description = $(`desafioEChallenge-${i}`).val();
+            p.description = sanitizeText($(`desafioEChallenge-${i}`).val());
         }
 
-        p.title = $('#desafioECTitle').val();
-        p.solution = $('#desafioECSolution').val();
+        p.title = sanitizeText($('#desafioECTitle').val());
+        p.solution = sanitizeText($('#desafioECSolution').val());
         p.timeShow = -1;
 
         const clues = [
             {
-                clue: $('#desafioEClue1').val(),
+                clue: sanitizeText($('#desafioEClue1').val()),
                 time: parseInt($('#desafioECTime1 option:selected').val(), 10),
             },
             {
-                clue: $('#desafioEClue2').val(),
+                clue: sanitizeText($('#desafioEClue2').val()),
                 time: parseInt($('#desafioECTime2 option:selected').val(), 10),
             },
             {
-                clue: $('#desafioEClue3').val(),
+                clue: sanitizeText($('#desafioEClue3').val()),
                 time: parseInt($('#desafioECTime3 option:selected').val(), 10),
             },
         ];
@@ -924,8 +927,10 @@ var $exeDevice = {
     },
 
     saveDesafio: function () {
-        $exeDevice.desafioTitle = $('#desafioEDTitle').val();
-        $exeDevice.desafioSolution = $('#desafioEDSolution').val();
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        $exeDevice.desafioTitle = sanitizeText($('#desafioEDTitle').val());
+        $exeDevice.desafioSolution = sanitizeText($('#desafioEDSolution').val());
         $exeDevice.desafioType = parseInt(
             $('#desafioEDType option:selected').val()
         );
@@ -935,11 +940,11 @@ var $exeDevice = {
         $exeDevice.desafioDescription = '';
 
         if (tinyMCE.get('desafioEDescription')) {
-            $exeDevice.desafioDescription = tinyMCE
-                .get('desafioEDescription')
-                .getContent();
+            $exeDevice.desafioDescription = sanitizeHtml(
+                tinyMCE.get('desafioEDescription').getContent()
+            );
         } else {
-            $exeDevice.desafioDescription = $('#desafioEDescription').val();
+            $exeDevice.desafioDescription = sanitizeHtml($('#desafioEDescription').val());
         }
     },
 

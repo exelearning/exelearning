@@ -35,10 +35,29 @@ function loadIdevice(code) {
 describe('text iDevice', () => {
   let $exeDevice;
   let mockElement;
+  let sanitizeTextMock;
+  let sanitizeHtmlMock;
+  let sanitizeUrlMock;
 
   beforeEach(() => {
     // Reset $exeDevice before loading
     global.$exeDevice = undefined;
+
+    sanitizeTextMock = vi.fn((value) => String(value || '').replace(/<[^>]*>/g, ''));
+    sanitizeHtmlMock = vi.fn((value) => String(value || '').replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ''));
+    sanitizeUrlMock = vi.fn((value) => {
+      const trimmed = String(value || '').trim();
+      return /^\s*(javascript:|data:|vbscript:)/i.test(trimmed) ? '' : trimmed;
+    });
+
+    global.$exeDevicesEdition = global.$exeDevicesEdition || { iDevice: {} };
+    global.$exeDevicesEdition.iDevice = global.$exeDevicesEdition.iDevice || {};
+    global.$exeDevicesEdition.iDevice.common = {
+      ...(global.$exeDevicesEdition.iDevice.common || {}),
+      sanitizeText: sanitizeTextMock,
+      sanitizeHtml: sanitizeHtmlMock,
+      sanitizeUrl: sanitizeUrlMock,
+    };
 
     // Clear eXe.app history
     eXe.app.clearHistory();

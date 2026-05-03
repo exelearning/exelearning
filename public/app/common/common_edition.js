@@ -136,6 +136,73 @@ var $exeDevicesEdition = {
                                     </p>\
                                 <div>\
                         </fieldset>";
+            },
+            // Strip-all preset: returns plain text (no tags, no attributes).
+            // Use for fields stored as text and re-rendered as text (titles,
+            // labels, CSV-imported definitions, attribute values like alt/title).
+            sanitizeText: function (input) {
+                if (input === null || typeof input === "undefined") return "";
+                var str = String(input);
+                if (typeof DOMPurify === "undefined") {
+                    // Defensive fallback: iterative tag stripping (no single-pass bypass).
+                    var prev;
+                    do {
+                        prev = str;
+                        str = str.replace(/<[^>]*>/g, "");
+                    } while (str !== prev);
+                    return str;
+                }
+                // First pass: DOMPurify neutralizes script/style/event handlers
+                // even if they sit inside tags we'd later strip via textContent.
+                var safe = DOMPurify.sanitize(str, {
+                    ALLOWED_TAGS: [],
+                    ALLOWED_ATTR: [],
+                    KEEP_CONTENT: true
+                });
+                // Second pass: extract textContent so any residual tag-like
+                // text the parser left behind is neutralized.
+                if (typeof document !== "undefined") {
+                    var holder = document.createElement("div");
+                    holder.innerHTML = safe;
+                    return holder.textContent || "";
+                }
+                return safe;
+            },
+            // Rich-HTML preset: keeps semantic markup that TinyMCE produces,
+            // drops scripts, event handlers and javascript: URIs. Use for fields
+            // stored as HTML (.innerHTML / TinyMCE getContent()).
+            sanitizeHtml: function (input, overrides) {
+                if (input === null || typeof input === "undefined") return "";
+                var str = String(input);
+                var config = {
+                    USE_PROFILES: { html: true },
+                    FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
+                    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"],
+                    ALLOW_DATA_ATTR: false
+                };
+                if (overrides && typeof overrides === "object") {
+                    for (var k in overrides) {
+                        if (Object.prototype.hasOwnProperty.call(overrides, k)) config[k] = overrides[k];
+                    }
+                }
+                if (typeof DOMPurify === "undefined") {
+                    return $exeDevicesEdition.iDevice.common.sanitizeText(str);
+                }
+                return DOMPurify.sanitize(str, config);
+            },
+            // URL preset: validates that a URL uses an allowed scheme. Keeps
+            // editor resource URLs produced by file pickers (asset://, blob:).
+            // Returns "" if the URL is unsafe (javascript:, data:text/html, vbscript:).
+            // Use before assigning to .src / .href from user input.
+            sanitizeUrl: function (input) {
+                if (input === null || typeof input === "undefined") return "";
+                var str = String(input).trim();
+                if (str === "") return "";
+                var first = str.charAt(0);
+                if (first === "#" || first === "/" || first === ".") return str;
+                if (/^files[\\/]/i.test(str)) return str;
+                var allowed = /^(https?:|mailto:|tel:|ftp:|asset:|blob:)/i;
+                return allowed.test(str) ? str : "";
             }
         },
         // Gamification

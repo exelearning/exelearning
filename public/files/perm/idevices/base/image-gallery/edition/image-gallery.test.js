@@ -29,10 +29,32 @@ function loadIdevice(code) {
 
 describe('image-gallery iDevice', () => {
   let $exeDevice;
+  let sanitizeTextMock;
+  let sanitizeHtmlMock;
+  let sanitizeUrlMock;
 
   beforeEach(() => {
     // Reset $exeDevice before loading
     global.$exeDevice = undefined;
+
+    sanitizeTextMock = vi.fn((value) => String(value || '').replace(/<[^>]*>/g, ''));
+    sanitizeHtmlMock = vi.fn((value) => String(value || '').replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ''));
+    sanitizeUrlMock = vi.fn((value) => {
+      const trimmed = String(value || '').trim();
+      if (/^\s*(javascript:|data:|vbscript:)/i.test(trimmed)) {
+        return '';
+      }
+      return trimmed;
+    });
+
+    global.$exeDevicesEdition = global.$exeDevicesEdition || { iDevice: {} };
+    global.$exeDevicesEdition.iDevice = global.$exeDevicesEdition.iDevice || {};
+    global.$exeDevicesEdition.iDevice.common = {
+      ...(global.$exeDevicesEdition.iDevice.common || {}),
+      sanitizeText: sanitizeTextMock,
+      sanitizeHtml: sanitizeHtmlMock,
+      sanitizeUrl: sanitizeUrlMock,
+    };
 
     // Read and execute the iDevice file
     const filePath = join(__dirname, 'image-gallery.js');
@@ -155,4 +177,5 @@ describe('image-gallery iDevice', () => {
       expect(typeof $exeDevice.getDataJson).toBe('function');
     });
   });
+
 });

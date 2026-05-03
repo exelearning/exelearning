@@ -309,6 +309,7 @@ var $exeDevice = {
         }
 
         dataGame.msgs = i18n;
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         let json = JSON.stringify(dataGame);
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
         let html = '<div class="candado-IDevice">';
@@ -323,7 +324,7 @@ var $exeDevice = {
             '</div>';
         html +=
             '<div class="candado-retro js-hidden">' +
-            tinymce.editors[1].getContent() +
+            sanitizeHtml(tinymce.editors[1].getContent()) +
             '</div>';
         html += '<div class="candado-DataGame js-hidden">' + json + '</div>';
         html +=
@@ -343,13 +344,14 @@ var $exeDevice = {
         $exeDevice.candadoTime = parseInt(
             $('#candadoEDTime option:selected').val()
         );
-        $exeDevice.candadoSolution = $('#candadoEDSolution').val();
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        $exeDevice.candadoSolution = sanitizeText($('#candadoEDSolution').val());
         $exeDevice.candadoShowMinimize = $('#candadoEShowMinimize').is(
             ':checked'
         );
         $exeDevice.candadoReboot = $('#candadoEReboot').is(':checked');
-        $exeDevice.candadoAttemps = $('#candadoEAttemps').val();
-        $exeDevice.candadoErrorMessage = $('#candadoEErrorMessage').val();
+        $exeDevice.candadoAttemps = sanitizeText($('#candadoEAttemps').val());
+        $exeDevice.candadoErrorMessage = sanitizeText($('#candadoEErrorMessage').val());
         const progressBar =
             $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;

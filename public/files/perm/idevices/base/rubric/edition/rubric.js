@@ -1216,7 +1216,7 @@ var $exeDevice = {
                 var key = id.replace(/^ci18n_/, '');
                 if (!key) return;
 
-                scopedStrings[key] = $(this).val() || '';
+                scopedStrings[key] = $exeDevicesEdition.iDevice.common.sanitizeText($(this).val() || '');
             });
             return scopedStrings;
         }
@@ -1235,10 +1235,10 @@ var $exeDevice = {
             var value = translatedValue;
 
             if (customField.length === 1 && customField.val() !== '') {
-                value = customField.val();
+                value = $exeDevicesEdition.iDevice.common.sanitizeText(customField.val());
             }
 
-            strings[key] = value;
+            strings[key] = $exeDevicesEdition.iDevice.common.sanitizeText(value);
         }
         return strings;
     },
@@ -1352,8 +1352,10 @@ var $exeDevice = {
     jsonToTable: function (data, mode) {
         // Create the iDevice content
         if (mode == 'normal') {
+            const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
             var instrEditor = tinyMCE.get('eXeGameInstructions');
             var instructions = instrEditor ? instrEditor.getContent() : ($('#eXeGameInstructions').val() || '');
+            instructions = sanitizeHtml(instructions);
             data['visible-info'] = $('#ri_ShowRubricInfo').prop('checked');
             data.author = this.removeTags($('#ri_RubricAuthor').val() || '');
             data['author-url'] = this.sanitizeExternalUrl($('#ri_RubricAuthorURL').val() || '');
@@ -1362,6 +1364,7 @@ var $exeDevice = {
 
             var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
             var textAfter = textAfterEditor ? textAfterEditor.getContent() : ($('#eXeIdeviceTextAfter').val() || '');
+            textAfter = sanitizeHtml(textAfter);
 
             return this.buildSerializedRubricHTML(data, instructions, textAfter, {
                 includeWrapper: false,
@@ -1602,6 +1605,8 @@ var $exeDevice = {
     },
 
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         // Validate (and remove any HTML tags)
 
         var table = $('#ri_TableEditor table');
@@ -1699,6 +1704,7 @@ var $exeDevice = {
         // Get the rubric instructions and add them to the data
         var instrEditor = tinyMCE.get('eXeGameInstructions');
         var instructions = instrEditor ? instrEditor.getContent() : ($('#eXeGameInstructions').val() || '');
+        instructions = sanitizeHtml(instructions);
         if (instructions.trim() !== '') data.instructions = instructions;
 
         // Get the rubric information and add it to data
@@ -1714,7 +1720,7 @@ var $exeDevice = {
 
         var scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         data.isScorm = scorm.isScorm;
-        data.textButtonScorm = scorm.textButtonScorm;
+        data.textButtonScorm = sanitizeText(scorm.textButtonScorm);
         data.repeatActivity = scorm.repeatActivity;
         data.weighted = scorm.weighted || 100;
 
@@ -1722,6 +1728,7 @@ var $exeDevice = {
         var textAfter = textAfterEditor
             ? textAfterEditor.getContent()
             : ($('#eXeIdeviceTextAfter').val() || '');
+        textAfter = sanitizeHtml(textAfter);
 
         return this.buildSerializedRubricHTML(data, instructions, textAfter, {
             includeWrapper: true,
@@ -2560,11 +2567,8 @@ var $exeDevice = {
         this.setMaxScore();
     },
 
-    // Remove any HTML tags
     removeTags: function (str) {
-        var wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
+        return $exeDevicesEdition.iDevice.common.sanitizeText(str || '');
     },
 
     escapeHtml: function (str) {
@@ -2582,7 +2586,7 @@ var $exeDevice = {
     },
 
     sanitizeExternalUrl: function (url) {
-        var value = typeof url === 'string' ? url.trim() : '';
+        var value = $exeDevicesEdition.iDevice.common.sanitizeUrl(url || '');
         if (value === '') return '';
 
         // Block executable schemes while keeping regular and relative links working.
@@ -2598,47 +2602,23 @@ var $exeDevice = {
         return value;
     },
 
-    // Allow only <b>, <i> and <u> in descriptor text; strip all other tags.
     sanitizeDescriptorHtml: function (value) {
-        var input = typeof value === 'string' ? value : String(value || '');
-        if (input === '') return '';
+        var sanitizeHtml =
+            $exeDevicesEdition &&
+            $exeDevicesEdition.iDevice &&
+            $exeDevicesEdition.iDevice.common &&
+            typeof $exeDevicesEdition.iDevice.common.sanitizeHtml === 'function'
+                ? $exeDevicesEdition.iDevice.common.sanitizeHtml
+                : null;
 
-        var template = document.createElement('template');
-        template.innerHTML = input;
-
-        var sanitizeNode = function (node) {
-            if (!node) return document.createDocumentFragment();
-
-            if (node.nodeType === Node.TEXT_NODE) {
-                return document.createTextNode(node.nodeValue || '');
-            }
-
-            if (node.nodeType !== Node.ELEMENT_NODE) {
-                return document.createDocumentFragment();
-            }
-
-            var tag = String(node.tagName || '').toLowerCase();
-            var fragment = document.createDocumentFragment();
-
-            for (var i = 0; i < node.childNodes.length; i++) {
-                fragment.appendChild(sanitizeNode(node.childNodes[i]));
-            }
-
-            if (tag === 'b' || tag === 'i' || tag === 'u') {
-                var allowed = document.createElement(tag);
-                allowed.appendChild(fragment);
-                return allowed;
-            }
-
-            return fragment;
-        };
-
-        var output = document.createElement('div');
-        for (var i = 0; i < template.content.childNodes.length; i++) {
-            output.appendChild(sanitizeNode(template.content.childNodes[i]));
+        if (!sanitizeHtml) {
+            return this.removeTags(value || '');
         }
 
-        return output.innerHTML;
+        return sanitizeHtml(value || '', {
+            ALLOWED_TAGS: ['b', 'i', 'u'],
+            ALLOWED_ATTR: [],
+        });
     },
 
     // Transform the editable table into a normal one

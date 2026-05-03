@@ -15,6 +15,17 @@ var MojoMagnify = (function () {
     const removeEvent = (el, ev, handler) =>
         el.removeEventListener(ev, handler, false);
 
+    // Reject URLs whose scheme can execute script (javascript:, vbscript:,
+    // data:text/html). Allow http(s), relative paths and same-page anchors.
+    const safeUrl = (raw) => {
+        if (raw === null || typeof raw === 'undefined') return '';
+        const str = String(raw).trim();
+        if (str === '') return '';
+        const first = str.charAt(0);
+        if (first === '#' || first === '/' || first === '.') return str;
+        return /^(https?:|ftp:)/i.test(str) ? str : '';
+    };
+
     const getEventMousePos = (el, e) => {
         const rect = el.getBoundingClientRect();
         return {
@@ -59,8 +70,9 @@ var MojoMagnify = (function () {
         zSize = 100,
         zZoom = 1
     ) => {
+        const safeZoomSrc = safeUrl(zoomSrc);
         if (img.__mojoMagnifyImage) {
-            img.__mojoMagnifyImage.src = zoomSrc;
+            img.__mojoMagnifyImage.src = safeZoomSrc;
             return;
         }
 
@@ -197,7 +209,7 @@ var MojoMagnify = (function () {
         });
         addEvent(img, 'mouseleave', () => (overlay.style.display = 'none'));
 
-        setTimeout(() => (zoomImg.src = zoomSrc), 1);
+        setTimeout(() => (zoomImg.src = safeZoomSrc), 1);
     };
 
     const init = () => {

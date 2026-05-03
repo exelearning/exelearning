@@ -104,6 +104,36 @@ var $exeDevice = {
     evaluationID: '',
     ideviceID: false,
 
+    sanitizeMediaUrl: function (value) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        var sanitized = sanitizeText(value || '').trim();
+        if (
+            sanitized.indexOf('resources/') === 0 ||
+            sanitized.indexOf('content/resources/') === 0
+        ) {
+            return sanitized;
+        }
+        return sanitizeUrl(sanitized);
+    },
+
+    sanitizeJsonScriptContent: function (value) {
+        return String(value || '').replace(/<\/script/gi, '<\\/script');
+    },
+
+    escapeHtml: function (value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    escapeAttribute: function (value) {
+        return this.escapeHtml(value);
+    },
+
     testIfVideoExists: function (url, type) {
         if (!top.interactiveVideoEditor) {
             eXe.app.alert(_('Could not retrieve data (Core error)') + ' - 001');
@@ -216,9 +246,17 @@ var $exeDevice = {
         $('#interactiveVideoFile')
             .change(function () {
                 var e = $('#interactiveVideoEditorOpener');
+                var value = $exeDevice.sanitizeMediaUrl(this.value);
+                if (value !== this.value) this.value = value;
                 // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
-                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
-                    $exeDevice.testIfVideoExists(this.value, 'local');
+                if (
+                    value.indexOf('files/tmp/') == 0 ||
+                    value.indexOf('asset://') == 0 ||
+                    value.indexOf('blob:') == 0 ||
+                    value.indexOf('resources/') == 0 ||
+                    value.indexOf('content/resources/') == 0
+                ) {
+                    $exeDevice.testIfVideoExists(value, 'local');
                     e.fadeIn();
                 } else {
                     e.hide();
@@ -226,9 +264,17 @@ var $exeDevice = {
             })
             .keyup(function () {
                 var e = $('#interactiveVideoEditorOpener');
+                var value = $exeDevice.sanitizeMediaUrl(this.value);
+                if (value !== this.value) this.value = value;
                 // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
-                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
-                    $exeDevice.testIfVideoExists(this.value, 'local');
+                if (
+                    value.indexOf('files/tmp/') == 0 ||
+                    value.indexOf('asset://') == 0 ||
+                    value.indexOf('blob:') == 0 ||
+                    value.indexOf('resources/') == 0 ||
+                    value.indexOf('content/resources/') == 0
+                ) {
+                    $exeDevice.testIfVideoExists(value, 'local');
                     e.fadeIn();
                 } else {
                     e.hide();
@@ -241,11 +287,13 @@ var $exeDevice = {
                     'https://youtu.be/',
                     'https://www.youtube.com/watch?v='
                 );
+                var value = $exeDevicesEdition.iDevice.common.sanitizeUrl(this.value);
+                if (value !== this.value) this.value = value;
                 var e = $('#interactiveVideoEditorOpener');
                 if (
-                    this.value.indexOf('https://www.youtube.com/watch?v=') == 0
+                    value.indexOf('https://www.youtube.com/watch?v=') == 0
                 ) {
-                    $exeDevice.testIfVideoExists(this.value, 'youtube');
+                    $exeDevice.testIfVideoExists(value, 'youtube');
                     e.fadeIn();
                 } else {
                     e.hide();
@@ -257,11 +305,13 @@ var $exeDevice = {
                     'https://youtu.be/',
                     'https://www.youtube.com/watch?v='
                 );
+                var value = $exeDevicesEdition.iDevice.common.sanitizeUrl(this.value);
+                if (value !== this.value) this.value = value;
                 var e = $('#interactiveVideoEditorOpener');
                 if (
-                    this.value.indexOf('https://www.youtube.com/watch?v=') == 0
+                    value.indexOf('https://www.youtube.com/watch?v=') == 0
                 ) {
-                    $exeDevice.testIfVideoExists(this.value, 'youtube');
+                    $exeDevice.testIfVideoExists(value, 'youtube');
                     e.fadeIn();
                 } else {
                     e.hide();
@@ -269,26 +319,30 @@ var $exeDevice = {
             });
         $('#interactiveVideoMediatecaURL')
             .change(function () {
+                var value = $exeDevicesEdition.iDevice.common.sanitizeUrl(this.value);
+                if (value !== this.value) this.value = value;
                 var e = $('#interactiveVideoEditorOpener');
                 if (
-                    this.value.indexOf(
+                    value.indexOf(
                         'https://mediateca.educa.madrid.org/video/'
                     ) == 0
                 ) {
-                    $exeDevice.testIfVideoExists(this.value, 'mediateca');
+                    $exeDevice.testIfVideoExists(value, 'mediateca');
                     e.fadeIn();
                 } else {
                     e.hide();
                 }
             })
             .keyup(function () {
+                var value = $exeDevicesEdition.iDevice.common.sanitizeUrl(this.value);
+                if (value !== this.value) this.value = value;
                 var e = $('#interactiveVideoEditorOpener');
                 if (
-                    this.value.indexOf(
+                    value.indexOf(
                         'https://mediateca.educa.madrid.org/video/'
                     ) == 0
                 ) {
-                    $exeDevice.testIfVideoExists(this.value, 'mediateca');
+                    $exeDevice.testIfVideoExists(value, 'mediateca');
                     e.fadeIn();
                 } else {
                     e.hide();
@@ -327,7 +381,9 @@ var $exeDevice = {
             var videoWrapper = $('#exe-interactive-video-file a', wrapper);
             var type = 'local';
             if (videoWrapper.length == 1) {
-                var videoURL = videoWrapper.attr('href');
+                var videoURL = $exeDevice.sanitizeMediaUrl(
+                    videoWrapper.attr('href')
+                );
                 var n = 'File';
                 var disabled = 'disabled';
                 if (
@@ -357,7 +413,7 @@ var $exeDevice = {
                     wrapper
                 );
                 if (textBefore.length == 1) {
-                    textBefore = textBefore.html();
+                    textBefore = $exeDevicesEdition.iDevice.common.sanitizeHtml(textBefore.html());
                     $('#eXeIdeviceTextBefore').val(textBefore);
                 }
                 // Text after
@@ -366,11 +422,10 @@ var $exeDevice = {
                     wrapper
                 );
                 if (textAfter.length == 1) {
-                    textAfter = textAfter.html();
+                    textAfter = $exeDevicesEdition.iDevice.common.sanitizeHtml(textAfter.html());
                     $('#eXeIdeviceTextAfter').val(textAfter);
                 }
             }
-            $('body').append(wrapper);
 
             // Get the data
             var previousData = stringToHTML(originalHTML);
@@ -443,7 +498,9 @@ var $exeDevice = {
                             var imgId = 'exe-interactive-video-img-' + slide.url;
                             var imgEl = previousData.querySelector('#' + imgId);
                             if (imgEl && imgEl.src) {
-                                slide.url = imgEl.src;
+                                slide.url = $exeDevice.sanitizeMediaUrl(
+                                    imgEl.src
+                                );
                             } else {
                                 console.warn('[InteractiveVideo] Could not find image element', imgId);
                             }
@@ -480,11 +537,13 @@ var $exeDevice = {
                 InteractiveVideo.evaluationID =
                     typeof InteractiveVideo.evaluationID == 'undefined' ||
                     InteractiveVideo.evaluationID === ''
-                        ? defaultEvalID
-                        : InteractiveVideo.evaluationID;
+                        ? $exeDevicesEdition.iDevice.common.sanitizeText(defaultEvalID)
+                        : $exeDevicesEdition.iDevice.common.sanitizeText(
+                              InteractiveVideo.evaluationID
+                          );
                 InteractiveVideo.ideviceID =
                     typeof InteractiveVideo.ideviceID != 'undefined'
-                        ? InteractiveVideo.ideviceID
+                        ? $exeDevicesEdition.iDevice.common.sanitizeText(InteractiveVideo.ideviceID)
                         : false;
                 $exeDevice.ideviceID = $exeDevice.getIdeviceID();
                 $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
@@ -501,7 +560,10 @@ var $exeDevice = {
                 '.exe-interactive-video-poster img',
                 wrapper
             ).attr('src');
-            $('#interactiveVideoTmpWrapper').remove();
+            top.interactiveVideoEditor.activityToSave.poster =
+                $exeDevice.sanitizeMediaUrl(
+                    top.interactiveVideoEditor.activityToSave.poster
+                );
         }
     },
 
@@ -536,9 +598,18 @@ var $exeDevice = {
 
     editor: {
         start: function () {
-            var f1 = $('#interactiveVideoFile').val();
-            var f2 = $('#interactiveVideoYoutubeURL').val();
-            var f3 = $('#interactiveVideoMediatecaURL').val();
+            var f1 = $exeDevice.sanitizeMediaUrl(
+                $('#interactiveVideoFile').val()
+            );
+            var f2 = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#interactiveVideoYoutubeURL').val()
+            );
+            var f3 = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#interactiveVideoMediatecaURL').val()
+            );
+            $('#interactiveVideoFile').val(f1);
+            $('#interactiveVideoYoutubeURL').val(f2);
+            $('#interactiveVideoMediatecaURL').val(f3);
             if (f1 == '' && f2 == '' && f3 == '') {
                 eXe.app.alert(
                     _('Please select a file or provide a valid video URL.')
@@ -639,19 +710,35 @@ var $exeDevice = {
     },
 
     save: function () {
+        var sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        var sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        var sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        var sanitizeMediaUrl = this.sanitizeMediaUrl.bind(this);
         var myVideo = '';
+        var imgsHTML = '';
 
-        var type = $('input[name=interactiveVideoType]:checked').val();
+        var type = sanitizeText(
+            $('input[name=interactiveVideoType]:checked').val()
+        );
+        if (type != 'local' && type != 'youtube' && type != 'mediateca') {
+            type = 'local';
+        }
 
         if (type == 'local') {
-            myVideo = $('#interactiveVideoFile').val();
+            myVideo = sanitizeMediaUrl($('#interactiveVideoFile').val());
+            $('#interactiveVideoFile').val(myVideo);
             if (myVideo == '') {
                 eXe.app.alert(_('Required') + ': ' + _('File'));
                 return false;
             }
             // Skip extension validation for blob: and asset:// URLs (already validated on upload)
-            if (myVideo.indexOf('blob:') != 0 && myVideo.indexOf('asset://') != 0) {
-                var extension = myVideo.split('.').pop().toLowerCase();
+            if (
+                myVideo.indexOf('blob:') != 0 &&
+                myVideo.indexOf('asset://') != 0
+            ) {
+                var extension = sanitizeText(
+                    myVideo.split('.').pop().toLowerCase()
+                );
                 if (
                     extension != 'ogg' &&
                     extension != 'ogv' &&
@@ -666,7 +753,13 @@ var $exeDevice = {
                 }
             }
         } else if (type == 'youtube') {
-            myVideo = $('#interactiveVideoYoutubeURL').val();
+            myVideo = sanitizeUrl(
+                String($('#interactiveVideoYoutubeURL').val() || '').replace(
+                    'https://youtu.be/',
+                    'https://www.youtube.com/watch?v='
+                )
+            );
+            $('#interactiveVideoYoutubeURL').val(myVideo);
             if (myVideo.indexOf('https://www.youtube.com/watch?v=') != 0) {
                 eXe.app.alert(
                     _('Wrong URL. Expected format:') +
@@ -675,7 +768,8 @@ var $exeDevice = {
                 return false;
             }
         } else if (type == 'mediateca') {
-            myVideo = $('#interactiveVideoMediatecaURL').val();
+            myVideo = sanitizeUrl($('#interactiveVideoMediatecaURL').val());
+            $('#interactiveVideoMediatecaURL').val(myVideo);
             if (
                 myVideo.indexOf('https://mediateca.educa.madrid.org/video/') !=
                 0
@@ -691,89 +785,104 @@ var $exeDevice = {
         var progressBarValues =
             $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBarValues) return false;
-        var seval = progressBarValues.evaluation,
-            sevalid = progressBarValues.evaluationID;
+        var seval = !!progressBarValues.evaluation,
+            sevalid = sanitizeText(progressBarValues.evaluationID || '');
 
-        var ideviceID = $exeDevice.getIdeviceID();
+        var ideviceID = sanitizeText($exeDevice.getIdeviceID());
 
         var contents = '{}';
         if (typeof top.interactiveVideoEditor != 'undefined') {
-            var imgsHTML = '';
-            var activity = top.interactiveVideoEditor.activityToSave;
+            var activity = top.interactiveVideoEditor.activityToSave || {
+                slides: [],
+            };
 
             // Check for images:
             if (activity.coverType && activity.coverType == 'poster') {
-                imgsHTML +=
-                    '<p class="exe-interactive-video-poster sr-av"><img src="' +
-                    activity.poster +
-                    '" alt="' +
-                    activity.posterDescription +
-                    '" /></p>';
+                activity.poster = sanitizeMediaUrl(activity.poster);
+                activity.posterDescription = sanitizeText(
+                    activity.posterDescription
+                );
+                if (activity.poster) {
+                    imgsHTML +=
+                        '<p class="exe-interactive-video-poster sr-av"><img src="' +
+                        this.escapeAttribute(activity.poster) +
+                        '" alt="' +
+                        this.escapeAttribute(activity.posterDescription) +
+                        '" /></p>';
+                }
             }
-            var slides = activity.slides;
 
-            if (slides) {
+            var slides = activity.slides;
+            if (slides && Array.isArray(slides)) {
                 for (var i = 0; i < slides.length; i++) {
                     var slide = slides[i];
-                    if (slide.type == 'image') {
-                        if (typeof slide.url == 'string') {
-                            var check = slide.url.split('/resources/');
-                            // Updated image: The URL is something like http://localhost:51235/videos-interactivos-001/resources/my_file.jpg
-                            // So you have to remove anything before "resources/"
-                            if (check.length == 2) {
-                                slide.url = 'resources/' + check[1];
-                            }
-                        } else {
-                            // It's a number, so the image must be in the original HTML code
-                            // slide.url = imgs.eq(i).attr("src");
-                            var imgs = top.interactiveVideoEditor.imageList;
-                            for (var z = 0; z < imgs.length; z++) {
-                                var img = $(imgs[z]);
-                                if (
-                                    img.attr('id') ==
-                                    'exe-interactive-video-img-' + i
-                                ) {
-                                    slide.url = img.attr('src');
-                                }
+                    if (!slide || slide.type != 'image') continue;
+
+                    if (typeof slide.url == 'string') {
+                        var check = slide.url.split('/resources/');
+                        // Updated image: The URL is something like http://localhost:51235/videos-interactivos-001/resources/my_file.jpg
+                        // So you have to remove anything before "resources/"
+                        if (check.length == 2) {
+                            slide.url = 'resources/' + check[1];
+                        }
+                    } else {
+                        // It's a number, so the image must be in the original HTML code
+                        // slide.url = imgs.eq(i).attr("src");
+                        var imgs = top.interactiveVideoEditor.imageList;
+                        for (var z = 0; z < imgs.length; z++) {
+                            var img = $(imgs[z]);
+                            if (
+                                img.attr('id') ==
+                                'exe-interactive-video-img-' + i
+                            ) {
+                                slide.url = img.attr('src');
                             }
                         }
-                        imgsHTML +=
-                            '<p class="exe-interactive-video-img sr-av"><img src="' +
-                            slide.url +
-                            '" id="exe-interactive-video-img-' +
-                            i +
-                            '" alt="" /></p>';
-                        // Only replace URL with index for legacy relative paths (not asset:// or blob://)
-                        if (slide.url.indexOf('asset://') !== 0 && slide.url.indexOf('blob:') !== 0) {
-                            slide.url = i;
-                        }
+                    }
+
+                    slide.url = sanitizeMediaUrl(slide.url);
+                    if (!slide.url) continue;
+
+                    imgsHTML +=
+                        '<p class="exe-interactive-video-img sr-av"><img src="' +
+                        this.escapeAttribute(slide.url) +
+                        '" id="exe-interactive-video-img-' +
+                        i +
+                        '" alt="" /></p>';
+                    // Only replace URL with index for legacy relative paths (not asset:// or blob://)
+                    if (
+                        slide.url.indexOf('asset://') !== 0 &&
+                        slide.url.indexOf('blob:') !== 0
+                    ) {
+                        slide.url = i;
                     }
                 }
             }
 
             var fields = this.ci18n;
-            // Default value
-            var i18n = fields;
+            var i18n = {};
             // Overwrite custom values
-            for (var i in fields) {
-                var fVal = $('#ci18n_' + i).val();
-                if (fVal != '') i18n[i] = fVal;
-                else i18n[i] = fields[1];
+            for (var key in fields) {
+                if (!Object.prototype.hasOwnProperty.call(fields, key)) {
+                    continue;
+                }
+                var fVal = sanitizeText($('#ci18n_' + key).val());
+                if (fVal != '') i18n[key] = fVal;
+                else i18n[key] = sanitizeText(fields[key]);
             }
 
-            top.interactiveVideoEditor.activityToSave.i18n = i18n;
-            top.interactiveVideoEditor.activityToSave.scorm =
+            activity.i18n = i18n;
+            activity.scorm =
                 $exeDevicesEdition.iDevice.gamification.scorm.getValues();
-            top.interactiveVideoEditor.activityToSave.scoreNIA = $(
-                '#interactiveVideoScoreNIA'
-            ).is(':checked');
-            top.interactiveVideoEditor.activityToSave.evaluation = seval;
-            top.interactiveVideoEditor.activityToSave.evaluationID = sevalid;
-            top.interactiveVideoEditor.activityToSave.ideviceID = ideviceID;
+            activity.scoreNIA = $('#interactiveVideoScoreNIA').is(':checked');
+            activity.evaluation = seval;
+            activity.evaluationID = sevalid;
+            activity.ideviceID = ideviceID;
 
-            contents = JSON.stringify(
-                top.interactiveVideoEditor.activityToSave
-            );
+            top.interactiveVideoEditor.activityToSave = activity;
+
+            contents = JSON.stringify(activity);
+            contents = this.sanitizeJsonScriptContent(contents);
         }
 
         var extraCSS = '';
@@ -782,7 +891,9 @@ var $exeDevice = {
 
         // Content before
         var contentBefore = '';
-        var contentBefore = tinymce.editors[0].getContent();
+        if (tinymce.editors[0]) {
+            contentBefore = sanitizeHtml(tinymce.editors[0].getContent());
+        }
         if (contentBefore != '') {
             contentBefore =
                 '<div class="exe-interactive-video-content-before">' +
@@ -792,7 +903,9 @@ var $exeDevice = {
 
         // Content after
         var contentAfter = '';
-        var contentAfter = tinymce.editors[1].getContent();
+        if (tinymce.editors[1]) {
+            contentAfter = sanitizeHtml(tinymce.editors[1].getContent());
+        }
         if (contentAfter != '') {
             contentAfter =
                 '<div class="exe-interactive-video-content-after">' +
@@ -800,8 +913,9 @@ var $exeDevice = {
                 '</div>';
         }
 
+        var videoLabel = sanitizeText(myVideo.split('.').pop());
         var html = contentBefore;
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${ideviceID}" data-evaluationb="${seval}" data-evaluationid="${sevalid}"></div>`;
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${this.escapeAttribute(ideviceID)}" data-evaluationb="${seval}" data-evaluationid="${this.escapeAttribute(sevalid)}"></div>`;
 
         html +=
             '\
@@ -810,9 +924,9 @@ var $exeDevice = {
             '">\
 				<p id="exe-interactive-video-file" class="js-hidden">\
 					<a href="' +
-            myVideo +
+            this.escapeAttribute(myVideo) +
             '">' +
-            myVideo.split('.').pop() +
+            this.escapeHtml(videoLabel) +
             '</a>\
 				</p>\
 				<script id="exe-interactive-video-contents" type="application/json">\
@@ -828,7 +942,7 @@ var $exeDevice = {
         if (type == 'local') {
             html +=
                 '<p class="sr-av"><video width="320" height="240" controls="controls" class="mediaelement"><source src="' +
-                myVideo +
+                this.escapeAttribute(myVideo) +
                 '" /></video></p>';
         }
 

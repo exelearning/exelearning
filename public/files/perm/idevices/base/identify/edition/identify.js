@@ -292,6 +292,8 @@ var $exeDevice = {
     },
 
     showQuestion: function (i) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let num = i < 0 ? 0 : i;
         num =
             num >= $exeDevice.questionsGame.length
@@ -299,6 +301,18 @@ var $exeDevice = {
                 : num;
         let p = $exeDevice.questionsGame[num],
             numClues = 0;
+
+        p.author = sanitizeText(p.author);
+        p.alt = sanitizeText(p.alt);
+        p.url = sanitizeUrl(p.url);
+        p.audio = sanitizeUrl(p.audio);
+        p.question = sanitizeText(p.question);
+        p.solution = sanitizeText(p.solution);
+        p.msgHit = sanitizeText(p.msgHit);
+        p.msgError = sanitizeText(p.msgError);
+        p.clues = (Array.isArray(p.clues) ? p.clues : Array(8).fill('')).map(
+            (clue) => sanitizeText(clue)
+        );
 
         $('.IDFE-EAnwersClues').each(function (j) {
             numClues++;
@@ -338,13 +352,16 @@ var $exeDevice = {
     },
 
     showImage: function (url, x, y, alt) {
-        const $image = $('#idfEImage'),
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            $image = $('#idfEImage'),
             $cursor = $('#idfECursor');
         $image.hide();
         $cursor.hide();
-        $image.attr('alt', alt);
+        $image.attr('alt', sanitizeText(alt));
         $('#idfENoImage').show();
 
+        url = sanitizeUrl(url);
         url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
 
         $image
@@ -701,6 +718,8 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+                sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
             $exeDevice.active = 0;
             let wrapper = $('<div></div>');
 
@@ -711,6 +730,9 @@ var $exeDevice = {
             if (version.length == 1) {
                 json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
             }
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                json
+            );
             let dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $imagesLink = $('.identifica-LinkImages', wrapper),
@@ -719,7 +741,8 @@ var $exeDevice = {
             $imagesLink.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < dataGame.questionsGame.length) {
-                    dataGame.questionsGame[iq].url = $(this).attr('href');
+                    const imageHref = sanitizeUrl($(this).attr('href'));
+                    dataGame.questionsGame[iq].url = imageHref;
                     if (
                         dataGame.questionsGame[iq].url.length < 4 &&
                         dataGame.questionsGame[iq].type == 1
@@ -733,13 +756,14 @@ var $exeDevice = {
                 dataGame.questionsGame[i].audio =
                     typeof dataGame.questionsGame[i].audio == 'undefined'
                         ? ''
-                        : dataGame.questionsGame[i].audio;
+                        : sanitizeUrl(dataGame.questionsGame[i].audio);
             }
 
             $audiosLink.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < dataGame.questionsGame.length) {
-                    dataGame.questionsGame[iq].audio = $(this).attr('href');
+                    const audioHref = sanitizeUrl($(this).attr('href'));
+                    dataGame.questionsGame[iq].audio = audioHref;
                     if (dataGame.questionsGame[iq].audio.length < 4) {
                         dataGame.questionsGame[iq].audio = '';
                     }
@@ -753,11 +777,15 @@ var $exeDevice = {
                 $('#eXeGameInstructions').val(instructions.html());
             const textAfter = $('.identifica-extra-content', wrapper);
             if (textAfter.length == 1)
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                $('#eXeIdeviceTextAfter').val(
+                    sanitizeHtml(textAfter.html() || '')
+                );
 
             const textFeedBack = $('.identifica-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#idfEFeedBackEditor').val(textFeedBack.html());
+                $('#idfEFeedBackEditor').val(
+                    sanitizeHtml(textFeedBack.html() || '')
+                );
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
@@ -778,6 +806,8 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
@@ -800,6 +830,31 @@ var $exeDevice = {
             typeof game.evaluationID != 'undefined' ? game.evaluationID : '';
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        if (!Array.isArray(game.questionsGame)) {
+            game.questionsGame = [];
+        }
+        game.questionsGame = game.questionsGame.map((question) => ({
+            ...question,
+            url: sanitizeUrl(question.url),
+            author: sanitizeText(question.author),
+            alt: sanitizeText(question.alt),
+            question: sanitizeText(question.question),
+            solution: sanitizeText(question.solution),
+            clues: (
+                Array.isArray(question.clues)
+                    ? question.clues
+                    : Array(8).fill('')
+            ).map((clue) => sanitizeText(clue)),
+            audio: sanitizeUrl(
+                typeof question.audio == 'undefined' ? '' : question.audio
+            ),
+            msgHit: sanitizeText(
+                typeof question.msgHit == 'undefined' ? '' : question.msgHit
+            ),
+            msgError: sanitizeText(
+                typeof question.msgError == 'undefined' ? '' : question.msgError
+            ),
+        }));
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#idfEShowMinimize').prop('checked', game.showMinimize);
@@ -819,21 +874,6 @@ var $exeDevice = {
 
         $exeDevice.updateGameMode(game.feedBack);
         $exeDevice.showSelectOrder(game.customMessages);
-
-        for (let i = 0; i < game.questionsGame.length; i++) {
-            game.questionsGame[i].audio =
-                typeof game.questionsGame[i].audio == 'undefined'
-                    ? ''
-                    : game.questionsGame[i].audio;
-            game.questionsGame[i].msgHit =
-                typeof game.questionsGame[i].msgHit == 'undefined'
-                    ? ''
-                    : game.questionsGame[i].msgHit;
-            game.questionsGame[i].msgError =
-                typeof game.questionsGame[i].msgError == 'undefined'
-                    ? ''
-                    : game.questionsGame[i].msgError;
-        }
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
@@ -874,14 +914,16 @@ var $exeDevice = {
     save: function () {
         if (!$exeDevice.validateQuestion()) return false;
 
-        const dataGame = this.validateData();
+        const dataGame = this.validateData(),
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
 
         if (!dataGame) return false;
 
         let fields = this.ci18n,
             i18n = fields;
         for (let i in fields) {
-            let fVal = $('#ci18n_' + i).val();
+            let fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal != '') i18n[i] = fVal;
         }
         dataGame.msgs = i18n;
@@ -895,7 +937,9 @@ var $exeDevice = {
                 instructions +
                 '</div>';
 
-        const textFeedBack = tinyMCE.get('idfEFeedBackEditor').getContent(),
+        const textFeedBack = sanitizeHtml(
+                tinyMCE.get('idfEFeedBackEditor').getContent()
+            ),
             linksImages = $exeDevice.createlinksImage(dataGame.questionsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.questionsGame);
 
@@ -914,7 +958,9 @@ var $exeDevice = {
             '</div>';
         html += linksImages;
         html += linksAudios;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter != '') {
             html +=
                 '<div class="identifica-extra-content">' + textAfter + '</div>';
@@ -929,7 +975,8 @@ var $exeDevice = {
     },
 
     validateAlt: function () {
-        let altImage = $('#idfEAlt').val();
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        let altImage = sanitizeText($('#idfEAlt').val());
         if (!$exeDevice.checkAltImage) {
             return true;
         }
@@ -953,26 +1000,28 @@ var $exeDevice = {
     validateQuestion: function () {
         let message = '',
             msgs = $exeDevice.msgs,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             p = {};
 
         p.numberClues = parseInt($('#idfECluesNumber').val());
         p.x = parseFloat($('#idfEXImage').val());
         p.y = parseFloat($('#idfEYImage').val());
-        p.author = $('#idfEAuthor').val();
-        p.alt = $('#idfEAlt').val();
-        p.url = $('#idfEURLImage').val().trim();
-        p.audio = $('#idfEURLAudio').val();
-        p.question = $('#idfEQuestion').val().trim();
-        p.solution = $('#idfESolution').val().trim();
+        p.author = sanitizeText($('#idfEAuthor').val());
+        p.alt = sanitizeText($('#idfEAlt').val());
+        p.url = sanitizeUrl($('#idfEURLImage').val().trim());
+        p.audio = sanitizeUrl($('#idfEURLAudio').val());
+        p.question = sanitizeText($('#idfEQuestion').val().trim());
+        p.solution = sanitizeText($('#idfESolution').val().trim());
         p.clues = [];
-        p.msgHit = $('#idfEMessageOK').val();
-        p.msgError = $('#idfEMessageKO').val();
+        p.msgHit = sanitizeText($('#idfEMessageOK').val());
+        p.msgError = sanitizeText($('#idfEMessageKO').val());
         p.attempts = parseInt($('#idfEAttemptsNumber').val());
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let clueEmpy = false;
         $('.IDFE-EAnwersClues').each(function (i) {
-            const clue = $(this).val().trim();
+            const clue = sanitizeText($(this).val().trim());
             if (i < p.numberClues && clue.length == 0) {
                 clueEmpy = true;
             }
@@ -995,13 +1044,15 @@ var $exeDevice = {
     },
 
     createlinksImage: function (questionsGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         for (let i = 0; i < questionsGame.length; i++) {
             let linkImage = '';
-            if (questionsGame[i].url.indexOf('http') != 0) {
+            const imageUrl = sanitizeUrl(questionsGame[i].url);
+            if (imageUrl.length > 0 && imageUrl.indexOf('http') != 0) {
                 linkImage =
                     '<a href="' +
-                    questionsGame[i].url +
+                    $exeDevice.escapeHtml(imageUrl) +
                     '" class="js-hidden identifica-LinkImages">' +
                     i +
                     '</a>';
@@ -1012,16 +1063,18 @@ var $exeDevice = {
     },
 
     createlinksAudio: function (questionsGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         for (let i = 0; i < questionsGame.length; i++) {
             let linkaudio = '';
+            const audioUrl = sanitizeUrl(questionsGame[i].audio);
             if (
-                questionsGame[i].audio.indexOf('http') != 0 &&
-                questionsGame[i].audio.length > 4
+                audioUrl.indexOf('http') != 0 &&
+                audioUrl.length > 4
             ) {
                 linkaudio =
                     '<a href="' +
-                    questionsGame[i].audio +
+                    $exeDevice.escapeHtml(audioUrl) +
                     '" class="js-hidden identifica-LinkAudios">' +
                     i +
                     '</a>';
@@ -1109,6 +1162,7 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         if (content && content.includes('\u0000')) {
@@ -1140,21 +1194,19 @@ var $exeDevice = {
             });
             $exeDevice.updateFieldGame(game);
             const instructions = game.instructionsExe || game.instructions,
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '';
+                tAfter = sanitizeHtml(unescape(game.textAfter || '')),
+                textFeedBack = sanitizeHtml(unescape(game.textFeedBack || ''));
             if (tinyMCE.get('eXeGameInstructions'))
                 tinyMCE
                     .get('eXeGameInstructions')
                     .setContent(unescape(instructions));
             else $('#eXeGameInstructions').val(unescape(instructions));
             if (tinyMCE.get('idfEFeedBackEditor'))
-                tinyMCE
-                    .get('idfEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            else $('#idfEFeedBackEditor').val(unescape(textFeedBack));
+                tinyMCE.get('idfEFeedBackEditor').setContent(textFeedBack);
+            else $('#idfEFeedBackEditor').val(textFeedBack);
             if (tinyMCE.get('eXeIdeviceTextAfter'))
-                tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            else $('#eXeIdeviceTextAfter').val(unescape(tAfter));
+                tinyMCE.get('eXeIdeviceTextAfter').setContent(tAfter);
+            else $('#eXeIdeviceTextAfter').val(tAfter);
         } else {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
             return;
@@ -1167,14 +1219,28 @@ var $exeDevice = {
     },
 
     importIdentifica: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const questionsGame = $exeDevice.questionsGame;
         game.questionsGame.forEach((p) => {
             p.time = typeof p.time === 'undefined' ? 1 : p.time;
-            p.audio = typeof p.audio === 'undefined' ? '' : p.audio;
+            p.audio = sanitizeUrl(typeof p.audio === 'undefined' ? '' : p.audio);
             p.hit = typeof p.hit === 'undefined' ? -1 : p.hit;
             p.error = typeof p.error === 'undefined' ? -1 : p.error;
-            p.msgHit = typeof p.msgHit === 'undefined' ? '' : p.msgHit;
-            p.msgError = typeof p.msgError === 'undefined' ? '' : p.msgError;
+            p.msgHit = sanitizeText(
+                typeof p.msgHit === 'undefined' ? '' : p.msgHit
+            );
+            p.msgError = sanitizeText(
+                typeof p.msgError === 'undefined' ? '' : p.msgError
+            );
+            p.author = sanitizeText(p.author);
+            p.alt = sanitizeText(p.alt);
+            p.url = sanitizeUrl(p.url);
+            p.question = sanitizeText(p.question);
+            p.solution = sanitizeText(p.solution);
+            p.clues = (Array.isArray(p.clues) ? p.clues : Array(8).fill('')).map(
+                (clue) => sanitizeText(clue)
+            );
             questionsGame.push(p);
         });
         return questionsGame;
@@ -1196,13 +1262,18 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const instructions = $('#eXeGameInstructions').text(),
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
                 tinyMCE.get('eXeGameInstructions').getContent()
             ),
-            textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
+            textAfter = escape(
+                sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent())
+            ),
             textFeedBack = escape(
-                tinyMCE.get('idfEFeedBackEditor').getContent()
+                sanitizeHtml(tinyMCE.get('idfEFeedBackEditor').getContent())
             ),
             showMinimize = $('#idfEShowMinimize').is(':checked'),
             avancedMode = $('#idfESAvancedMode').is(':checked'),
@@ -1240,6 +1311,19 @@ var $exeDevice = {
         const questionsGame = $exeDevice.questionsGame;
         for (let i = 0; i < questionsGame.length; i++) {
             const mquestion = questionsGame[i];
+            mquestion.author = sanitizeText(mquestion.author);
+            mquestion.alt = sanitizeText(mquestion.alt);
+            mquestion.url = sanitizeUrl(mquestion.url);
+            mquestion.audio = sanitizeUrl(mquestion.audio);
+            mquestion.question = sanitizeText(mquestion.question);
+            mquestion.solution = sanitizeText(mquestion.solution);
+            mquestion.msgHit = sanitizeText(mquestion.msgHit);
+            mquestion.msgError = sanitizeText(mquestion.msgError);
+            mquestion.clues = (
+                Array.isArray(mquestion.clues)
+                    ? mquestion.clues
+                    : Array(8).fill('')
+            ).map((clue) => sanitizeText(clue));
             if (mquestion.solution.length === 0) {
                 $exeDevice.showMessage($exeDevice.msgs.msgIndicateSolution);
                 return false;
@@ -1287,7 +1371,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        const initToggle = function ($input) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            initToggle = function ($input) {
             const checked = $input.is(':checked');
             $input
                 .closest('.toggle-item[role="switch"]')
@@ -1434,8 +1520,8 @@ var $exeDevice = {
         });
 
         $('#idfEURLImage').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $(this).val(),
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
+                selectedFile = sanitizeUrl($(this).val()),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
@@ -1444,7 +1530,7 @@ var $exeDevice = {
                 return false;
             }
             const url = selectedFile,
-                alt = $('#idfEAlt').val(),
+                alt = sanitizeText($('#idfEAlt').val()),
                 x = parseFloat($('#idfEXImage').val()),
                 y = parseFloat($('#idfEYImage').val());
             $exeDevice.showImage(url, x, y, alt);
@@ -1452,8 +1538,8 @@ var $exeDevice = {
 
         $('#idfEPlayImage').on('click', (e) => {
             e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp`'],
-                selectedFile = $('#idfEURLImage').val(),
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
+                selectedFile = sanitizeUrl($('#idfEURLImage').val()),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
@@ -1462,7 +1548,7 @@ var $exeDevice = {
                 return false;
             }
             const url = selectedFile,
-                alt = $('#idfEAlt').val(),
+                alt = sanitizeText($('#idfEAlt').val()),
                 x = parseFloat($('#idfEXImage').val()),
                 y = parseFloat($('#idfEYImage').val());
             $exeDevice.showImage(url, x, y, alt);
@@ -1479,14 +1565,14 @@ var $exeDevice = {
 
         $('#idfEPlayAudio').on('click', (e) => {
             e.preventDefault();
-            const selectedFile = $('#idfEURLAudio').val().trim();
+            const selectedFile = sanitizeUrl($('#idfEURLAudio').val().trim());
             if (selectedFile.length > 4) {
                 $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
         $('#idfEURLAudio').on('change', function () {
-            const selectedFile = $(this).val().trim();
+            const selectedFile = sanitizeUrl($(this).val().trim());
             if (selectedFile.length === 0) {
                 $exeDevice.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`

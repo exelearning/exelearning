@@ -819,15 +819,16 @@ var $exeDevice = {
     },
 
     playVideoQuestion: function () {
-        const urlvideo = $('#adivinaEURLYoutube').val();
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            urlvideo = sanitizeUrl($('#adivinaEURLYoutube').val().trim());
         if (!urlvideo) return;
         if (
-            $exeDevices.iDevice.gamification.media.getIDYoutube(urlvideo.trim())
+            $exeDevices.iDevice.gamification.media.getIDYoutube(urlvideo)
         ) {
             $exeDevice.showVideoQuestion();
         } else if (
             $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                urlvideo.trim()
+                urlvideo
             )
         ) {
             $exeDevice.showVideoQuestion();
@@ -1275,6 +1276,7 @@ var $exeDevice = {
     validateQuestion: function () {
         let message = '';
         const msgs = $exeDevice.msgs,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             p = {};
 
         p.word = $('#adivinaESolutionWord').val();
@@ -1285,15 +1287,17 @@ var $exeDevice = {
         p.y = parseFloat($('#adivinaEYImage').val());
         p.author = $('#adivinaEAuthor').val();
         p.alt = $('#adivinaEAlt').val();
-        p.url = $('#adivinaEURLImage').val();
-        p.audio = $('#adivinaEURLAudio').val();
+        p.url = sanitizeUrl($('#adivinaEURLImage').val());
+        p.audio = sanitizeUrl($('#adivinaEURLAudio').val());
         p.msgHit = $('#adivinaEMessageOK').val();
         p.msgError = $('#adivinaEMessageKO').val();
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type === 2) {
-            const youtubeUrl = $('#adivinaEURLYoutube').val().trim();
+            const youtubeUrl = sanitizeUrl(
+                $('#adivinaEURLYoutube').val().trim()
+            );
             p.url = $exeDevices.iDevice.gamification.media.getIDYoutube(
                 youtubeUrl
             )
@@ -1511,13 +1515,15 @@ var $exeDevice = {
     },
 
     showImage: function (url, x, y, alt) {
-        const $image = $('#adivinaEImage'),
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            $image = $('#adivinaEImage'),
             $cursor = $('#adivinaECursor');
 
         $image.hide();
         $cursor.hide();
         $image.attr('alt', alt);
         $('#adivinaENoImage').show();
+        url = sanitizeUrl(url);
         url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
 
         $image
@@ -1680,7 +1686,10 @@ var $exeDevice = {
 
         $('#adivinaEPlayVideo').on('click', (e) => {
             e.preventDefault();
-            const youtubeUrl = $('#adivinaEURLYoutube').val().trim();
+            const youtubeUrl =
+                $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                    $('#adivinaEURLYoutube').val().trim()
+                );
             if (
                 $exeDevices.iDevice.gamification.media.getIDYoutube(youtubeUrl)
             ) {
@@ -1703,14 +1712,20 @@ var $exeDevice = {
 
         $('#adivinaEPlayAudio').on('click', (e) => {
             e.preventDefault();
-            const selectedFile = $('#adivinaEURLAudio').val().trim();
+            const selectedFile =
+                $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                    $('#adivinaEURLAudio').val().trim()
+                );
             if (selectedFile.length > 4) {
                 $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
         $('#adivinaECheckSoundVideo').on('change', () => {
-            const youtubeUrl = $('#adivinaEURLYoutube').val().trim();
+            const youtubeUrl =
+                $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                    $('#adivinaEURLYoutube').val().trim()
+                );
             if (typeof YT === 'undefined') {
                 $exeDevice.isVideoType = true;
                 $exeDevice.loadYoutubeApi();
@@ -1720,7 +1735,10 @@ var $exeDevice = {
         });
 
         $('#adivinaECheckImageVideo').on('change', () => {
-            const youtubeUrl = $('#adivinaEURLYoutube').val().trim();
+            const youtubeUrl =
+                $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                    $('#adivinaEURLYoutube').val().trim()
+                );
             if (typeof YT === 'undefined') {
                 $exeDevice.isVideoType = true;
                 $exeDevice.loadYoutubeApi();
@@ -1900,8 +1918,9 @@ var $exeDevice = {
         });
 
         $('#adivinaEURLImage').on('change', function () {
+            const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+                selectedFile = sanitizeUrl($(this).val());
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-                selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (
                 (selectedFile.startsWith('files') ||
@@ -1922,8 +1941,9 @@ var $exeDevice = {
 
         $('#adivinaEPlayImage').on('click', (e) => {
             e.preventDefault();
+            const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+                selectedFile = sanitizeUrl($('#adivinaEURLImage').val());
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-                selectedFile = $('#adivinaEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
@@ -1948,7 +1968,10 @@ var $exeDevice = {
         });
 
         $('#adivinaEURLAudio').on('change', function () {
-            const selectedFile = $(this).val().trim();
+            const selectedFile =
+                $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                    $(this).val().trim()
+                );
             if (selectedFile.length === 0) {
                 $exeDevice.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`
@@ -2100,8 +2123,9 @@ var $exeDevice = {
             ),
             fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                 $('#adivinaEEndVideo').val()
-            ),
-            url = $('#adivinaEURLYoutube').val().trim(),
+            );
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            url = sanitizeUrl($('#adivinaEURLYoutube').val().trim()),
             id = $exeDevices.iDevice.gamification.media.getIDYoutube(url),
             idLocal =
                 $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
@@ -2545,13 +2569,11 @@ var $exeDevice = {
         const $entries = $xml.find('ENTRIES').first();
         if ($entries.length === 0) return false;
 
+        const sanitize = $exeDevicesEdition.iDevice.common.sanitizeText;
         const words = [];
         $entries.find('ENTRY').each(function () {
-            const concept = $(this).find('CONCEPT').text(),
-                definition = $(this)
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, '');
+            const concept = sanitize($(this).find('CONCEPT').text()),
+                definition = sanitize($(this).find('DEFINITION').text());
             if (concept && definition) {
                 let wd = {
                     word: concept,

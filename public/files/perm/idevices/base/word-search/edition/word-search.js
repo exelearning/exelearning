@@ -692,7 +692,8 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('sopaEFeedBackEditor').getContent();
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        const textFeedBack = sanitizeHtml(tinyMCE.get('sopaEFeedBackEditor').getContent());
 
         if (dataGame.instructions != '')
             divInstructions =
@@ -700,7 +701,7 @@ var $exeDevice = {
                 dataGame.instructions +
                 '</div>';
 
-        let textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        let textAfter = sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent());
         if (textAfter != '') {
             textAfter =
                 '<div class="sopa-extra-content">' + textAfter + '</div>';
@@ -779,16 +780,18 @@ var $exeDevice = {
     },
 
     validateQuestion: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let message = '',
             p = {
-                word: $('#sopaESolutionWord').val().trim(),
-                definition: $('#sopaEDefinitionWord').val(),
+                word: sanitizeText($('#sopaESolutionWord').val().trim()),
+                definition: sanitizeText($('#sopaEDefinitionWord').val()),
                 x: parseFloat($('#sopaEXImage').val()),
                 y: parseFloat($('#sopaEYImage').val()),
-                author: $('#sopaEAuthor').val(),
-                alt: $('#sopaEAlt').val(),
-                url: $('#sopaEURLImage').val().trim(),
-                audio: $('#sopaEURLAudio').val(),
+                author: sanitizeText($('#sopaEAuthor').val()),
+                alt: sanitizeText($('#sopaEAlt').val()),
+                url: sanitizeUrl($('#sopaEURLImage').val().trim()),
+                audio: sanitizeUrl($('#sopaEURLAudio').val()),
                 percentageShow: 100,
             };
 
@@ -826,9 +829,10 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('sopaEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textFeedBack = sanitizeHtml(tinyMCE.get('sopaEFeedBackEditor').getContent()),
+            textAfter = sanitizeHtml(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
             showMinimize = $('#sopaEShowMinimize').is(':checked'),
             showResolve = $('#sopaEShowResolve').is(':checked'),
             itinerary =

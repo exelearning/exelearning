@@ -235,8 +235,10 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const storyEditor = tinymce.get('textStoryTextarea');
-        const history = storyEditor ? storyEditor.getContent() : '';
+        const storyEditor = tinymce.get('textStoryTextarea'),
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
+        const history = storyEditor ? sanitizeHtml(storyEditor.getContent()) : '';
         let valid = true;
 
         if (!storyEditor.getContent().trim()) {
@@ -267,9 +269,9 @@ var $exeDevice = {
                 return;
             }
 
-            const activity = activityEditor.getContent();
-            const feedback = feedbackEditor.getContent();
-            const buttonCaption = btnInput.val().trim();
+            const activity = sanitizeHtml(activityEditor.getContent());
+            const feedback = sanitizeHtml(feedbackEditor.getContent());
+            const buttonCaption = sanitizeText(btnInput.val().trim());
 
             activities.push({
                 activity: activity,
@@ -280,14 +282,18 @@ var $exeDevice = {
 
         if (!valid) return false;
 
-        const textInfoDurationInput = $('#cseDurationValue').val().trim();
-        const textInfoDurationTextInput = $('#cseDurationText').val().trim();
-        const textInfoParticipantsInput = $('#cseParticipantsvalue')
-            .val()
-            .trim();
-        const textInfoParticipantsTextInput = $('#cseParticipantsText')
-            .val()
-            .trim();
+        const textInfoDurationInput = sanitizeText(
+            $('#cseDurationValue').val().trim()
+        );
+        const textInfoDurationTextInput = sanitizeText(
+            $('#cseDurationText').val().trim()
+        );
+        const textInfoParticipantsInput = sanitizeText(
+            $('#cseParticipantsvalue').val().trim()
+        );
+        const textInfoParticipantsTextInput = sanitizeText(
+            $('#cseParticipantsText').val().trim()
+        );
 
         return {
             id: this.id,

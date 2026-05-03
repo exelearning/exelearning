@@ -225,6 +225,7 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
             let json = $('.listacotejo-DataGame', wrapper).text();
@@ -236,19 +237,19 @@ var $exeDevice = {
             let img = $('.listacotejo-LinkLogo', wrapper);
             if (img.length === 1) {
                 img = img.attr('src') || '';
-                dataGame.urlLogo = img;
+                dataGame.urlLogo = sanitizeUrl(img);
             }
 
             img = $('.listacotejo-LinkCommunity', wrapper);
             if (img.length == 1) {
                 img = img.attr('src') || '';
-                dataGame.urlCommunity = img;
+                dataGame.urlCommunity = sanitizeUrl(img);
             }
 
             img = $('.listacotejo-LinkDecorative', wrapper);
             if (img.length == 1) {
                 img = img.attr('src') || '';
-                dataGame.urlDecorative = img;
+                dataGame.urlDecorative = sanitizeUrl(img);
             }
 
             $exeDevice.updateFieldGame(dataGame);
@@ -329,14 +330,17 @@ var $exeDevice = {
     },
 
     save: function () {
-        const dataGame = $exeDevice.validateData();
+        const dataGame = $exeDevice.validateData(),
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
 
         if (!dataGame) return false;
 
         const fields = this.ci18n,
             i18n = fields;
         for (let i in fields) {
-            let fVal = $('#ci18n_' + i).val();
+            let fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal != '') i18n[i] = fVal;
         }
 
@@ -363,36 +367,38 @@ var $exeDevice = {
             _('Unsupported browser') +
             '</div>';
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter != '') {
             html +=
                 '<div class="listacotejo-extra-content">' +
                 textAfter +
                 '</div>';
         }
-        let img = $('#ctjEURLLogo').val();
+        let img = sanitizeUrl($('#ctjEURLLogo').val());
         if (img.trim().length > 0) {
             img =
                 '<img src="' +
-                img +
+                $exeDevice.escapeAttribute(img) +
                 '" class="js-hidden listacotejo-LinkLogo" alt="logo" />';
             html += img;
         }
 
-        img = $('#ctjEURLCommunity').val();
+        img = sanitizeUrl($('#ctjEURLCommunity').val());
         if (img.trim().length > 0) {
             img =
                 '<img src="' +
-                img +
+                $exeDevice.escapeAttribute(img) +
                 '" class="js-hidden listacotejo-LinkCommunity" alt="Community" />';
             html += img;
         }
 
-        img = $('#ctjEURLDecorative').val();
+        img = sanitizeUrl($('#ctjEURLDecorative').val());
         if (img.trim().length > 0) {
             img =
                 '<img src="' +
-                img +
+                $exeDevice.escapeAttribute(img) +
                 '" class="js-hidden listacotejo-LinkDecorative" alt="Decorative" />';
             html += img;
         }
@@ -414,15 +420,18 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const title = $('#ctjTitle').val().trim(),
-            subtitle = $('#ctjSubTitle').val().trim(),
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+            title = sanitizeText($('#ctjTitle').val().trim()),
+            subtitle = sanitizeText($('#ctjSubTitle').val().trim()),
             hasLogo = $('#ctjLogo').is(':checked'),
-            urlLogo = $('#ctjEURLLogo').val().trim(),
+            urlLogo = sanitizeUrl($('#ctjEURLLogo').val().trim()),
             hasCommunity = $('#ctjCommunity').is(':checked'),
-            urlCommunity = $('#ctjEURLCommunity').val().trim(),
+            urlCommunity = sanitizeUrl($('#ctjEURLCommunity').val().trim()),
             hasDecorative = $('#ctjDecorative').is(':checked'),
-            urlDecorative = $('#ctjEURLDecorative').val().trim(),
-            footer = $('#ctjFooter').val().trim(),
+            urlDecorative = sanitizeUrl($('#ctjEURLDecorative').val().trim()),
+            footer = sanitizeHtml($('#ctjFooter').val().trim()),
             saveData = $('#ctjSaveData').is(':checked'),
             userData = $('#ctjUserData').is(':checked'),
             useScore = $('#ctjUseScore').is(':checked');
@@ -473,7 +482,7 @@ var $exeDevice = {
         $('.CTJ-Table .CTJ-data-row').each(function () {
             const $fila = $(this),
                 type = $fila.find('.CTJ-Select option:selected').val(),
-                points = $fila.find('.CTJ-Points').eq(0).text();
+                points = sanitizeText($fila.find('.CTJ-Points').eq(0).text());
 
             let nivel = '',
                 item = '';
@@ -483,7 +492,7 @@ var $exeDevice = {
                     nivel = $('.CTJ-Table th')
                         .eq($(this).index())
                         .attr('data-nivel');
-                    item = $(this).html();
+                    item = sanitizeHtml($(this).html());
                     return false;
                 }
             });
@@ -610,7 +619,7 @@ var $exeDevice = {
         });
 
         $('#ctjEURLCommunity').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (
@@ -634,7 +643,7 @@ var $exeDevice = {
 
         $('#ctjEPlayCommunity').on('click', function (e) {
             e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $('#ctjEURLCommunity').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (
@@ -657,7 +666,7 @@ var $exeDevice = {
         });
 
         $('#ctjEURLDecorative').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
 
@@ -682,7 +691,7 @@ var $exeDevice = {
 
         $('#ctjEPlayDecorative').on('click', function (e) {
             e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $('#ctjEURLDecorative').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (
@@ -1057,5 +1066,14 @@ var $exeDevice = {
             width: mData.w + 'px',
             height: mData.h + 'px',
         });
+    },
+
+    escapeAttribute: function (str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     },
 };

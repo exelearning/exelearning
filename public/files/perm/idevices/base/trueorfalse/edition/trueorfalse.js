@@ -44,6 +44,7 @@ var $exeDevice = {
     },
 
     transformObject: function (data) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         if (data.typeGame && data.typeGame === 'TrueOrFalse') {
             return data;
         }
@@ -63,9 +64,9 @@ var $exeDevice = {
             percentageQuestions: 100,
             time: 0,
             questionsGame: questionsData.map((q) => ({
-                question: q.baseText || '',
-                feedback: q.feedback || '',
-                suggestion: q.hint || '',
+                question: sanitizeHtml(q.baseText || ''),
+                feedback: sanitizeHtml(q.feedback || ''),
+                suggestion: sanitizeHtml(q.hint || ''),
                 solution: q.answer === 'True' ? 1 : 0,
             })),
             isScorm: scorm.isScorm,
@@ -299,12 +300,16 @@ var $exeDevice = {
     },
 
     showQuestion: function (i) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const num = Math.min(
             Math.max(i, 0),
             $exeDevice.questionsGame.length - 1
         );
         const p = $exeDevice.questionsGame[num];
         const questionData = p || $exeDevice.getDefaultQuestion();
+        questionData.question = sanitizeHtml(questionData.question || '');
+        questionData.feedback = sanitizeHtml(questionData.feedback || '');
+        questionData.suggestion = sanitizeHtml(questionData.suggestion || '');
         $('#tofENumQuestions').text($exeDevice.questionsGame.length);
 
         if (tinymce.get('tofEQuestionEditor')) {
@@ -685,6 +690,11 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        content =
+            $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                content
+            );
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         if (content && content.includes('\u0000')) {
@@ -706,11 +716,25 @@ var $exeDevice = {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (game.typeGame === 'TrueOrFalse') {
-            $exeDevice.questionsGame = game.questionsGame;
+            $exeDevice.questionsGame = (game.questionsGame || []).map(
+                (question) => ({
+                    ...question,
+                    question: sanitizeHtml(question.question || ''),
+                    feedback: sanitizeHtml(question.feedback || ''),
+                    suggestion: sanitizeHtml(question.suggestion || ''),
+                    solution:
+                        question.solution === true || question.solution === 1
+                            ? 1
+                            : 0,
+                })
+            );
             game.id = $exeDevice.id;
+            game.questionsGame = $exeDevice.questionsGame;
             $exeDevice.updateFieldGame(game);
             const eXeGameInstructions = game.eXeGameInstructions || '',
-                eXeIdeviceTextAfter = game.eXeIdeviceTextAfter || '';
+                eXeIdeviceTextAfter = sanitizeHtml(
+                    game.eXeIdeviceTextAfter || ''
+                );
             if (tinymce.get('eXeGameInstructions')) {
                 tinymce
                     .get('eXeGameInstructions')
@@ -746,6 +770,7 @@ var $exeDevice = {
     },
 
     insertQuestions: function (lines) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         const lineFormat =
             /^vof#[^\s#].*?#(0|1)#.*?#.*?|[^\s#].*?#(0|1)#.*?#.*?|[01]#[^#]+$/;
         let questions = [];
@@ -770,12 +795,12 @@ var $exeDevice = {
                     ] = parts;
                 }
 
-                p.question = question;
+                p.question = sanitizeText(question);
                 p.solution = ['true', '1'].includes(
                     solutionRaw.trim().toLowerCase()
                 );
-                p.suggestion = suggestion;
-                p.feedback = feedback;
+                p.suggestion = sanitizeText(suggestion);
+                p.feedback = sanitizeText(feedback);
 
                 questions.push(p);
             }
@@ -809,17 +834,30 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         let dataGame = this.idevicePreviousData;
 
         if (dataGame && Object.keys(dataGame).length > 0) {
             dataGame = $exeDevice.transformObject(dataGame);
 
             $exeDevice.active = 0;
-            $exeDevice.questionsGame = dataGame.questionsGame;
+            $exeDevice.questionsGame = (dataGame.questionsGame || []).map(
+                (question) => ({
+                    ...question,
+                    question: sanitizeHtml(question.question || ''),
+                    feedback: sanitizeHtml(question.feedback || ''),
+                    suggestion: sanitizeHtml(question.suggestion || ''),
+                    solution:
+                        question.solution === true || question.solution === 1
+                            ? 1
+                            : 0,
+                })
+            );
+            dataGame.questionsGame = $exeDevice.questionsGame;
 
             const instructions = dataGame.eXeGameInstructions || '';
 
-            const textAfter = dataGame.eXeIdeviceTextAfter || '';
+            const textAfter = sanitizeHtml(dataGame.eXeIdeviceTextAfter || '');
             $('#eXeGameInstructions').val(instructions);
             $('#eXeIdeviceTextAfter').val(textAfter);
 
@@ -831,6 +869,7 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
@@ -856,6 +895,15 @@ var $exeDevice = {
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         game.showSlider =
             typeof game.showSlider !== 'undefined' ? game.showSlider : false;
+        game.questionsGame = (game.questionsGame || []).map((question) => ({
+            ...question,
+            question: sanitizeHtml(question.question || ''),
+            feedback: sanitizeHtml(question.feedback || ''),
+            suggestion: sanitizeHtml(question.suggestion || ''),
+            solution:
+                question.solution === true || question.solution === 1 ? 1 : 0,
+        }));
+        $exeDevice.questionsGame = game.questionsGame;
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
@@ -884,25 +932,32 @@ var $exeDevice = {
     },
 
     validateQuestion: function () {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         let message = '';
         const msgs = $exeDevice.msgs,
             p = {};
         if (tinyMCE.get('tofEQuestionEditor')) {
-            p.question = tinyMCE.get('tofEQuestionEditor').getContent();
+            p.question = sanitizeHtml(
+                tinyMCE.get('tofEQuestionEditor').getContent()
+            );
         } else {
-            p.question = $('#tofEQuestionEditor').val();
+            p.question = sanitizeHtml($('#tofEQuestionEditor').val());
         }
 
         if (tinyMCE.get('tofEFeedBackEditor')) {
-            p.feedback = tinyMCE.get('tofEFeedBackEditor').getContent();
+            p.feedback = sanitizeHtml(
+                tinyMCE.get('tofEFeedBackEditor').getContent()
+            );
         } else {
-            p.feedback = $('#tofEFeedBackEditor').val();
+            p.feedback = sanitizeHtml($('#tofEFeedBackEditor').val());
         }
 
         if (tinyMCE.get('tofESuggestionEditor')) {
-            p.suggestion = tinyMCE.get('tofESuggestionEditor').getContent();
+            p.suggestion = sanitizeHtml(
+                tinyMCE.get('tofESuggestionEditor').getContent()
+            );
         } else {
-            p.suggestion = $('#tofESuggestionEditor').val();
+            p.suggestion = sanitizeHtml($('#tofESuggestionEditor').val());
         }
 
         if (p.question.length === 0) {
@@ -953,6 +1008,8 @@ var $exeDevice = {
     },
 
     validateData: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const questionsRandom = $('#tofEQuestionsRandom').is(':checked'),
             percentageQuestions = parseInt(
                 $exeDevice.removeTags($('#tofEPercentageQuestions').val())
@@ -980,6 +1037,13 @@ var $exeDevice = {
         }
         for (let i = 0; i < questionsGame.length; i++) {
             const mQuestion = questionsGame[i];
+            mQuestion.question = sanitizeHtml(mQuestion.question || '');
+            mQuestion.feedback = sanitizeHtml(mQuestion.feedback || '');
+            mQuestion.suggestion = sanitizeHtml(mQuestion.suggestion || '');
+            mQuestion.solution =
+                mQuestion.solution === true || mQuestion.solution === 1
+                    ? 1
+                    : 0;
 
             if (mQuestion.question.length === 0) {
                 $exeDevice.showMessage($exeDevice.msgs.msgWriteQuestion);
@@ -1002,15 +1066,17 @@ var $exeDevice = {
         }
         let eXeIdeviceTextAfter = '';
         if (tinyMCE.get('eXeIdeviceTextAfter')) {
-            eXeIdeviceTextAfter = tinyMCE
+            eXeIdeviceTextAfter = sanitizeHtml(
+                tinyMCE
                 .get('eXeIdeviceTextAfter')
-                .getContent();
+                .getContent()
+            );
         }
 
         const fields = this.ci18n,
             i18n = fields;
         for (const i in fields) {
-            const fVal = $('#ci18n_' + i).val();
+            const fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal !== '') i18n[i] = fVal;
         }
 

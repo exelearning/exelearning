@@ -373,14 +373,16 @@ var $exeDevice = {
     },
 
     jsonToCard: function (p, inload) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const $card = $exeDevice.addCard(!inload);
         // Valores seguros (retrocompatibilidad con versiones antiguas sin color/fondo)
         const safe = {
-            author: p?.author || '',
-            alt: p?.alt || '',
-            url: p?.url || '',
-            audio: p?.audio || '',
-            eText: p?.eText || '',
+            author: sanitizeText(p?.author || ''),
+            alt: sanitizeText(p?.alt || ''),
+            url: sanitizeUrl(p?.url || ''),
+            audio: sanitizeUrl(p?.audio || ''),
+            eText: sanitizeText(p?.eText || ''),
             color: p?.color || '#000000',
             backcolor: p?.backcolor || '#ffffff',
             state: !!p?.state,
@@ -447,6 +449,8 @@ var $exeDevice = {
     },
 
     showPhrase: function (i, inload) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let num = i < 0 ? 0 : i;
 
         $exeDevice.active =
@@ -455,6 +459,16 @@ var $exeDevice = {
                 : num;
 
         const phrase = $exeDevice.phrasesGame[num];
+
+        phrase.url = sanitizeUrl(phrase.url || '');
+        phrase.alt = sanitizeText(phrase.alt || '');
+        phrase.author = sanitizeText(phrase.author || '');
+        phrase.msgHit = sanitizeText(phrase.msgHit || '');
+        phrase.msgError = sanitizeText(phrase.msgError || '');
+        phrase.definition = sanitizeText(phrase.definition || '');
+        phrase.audioDefinition = sanitizeUrl(phrase.audioDefinition || '');
+        phrase.audioHit = sanitizeUrl(phrase.audioHit || '');
+        phrase.audioError = sanitizeUrl(phrase.audioError || '');
 
         $exeDevice.clearPhrase();
 
@@ -660,12 +674,16 @@ var $exeDevice = {
         });
 
         $('#slcmEURLAudio-' + id).on('change', function () {
-            $exeDevice.loadAudio($(this).val());
+            $exeDevice.loadAudio(
+                $exeDevicesEdition.iDevice.common.sanitizeUrl($(this).val())
+            );
         });
 
         $('#slcmEPlayAudio-' + id).on('click', function (e) {
             e.preventDefault();
-            const audio = $('#slcmEURLAudio-' + id).val();
+            const audio = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+                $('#slcmEURLAudio-' + id).val()
+            );
             $exeDevice.loadAudio(audio);
         });
 
@@ -683,7 +701,9 @@ var $exeDevice = {
         });
 
         $('#slcmEText-' + id).on('keyup', function () {
-            $('#slcmETextDiv-' + id).text($(this).val());
+            const textValue =
+                $exeDevicesEdition.iDevice.common.sanitizeText($(this).val());
+            $('#slcmETextDiv-' + id).text(textValue);
             if ($(this).val().trim().length > 0) {
                 $('#slcmETextDiv-' + $exeDevice.activeID)
                     .removeClass('d-flex')
@@ -711,14 +731,16 @@ var $exeDevice = {
         });
     },
     cardToJson: function ($card) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         return {
             id: $card.data('id'),
             type: 2,
-            author: $card.find('.SLCME-EAuthor').eq(0).val(),
-            alt: $card.find('.SLCME-EAlt').eq(0).val(),
-            url: $card.find('.SLCME-EURLImage').eq(0).val(),
-            audio: $card.find('.SLCME-EURLAudio').eq(0).val(),
-            eText: $card.find('.SLCME-EText').eq(0).val(),
+            author: sanitizeText($card.find('.SLCME-EAuthor').eq(0).val()),
+            alt: sanitizeText($card.find('.SLCME-EAlt').eq(0).val()),
+            url: sanitizeUrl($card.find('.SLCME-EURLImage').eq(0).val()),
+            audio: sanitizeUrl($card.find('.SLCME-EURLAudio').eq(0).val()),
+            eText: sanitizeText($card.find('.SLCME-EText').eq(0).val()),
             color: $card.find('.SLCME-EColor').eq(0).val(),
             backcolor: $card.find('.SLCME-EBackColor').eq(0).val(),
             state: $card.find('.SLCME-EState').is(':checked'),
@@ -726,6 +748,8 @@ var $exeDevice = {
     },
 
     validatePhrase: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let correct = true,
             phrase = $exeDevice.getPhraseDefault(),
             $cards = $('#slcmEPhrase').find('div.SLCME-EDatosCarta');
@@ -741,15 +765,15 @@ var $exeDevice = {
 
         if (!correct) return false;
 
-        phrase.url = $('#slcmEURLImageDefinition').val();
-        phrase.alt = $('#slcmEAltDefinition').val();
-        phrase.author = $('#slcmEAuthorDefinition').val();
-        phrase.msgHit = $('#slcmEMessageOK').val();
-        phrase.msgError = $('#slcmEMessageKO').val();
-        phrase.definition = $('#slcmEDefinition').val();
-        phrase.audioDefinition = $('#slcmEURLAudioDefinition').val();
-        phrase.audioHit = $('#slcmEURLAudioOK').val();
-        phrase.audioError = $('#slcmEURLAudioKO').val();
+        phrase.url = sanitizeUrl($('#slcmEURLImageDefinition').val());
+        phrase.alt = sanitizeText($('#slcmEAltDefinition').val());
+        phrase.author = sanitizeText($('#slcmEAuthorDefinition').val());
+        phrase.msgHit = sanitizeText($('#slcmEMessageOK').val());
+        phrase.msgError = sanitizeText($('#slcmEMessageKO').val());
+        phrase.definition = sanitizeText($('#slcmEDefinition').val());
+        phrase.audioDefinition = sanitizeUrl($('#slcmEURLAudioDefinition').val());
+        phrase.audioHit = sanitizeUrl($('#slcmEURLAudioOK').val());
+        phrase.audioError = sanitizeUrl($('#slcmEURLAudioKO').val());
         $exeDevice.phrasesGame[$exeDevice.active] = phrase;
 
         return true;
@@ -822,11 +846,18 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+                sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+                sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
 
             let json = $('.seleccionamedias-DataGame', wrapper).text();
             json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
+            json =
+                $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                    json
+                );
 
             const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
@@ -834,6 +865,10 @@ var $exeDevice = {
                 $imagesDef = $('.seleccionamedias-LinkImagesDef', wrapper),
                 $audiosError = $('.seleccionamedias-LinkAudiosError', wrapper),
                 $audiosHit = $('.seleccionamedias-LinkAudiosHit', wrapper);
+
+            if (!dataGame || !Array.isArray(dataGame.phrasesGame)) {
+                return;
+            }
 
             for (let i = 0; i < dataGame.phrasesGame.length; i++) {
                 const $imagesLink = $(
@@ -849,7 +884,7 @@ var $exeDevice = {
                 $imagesLink.each(function () {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < cards.length) {
-                        cards[iq].url = $(this).attr('href');
+                        cards[iq].url = sanitizeUrl($(this).attr('href') || '');
                         if (cards[iq].url < 4) {
                             cards[iq].url = '';
                         }
@@ -859,7 +894,9 @@ var $exeDevice = {
                 $audiosLink.each(function () {
                     const iqa = parseInt($(this).text());
                     if (!isNaN(iqa) && iqa < cards.length) {
-                        cards[iqa].audio = $(this).attr('href');
+                        cards[iqa].audio = sanitizeUrl(
+                            $(this).attr('href') || ''
+                        );
                         if (cards[iqa].audio.length < 4) {
                             cards[iqa].audio = '';
                         }
@@ -873,21 +910,41 @@ var $exeDevice = {
                 dataGame.phrasesGame[i].url =
                     typeof dataGame.phrasesGame[i].url == 'undefined'
                         ? ''
-                        : dataGame.phrasesGame[i].url;
+                        : sanitizeUrl(dataGame.phrasesGame[i].url);
                 dataGame.phrasesGame[i].alt =
                     typeof dataGame.phrasesGame[i].alt == 'undefined'
                         ? ''
-                        : dataGame.phrasesGame[i].alt;
+                        : sanitizeText(dataGame.phrasesGame[i].alt);
                 dataGame.phrasesGame[i].author =
                     typeof dataGame.phrasesGame[i].author == 'undefined'
                         ? ''
-                        : dataGame.phrasesGame[i].author;
+                        : sanitizeText(dataGame.phrasesGame[i].author);
+                dataGame.phrasesGame[i].msgHit = sanitizeText(
+                    dataGame.phrasesGame[i].msgHit || ''
+                );
+                dataGame.phrasesGame[i].msgError = sanitizeText(
+                    dataGame.phrasesGame[i].msgError || ''
+                );
+                dataGame.phrasesGame[i].definition = sanitizeText(
+                    dataGame.phrasesGame[i].definition || ''
+                );
+                dataGame.phrasesGame[i].audioDefinition = sanitizeUrl(
+                    dataGame.phrasesGame[i].audioDefinition || ''
+                );
+                dataGame.phrasesGame[i].audioHit = sanitizeUrl(
+                    dataGame.phrasesGame[i].audioHit || ''
+                );
+                dataGame.phrasesGame[i].audioError = sanitizeUrl(
+                    dataGame.phrasesGame[i].audioError || ''
+                );
             }
 
             $imagesDef.each(function () {
                 const iqb = parseInt($(this).text());
                 if (!isNaN(iqb) && iqb < dataGame.phrasesGame.length) {
-                    dataGame.phrasesGame[iqb].url = $(this).attr('href');
+                    dataGame.phrasesGame[iqb].url = sanitizeUrl(
+                        $(this).attr('href') || ''
+                    );
                     if (dataGame.phrasesGame[iqb].url.length < 4) {
                         dataGame.phrasesGame[iqb].url = '';
                     }
@@ -898,7 +955,7 @@ var $exeDevice = {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < dataGame.phrasesGame.length) {
                     dataGame.phrasesGame[iqa].audioDefinition =
-                        $(this).attr('href');
+                        sanitizeUrl($(this).attr('href') || '');
                     if (dataGame.phrasesGame[iqa].audioDefinition.length < 4) {
                         dataGame.phrasesGame[iqa].audioDefinition = '';
                     }
@@ -908,7 +965,9 @@ var $exeDevice = {
             $audiosError.each(function () {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < dataGame.phrasesGame.length) {
-                    dataGame.phrasesGame[iqa].audioError = $(this).attr('href');
+                    dataGame.phrasesGame[iqa].audioError = sanitizeUrl(
+                        $(this).attr('href') || ''
+                    );
                     if (dataGame.phrasesGame[iqa].audioError.length < 4) {
                         dataGame.phrasesGame[iqa].audioError = '';
                     }
@@ -918,7 +977,9 @@ var $exeDevice = {
             $audiosHit.each(function () {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < dataGame.phrasesGame.length) {
-                    dataGame.phrasesGame[iqa].audioHit = $(this).attr('href');
+                    dataGame.phrasesGame[iqa].audioHit = sanitizeUrl(
+                        $(this).attr('href') || ''
+                    );
                     if (dataGame.phrasesGame[iqa].audioHit.length < 4) {
                         dataGame.phrasesGame[iqa].audioHit = '';
                     }
@@ -933,11 +994,15 @@ var $exeDevice = {
 
             const textAfter = $('.seleccionamedias-extra-content', wrapper);
             if (textAfter.length == 1)
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                $('#eXeIdeviceTextAfter').val(
+                    sanitizeHtml(textAfter.html() || '')
+                );
 
             const textFeedBack = $('.seleccionamedias-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#slcmEFeedBackEditor').val(textFeedBack.html());
+                $('#slcmEFeedBackEditor').val(
+                    sanitizeHtml(textFeedBack.html() || '')
+                );
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
@@ -956,6 +1021,8 @@ var $exeDevice = {
     },
 
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         if (!$exeDevice.validatePhrase()) return;
 
         const dataGame = $exeDevice.validateData();
@@ -965,7 +1032,7 @@ var $exeDevice = {
         const fields = this.ci18n,
             i18n = fields;
         for (let i in fields) {
-            let fVal = $('#ci18n_' + i).val();
+            let fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal != '') i18n[i] = fVal;
         }
 
@@ -976,7 +1043,9 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('slcmEFeedBackEditor').getContent();
+        const textFeedBack = sanitizeHtml(
+            tinyMCE.get('slcmEFeedBackEditor').getContent()
+        );
 
         if (dataGame.instructions != '')
             divContent =
@@ -1000,7 +1069,9 @@ var $exeDevice = {
 
         html += linksImages;
         html += linksAudios;
-        let textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        let textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter != '')
             html +=
                 '<div class="seleccionamedias-extra-content">' +
@@ -1037,20 +1108,21 @@ var $exeDevice = {
     },
 
     createlinksImage: function (phrasesGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         for (let i = 0; i < phrasesGame.length; i++) {
             const q = phrasesGame[i];
             for (let k = 0; k < q.cards.length; k++) {
                 let p = q.cards[k],
                     linkImage = '';
+                const imageUrl = sanitizeUrl(p.url || '');
                 if (
-                    typeof p.url != 'undefined' &&
-                    p.url.length > 4 &&
-                    p.url.indexOf('http') != 0
+                    imageUrl.length > 4 &&
+                    imageUrl.indexOf('http') != 0
                 ) {
                     linkImage =
                         '<a href="' +
-                        p.url +
+                        $exeDevice.escapeHtml(imageUrl) +
                         '" class="js-hidden seleccionamedias-LinkImages-' +
                         i +
                         '">' +
@@ -1059,14 +1131,11 @@ var $exeDevice = {
                 }
                 html += linkImage;
             }
-            if (
-                typeof q.url != 'undefined' &&
-                q.url.indexOf('http') != 0 &&
-                q.url.length > 4
-            ) {
+            const phraseUrl = sanitizeUrl(q.url || '');
+            if (phraseUrl.indexOf('http') != 0 && phraseUrl.length > 4) {
                 linkImage =
                     '<a href="' +
-                    q.url +
+                    $exeDevice.escapeHtml(phraseUrl) +
                     '" class="js-hidden seleccionamedias-LinkImagesDef">' +
                     i +
                     '</a>';
@@ -1077,20 +1146,21 @@ var $exeDevice = {
     },
 
     createlinksAudio: function (phrasesGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         for (let i = 0; i < phrasesGame.length; i++) {
             const q = phrasesGame[i];
             for (let k = 0; k < q.cards.length; k++) {
                 let p = q.cards[k],
                     linkImage = '';
+                const cardAudio = sanitizeUrl(p.audio || '');
                 if (
-                    typeof p.audio != 'undefined' &&
-                    p.audio.indexOf('http') != 0 &&
-                    p.audio.length > 4
+                    cardAudio.indexOf('http') != 0 &&
+                    cardAudio.length > 4
                 ) {
                     linkImage =
                         '<a href="' +
-                        p.audio +
+                        $exeDevice.escapeHtml(cardAudio) +
                         '" class="js-hidden seleccionamedias-LinkAudios-' +
                         i +
                         '">' +
@@ -1099,40 +1169,31 @@ var $exeDevice = {
                 }
                 html += linkImage;
             }
-            if (
-                typeof q.audioDefinition != 'undefined' &&
-                q.audioDefinition.indexOf('http') != 0 &&
-                q.audioDefinition.length > 4
-            ) {
+            const audioDefinition = sanitizeUrl(q.audioDefinition || '');
+            if (audioDefinition.indexOf('http') != 0 && audioDefinition.length > 4) {
                 const linkImage =
                     '<a href="' +
-                    q.audioDefinition +
+                    $exeDevice.escapeHtml(audioDefinition) +
                     '" class="js-hidden seleccionamedias-LinkAudiosDef">' +
                     i +
                     '</a>';
                 html += linkImage;
             }
-            if (
-                typeof q.audioHit != 'undefined' &&
-                q.audioHit.indexOf('http') != 0 &&
-                q.audioHit.length > 4
-            ) {
+            const audioHit = sanitizeUrl(q.audioHit || '');
+            if (audioHit.indexOf('http') != 0 && audioHit.length > 4) {
                 const linkImage =
                     '<a href="' +
-                    q.audioHit +
+                    $exeDevice.escapeHtml(audioHit) +
                     '" class="js-hidden seleccionamedias-LinkAudiosHit">' +
                     i +
                     '</a>';
                 html += linkImage;
             }
-            if (
-                typeof q.audioError != 'undefined' &&
-                q.audioError.indexOf('http') != 0 &&
-                q.audioError.length > 4
-            ) {
+            const audioError = sanitizeUrl(q.audioError || '');
+            if (audioError.indexOf('http') != 0 && audioError.length > 4) {
                 const linkImage =
                     '<a href="' +
-                    q.audioError +
+                    $exeDevice.escapeHtml(audioError) +
                     '" class="js-hidden seleccionamedias-LinkAudiosError">' +
                     i +
                     '</a>';
@@ -1157,9 +1218,16 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('slcmEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textFeedBack = sanitizeHtml(
+                tinyMCE.get('slcmEFeedBackEditor').getContent()
+            ),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
             showMinimize = $('#slcmEShowMinimize').is(':checked'),
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
@@ -1174,7 +1242,7 @@ var $exeDevice = {
             timeShowSolution = parseInt(
                 clear($('#slcmETimeShowSolution').val())
             ),
-            author = $('#slcmEAuthor').val(),
+            author = sanitizeText($('#slcmEAuthor').val()),
             phrasesGame = $exeDevice.phrasesGame,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
@@ -1194,6 +1262,26 @@ var $exeDevice = {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
+
+        phrasesGame.forEach((phrase) => {
+            phrase.url = sanitizeUrl(phrase.url || '');
+            phrase.alt = sanitizeText(phrase.alt || '');
+            phrase.author = sanitizeText(phrase.author || '');
+            phrase.msgHit = sanitizeText(phrase.msgHit || '');
+            phrase.msgError = sanitizeText(phrase.msgError || '');
+            phrase.definition = sanitizeText(phrase.definition || '');
+            phrase.audioDefinition = sanitizeUrl(phrase.audioDefinition || '');
+            phrase.audioHit = sanitizeUrl(phrase.audioHit || '');
+            phrase.audioError = sanitizeUrl(phrase.audioError || '');
+            phrase.cards = (phrase.cards || []).map((card) => ({
+                ...card,
+                author: sanitizeText(card.author || ''),
+                alt: sanitizeText(card.alt || ''),
+                url: sanitizeUrl(card.url || ''),
+                audio: sanitizeUrl(card.audio || ''),
+                eText: sanitizeText(card.eText || ''),
+            }));
+        });
         const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             typeGame: 'SeleccionaMedias',
@@ -1226,10 +1314,12 @@ var $exeDevice = {
     },
 
     showImage: function (id) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const $image = $('#slcmEImage-' + id),
             $nimage = $('#slcmENoImage-' + id),
-            alt = $('#slcmEAlt-' + id).val(),
-            url = $('#slcmEURLImage-' + id).val();
+            alt = sanitizeText($('#slcmEAlt-' + id).val()),
+            url = sanitizeUrl($('#slcmEURLImage-' + id).val());
 
         $exeDevice.hideFlex($image);
         $image.attr('alt', alt);
@@ -1261,6 +1351,9 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
+        selectedFile = $exeDevicesEdition.iDevice.common.sanitizeUrl(
+            selectedFile
+        );
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
@@ -1539,8 +1632,9 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
     },
     loadImage: function (id) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#slcmEURLImage-' + id).val(),
+            url = sanitizeUrl($('#slcmEURLImage-' + id).val()),
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
@@ -1552,8 +1646,9 @@ var $exeDevice = {
     },
 
     loadImageDefinition: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#slcmEURLImageDefinition').val(),
+            url = sanitizeUrl($('#slcmEURLImageDefinition').val()),
             ext = url.split('.').pop().toLowerCase();
         if (url.trim().length < 4) {
             $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
@@ -1570,6 +1665,8 @@ var $exeDevice = {
     },
 
     loadAudio: function (url) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
+        url = sanitizeUrl(url);
         const validExt = ['mp3', 'ogg', 'wav'],
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
@@ -1719,6 +1816,8 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         $exeDevice.active = 0;
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
@@ -1738,7 +1837,7 @@ var $exeDevice = {
         $('#slcmEPercentajeQuestions').val(game.percentajeQuestions);
         $('#slcmETime').val(game.time);
         $('#slcmETimeShowSolution').val(game.timeShowSolution);
-        $('#slcmEAuthor').val(game.author);
+        $('#slcmEAuthor').val(sanitizeText(game.author));
         $('#slcmEShowSolution').prop('checked', game.showSolution);
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
@@ -1747,7 +1846,26 @@ var $exeDevice = {
             game.repeatActivity,
             game.weighted
         );
-        $exeDevice.phrasesGame = game.phrasesGame;
+        $exeDevice.phrasesGame = (game.phrasesGame || []).map((phrase) => ({
+            ...phrase,
+            url: sanitizeUrl(phrase.url || ''),
+            alt: sanitizeText(phrase.alt || ''),
+            author: sanitizeText(phrase.author || ''),
+            msgHit: sanitizeText(phrase.msgHit || ''),
+            msgError: sanitizeText(phrase.msgError || ''),
+            definition: sanitizeText(phrase.definition || ''),
+            audioDefinition: sanitizeUrl(phrase.audioDefinition || ''),
+            audioHit: sanitizeUrl(phrase.audioHit || ''),
+            audioError: sanitizeUrl(phrase.audioError || ''),
+            cards: (phrase.cards || []).map((card) => ({
+                ...card,
+                author: sanitizeText(card.author || ''),
+                alt: sanitizeText(card.alt || ''),
+                url: sanitizeUrl(card.url || ''),
+                audio: sanitizeUrl(card.audio || ''),
+                eText: sanitizeText(card.eText || ''),
+            })),
+        }));
         $exeDevice.updateGameMode(game.feedBack);
         $('#slcmENumPhrases').text($exeDevice.phrasesGame.length);
 
@@ -1765,6 +1883,7 @@ var $exeDevice = {
     },
 
     importGame: function (content) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const game = $exeDevice.isJsonString(content);
 
         if (!game || typeof game.typeGame == 'undefined') {
@@ -1783,8 +1902,12 @@ var $exeDevice = {
             tAfter = game.textAfter || '',
             textFeedBack = game.textFeedBack || '';
         tinyMCE.get('eXeGameInstructions').setContent(unescape(instructions));
-        tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-        tinyMCE.get('slcmEFeedBackEditor').setContent(unescape(textFeedBack));
+        tinyMCE
+            .get('eXeIdeviceTextAfter')
+            .setContent(sanitizeHtml(unescape(tAfter)));
+        tinyMCE
+            .get('slcmEFeedBackEditor')
+            .setContent(sanitizeHtml(unescape(textFeedBack)));
 
         //$('.exe-form-tabs li:first-child a').click();
         $exeDevice.showPhrase(0, false);

@@ -17,10 +17,27 @@ const __dirname = dirname(__filename);
 
 describe('download-source-file iDevice (edition)', () => {
   let $exeDevice;
+  let originalCommon;
+  let sanitizeTextMock;
+  let sanitizeHtmlMock;
+  let sanitizeUrlMock;
 
   beforeEach(() => {
     // Reset $exeDevice
     global.$exeDevice = undefined;
+
+    originalCommon = $exeDevicesEdition.iDevice.common;
+    sanitizeTextMock = vi.fn((value = '') => String(value ?? '').replace(/<[^>]*>/g, ''));
+    sanitizeHtmlMock = vi.fn((value = '') =>
+      String(value ?? '').replace(/<script[\s\S]*?<\/script>/gi, '')
+    );
+    sanitizeUrlMock = vi.fn((value = '') => String(value ?? ''));
+    $exeDevicesEdition.iDevice.common = {
+      ...(originalCommon || {}),
+      sanitizeText: sanitizeTextMock,
+      sanitizeHtml: sanitizeHtmlMock,
+      sanitizeUrl: sanitizeUrlMock,
+    };
 
     // Load the iDevice
     $exeDevice = global.loadIdevice(join(__dirname, 'download-source-file.js'));
@@ -36,6 +53,7 @@ describe('download-source-file iDevice (edition)', () => {
   });
 
   afterEach(() => {
+    $exeDevicesEdition.iDevice.common = originalCommon;
     global.$exeDevice = undefined;
     vi.clearAllMocks();
   });
@@ -163,6 +181,15 @@ describe('download-source-file iDevice (edition)', () => {
     it('pads single digit hex values with zero', () => {
       expect($exeDevice.rgb2hex('rgb(0, 0, 0)')).toBe('000000');
       expect($exeDevice.rgb2hex('rgb(15, 15, 15)')).toBe('0f0f0f');
+    });
+  });
+
+  describe('sanitization helpers', () => {
+    it('accepts only #RRGGBB colors in sanitizeColorHex', () => {
+      expect($exeDevice.sanitizeColorHex('#a1b2c3')).toBe('#a1b2c3');
+      expect($exeDevice.sanitizeColorHex('#fff')).toBe('');
+      expect($exeDevice.sanitizeColorHex('red')).toBe('');
+      expect($exeDevice.sanitizeColorHex('#000000;position:absolute')).toBe('');
     });
   });
 
@@ -414,6 +441,50 @@ describe('download-source-file iDevice (edition)', () => {
       expect(result).toContain('Test instructions');
       expect(result).toContain('exe-download-package-link');
       expect(result).toContain('exe-package:elp');
+    });
+
+    it('sanitizes TinyMCE instructions before saving', () => {
+      const editor = global.tinymce.get('dpiDescription');
+      editor.setContent('<p>Safe</p><script>alert("xss")</script>');
+
+      const result = $exeDevice.save();
+
+      expect(result).toContain('<p>Safe</p>');
+      expect(result).not.toContain('<script>');
+    });
+
+    it('sanitizes project properties injected in the description placeholders', () => {
+      global.eXe.app.getProjectProperties = vi.fn(() => ({
+        pp_title: { value: '<img src=x onerror=alert(1)>Title' },
+        pp_description: { value: '<script>alert(1)</script>Desc' },
+        pp_author: { value: '<b>Author</b>' },
+        pp_license: { value: 'creative commons: attribution 4.0' },
+      }));
+      const editor = global.tinymce.get('dpiDescription');
+      editor.setContent(`
+        <table class="exe-table exe-package-info">
+          <tbody>
+            <tr><td class="exe-prop-locked"><span class="exe-prop-title"></span></td></tr>
+            <tr><td class="exe-prop-locked"><span class="exe-prop-description"></span></td></tr>
+            <tr><td class="exe-prop-locked"><span class="exe-prop-author"></span></td></tr>
+            <tr><td class="exe-prop-locked"><span class="exe-prop-license"></span></td></tr>
+          </tbody>
+        </table>
+      `);
+
+      const result = $exeDevice.save();
+
+      expect(result).toContain('exe-download-package-instructions');
+      expect(result).not.toContain('onerror=');
+      expect(result).not.toContain('<script>');
+    });
+
+    it('ignores invalid font size values outside the allowed whitelist', () => {
+      $('#dpiButtonFontSize').html('<option value="9" selected>900%</option>');
+
+      const result = $exeDevice.save();
+
+      expect(result).not.toContain('font-size:9em');
     });
 
     it('includes button text in output', () => {

@@ -678,6 +678,8 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
+                sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
             const wrapper = $('<div></div>').html(originalHTML),
                 $imagesLink = $('.clasifica-LinkImages', wrapper),
                 $audiosLink = $('.clasifica-LinkAudios', wrapper);
@@ -690,7 +692,9 @@ var $exeDevice = {
             $imagesLink.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < dataGame.wordsGame.length) {
-                    dataGame.wordsGame[iq].url = $(this).attr('href');
+                    dataGame.wordsGame[iq].url = sanitizeUrl(
+                        $(this).attr('href')
+                    );
                     if (
                         dataGame.wordsGame[iq].url.length < 4 &&
                         dataGame.wordsGame[iq].type === 1
@@ -703,7 +707,9 @@ var $exeDevice = {
             $audiosLink.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < dataGame.wordsGame.length) {
-                    dataGame.wordsGame[iq].audio = $(this).attr('href');
+                    dataGame.wordsGame[iq].audio = sanitizeUrl(
+                        $(this).attr('href')
+                    );
                     if (dataGame.wordsGame[iq].audio.length < 4) {
                         dataGame.wordsGame[iq].audio = '';
                     }
@@ -717,12 +723,14 @@ var $exeDevice = {
 
             const textAfter = $('.clasifica-extra-content', wrapper);
             if (textAfter.length === 1) {
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                $('#eXeIdeviceTextAfter').val(sanitizeHtml(textAfter.html()));
             }
 
             const textFeedBack = $('.clasifica-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
-                $('#clasificaEFeedBackEditor').val(textFeedBack.html());
+                $('#clasificaEFeedBackEditor').val(
+                    sanitizeHtml(textFeedBack.html())
+                );
             }
 
             $exeDevice.updateFieldGame(dataGame);
@@ -746,14 +754,15 @@ var $exeDevice = {
     save: function () {
         if (!$exeDevice.validateQuestion()) return false;
 
-        const dataGame = $exeDevice.validateData();
+        const dataGame = $exeDevice.validateData(),
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         if (!dataGame) return false;
 
         const fields = this.ci18n,
             i18n = fields;
 
         Object.keys(fields).forEach((i) => {
-            const fVal = $('#ci18n_' + i).val();
+            const fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal !== '') i18n[i] = fVal;
         });
 
@@ -762,9 +771,7 @@ var $exeDevice = {
         let json = JSON.stringify(dataGame);
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE
-            .get('clasificaEFeedBackEditor')
-            .getContent();
+        const textFeedBack = dataGame.textFeedBack;
         let divContent = '';
         if (dataGame.instructions !== '') {
             divContent = `<div class="clasifica-instructions">${dataGame.instructions}</div>`;
@@ -772,9 +779,9 @@ var $exeDevice = {
 
         const linksImages = $exeDevice.createlinksImage(dataGame.wordsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.wordsGame);
-        let imgCard = $('#clasificaEURLImgCard').val();
+        let imgCard = dataGame.imgCard;
         if (imgCard.trim().length > 4) {
-            imgCard = `<a href="${imgCard}" class="js-hidden clasifica-ImageBack" alt="Back" />Background</a>`;
+            imgCard = `<a href="${$exeDevice.escapeAttribute(imgCard)}" class="js-hidden clasifica-ImageBack" alt="Back" />Background</a>`;
         } else {
             imgCard = '';
         }
@@ -788,7 +795,7 @@ var $exeDevice = {
         html += linksAudios;
         html += imgCard;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = dataGame.textAfter;
         if (textAfter !== '') {
             html += `<div class="clasifica-extra-content">${textAfter}</div>`;
         }
@@ -800,29 +807,33 @@ var $exeDevice = {
     },
 
     createlinksImage: function (wordsGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         wordsGame.forEach((word, i) => {
+            const wordUrl = sanitizeUrl(word.url);
             if (
-                typeof word.url !== 'undefined' &&
+                typeof wordUrl !== 'undefined' &&
                 (word.type === 0 || word.type === 2) &&
-                word.url.length > 0 &&
-                !word.url.startsWith('http')
+                wordUrl.length > 0 &&
+                !wordUrl.startsWith('http')
             ) {
-                html += `<a href="${word.url}" class="js-hidden clasifica-LinkImages">${i}</a>`;
+                html += `<a href="${$exeDevice.escapeAttribute(wordUrl)}" class="js-hidden clasifica-LinkImages">${i}</a>`;
             }
         });
         return html;
     },
 
     createlinksAudio: function (wordsGame) {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         let html = '';
         wordsGame.forEach((word, i) => {
+            const wordAudio = sanitizeUrl(word.audio);
             if (
-                typeof word.audio !== 'undefined' &&
-                !word.audio.startsWith('http') &&
-                word.audio.length > 4
+                typeof wordAudio !== 'undefined' &&
+                !wordAudio.startsWith('http') &&
+                wordAudio.length > 4
             ) {
-                html += `<a href="${word.audio}" class="js-hidden clasifica-LinkAudios">${i}</a>`;
+                html += `<a href="${$exeDevice.escapeAttribute(wordAudio)}" class="js-hidden clasifica-LinkAudios">${i}</a>`;
             }
         });
         return html;
@@ -831,6 +842,8 @@ var $exeDevice = {
     validateQuestion: function () {
         let message = '',
             msgs = $exeDevice.msgs,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             p = {};
 
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
@@ -838,16 +851,16 @@ var $exeDevice = {
         p.type = parseInt($('input[name=qxtmediatype]:checked').val());
         p.x = parseFloat($('#clasificaEXImage').val());
         p.y = parseFloat($('#clasificaEYImage').val());
-        p.author = $('#clasificaEAuthor').val();
-        p.alt = $('#clasificaEAlt').val();
-        p.url = $('#clasificaEURLImage').val().trim();
-        p.audio = $('#clasificaEURLAudio').val().trim();
-        p.eText = $('#clasificaEText').val();
-        p.color = $('#clasificaEColor').val();
-        p.backcolor = $('#clasificaEBackColor').val();
+        p.author = sanitizeText($('#clasificaEAuthor').val());
+        p.alt = sanitizeText($('#clasificaEAlt').val());
+        p.url = sanitizeUrl($('#clasificaEURLImage').val().trim());
+        p.audio = sanitizeUrl($('#clasificaEURLAudio').val().trim());
+        p.eText = sanitizeText($('#clasificaEText').val());
+        p.color = sanitizeText($('#clasificaEColor').val());
+        p.backcolor = sanitizeText($('#clasificaEBackColor').val());
         p.group = parseInt($('#clasificaEGroupSelect option:selected').val());
-        p.msgHit = $('#clasificaEMessageOK').val();
-        p.msgError = $('#clasificaEMessageKO').val();
+        p.msgHit = sanitizeText($('#clasificaEMessageOK').val());
+        p.msgError = sanitizeText($('#clasificaEMessageKO').val());
 
         if (p.type === 0 && p.url.length < 5) {
             message = msgs.msgCompleteImage;
@@ -886,9 +899,16 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('clasificaEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+            textFeedBack = sanitizeHtml(
+                tinyMCE.get('clasificaEFeedBackEditor').getContent()
+            ),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
             showMinimize = $('#clasificaEShowMinimize').is(':checked'),
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
@@ -899,12 +919,12 @@ var $exeDevice = {
                 clear($('#clasificaEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#clasificaETime').val())),
-            author = $('#clasificaEAuthor').val(),
+            author = sanitizeText($('#clasificaEAuthor').val()),
             numberGroups = parseInt($('#clasificaENumGroups').val()),
             gameLevel = parseInt($('input[name=qtxgamelevel]:checked').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
-            imgCard = $('#clasificaEURLImgCard').val(),
+            imgCard = sanitizeUrl($('#clasificaEURLImgCard').val()),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return;
@@ -918,7 +938,7 @@ var $exeDevice = {
         let nogroups = false;
         $('.CQE-EGroup').each(function (i) {
             if (i < numberGroups) {
-                const text = $(this).val().trim();
+                const text = sanitizeText($(this).val().trim());
                 $exeDevice.groups[i] = text;
                 if (text.length === 0) {
                     nogroups = true;
@@ -937,6 +957,15 @@ var $exeDevice = {
             const mquestion = $exeDevice.normalizeQuestionByType(
                 $exeDevice.wordsGame[i]
             );
+            mquestion.author = sanitizeText(mquestion.author);
+            mquestion.alt = sanitizeText(mquestion.alt);
+            mquestion.url = sanitizeUrl(mquestion.url);
+            mquestion.audio = sanitizeUrl(mquestion.audio);
+            mquestion.eText = sanitizeText(mquestion.eText);
+            mquestion.msgHit = sanitizeText(mquestion.msgHit);
+            mquestion.msgError = sanitizeText(mquestion.msgError);
+            mquestion.color = sanitizeText(mquestion.color);
+            mquestion.backcolor = sanitizeText(mquestion.backcolor);
             $exeDevice.wordsGame[i] = mquestion;
             if (
                 (mquestion.type === 0 && mquestion.url.length < 4) ||
@@ -963,8 +992,8 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: true,
             weighted: scorm.weighted || 100,
-            textFeedBack: escape(textFeedBack),
-            textAfter: escape(textAfter),
+            textFeedBack,
+            textAfter,
             feedBack,
             percentajeFB,
             customMessages,
@@ -1425,8 +1454,9 @@ var $exeDevice = {
     },
 
     loadImageCard: function () {
+        const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = $('#clasificaEURLImgCard').val(),
+            url = sanitizeUrl($('#clasificaEURLImgCard').val()),
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
@@ -1620,6 +1650,8 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
         $exeDevice.active = 0;
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
@@ -1638,7 +1670,23 @@ var $exeDevice = {
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
-        game.imgCard = game.imgCard ?? '';
+        game.imgCard = sanitizeUrl(game.imgCard ?? '');
+        game.author = sanitizeText(game.author ?? '');
+        if (!Array.isArray(game.wordsGame)) {
+            game.wordsGame = [];
+        }
+        game.wordsGame = game.wordsGame.map((word) => ({
+            ...word,
+            url: sanitizeUrl(word.url),
+            audio: sanitizeUrl(word.audio),
+            author: sanitizeText(word.author),
+            alt: sanitizeText(word.alt),
+            eText: sanitizeText(word.eText),
+            msgHit: sanitizeText(word.msgHit),
+            msgError: sanitizeText(word.msgError),
+            color: sanitizeText(word.color),
+            backcolor: sanitizeText(word.backcolor),
+        }));
 
         // Retrocompatibilidad: numberGroups podía guardarse como null/NaN.
         // Si el valor es inválido, se infiere del grupo máximo de las tarjetas.
@@ -1685,7 +1733,9 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
 
         // Retrocompatibilidad: versiones antiguas solo guardaban 4 grupos
-        $exeDevice.groups = game.groups.slice();
+        $exeDevice.groups = Array.isArray(game.groups)
+            ? game.groups.map((group) => sanitizeText(group))
+            : [];
         while ($exeDevice.groups.length < $exeDevice.maxGroups) {
             const i = $exeDevice.groups.length;
             $exeDevice.groups.push(_('Group') + ' ' + (i + 1));
@@ -1828,9 +1878,10 @@ var $exeDevice = {
 
     deleteEmptyQuestion: function () {
         if ($exeDevice.wordsGame.length > 1) {
+            const sanitizeUrl = $exeDevicesEdition.iDevice.common.sanitizeUrl;
             const word = $('#clasificaEText').val().trim(),
                 img = $('#clasificaEInputImage').val().trim(),
-                audio = $('#clasificaEInputAudio').val().trim();
+                audio = sanitizeUrl($('#clasificaEInputAudio').val().trim());
             if (!word && img.length < 4 && audio.length < 4) {
                 $exeDevice.removeQuestion();
             }
@@ -1895,5 +1946,14 @@ var $exeDevice = {
     removeTags: (str) => {
         const wrapper = $('<div></div>').html(str);
         return wrapper.text();
+    },
+
+    escapeAttribute: function (str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     },
 };

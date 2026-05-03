@@ -339,7 +339,9 @@ var $exeDevice = {
 
     showQuestion: function (i) {
         const num = Math.max(0, Math.min(i, $exeDevice.questions.length - 1));
-        const p = $exeDevice.questions[num] || {};
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        const p = $exeDevice.sanitizeQuestion($exeDevice.questions[num] || {});
 
         p.definedVariables =
             typeof p.definedVariables == 'undefined'
@@ -351,7 +353,7 @@ var $exeDevice = {
         $('#eCQmax').val(p.max);
         $('#eCQTime').val(p.time);
         $('#eCQdecimals').val(p.decimals);
-        $('#eCQformula').val(p.formula);
+        $('#eCQformula').val(sanitizeText(p.formula || ''));
 
         $exeDevice.updateVariables();
         $('#eCQDefinidedVariables').prop('checked', p.definedVariables);
@@ -367,15 +369,17 @@ var $exeDevice = {
         }
 
         if (tinyMCE.get('eCQwording')) {
-            tinyMCE.get('eCQwording').setContent(p.wording);
+            tinyMCE.get('eCQwording').setContent(sanitizeHtml(p.wording || ''));
         } else {
-            $('#eCQwording').val(p.wording);
+            $('#eCQwording').val(sanitizeHtml(p.wording || ''));
         }
 
         if (tinyMCE.get('eCQfeedbackQuestion')) {
-            tinyMCE.get('eCQfeedbackQuestion').setContent(p.textFeedBack);
+            tinyMCE
+                .get('eCQfeedbackQuestion')
+                .setContent(sanitizeHtml(p.textFeedBack || ''));
         } else {
-            $('#eCQfeedbackQuestion').val(p.textFeedBack);
+            $('#eCQfeedbackQuestion').val(sanitizeHtml(p.textFeedBack || ''));
         }
 
         $('#eCQNumQuestions').text($exeDevice.questions.length);
@@ -392,7 +396,8 @@ var $exeDevice = {
 
     updateVariables: function () {
         $('#eQCVariablesContainer').empty();
-        const formula = $('#eCQformula').val(),
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            formula = sanitizeText($('#eCQformula').val()),
             matches = formula.match(/{(.*?)}/g);
         if (!matches) return;
         let addedVariables = {};
@@ -446,6 +451,7 @@ var $exeDevice = {
     },
 
     areVariablesValid: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         let variables = [],
             isValid = true;
         $('.MTOE-VariableDiv').each(function () {
@@ -460,6 +466,7 @@ var $exeDevice = {
                 .eq(0)
                 .val()
                 .trim();
+            value = sanitizeText(value);
             value = value.replace(/\s+/g, ' ').trim();
             const elements = value.split(',');
             for (const el of elements) {
@@ -482,6 +489,7 @@ var $exeDevice = {
     },
 
     updateVariablesValues: function (values) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         if (values) {
             $('.MTOE-VariableDiv').each(function () {
                 const valname = $(this)
@@ -494,7 +502,7 @@ var $exeDevice = {
                         value = $(this)
                             .find('input.MTOE-ValuesInput')
                             .eq(0)
-                            .val(values[i].value);
+                            .val(sanitizeText(values[i].value || ''));
                     }
                 }
             });
@@ -636,9 +644,46 @@ var $exeDevice = {
         return wrapper.text();
     },
 
+    sanitizeQuestion: function (question) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            q = question && typeof question === 'object' ? question : {};
+
+        let domains = q.domains;
+        if (Array.isArray(q.domains)) {
+            domains = q.domains.map((domain) => {
+                const d = domain && typeof domain === 'object' ? domain : {};
+                return {
+                    ...d,
+                    name: sanitizeText(d.name || ''),
+                    value: sanitizeText(d.value || ''),
+                };
+            });
+        }
+
+        return {
+            ...q,
+            formula: sanitizeText(q.formula || ''),
+            wording: sanitizeHtml(q.wording || ''),
+            textFeedBack: sanitizeHtml(q.textFeedBack || ''),
+            domains: domains,
+        };
+    },
+
+    sanitizeQuestions: function (questions) {
+        if (!Array.isArray(questions)) {
+            return [];
+        }
+        return questions.map((question) =>
+            $exeDevice.sanitizeQuestion(question)
+        );
+    },
+
     validateQuestion: function () {
         let message = '';
-        const p = {};
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            p = {};
 
         p.min = parseInt($('#eCQmin').val());
         p.max = parseInt($('#eCQmax').val());
@@ -647,18 +692,20 @@ var $exeDevice = {
         p.definedVariables = $('#eCQDefinidedVariables').is(':checked');
 
         if (tinyMCE.get('eCQwording')) {
-            p.wording = tinyMCE.get('eCQwording').getContent();
+            p.wording = sanitizeHtml(tinyMCE.get('eCQwording').getContent());
         } else {
-            p.wording = $('#eCQwording').val();
+            p.wording = sanitizeHtml($('#eCQwording').val());
         }
 
         if (tinyMCE.get('eCQfeedbackQuestion')) {
-            p.textFeedBack = tinyMCE.get('eCQfeedbackQuestion').getContent();
+            p.textFeedBack = sanitizeHtml(
+                tinyMCE.get('eCQfeedbackQuestion').getContent()
+            );
         } else {
-            p.textFeedBack = $('#eCQfeedbackQuestion').val();
+            p.textFeedBack = sanitizeHtml($('#eCQfeedbackQuestion').val());
         }
 
-        p.formula = $('#eCQformula').val();
+        p.formula = sanitizeText($('#eCQformula').val());
 
         if (!p.definedVariables && (p.min.length == 0 || p.max.length == 0)) {
             message = _('Only the Feedback is optional');
@@ -726,6 +773,8 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
             showMinimize = $('#eCQShowMinimize').is(':checked'),
             optionsRamdon = $('#eCQOptionsRamdon').is(':checked'),
             showSolution = $('#eCQShowSolution').is(':checked'),
@@ -746,7 +795,7 @@ var $exeDevice = {
             ),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
-            id = $exeDevice.getIdeviceID();
+            id = sanitizeText($exeDevice.getIdeviceID());
 
         let errorType = 0;
 
@@ -761,23 +810,29 @@ var $exeDevice = {
 
         let textFeedBack = '';
         if (tinyMCE.get('eCQFeedBackEditor')) {
-            textFeedBack = tinyMCE.get('eCQFeedBackEditor').getContent();
+            textFeedBack = sanitizeHtml(
+                tinyMCE.get('eCQFeedBackEditor').getContent()
+            );
         } else {
-            textFeedBack = S('#eCQFeedBackEditor').val();
+            textFeedBack = sanitizeHtml(S('#eCQFeedBackEditor').val());
         }
 
         let textAfter = '';
         if (tinyMCE.get('eXeIdeviceTextAfter')) {
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            );
         } else {
-            textAfter = S('#eXeIdeviceTextAfter').val();
+            textAfter = sanitizeHtml(S('#eXeIdeviceTextAfter').val());
         }
 
         let instructions = '';
         if (tinyMCE.get('eXeGameInstructions')) {
-            instructions = tinyMCE.get('eXeGameInstructions').getContent();
+            instructions = sanitizeHtml(
+                tinyMCE.get('eXeGameInstructions').getContent()
+            );
         } else {
-            instructions = S('#eXeGameInstructions').val();
+            instructions = sanitizeHtml(S('#eXeGameInstructions').val());
         }
 
         if (showSolution && timeShowSolution.length == 0) {
@@ -790,7 +845,7 @@ var $exeDevice = {
             return false;
         }
 
-        const questions = $exeDevice.questions;
+        const questions = $exeDevice.sanitizeQuestions($exeDevice.questions);
         if (questions.length == 0) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
             return false;
@@ -812,7 +867,7 @@ var $exeDevice = {
             percentajeFB: percentajeFB,
             scorm: scorm,
             isScorm: scorm.isScorm,
-            textButtonScorm: scorm.textButtonScorm,
+            textButtonScorm: sanitizeText(scorm.textButtonScorm),
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted,
             textAfter: textAfter,
@@ -847,6 +902,7 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const originalHTML = this.idevicePreviousData;
 
         $exeDevice.updateVariables();
@@ -875,24 +931,26 @@ var $exeDevice = {
             }
 
             $exeDevice.setTexts(dataGame.questions, $wordings, $feeebacks);
+            dataGame.questions = $exeDevice.sanitizeQuestions(dataGame.questions);
             $exeDevice.updateFieldGame(dataGame);
 
             const instructions = $('.mathproblems-instructions', wrapper);
             if (instructions.length == 1)
-                $('#eXeGameInstructions').val(instructions.html());
+                $('#eXeGameInstructions').val(sanitizeHtml(instructions.html()));
 
             const textAfter = $('.mathproblems-extra-content', wrapper);
             if (textAfter.length == 1)
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                $('#eXeIdeviceTextAfter').val(sanitizeHtml(textAfter.html()));
 
             const textFeedBack = $('.mathproblems-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#eCQFeedBackEditor').val(textFeedBack.html());
+                $('#eCQFeedBackEditor').val(sanitizeHtml(textFeedBack.html()));
 
             $exeDevice.showQuestion(0);
         }
     },
     saveTexts: function (pts) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         let medias = {
             wordings: '',
             feedbacks: '',
@@ -900,7 +958,7 @@ var $exeDevice = {
         for (let i = 0; i < pts.length; i++) {
             let p = pts[i];
             if (typeof p.wording != 'undefined') {
-                let w = $exeDevice.clearTags(p.wording);
+                let w = sanitizeHtml(p.wording || '');
                 medias.wordings +=
                     '<div class="js-hidden mathproblems-LinkWordings" data-id="' +
                     i +
@@ -916,7 +974,7 @@ var $exeDevice = {
                     '<div class="js-hidden mathproblems-LinkFeedBacks" data-id="' +
                     i +
                     '">' +
-                    $exeDevice.clearTags(p.textFeedBack) +
+                    sanitizeHtml(p.textFeedBack || '') +
                     '</div>';
             }
         }
@@ -939,7 +997,7 @@ var $exeDevice = {
         $wordings.each(function () {
             let id = parseInt($(this).data('id'));
             if (id == number) {
-                p.wording = $exeDevice.clearTags($(this).html());
+                p.wording = $exeDevicesEdition.iDevice.common.sanitizeHtml($(this).html());
                 return;
             }
         });
@@ -949,7 +1007,7 @@ var $exeDevice = {
         $feedbacks.each(function () {
             const id = parseInt($(this).data('id'));
             if (id == number) {
-                p.textFeedBack = $exeDevice.clearTags($(this).html());
+                p.textFeedBack = $exeDevicesEdition.iDevice.common.sanitizeHtml($(this).html());
                 return;
             }
         });
@@ -961,10 +1019,13 @@ var $exeDevice = {
         const dataGame = $exeDevice.validateData();
         if (!dataGame) return false;
 
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+
         const fields = this.ci18n,
             i18n = fields;
         for (let i in fields) {
-            let fVal = $('#ci18n_' + i).val();
+            let fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal != '') i18n[i] = fVal;
         }
 
@@ -974,9 +1035,15 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame),
             divContent = '',
-            textFeedBack = tinyMCE.get('eCQFeedBackEditor').getContent(),
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+            textFeedBack = sanitizeHtml(
+                tinyMCE.get('eCQFeedBackEditor').getContent()
+            ),
+            instructions = sanitizeHtml(
+                tinyMCE.get('eXeGameInstructions').getContent()
+            ),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            );
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
@@ -1311,7 +1378,7 @@ var $exeDevice = {
             $('#eCQFeedbackP').slideUp();
         }
 
-        $exeDevice.questions = game.questions;
+        $exeDevice.questions = $exeDevice.sanitizeQuestions(game.questions);
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
@@ -1341,6 +1408,7 @@ var $exeDevice = {
     },
 
     importGame: function (content) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
@@ -1352,11 +1420,14 @@ var $exeDevice = {
             return;
         }
 
-        game.id = $exeDevice.getIdeviceID();
+        game.id = $exeDevicesEdition.iDevice.common.sanitizeText($exeDevice.getIdeviceID());
+        game.questions = $exeDevice.sanitizeQuestions(game.questions);
         $exeDevice.updateFieldGame(game);
-        let instructions = game.instructionsExe || game.instructions || '',
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
+        let instructions = sanitizeHtml(
+                game.instructionsExe || game.instructions || ''
+            ),
+            tAfter = sanitizeHtml(game.textAfter || ''),
+            textFeedBack = sanitizeHtml(game.textFeedBack || '');
         if (tinyMCE.get('eXeGameInstructions')) {
             tinyMCE.get('eXeGameInstructions').setContent(instructions);
         } else {

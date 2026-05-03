@@ -30,10 +30,23 @@ function loadIdevice(code) {
 
 describe('mathematicaloperations iDevice', () => {
   let $exeDevice;
+  let sanitizeTextMock;
+  let sanitizeHtmlMock;
 
   beforeEach(() => {
     // Reset $exeDevice before loading
     global.$exeDevice = undefined;
+
+    sanitizeTextMock = vi.fn((value) => `txt:${String(value)}`);
+    sanitizeHtmlMock = vi.fn((value) => `html:${String(value)}`);
+
+    global.$exeDevicesEdition = global.$exeDevicesEdition || { iDevice: {} };
+    global.$exeDevicesEdition.iDevice = global.$exeDevicesEdition.iDevice || {};
+    global.$exeDevicesEdition.iDevice.common = {
+      ...(global.$exeDevicesEdition.iDevice.common || {}),
+      sanitizeText: sanitizeTextMock,
+      sanitizeHtml: sanitizeHtmlMock,
+    };
 
     // Read and execute the iDevice file
     const filePath = join(__dirname, 'mathematicaloperations.js');
@@ -189,4 +202,5 @@ describe('mathematicaloperations iDevice', () => {
       expect($exeDevice.i18n.name).toBeDefined();
     });
   });
+
 });

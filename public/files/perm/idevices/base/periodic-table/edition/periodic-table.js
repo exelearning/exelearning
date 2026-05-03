@@ -472,10 +472,14 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
+            const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
             const wrapper = $('<div></div>').html(originalHTML),
                 json = $('.periodic-table-DataGame', wrapper).text();
 
-            let dataJson = json;
+            let dataJson =
+                $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                    json
+                );
 
             const dataGame =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(dataJson);
@@ -490,13 +494,13 @@ var $exeDevice = {
 
             let textFeedBack = $('.periodic-table-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
-                textFeedBack = textFeedBack.html() || '';
+                textFeedBack = sanitizeHtml(textFeedBack.html() || '');
                 $('#ptEFeedBackEditor').val(textFeedBack);
             }
 
             let textAfter = $('.periodic-table-extra-content', wrapper);
             if (textAfter.length === 1) {
-                textAfter = textAfter.html() || '';
+                textAfter = sanitizeHtml(textAfter.html() || '');
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
@@ -507,6 +511,8 @@ var $exeDevice = {
     },
 
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const dataGame = $exeDevice.validateData();
 
         if (!dataGame) return false;
@@ -514,21 +520,25 @@ var $exeDevice = {
         const fields = this.ci18n,
             i18n = fields;
         for (const i in fields) {
-            const fVal = $(`#ci18n_${i}`).val();
+            const fVal = sanitizeText($(`#ci18n_${i}`).val());
             if (fVal !== '') i18n[i] = fVal;
         }
 
         dataGame.msgs = i18n;
         let json = JSON.stringify(dataGame);
 
-        const textFeedBack = tinyMCE.get('ptEFeedBackEditor').getContent();
+        const textFeedBack = sanitizeHtml(
+            tinyMCE.get('ptEFeedBackEditor').getContent()
+        );
 
         let divInstructions = '';
         if (dataGame.instructions !== '') {
             divInstructions = `<div class="periodic-table-instructions">${dataGame.instructions}</div>`;
         }
 
-        let textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        let textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter !== '') {
             textAfter = `<div class="periodic-table-extra-content">${textAfter}</div>`;
         }
@@ -646,9 +656,14 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('ptEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
+            textFeedBack = sanitizeHtml(
+                tinyMCE.get('ptEFeedBackEditor').getContent()
+            ),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
             time = $('#ptETime').val(),
             showMinimize = $('#ptEShowMinimize').is(':checked'),
             showSolution = $('#ptEShowSolution').is(':checked'),

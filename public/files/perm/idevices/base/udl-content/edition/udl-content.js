@@ -109,6 +109,22 @@ var $exeDevice = {
         this.addDataListToTitle();
     },
 
+    sanitizeBtnType: function (value) {
+        var sanitized = $exeDevicesEdition.iDevice.common.sanitizeText(value || '');
+        var parsed = parseInt(sanitized, 10);
+        if (isNaN(parsed) || parsed < 0 || parsed > 4) return 0;
+        return parsed;
+    },
+
+    escapeHtml: function (value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
     // Title auto-complete
     addDataListToTitle: function () {
         var opts = '';
@@ -375,6 +391,7 @@ var $exeDevice = {
 
     // Load the saved values in the form fields
     loadPreviousValues: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText;
         var originalHTML = this.idevicePreviousData;
         // Change the content type when selecting a UDL icon from the Style
         $('#activeIdevice .js-show-icon-panel-button').click(function () {
@@ -409,12 +426,12 @@ var $exeDevice = {
                     block = block.eq(0);
                     blockTitle = $('.exe-udlContent-alt-content-title', block);
                     if (blockTitle.length == 1) {
-                        blockTitle = blockTitle.text();
+                        blockTitle = sanitizeText(blockTitle.text());
                         if (blockTitle != '') $('#ci18n_' + i).val(blockTitle);
                         closeBtn = $('.exe-udlContent-alt-content-hide', block);
                         if (closeBtn.length > 0) {
                             closeBtn = closeBtn.eq(0);
-                            closeBtn = closeBtn.text();
+                            closeBtn = sanitizeText(closeBtn.text());
                             if (closeBtn != '') $('#ci18n_hide').val(closeBtn);
                         }
                     }
@@ -459,14 +476,14 @@ var $exeDevice = {
             var btnType = 0;
             var header = $('.exe-udlContent-header', this);
             if (header.length == 1) {
-                btnTxt = header.text() || '';
+                btnTxt = $exeDevicesEdition.iDevice.common.sanitizeText(header.text() || '');
                 // Transform the accessible hidden content into "foo | "
                 var srAv = $('.sr-av', header);
                 if (srAv.length == 1) {
-                    var srAvTxt = srAv.text();
+                    var srAvTxt = $exeDevicesEdition.iDevice.common.sanitizeText(srAv.text());
                     srAvTxt = $.trim(srAvTxt);
                     srAv.remove();
-                    btnTxt = header.text();
+                    btnTxt = $exeDevicesEdition.iDevice.common.sanitizeText(header.text());
                     if (btnTxt != '' && srAvTxt != '')
                         btnTxt = srAvTxt + ' | ' + btnTxt;
                 }
@@ -478,13 +495,22 @@ var $exeDevice = {
                 else if (header.hasClass('exe-udlContent-character-4'))
                     btnType = 4;
             }
-            var contMain = $('.exe-udlContent-content-main', this).html() || '';
+            var contMain =
+                $exeDevicesEdition.iDevice.common.sanitizeHtml(
+                    $('.exe-udlContent-content-main', this).html() || ''
+                ) || '';
             var contAlt1 =
-                $('.exe-udlContent-content-simplified', this).html() || '';
+                $exeDevicesEdition.iDevice.common.sanitizeHtml(
+                    $('.exe-udlContent-content-simplified', this).html() || ''
+                ) || '';
             var contAlt2 =
-                $('.exe-udlContent-content-audio', this).html() || '';
+                $exeDevicesEdition.iDevice.common.sanitizeHtml(
+                    $('.exe-udlContent-content-audio', this).html() || ''
+                ) || '';
             var contAlt3 =
-                $('.exe-udlContent-content-visual', this).html() || '';
+                $exeDevicesEdition.iDevice.common.sanitizeHtml(
+                    $('.exe-udlContent-content-visual', this).html() || ''
+                ) || '';
             var item = {
                 btnTxt: btnTxt,
                 btnType: btnType,
@@ -519,19 +545,22 @@ var $exeDevice = {
             var contAlt2 = '';
             var contAlt3 = '';
 
-            var btnTxt = $("input[type='text']", this).val();
-            btnTxt = $exeDevice.removeTags(btnTxt);
-            var btnType = $("input[type='radio']:checked", this).val();
+            var btnTxt = $exeDevicesEdition.iDevice.common.sanitizeText(
+                $("input[type='text']", this).val()
+            );
+            var btnType = $exeDevice.sanitizeBtnType(
+                $("input[type='radio']:checked", this).val()
+            );
             var contMain = $('#udlContentFormTxt-' + i + '-0').val();
             var contAlt1 = $('#udlContentFormTxt-' + i + '-1').val();
             var contAlt2 = $('#udlContentFormTxt-' + i + '-2').val();
             var contAlt3 = $('#udlContentFormTxt-' + i + '-3').val();
 
             // Avoid wrong HTML
-            contMain = $exeDevice.fixHTML(contMain);
-            contAlt1 = $exeDevice.fixHTML(contAlt1);
-            contAlt2 = $exeDevice.fixHTML(contAlt2);
-            contAlt3 = $exeDevice.fixHTML(contAlt3);
+            contMain = $exeDevicesEdition.iDevice.common.sanitizeHtml($exeDevice.fixHTML(contMain));
+            contAlt1 = $exeDevicesEdition.iDevice.common.sanitizeHtml($exeDevice.fixHTML(contAlt1));
+            contAlt2 = $exeDevicesEdition.iDevice.common.sanitizeHtml($exeDevice.fixHTML(contAlt2));
+            contAlt3 = $exeDevicesEdition.iDevice.common.sanitizeHtml($exeDevice.fixHTML(contAlt3));
 
             var item = {
                 btnTxt: btnTxt,
@@ -549,9 +578,11 @@ var $exeDevice = {
 
     // See jsonToForm. This adds a form block (at the end of the form)
     createBlockForm: function (block) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         $('.udlContentFormBlockContent').hide();
-        var btnTxt = block.btnTxt;
-        var btnType = block.btnType;
+        var btnTxt = sanitizeText(block.btnTxt);
+        var btnType = this.sanitizeBtnType(block.btnType);
         var btnOptionsStyle = ' style="display:none"';
         if (btnTxt != '') btnOptionsStyle = '';
         var btnTextPartsStyle = ' style="display:none"';
@@ -565,8 +596,8 @@ var $exeDevice = {
             if (parts.length == 2) {
                 if (parts[0] != '' && parts[1] != '') {
                     btnTextPartsStyle = '';
-                    txtA = parts[0];
-                    txtB = parts[1];
+                    txtA = sanitizeText(parts[0]);
+                    txtB = sanitizeText(parts[1]);
                 }
             }
         }
@@ -581,10 +612,10 @@ var $exeDevice = {
         else if (btnType == 2) ch2 = ' checked="checked"';
         else if (btnType == 3) ch3 = ' checked="checked"';
         else if (btnType == 4) ch4 = ' checked="checked"';
-        var contMain = block.contMain;
-        var contAlt1 = block.contAlt1;
-        var contAlt2 = block.contAlt2;
-        var contAlt3 = block.contAlt3;
+        var contMain = sanitizeHtml(block.contMain);
+        var contAlt1 = sanitizeHtml(block.contAlt1);
+        var contAlt2 = sanitizeHtml(block.contAlt2);
+        var contAlt3 = sanitizeHtml(block.contAlt3);
         var html =
             '\
 			<article class="udlContentFormBlock">\
@@ -625,7 +656,7 @@ var $exeDevice = {
             _('Button text') +
             ': </label>\
 						<input type="text" value="' +
-            btnTxt +
+                        this.escapeHtml(btnTxt) +
             '" placeholder="' +
             _('Empty = No button') +
             '" />\
@@ -667,7 +698,7 @@ var $exeDevice = {
             '.png" alt="' +
             _('Character') +
             '" title="' +
-            imgNames[btnType] +
+            this.escapeHtml(imgNames[btnType]) +
             '" class="pos-' +
             btnType +
             '" />\
@@ -681,11 +712,11 @@ var $exeDevice = {
             ': </strong><span class="sr-only-explanation" title="' +
             _('Accessible hidden content') +
             '">' +
-            txtA +
+                        this.escapeHtml(txtA) +
             '</span> <span title="' +
             _('Visible') +
             '">' +
-            txtB +
+                        this.escapeHtml(txtB) +
             '</span>\
 					</p>\
 					<div class="udlContentFormBlockTxt udlContentField">\
@@ -718,19 +749,19 @@ var $exeDevice = {
 							</ul>\
 						</div>\
 						<textarea cols="30" rows="10" class="udlContentEditor">' +
-            contMain +
+                        this.escapeHtml(contMain) +
             '</textarea>\
 						<textarea cols="30" rows="1" class="udlContentEditorContent">' +
-            contMain +
+                        this.escapeHtml(contMain) +
             '</textarea>\
 						<textarea cols="30" rows="1" class="udlContentEditorContent">' +
-            contAlt1 +
+                        this.escapeHtml(contAlt1) +
             '</textarea>\
 						<textarea cols="30" rows="1" class="udlContentEditorContent">' +
-            contAlt2 +
+                        this.escapeHtml(contAlt2) +
             '</textarea>\
 						<textarea cols="30" rows="1" class="udlContentEditorContent">' +
-            contAlt3 +
+                        this.escapeHtml(contAlt3) +
             '</textarea>\
 					</div>\
 				</div>\
@@ -826,9 +857,7 @@ var $exeDevice = {
 
     // Remove any HTML tags
     removeTags: function (str) {
-        var wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
+        return $exeDevicesEdition.iDevice.common.sanitizeText(str || '');
     },
 
     // Remove empty paragraphs
@@ -848,6 +877,8 @@ var $exeDevice = {
 
     // Transform the form into a JSON object and that object into HTML to save
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         var html = '';
         var res;
         var data = this.formToJSON();
@@ -858,51 +889,56 @@ var $exeDevice = {
             var block = data[i];
             if (block.contMain == '') error = true;
             else {
-                var btnTxt = block.btnTxt;
+                var btnTxt = sanitizeText(block.btnTxt);
                 btnTxt = $.trim(btnTxt);
+                var hasAccessibleParts = false;
                 // Check if the button text has accessible hidden content
                 if (btnTxt.indexOf('|') != -1) {
                     var tmp = btnTxt.replace('|', '~~');
                     var parts = tmp.split('~~');
                     if (parts.length == 2) {
                         if (parts[0] != '' && parts[1] != '') {
+                            hasAccessibleParts = true;
                             btnTxt =
                                 '<span class="sr-av">' +
-                                $.trim(parts[0]) +
+                                this.escapeHtml($.trim(parts[0])) +
                                 ' </span>' +
-                                $.trim(parts[1]);
+                                this.escapeHtml($.trim(parts[1]));
                         }
                     }
+                }
+                if (!hasAccessibleParts) {
+                    btnTxt = this.escapeHtml(btnTxt);
                 }
                 var css = '';
                 if (btnTxt != '') css = ' js-hidden';
                 // Alternative contents
-                var cont1 = block.contAlt1;
-                var cont2 = block.contAlt2;
-                var cont3 = block.contAlt3;
+                var cont1 = sanitizeHtml(block.contAlt1);
+                var cont2 = sanitizeHtml(block.contAlt2);
+                var cont3 = sanitizeHtml(block.contAlt3);
                 // Alternative contents titles
-                var cont1T = _('Easier to read');
-                var cont2T = _('Audio');
-                var cont3T = _('Visual aid');
-                var clsBtn = _('Hide');
+                var cont1T = sanitizeText(_('Easier to read'));
+                var cont2T = sanitizeText(_('Audio'));
+                var cont3T = sanitizeText(_('Visual aid'));
+                var clsBtn = sanitizeText(_('Hide'));
                 var v;
-                v = $('#ci18n_simplified').val();
+                v = sanitizeText($('#ci18n_simplified').val());
                 if (v != '') cont1T = v;
-                v = $('#ci18n_audio').val();
+                v = sanitizeText($('#ci18n_audio').val());
                 if (v != '') cont2T = v;
-                v = $('#ci18n_visual').val();
+                v = sanitizeText($('#ci18n_visual').val());
                 if (v != '') cont3T = v;
-                v = $('#ci18n_hide').val();
+                v = sanitizeText($('#ci18n_hide').val());
                 if (v != '') clsBtn = v;
                 // Close button
                 clsBtn =
                     '<button class="exe-udlContent-alt-content-hide">' +
-                    clsBtn +
+                    this.escapeHtml(clsBtn) +
                     '</button>';
                 res += '<section class="exe-udlContent-block' + css + '">';
                 if (btnTxt != '') {
                     var extraCSS = '';
-                    var btnType = block.btnType;
+                    var btnType = this.sanitizeBtnType(block.btnType);
                     if (
                         btnType == 1 ||
                         btnType == 2 ||
@@ -920,12 +956,12 @@ var $exeDevice = {
                 res += '<div class="exe-udlContent-content">';
                 res +=
                     '<div class="exe-udlContent-content-main">' +
-                    block.contMain +
+                    sanitizeHtml(block.contMain) +
                     '</div>';
                 if (cont1 != '') {
                     cont1 =
                         "<header class='exe-udlContent-alt-content-title'><h2>" +
-                        cont1T +
+                        this.escapeHtml(cont1T) +
                         '</h2></header>' +
                         cont1 +
                         clsBtn;
@@ -937,7 +973,7 @@ var $exeDevice = {
                 if (cont2 != '') {
                     cont2 =
                         "<header class='exe-udlContent-alt-content-title'><h2>" +
-                        cont2T +
+                        this.escapeHtml(cont2T) +
                         '</h2></header>' +
                         cont2 +
                         clsBtn;
@@ -949,7 +985,7 @@ var $exeDevice = {
                 if (cont3 != '') {
                     cont3 =
                         "<header class='exe-udlContent-alt-content-title'><h2>" +
-                        cont3T +
+                        this.escapeHtml(cont3T) +
                         '</h2></header>' +
                         cont3 +
                         clsBtn;
@@ -971,8 +1007,17 @@ var $exeDevice = {
             return;
         }
 
-        var css =
-            'exe-udlContent-' + $("input[name='udlContentType']:checked").val();
+        var type = sanitizeText(
+            $("input[name='udlContentType']:checked").val()
+        );
+        if (
+            type != 'engagement' &&
+            type != 'representation' &&
+            type != 'expression'
+        ) {
+            type = 'engagement';
+        }
+        var css = 'exe-udlContent-' + type;
         html = '<div class="exe-udlContent ' + css + '">' + html + '</div>';
 
         // Return the HTML to save

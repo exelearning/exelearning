@@ -164,6 +164,7 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         let previousData = this.idevicePreviousData;
         if (Object.keys(previousData).length === 0) return;
         let instructionsTextarea = $exeDevice.ideviceBody.querySelector(
@@ -177,7 +178,9 @@ var $exeDevice = {
             '#eXeIdeviceTextAfter'
         );
         if (previousData.eXeIdeviceTextAfter !== undefined) {
-            textAfter.innerHTML = previousData.eXeIdeviceTextAfter;
+            textAfter.innerHTML = sanitizeHtml(
+                previousData.eXeIdeviceTextAfter
+            );
         }
 
         if (previousData.questionsData !== undefined) {
@@ -282,6 +285,8 @@ var $exeDevice = {
     },
 
     save: function () {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         $exeDevice.saveInEditionQuestion();
         let scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         this.isScorm = scorm.isScorm;
@@ -296,8 +301,8 @@ var $exeDevice = {
         this.eXeFormInstructions = this.getEditorTinyMCEValue(
             'eXeGameInstructions'
         );
-        this.eXeIdeviceTextAfter = this.getEditorTinyMCEValue(
-            'eXeIdeviceTextAfter'
+        this.eXeIdeviceTextAfter = sanitizeHtml(
+            this.getEditorTinyMCEValue('eXeIdeviceTextAfter')
         );
         this.questionsData = $exeDevice.getQuestionsData();
         this[$exeDevice.dropdownPassRateId] =
@@ -328,7 +333,7 @@ var $exeDevice = {
         const fields = this.ci18n,
             i18n = fields;
         for (const i in fields) {
-            const fVal = $('#ci18n_' + i).val();
+            const fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal !== '') i18n[i] = fVal;
         }
 
@@ -1765,32 +1770,40 @@ var $exeDevice = {
     },
 
     createQuestionObject(containerId, questionType) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const question = $exeDevice.getCuestionDefault();
         question.activityType = questionType;
         const container = $exeDevice.ideviceBody.querySelector(
             `#${containerId}`
         );
         const tinyTextareaId = container.querySelector('TEXTAREA').id;
-        question.baseText = $exeDevice.getEditorTinyMCEValue(tinyTextareaId);
+        question.baseText = sanitizeHtml(
+            $exeDevice.getEditorTinyMCEValue(tinyTextareaId)
+        );
         const suggestionInput = container.querySelector(
             '[name="questionSuggestion"]'
         );
         if (suggestionInput) {
-            question.suggestion = suggestionInput.value || '';
+            question.suggestion = sanitizeText(suggestionInput.value || '');
         }
 
         const feedbackRightInput = container.querySelector(
             '[name="questionFeedbackRight"]'
         );
         if (feedbackRightInput) {
-            question.feedbackRight = feedbackRightInput.value || '';
+            question.feedbackRight = sanitizeText(
+                feedbackRightInput.value || ''
+            );
         }
 
         const feedbackWrongInput = container.querySelector(
             '[name="questionFeedbackWrong"]'
         );
         if (feedbackWrongInput) {
-            question.feedbackWrong = feedbackWrongInput.value || '';
+            question.feedbackWrong = sanitizeText(
+                feedbackWrongInput.value || ''
+            );
         }
 
         switch (questionType) {
@@ -1798,6 +1811,9 @@ var $exeDevice = {
                 question.wrongAnswersValue = container.querySelector(
                     `INPUT[name="${$exeDevice.formPreviewId}InputText"]`
                 ).value;
+                question.wrongAnswersValue = sanitizeText(
+                    question.wrongAnswersValue
+                );
                 break;
             case $exeDevice.ACTIVITY_TYPES.SELECTION:
                 let options = container.querySelectorAll(`INPUT[id^=option_]`);
@@ -1814,9 +1830,11 @@ var $exeDevice = {
                         const textareaId = textareaElement.id;
                         if (tinymce.get(textareaId)) {
                             optionText =
-                                $exeDevice.getEditorTinyMCEValue(textareaId);
+                                sanitizeHtml(
+                                    $exeDevice.getEditorTinyMCEValue(textareaId)
+                                );
                         } else {
-                            optionText = textareaElement.value;
+                            optionText = sanitizeText(textareaElement.value);
                         }
                     }
 
@@ -2885,6 +2903,10 @@ var $exeDevice = {
     },
 
     getProcessTextDropdownQuestion(baseText, otherWordsText) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        baseText = sanitizeHtml(baseText);
+        otherWordsText = sanitizeText(otherWordsText || '');
         let $wrapper = $('<div>').append(baseText);
         let $dropdownBaseText = $wrapper.find('div.dropdownBaseText');
         if ($dropdownBaseText.length) {
@@ -2944,6 +2966,8 @@ var $exeDevice = {
     },
 
     getProcessTextSelectionQuestion(baseText, optionType, answer) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        baseText = sanitizeHtml(baseText);
         let id = this.generateRandomId();
         let htmlSelection = baseText.replace(
             /<p>\s*(<br\s*\/?>)?\s*<\/p>/gi,
@@ -2968,6 +2992,8 @@ var $exeDevice = {
     },
 
     getProcessTextTrueFalseQuestion(baseText, answer) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        baseText = sanitizeHtml(baseText);
         let id = this.generateRandomId();
         let htmlTrueFalse = baseText.replace(
             /<p>\s*(<br\s*\/?>)?\s*<\/p>/gi,
@@ -2996,6 +3022,8 @@ var $exeDevice = {
         checkCapitalization,
         strictQualification
     ) {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+        baseText = sanitizeHtml(baseText);
         let $wrapper = $('<div>').append(baseText);
         let $fillBaseText = $wrapper.find('div.fillBaseText');
         if ($fillBaseText.length) {

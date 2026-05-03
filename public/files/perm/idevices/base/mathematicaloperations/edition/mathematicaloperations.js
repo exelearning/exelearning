@@ -378,11 +378,19 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('eRMQFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml,
+            instructions = sanitizeHtml(
+                tinyMCE.get('eXeGameInstructions').getContent()
+            ),
+            textFeedBack = sanitizeHtml(
+                tinyMCE.get('eRMQFeedBackEditor').getContent()
+            ),
+            textAfter = sanitizeHtml(
+                tinyMCE.get('eXeIdeviceTextAfter').getContent()
+            ),
             showMinimize = $('#eRMQShowMinimize').is(':checked'),
-            type = $('#eRMQtype').val(),
+            type = sanitizeText($('#eRMQtype').val()),
             itinerary =
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#eRMQHasFeedBack').is(':checked'),
@@ -399,7 +407,7 @@ var $exeDevice = {
             mode = $('#eRMQFractions').is(':checked') ? 1 : 0,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
-            id = $exeDevice.getIdeviceID();
+            id = sanitizeText($exeDevice.getIdeviceID());
 
         if (!progressBar) return false;
 
@@ -480,7 +488,7 @@ var $exeDevice = {
             zero: zero,
             itinerary: itinerary,
             isScorm: scorm.isScorm,
-            textButtonScorm: scorm.textButtonScorm,
+            textButtonScorm: sanitizeText(scorm.textButtonScorm),
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted,
             textFeedBack: escape(textFeedBack),
@@ -528,6 +536,7 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
+        const sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const originalHTML = this.idevicePreviousData;
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>');
@@ -541,19 +550,19 @@ var $exeDevice = {
             let instructions = $('.mathoperations-instructions', wrapper);
             if (instructions.length == 1) {
                 instructions = instructions.html() || '';
-                $('#eXeGameInstructions').val(instructions);
+                $('#eXeGameInstructions').val(sanitizeHtml(instructions));
             }
 
             let textFeedBack = $('.mathoperations-feedback-game', wrapper);
             if (textFeedBack.length == 1) {
                 textFeedBack = textFeedBack.html() || '';
-                $('#eRMQFeedBackEditor').val(textFeedBack);
+                $('#eRMQFeedBackEditor').val(sanitizeHtml(textFeedBack));
             }
 
             let textAfter = $('.mathoperations-extra-content', wrapper);
             if (textAfter.length == 1) {
                 textAfter = textAfter.html() || '';
-                $('#eXeIdeviceTextAfter').val(textAfter);
+                $('#eXeIdeviceTextAfter').val(sanitizeHtml(textAfter));
             }
         }
     },
@@ -572,10 +581,13 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
+
         const fields = this.ci18n,
             i18n = fields;
         for (let i in fields) {
-            let fVal = $('#ci18n_' + i).val();
+            let fVal = sanitizeText($('#ci18n_' + i).val());
             if (fVal != '') i18n[i] = fVal;
         }
 
@@ -584,7 +596,9 @@ var $exeDevice = {
         let json = JSON.stringify(dataGame),
             divContent = '';
 
-        const textFeedBack = tinyMCE.get('eRMQFeedBackEditor').getContent();
+        const textFeedBack = sanitizeHtml(
+            tinyMCE.get('eRMQFeedBackEditor').getContent()
+        );
         if (dataGame.instructions != '')
             divContent =
                 '<div class="mathoperations-instructions gameQP-instructions">' +
@@ -592,7 +606,7 @@ var $exeDevice = {
                 '</div>';
 
         let html = '<div class="mathoperations-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${sanitizeText($exeDevice.getIdeviceID())}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="mathoperations-version js-hidden">' +
             $exeDevice.version +
@@ -604,7 +618,9 @@ var $exeDevice = {
         html += divContent;
         html +=
             '<div class="mathoperations-DataGame js-hidden">' + json + '</div>';
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = sanitizeHtml(
+            tinyMCE.get('eXeIdeviceTextAfter').getContent()
+        );
         if (textAfter != '') {
             html +=
                 '<div class="mathoperations-extra-content">' +
@@ -872,6 +888,8 @@ var $exeDevice = {
     },
 
     importGame: function (content) {
+        const sanitizeText = $exeDevicesEdition.iDevice.common.sanitizeText,
+            sanitizeHtml = $exeDevicesEdition.iDevice.common.sanitizeHtml;
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
@@ -883,30 +901,28 @@ var $exeDevice = {
             return;
         }
 
-        game.id = $exeDevice.getIdeviceID();
+        game.id = sanitizeText($exeDevice.getIdeviceID());
         $exeDevice.updateFieldGame(game);
 
-        const instructions = game.instructionsExe || game.instructions,
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
+        const instructions = sanitizeHtml(
+                unescape(game.instructionsExe || game.instructions || '')
+            ),
+            tAfter = sanitizeHtml(unescape(game.textAfter || '')),
+            textFeedBack = sanitizeHtml(unescape(game.textFeedBack || ''));
         if (tinyMCE.get('eXeGameInstructions')) {
-            tinyMCE
-                .get('eXeGameInstructions')
-                .setContent(unescape(instructions));
+            tinyMCE.get('eXeGameInstructions').setContent(instructions);
         } else {
-            $('#eXeGameInstructions').val(unescape(instructions));
+            $('#eXeGameInstructions').val(instructions);
         }
         if (tinyMCE.get('eRMQFeedBackEditor')) {
-            tinyMCE
-                .get('eRMQFeedBackEditor')
-                .setContent(unescape(textFeedBack));
+            tinyMCE.get('eRMQFeedBackEditor').setContent(textFeedBack);
         } else {
-            $('#eRMQFeedBackEditor').val(unescape(textFeedBack));
+            $('#eRMQFeedBackEditor').val(textFeedBack);
         }
         if (tinyMCE.get('eXeIdeviceTextAfter')) {
-            tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
+            tinyMCE.get('eXeIdeviceTextAfter').setContent(tAfter);
         } else {
-            $('#eXeIdeviceTextAfter').val(unescape(tAfter));
+            $('#eXeIdeviceTextAfter').val(tAfter);
         }
         //$('.exe-form-tabs li:first-child a').click();
     },
