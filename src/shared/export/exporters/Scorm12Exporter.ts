@@ -15,7 +15,14 @@
  * - content/css/ (base CSS)
  */
 
-import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, FaviconInfo } from '../interfaces';
+import type {
+    ExportPage,
+    ExportMetadata,
+    ExportOptions,
+    ExportResult,
+    FaviconInfo,
+    PageRenderOptions,
+} from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { Scorm12ManifestGenerator } from '../generators/Scorm12Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
@@ -474,7 +481,20 @@ export class Scorm12Exporter extends Html5Exporter {
             navLabels,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
+            ...this.getScormPageRenderOverrides(page, allPages, meta),
         });
+    }
+
+    /**
+     * Hook for SCORM variants to adjust page rendering without duplicating
+     * the full package generation flow.
+     */
+    protected getScormPageRenderOverrides(
+        _page: ExportPage,
+        _allPages: ExportPage[],
+        _meta: ExportMetadata,
+    ): Partial<PageRenderOptions> {
+        return {};
     }
 
     /**

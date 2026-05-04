@@ -1212,6 +1212,49 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+    describe('downloadBlockScormSelected', () => {
+        beforeEach(() => {
+            eXeLearning.app.project._assetCache = {};
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { getMetadata: vi.fn() },
+                assetManager: {},
+                resourceFetcher: {},
+            };
+            Object.defineProperty(window.URL, 'createObjectURL', {
+                configurable: true,
+                value: vi.fn().mockReturnValue('blob:block-scorm'),
+            });
+            Object.defineProperty(window.URL, 'revokeObjectURL', {
+                configurable: true,
+                value: vi.fn(),
+            });
+        });
+
+        it('creates a minimal SCORM exporter and downloads the generated ZIP', async () => {
+            const exportMock = vi.fn().mockResolvedValue({
+                success: true,
+                data: new Uint8Array([1, 2, 3]),
+            });
+            window.createExporter = vi.fn().mockReturnValue({ export: exportMock });
+
+            await block.downloadBlockScormSelected('block-1');
+
+            expect(window.createExporter).toHaveBeenCalledWith(
+                'boxscorm12',
+                eXeLearning.app.project._yjsBridge.documentManager,
+                eXeLearning.app.project._assetCache,
+                eXeLearning.app.project._yjsBridge.resourceFetcher,
+                eXeLearning.app.project._yjsBridge.assetManager
+            );
+            expect(exportMock).toHaveBeenCalledWith({
+                blockId: 'block-1',
+                filename: 'block-1_scorm12.zip',
+            });
+            expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:block-scorm');
+            expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
+        });
+    });
+
     describe('test method', () => {
         it('logs click message', () => {
             // Logger is bound at module import time to window.AppLogger from vitest.setup.js
@@ -1709,6 +1752,7 @@ describe('IdeviceBlockNode', () => {
             vi.spyOn(block, 'addBehaviourButtonCloneBlock').mockImplementation(() => {});
             vi.spyOn(block, 'addBehaviourMoveToPageBlockButton').mockImplementation(() => {});
             vi.spyOn(block, 'addBehaviourExportBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourExportBlockScormButton').mockImplementation(() => {});
             vi.spyOn(block, 'addBehaviourToggleBlockButton').mockImplementation(() => {});
             vi.spyOn(block, 'addTooltips').mockImplementation(() => {});
             vi.spyOn(block, 'addNoTranslateForGoogle').mockImplementation(() => {});
@@ -1734,12 +1778,19 @@ describe('IdeviceBlockNode', () => {
             expect(buttons.querySelector('.dropdown-menu')).not.toBeNull();
         });
 
+        it('includes SCORM export action', () => {
+            const buttons = block.makeBlockButtonsElement();
+            expect(buttons.innerHTML).toContain('dropdownBlockMore-button-export-scorm');
+            expect(buttons.innerHTML).toContain('Export box as SCORM');
+        });
+
         it('calls all behaviour methods', () => {
             block.makeBlockButtonsElement();
             expect(block.addBehaviourButtonDropDown).toHaveBeenCalled();
             expect(block.addBehaviourButtonMoveUpBlock).toHaveBeenCalled();
             expect(block.addBehaviourButtonMoveDownBlock).toHaveBeenCalled();
             expect(block.addBehaviourButtonDeleteBlock).toHaveBeenCalled();
+            expect(block.addBehaviourExportBlockScormButton).toHaveBeenCalled();
         });
     });
 
@@ -2109,6 +2160,7 @@ describe('IdeviceBlockNode', () => {
             vi.spyOn(block, 'addBehaviourButtonCloneBlock').mockImplementation(() => {});
             vi.spyOn(block, 'addBehaviourMoveToPageBlockButton').mockImplementation(() => {});
             vi.spyOn(block, 'addBehaviourExportBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourExportBlockScormButton').mockImplementation(() => {});
             vi.spyOn(block, 'addBehaviourToggleBlockButton').mockImplementation(() => {});
             vi.spyOn(block, 'addTooltips').mockImplementation(() => {});
             vi.spyOn(block, 'addNoTranslateForGoogle').mockImplementation(() => {});

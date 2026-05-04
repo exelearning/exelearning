@@ -4801,6 +4801,21 @@ describe('IdeviceNode', () => {
         });
     });
 
+    describe('addBehaviourExportIdeviceScormButton', () => {
+        beforeEach(() => {
+            idevice.odeIdeviceId = 'idevice-123';
+            idevice.ideviceButtons = document.createElement('div');
+            idevice.ideviceButtons.innerHTML = `<button id="exportScormIdeviceidevice-123">Export SCORM</button>`;
+        });
+
+        it('adds click listener without throwing', () => {
+            expect(() => idevice.addBehaviourExportIdeviceScormButton()).not.toThrow();
+
+            const btn = idevice.ideviceButtons.querySelector('#exportScormIdeviceidevice-123');
+            expect(btn).not.toBeNull();
+        });
+    });
+
     describe('addBehaviourMinifyIdeviceButton', () => {
         beforeEach(() => {
             idevice.odeIdeviceId = 'idevice-123';
@@ -4815,6 +4830,50 @@ describe('IdeviceNode', () => {
 
             const btn = idevice.ideviceButtons.querySelector('#minifyIdeviceidevice-123');
             expect(btn).not.toBeNull();
+        });
+    });
+
+    describe('downloadIdeviceScormSelected', () => {
+        beforeEach(() => {
+            eXeLearning.app.project._assetCache = {};
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { getMetadata: vi.fn() },
+                assetManager: {},
+                resourceFetcher: {},
+            };
+            Object.defineProperty(window.URL, 'createObjectURL', {
+                configurable: true,
+                value: vi.fn().mockReturnValue('blob:idevice-scorm'),
+            });
+            Object.defineProperty(window.URL, 'revokeObjectURL', {
+                configurable: true,
+                value: vi.fn(),
+            });
+        });
+
+        it('creates a minimal SCORM exporter and downloads the generated ZIP', async () => {
+            const exportMock = vi.fn().mockResolvedValue({
+                success: true,
+                data: new Uint8Array([1, 2, 3]),
+            });
+            window.createExporter = vi.fn().mockReturnValue({ export: exportMock });
+
+            await idevice.downloadIdeviceScormSelected('block-1', 'idevice-123');
+
+            expect(window.createExporter).toHaveBeenCalledWith(
+                'idevicescorm12',
+                eXeLearning.app.project._yjsBridge.documentManager,
+                eXeLearning.app.project._assetCache,
+                eXeLearning.app.project._yjsBridge.resourceFetcher,
+                eXeLearning.app.project._yjsBridge.assetManager
+            );
+            expect(exportMock).toHaveBeenCalledWith({
+                blockId: 'block-1',
+                ideviceId: 'idevice-123',
+                filename: 'idevice-123_scorm12.zip',
+            });
+            expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:idevice-scorm');
+            expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
         });
     });
 
@@ -4844,6 +4903,8 @@ describe('IdeviceNode', () => {
             idevice.makeIdeviceButtonsElement();
 
             expect(idevice.ideviceButtons.innerHTML).toContain('editIdevice');
+            expect(idevice.ideviceButtons.innerHTML).toContain('exportScormIdevice');
+            expect(idevice.ideviceButtons.innerHTML).toContain('Export iDevice as SCORM');
         });
 
         it('should disable delete, move up, move down, and actions buttons when locked by other user', () => {

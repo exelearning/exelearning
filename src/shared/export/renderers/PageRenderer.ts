@@ -100,6 +100,7 @@ export class PageRenderer {
             // SCORM-specific options
             isScorm = false,
             scormVersion = '',
+            minimalScorm = false,
             bodyClass = '',
             extraHeadScripts = '',
             onLoadScript = '',
@@ -175,7 +176,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, minimalScorm, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -204,6 +205,7 @@ ${madeWithExeHtml}
         extraHeadScripts?: string;
         isScorm?: boolean;
         scormVersion?: string;
+        minimalScorm?: boolean;
         description?: string;
         licenseUrl?: string;
         addAccessibilityToolbar?: boolean;
@@ -224,6 +226,7 @@ ${madeWithExeHtml}
             customStyles,
             extraHeadScripts = '',
             isScorm: _isScorm = false,
+            minimalScorm = false,
             description = '',
             licenseUrl = '',
             addAccessibilityToolbar = false,
@@ -245,7 +248,9 @@ ${madeWithExeHtml}
 ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
 
         // Favicon
-        head += `\n${this.renderFavicon(basePath, faviconPath, faviconType)}`;
+        if (!minimalScorm) {
+            head += `\n${this.renderFavicon(basePath, faviconPath, faviconType)}`;
+        }
 
         // Description meta if provided
         if (description) {
@@ -313,7 +318,9 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
 
         // Theme files: include all JS first, then all CSS, in alphabetical order
         // If themeFiles is empty, fall back to legacy names for backwards compatibility
-        if (themeFiles.length > 0) {
+        if (minimalScorm) {
+            // Minimal SCORM exports intentionally avoid theme dependencies.
+        } else if (themeFiles.length > 0) {
             // Sort files alphabetically and separate JS from CSS
             const sortedFiles = [...themeFiles].sort();
             const jsFiles = sortedFiles.filter(f => f.endsWith('.js'));

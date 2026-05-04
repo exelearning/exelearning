@@ -462,7 +462,8 @@ export default class IdeviceNode {
                         <li><button class="dropdown-item button-action-block" id="propertiesIdevice${id}"><span class="small-icon settings-icon-green" aria-hidden="true"></span>${_('iDevice properties')}</button></li>
                         <li><button class="dropdown-item button-action-block" id="cloneIdevice${id}"><span class="small-icon duplicate-icon-green" aria-hidden="true"></span>${_('Clone iDevice')}</button></li>
                         <li><button class="dropdown-item button-action-block" id="moveIdevice${id}"><span class="small-icon move-icon-green" aria-hidden="true"></span>${_('Move to page')}</button></li>
-                        <li class="exe-advanced"><button class="dropdown-item button-action-block" id="exportIdevice${id}"><span class="small-icon download-icon-green" aria-hidden="true"></span>${_('Export iDevice')}</span></button></li>
+                        <li class="exe-advanced"><button class="dropdown-item button-action-block" id="exportIdevice${id}"><span class="small-icon download-icon-green" aria-hidden="true"></span>${_('Export iDevice')}</button></li>
+                        <li class="exe-advanced"><button class="dropdown-item button-action-block" id="exportScormIdevice${id}"><span class="small-icon download-icon-green" aria-hidden="true"></span>${_('Export iDevice as SCORM')}</button></li>
                     </ul>
                     <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-minify-idevice" type="button" id=minifyIdevice${id} title="${_('Toggle content')}"><span id="minifyIdevice${id}icon" class="small-icon ${minifyIdeviceIcon}" aria-hidden="true"></span><span class='visually-hidden'>${_('Toggle content')}</span></button>
                 </div>`;
@@ -478,6 +479,7 @@ export default class IdeviceNode {
                 this.addBehaviouCloneIdeviceButton();
                 this.addBehaviourMoveToPageIdeviceButton();
                 this.addBehaviourExportIdeviceButton();
+                this.addBehaviourExportIdeviceScormButton();
                 this.addBehaviourMinifyIdeviceButton();
                 this.addNoTranslateForGoogle();
                 break;
@@ -1429,6 +1431,34 @@ export default class IdeviceNode {
     /**
      *
      */
+    addBehaviourExportIdeviceScormButton() {
+        this.ideviceButtons
+            .querySelector('#exportScormIdevice' + this.odeIdeviceId)
+            .addEventListener('click', (element) => {
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                // Check odeComponent flag
+                eXeLearning.app.project
+                    .isAvalaibleOdeComponent(this.blockId, this.odeIdeviceId)
+                    .then((response) => {
+                        if (response.responseMessage !== 'OK') {
+                            eXeLearning.app.modals.alert.show({
+                                title: _('iDevice error'),
+                                body: _(response.responseMessage),
+                                contentId: 'error',
+                            });
+                        } else {
+                            this.downloadIdeviceScormSelected(
+                                this.blockId,
+                                this.odeIdeviceId
+                            );
+                        }
+                    });
+            });
+    }
+
+    /**
+     *
+     */
     addBehaviourMinifyIdeviceButton() {
         this.ideviceButtons
             .querySelector('#minifyIdevice' + this.odeIdeviceId)
@@ -1519,6 +1549,69 @@ export default class IdeviceNode {
             }
         } catch (error) {
             console.error('[ideviceNode] Export failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Download error'),
+                body: error.message,
+                contentId: 'error',
+            });
+        }
+    }
+
+    /**
+     * Download iDevice as minimal SCORM 1.2 package
+     * @param {*} odeBlockId
+     * @param {*} odeIdeviceId
+     */
+    async downloadIdeviceScormSelected(odeBlockId, odeIdeviceId) {
+        try {
+            const yjsBridge = eXeLearning.app.project._yjsBridge;
+            if (!yjsBridge) {
+                throw new Error(_('Collaboration service not ready'));
+            }
+
+            const documentManager = yjsBridge.documentManager;
+            const assetCache = eXeLearning.app.project._assetCache || null;
+            const assetManager = yjsBridge.assetManager || null;
+            const resourceFetcher = yjsBridge.resourceFetcher || null;
+            const filename = buildComponentFileName(
+                `${odeIdeviceId}_scorm12`,
+                'zip'
+            );
+
+            const exporter = window.createExporter(
+                'idevicescorm12',
+                documentManager,
+                assetCache,
+                resourceFetcher,
+                assetManager
+            );
+            const result = await exporter.export({
+                blockId: odeBlockId,
+                ideviceId: odeIdeviceId,
+                filename,
+            });
+
+            if (!result.success || !result.data) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: result.error || _('Failed to export iDevice'),
+                    contentId: 'error',
+                });
+                return;
+            }
+
+            const blob = new Blob([result.data], { type: 'application/zip' });
+            const url = window.URL.createObjectURL(blob);
+            try {
+                await downloadComponentFile(url, filename, {
+                    typeKeySuffix: 'idevice-scorm12',
+                    alwaysAskLocation: true,
+                });
+            } finally {
+                window.URL.revokeObjectURL(url);
+            }
+        } catch (error) {
+            console.error('[ideviceNode] SCORM export failed:', error);
             eXeLearning.app.modals.alert.show({
                 title: _('Download error'),
                 body: error.message,

@@ -543,6 +543,15 @@ export default class MenuStructureCompose {
             liExport.append(btnExport);
             dropdownList.append(liExport);
 
+            // 3.6. Export Page as SCORM
+            const liExportScorm = document.createElement('li');
+            const btnExportScorm = document.createElement('button');
+            btnExportScorm.classList.add('dropdown-item', 'button-action-block', 'action_export_page_scorm');
+            btnExportScorm.setAttribute('data-nav-id', node.id);
+            btnExportScorm.innerHTML = `<span class="small-icon download-icon-green" aria-hidden="true"></span>${_('Export page as SCORM')}`;
+            liExportScorm.append(btnExportScorm);
+            dropdownList.append(liExportScorm);
+
             // 4. Delete Page
             const liDelete = document.createElement('li');
             const btnDelete = document.createElement('button');

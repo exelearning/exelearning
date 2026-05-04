@@ -18,6 +18,9 @@ export enum ExportFormatType {
     HTML5 = 'html5',
     PAGE = 'page',
     SCORM12 = 'scorm12',
+    PAGESCORM12 = 'pagescorm12',
+    BOXSCORM12 = 'boxscorm12',
+    IDEVICESCORM12 = 'idevicescorm12',
     SCORM2004 = 'scorm2004',
     IMS = 'ims',
     EPUB3 = 'epub3',
@@ -628,6 +631,7 @@ export interface PageRenderOptions {
     // SCORM-specific
     isScorm?: boolean;
     scormVersion?: string;
+    minimalScorm?: boolean;
     bodyClass?: string;
     extraHeadScripts?: string;
     onLoadScript?: string;

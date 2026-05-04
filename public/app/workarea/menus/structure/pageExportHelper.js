@@ -50,20 +50,33 @@ function getSanitizePageFilename() {
  * @returns {string} Safe filename with .elpx extension
  */
 export function buildPageFileName(nodeId, structureEngine) {
+    return `${buildSafePageName(nodeId, structureEngine, 'page_export')}.elpx`;
+}
+
+/**
+ * Build filename for page SCORM export.
+ *
+ * @param {string} nodeId - Navigation node ID
+ * @param {object} structureEngine - Structure engine instance
+ * @returns {string} Safe filename with .zip extension
+ */
+export function buildPageScormFileName(nodeId, structureEngine) {
+    return `${buildSafePageName(nodeId, structureEngine, 'page_export')}_scorm12.zip`;
+}
+
+function buildSafePageName(nodeId, structureEngine, fallbackName) {
     const node = structureEngine?.getNode?.(nodeId);
     if (!node?.pageName) {
-        return 'page_export.elpx';
+        return fallbackName;
     }
 
     const sanitizer = getSanitizePageFilename();
     if (sanitizer) {
-        const safeName = sanitizer.call(null, node.pageName);
-        return `${safeName}.elpx`;
+        return sanitizer.call(null, node.pageName);
     }
 
     // Fallback: basic sanitization
-    const safeName = node.pageName.replace(/[^a-zA-Z0-9-_\u00C0-\u024F]/g, '_');
-    return `${safeName}.elpx`;
+    return node.pageName.replace(/[^a-zA-Z0-9-_\u00C0-\u024F]/g, '_');
 }
 
 /**
@@ -124,6 +137,65 @@ export async function exportPageAndDownload(nodeId, structureEngine) {
     try {
         // alwaysAskLocation: true - In Electron, always show "Save As" dialog for page exports
         await downloadComponentFile(url, filename, { typeKeySuffix: 'page', alwaysAskLocation: true });
+    } finally {
+        window.URL.revokeObjectURL(url);
+    }
+
+    return { success: true };
+}
+
+/**
+ * Export a single page as a minimal SCORM 1.2 package and trigger download.
+ *
+ * @param {string} nodeId - Navigation node ID to export
+ * @param {object} structureEngine - Structure engine instance (for getting page name)
+ * @returns {Promise<{success: boolean, error?: string}>}
+ * @throws {Error} If exporter is not available or export fails
+ */
+export async function exportPageScormAndDownload(nodeId, structureEngine) {
+    const createExporter = getCreateExporter();
+    if (!createExporter) {
+        console.error(
+            '[pageExportHelper] SharedExporters not loaded - ensure exporters.bundle.js is included'
+        );
+        throw new Error(
+            _('Export functionality not available. Please reload the page.')
+        );
+    }
+
+    const yjsBridge = eXeLearning.app.project._yjsBridge;
+    if (!yjsBridge) {
+        throw new Error(_('Collaboration service not ready'));
+    }
+
+    const documentManager = yjsBridge.documentManager;
+    const assetCache = eXeLearning.app.project._assetCache || null;
+    const assetManager = yjsBridge.assetManager || null;
+    const resourceFetcher = yjsBridge.resourceFetcher || null;
+    const filename = buildPageScormFileName(nodeId, structureEngine);
+
+    const exporter = createExporter(
+        'pagescorm12',
+        documentManager,
+        assetCache,
+        resourceFetcher,
+        assetManager
+    );
+
+    const result = await exporter.export({ pageId: nodeId, filename });
+
+    if (!result.success || !result.data) {
+        throw new Error(result.error || _('Export failed'));
+    }
+
+    const blob = new Blob([result.data], { type: 'application/zip' });
+    const url = window.URL.createObjectURL(blob);
+
+    try {
+        await downloadComponentFile(url, filename, {
+            typeKeySuffix: 'page-scorm12',
+            alwaysAskLocation: true,
+        });
     } finally {
         window.URL.revokeObjectURL(url);
     }

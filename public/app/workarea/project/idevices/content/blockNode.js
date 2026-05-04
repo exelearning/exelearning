@@ -702,6 +702,7 @@ export default class IdeviceBlockNode {
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-clone${id}"><span class="small-icon duplicate-icon-green"></span>${_('Clone box')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-move${id}"><span class="small-icon move-icon-green"></span>${_('Move to page')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export${id}"><span class="small-icon download-icon-green"></span>${_('Export box')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export-scorm${id}"><span class="small-icon download-icon-green"></span>${_('Export box as SCORM')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="deleteBlock${id}"><span class="small-icon delete-icon-red"></span><span>${_('Delete box')}</span></button></li>
              </ul>
         </div>`;
@@ -722,6 +723,7 @@ export default class IdeviceBlockNode {
         this.addBehaviourButtonCloneBlock();
         this.addBehaviourMoveToPageBlockButton();
         this.addBehaviourExportBlockButton();
+        this.addBehaviourExportBlockScormButton();
         this.addBehaviourToggleBlockButton();
         this.addTooltips();
         this.addNoTranslateForGoogle();
@@ -1069,6 +1071,30 @@ export default class IdeviceBlockNode {
     }
 
     /**
+     * Event export block as SCORM 1.2
+     *
+     */
+    addBehaviourExportBlockScormButton() {
+        this.blockButtons
+            .querySelector('#dropdownBlockMore-button-export-scorm' + this.blockId)
+            .addEventListener('click', () => {
+                eXeLearning.app.project
+                    .isAvalaibleOdeComponent(this.blockId, null)
+                    .then((response) => {
+                        if (response.responseMessage !== 'OK') {
+                            eXeLearning.app.modals.alert.show({
+                                title: _('iDevice error'),
+                                body: _(response.responseMessage),
+                                contentId: 'error',
+                            });
+                        } else {
+                            this.downloadBlockScormSelected(this.blockId);
+                        }
+                    });
+            });
+    }
+
+    /**
      * Toggle block
      *
      */
@@ -1159,6 +1185,64 @@ export default class IdeviceBlockNode {
             }
         } catch (error) {
             console.error('[blockNode] Export failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Download error'),
+                body: error.message,
+                contentId: 'error',
+            });
+        }
+    }
+
+    /**
+     * Download block as minimal SCORM 1.2 package
+     * @param {*} odeBlockId
+     */
+    async downloadBlockScormSelected(odeBlockId) {
+        try {
+            const yjsBridge = eXeLearning.app.project._yjsBridge;
+            if (!yjsBridge) {
+                throw new Error(_('Collaboration service not ready'));
+            }
+
+            const documentManager = yjsBridge.documentManager;
+            const assetCache = eXeLearning.app.project._assetCache || null;
+            const assetManager = yjsBridge.assetManager || null;
+            const resourceFetcher = yjsBridge.resourceFetcher || null;
+            const filename = buildComponentFileName(`${odeBlockId}_scorm12`, 'zip');
+
+            const exporter = window.createExporter(
+                'boxscorm12',
+                documentManager,
+                assetCache,
+                resourceFetcher,
+                assetManager
+            );
+            const result = await exporter.export({
+                blockId: odeBlockId,
+                filename,
+            });
+
+            if (!result.success || !result.data) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: result.error || _('Failed to export box'),
+                    contentId: 'error',
+                });
+                return;
+            }
+
+            const blob = new Blob([result.data], { type: 'application/zip' });
+            const url = window.URL.createObjectURL(blob);
+            try {
+                await downloadComponentFile(url, filename, {
+                    typeKeySuffix: 'box-scorm12',
+                    alwaysAskLocation: true,
+                });
+            } finally {
+                window.URL.revokeObjectURL(url);
+            }
+        } catch (error) {
+            console.error('[blockNode] SCORM export failed:', error);
             eXeLearning.app.modals.alert.show({
                 title: _('Download error'),
                 body: error.message,

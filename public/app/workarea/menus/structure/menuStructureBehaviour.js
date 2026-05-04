@@ -5,7 +5,7 @@
  */
 
 import ImportProgress from '../../interface/importProgress.js';
-import { exportPageAndDownload } from './pageExportHelper.js';
+import { exportPageAndDownload, exportPageScormAndDownload } from './pageExportHelper.js';
 
 // Use global AppLogger for debug-controlled logging
 // Use global AppLogger for debug-controlled logging
@@ -346,6 +346,29 @@ export default class MenuStructureBehaviour {
                             (error) => {
                                 console.error(
                                     '[MenuStructure] Page export failed:',
+                                    error
+                                );
+                                eXeLearning.app.modals.alert.show({
+                                    title: _('Download error'),
+                                    body: error.message,
+                                    contentId: 'error',
+                                });
+                            }
+                        );
+                    }
+                }
+
+                // Export Page as SCORM (client-side export to include IndexedDB assets)
+                if (target.classList.contains('action_export_page_scorm')) {
+                    e.stopPropagation();
+                    closeDropdown();
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    const nodeId = target.getAttribute('data-nav-id');
+                    if (nodeId) {
+                        exportPageScormAndDownload(nodeId, self.structureEngine).catch(
+                            (error) => {
+                                console.error(
+                                    '[MenuStructure] Page SCORM export failed:',
                                     error
                                 );
                                 eXeLearning.app.modals.alert.show({

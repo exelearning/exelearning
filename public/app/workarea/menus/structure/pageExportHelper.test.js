@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { exportPageAndDownload, buildPageFileName } from './pageExportHelper.js';
+import {
+    exportPageAndDownload,
+    exportPageScormAndDownload,
+    buildPageFileName,
+    buildPageScormFileName,
+} from './pageExportHelper.js';
 
 // Mock the downloadComponentFile import
 vi.mock('../../project/idevices/content/componentDownloadHelper.js', () => ({
@@ -98,6 +103,41 @@ describe('pageExportHelper', () => {
 
             // Basic sanitization preserves unicode letters (\u00C0-\u024F)
             expect(filename).toBe('Lección_Básica.elpx');
+        });
+    });
+
+    describe('buildPageScormFileName', () => {
+        it('should generate SCORM filename from page name using sanitizePageFilename', () => {
+            const mockSanitize = vi
+                .fn()
+                .mockImplementation((name) => name.replace(/\s+/g, '_'));
+            window.SharedExporters = {
+                Html5Exporter: {
+                    prototype: {
+                        sanitizePageFilename: mockSanitize,
+                    },
+                },
+            };
+
+            const mockEngine = {
+                getNode: vi.fn().mockReturnValue({ pageName: 'Test Page' }),
+            };
+
+            const filename = buildPageScormFileName('node-123', mockEngine);
+
+            expect(mockEngine.getNode).toHaveBeenCalledWith('node-123');
+            expect(mockSanitize).toHaveBeenCalledWith('Test Page');
+            expect(filename).toBe('Test_Page_scorm12.zip');
+        });
+
+        it('should return default SCORM filename when no page name exists', () => {
+            const mockEngine = {
+                getNode: vi.fn().mockReturnValue(null),
+            };
+
+            const filename = buildPageScormFileName('node-789', mockEngine);
+
+            expect(filename).toBe('page_export_scorm12.zip');
         });
     });
 
@@ -362,6 +402,117 @@ describe('pageExportHelper', () => {
                 null,
                 mockAssetManager
             );
+        });
+    });
+
+    describe('exportPageScormAndDownload', () => {
+        let mockExporter;
+        let mockDocumentManager;
+        let mockAssetCache;
+        let mockAssetManager;
+        let mockResourceFetcher;
+
+        beforeEach(() => {
+            mockExporter = {
+                export: vi.fn().mockResolvedValue({
+                    success: true,
+                    data: new Uint8Array([1, 2, 3]),
+                }),
+            };
+
+            mockDocumentManager = { getMetadata: vi.fn() };
+            mockAssetCache = {};
+            mockAssetManager = {};
+            mockResourceFetcher = { fetchContentCss: vi.fn() };
+
+            window.createExporter = vi.fn().mockReturnValue(mockExporter);
+            window.eXeLearning = {
+                app: {
+                    project: {
+                        _yjsBridge: {
+                            documentManager: mockDocumentManager,
+                            assetManager: mockAssetManager,
+                            resourceFetcher: mockResourceFetcher,
+                        },
+                        _assetCache: mockAssetCache,
+                    },
+                },
+            };
+
+            window.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url');
+            window.URL.revokeObjectURL = vi.fn();
+        });
+
+        it('should create page SCORM exporter with correct parameters', async () => {
+            const mockEngine = {
+                getNode: vi.fn().mockReturnValue({ pageName: 'Test Page' }),
+            };
+
+            await exportPageScormAndDownload('node-123', mockEngine);
+
+            expect(window.createExporter).toHaveBeenCalledWith(
+                'pagescorm12',
+                mockDocumentManager,
+                mockAssetCache,
+                mockResourceFetcher,
+                mockAssetManager
+            );
+        });
+
+        it('should call exporter.export with pageId and filename', async () => {
+            const mockEngine = {
+                getNode: vi.fn().mockReturnValue({ pageName: 'Test Page' }),
+            };
+
+            await exportPageScormAndDownload('node-456', mockEngine);
+
+            expect(mockExporter.export).toHaveBeenCalledWith({
+                pageId: 'node-456',
+                filename: 'Test_Page_scorm12.zip',
+            });
+        });
+
+        it('should call downloadComponentFile with Electron Save As option', async () => {
+            const mockEngine = {
+                getNode: vi.fn().mockReturnValue({ pageName: 'Test Page' }),
+            };
+
+            await exportPageScormAndDownload('node-123', mockEngine);
+
+            expect(downloadComponentFile).toHaveBeenCalledWith(
+                'blob:mock-url',
+                'Test_Page_scorm12.zip',
+                { typeKeySuffix: 'page-scorm12', alwaysAskLocation: true }
+            );
+        });
+
+        it('should revoke blob URL even if SCORM download fails', async () => {
+            downloadComponentFile.mockRejectedValueOnce(new Error('Download failed'));
+
+            const mockEngine = {
+                getNode: vi.fn().mockReturnValue({ pageName: 'Test Page' }),
+            };
+
+            await expect(
+                exportPageScormAndDownload('node-123', mockEngine)
+            ).rejects.toThrow('Download failed');
+
+            expect(window.URL.revokeObjectURL).toHaveBeenCalledWith(
+                'blob:mock-url'
+            );
+        });
+
+        it('should throw error when SCORM export fails', async () => {
+            mockExporter.export.mockResolvedValue({
+                success: false,
+                error: 'SCORM export error',
+            });
+
+            const mockEngine = { getNode: vi.fn() };
+
+            await expect(
+                exportPageScormAndDownload('node-123', mockEngine)
+            ).rejects.toThrow('SCORM export error');
         });
     });
 });

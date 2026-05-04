@@ -28,6 +28,9 @@ import { FflateZipProvider } from '../providers/FflateZipProvider';
 import { Html5Exporter } from '../exporters/Html5Exporter';
 import { PageExporter } from '../exporters/PageExporter';
 import { Scorm12Exporter } from '../exporters/Scorm12Exporter';
+import { Scorm12SinglePageExporter } from '../exporters/Scorm12SinglePageExporter';
+import { Scorm12BlockExporter } from '../exporters/Scorm12BlockExporter';
+import { Scorm12IdeviceExporter } from '../exporters/Scorm12IdeviceExporter';
 import { Scorm2004Exporter } from '../exporters/Scorm2004Exporter';
 import { ImsExporter } from '../exporters/ImsExporter';
 import { Epub3Exporter } from '../exporters/Epub3Exporter';
@@ -98,7 +101,19 @@ interface ResourceFetcherLike {
 /**
  * Export format type
  */
-type ExportFormat = 'html5' | 'html5-sp' | 'page' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elpx' | 'component';
+type ExportFormat =
+    | 'html5'
+    | 'html5-sp'
+    | 'page'
+    | 'scorm12'
+    | 'pagescorm12'
+    | 'boxscorm12'
+    | 'idevicescorm12'
+    | 'scorm2004'
+    | 'ims'
+    | 'epub3'
+    | 'elpx'
+    | 'component';
 
 /**
  * Create a null-safe resource provider that returns empty results
@@ -192,7 +207,7 @@ export function createExporter(
     const zip = new FflateZipProvider();
 
     // Normalize format
-    const normalizedFormat = format.toLowerCase().replace('-', '');
+    const normalizedFormat = format.toLowerCase().replace(/[-_]/g, '');
 
     // Create appropriate exporter
     switch (normalizedFormat) {
@@ -207,6 +222,20 @@ export function createExporter(
         case 'scorm12':
         case 'scorm':
             return new Scorm12Exporter(document, resources, assets, zip);
+
+        case 'pagescorm12':
+        case 'pagescorm':
+            return new Scorm12SinglePageExporter(document, resources, assets, zip);
+
+        case 'boxscorm12':
+        case 'blockscorm12':
+        case 'boxscorm':
+        case 'blockscorm':
+            return new Scorm12BlockExporter(document, resources, assets, zip);
+
+        case 'idevicescorm12':
+        case 'idevicescorm':
+            return new Scorm12IdeviceExporter(document, resources, assets, zip);
 
         case 'scorm2004':
             return new Scorm2004Exporter(document, resources, assets, zip);
@@ -816,6 +845,9 @@ export {
     Html5Exporter,
     PageExporter,
     Scorm12Exporter,
+    Scorm12SinglePageExporter,
+    Scorm12BlockExporter,
+    Scorm12IdeviceExporter,
     Scorm2004Exporter,
     ImsExporter,
     Epub3Exporter,
@@ -861,6 +893,9 @@ if (typeof window !== 'undefined') {
         Html5Exporter,
         PageExporter,
         Scorm12Exporter,
+        Scorm12SinglePageExporter,
+        Scorm12BlockExporter,
+        Scorm12IdeviceExporter,
         Scorm2004Exporter,
         ImsExporter,
         Epub3Exporter,
