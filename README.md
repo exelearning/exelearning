@@ -135,14 +135,17 @@ See our [versioning guide](./doc/development/version-control.md) for details abo
 The project includes a Makefile to simplify development tasks:
 
 ```
-make up-local         # Start development server (installs deps + hot reload)
-make up               # Start with Docker
+make up-local         # Start development server (installs deps + hot reload) with .env.development
+make up-production    # Start production server (installs deps + builds assets) with .env
+make up               # Start with Docker (docker-compose.yml reads .env.dist + .env)
 make test-unit        # Run unit tests
 make test-integration # Run integration tests
 make test-frontend    # Run frontend tests (Vitest)
 make test-e2e         # Run E2E tests (Playwright)
 make lint             # Run linter
 make fix              # Auto-fix linting issues
+make clean            # Clean all generated files and dependencies
+make build            # Build Docker image
 ```
 
 To see all available commands, run:

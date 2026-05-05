@@ -85,7 +85,7 @@ pull: check-docker check-env
 	@docker compose pull
 
 # Build Docker environment
-.PHONY: up
+.PHONY: build
 build: check-docker check-env
 	@echo "Building Docker image..."
 	@docker compose build --pull
@@ -134,13 +134,11 @@ logs: check-docker
 # LOCAL DEVELOPMENT
 # =============================================================================
 
-# Local environment variables (used by CLI commands)
-# For up-local, cross-env handles these via package.json scripts
+# Local environment variables used by CLI commands
 ifeq ($(SYSTEM_OS),windows)
-# Windows: use cross-env for environment variable handling
-LOCAL_ENV := npx cross-env FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1
+LOCAL_ENV := npx cross-env APP_ENV=dev APP_DEBUG=1 FILES_DIR=data/ DB_DRIVER=pdo_sqlite DB_PATH=data/exelearning.db APP_PORT=8080 PORT=8080 APP_ONLINE_MODE=1
 else
-LOCAL_ENV := FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1
+LOCAL_ENV := APP_ENV=dev APP_DEBUG=1 FILES_DIR=data/ DB_DRIVER=pdo_sqlite DB_PATH=data/exelearning.db APP_PORT=8080 PORT=8080 APP_ONLINE_MODE=1
 endif
 
 # Install dependencies
@@ -181,12 +179,33 @@ bundle: deps
 	@echo "Building all assets..."
 	@bun run build:all
 
+# Check local development environment file exists
+.PHONY: check-env-development
+check-env-development:
+ifeq ($(SYSTEM_OS),windows)
+	@if not exist .env.development ( \
+		if exist .env.development.example ( \
+			echo Creating .env.development from .env.development.example... && copy .env.development.example .env.development >NUL \
+		) else ( \
+			echo [ERROR] .env.development.example not found. & exit 1 \
+		) \
+	)
+else
+	@if [ ! -f .env.development ]; then \
+		if [ ! -f .env.development.example ]; then \
+			echo "[ERROR] .env.development.example not found."; \
+			exit 1; \
+		fi; \
+		echo "Creating .env.development from .env.development.example..."; \
+		cp .env.development.example .env.development; \
+	fi
+endif
+
 # Start local development (web only)
-# Uses cross-env to override .env values with local paths (data/)
 # APP_ENV=dev (default): Elysia with hot-reload + SCSS watcher
 # APP_ENV=prod: Pre-compiled Elysia, no watchers
 .PHONY: up-local
-up-local: check-bun check-env deps css bundle
+up-local: check-bun check-env-development deps css bundle
 ifeq ($(APP_ENV),prod)
 	@echo "Starting local (prod mode)..."
 	@$(MAKE) bundle

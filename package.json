@@ -8,7 +8,7 @@
   "scripts": {
     "start": "bun run dist/index.js",
     "start:dev": "bun --watch src/index.ts",
-    "start:local": "cross-env FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1 bun run start:dev",
+    "start:local": "cross-env NODE_ENV=development bun --env-file=.env.development --watch src/index.ts",
     "dev": "bun run --parallel start:dev sass:watch",
     "dev:local": "bun run --parallel start:local sass:watch",
     "build": "bun build src/index.ts --outdir dist --target bun --external kysely --external 'kysely/*' --external jsdom && bun build src/cli/index.ts --outfile dist/cli.js --target bun --external kysely --external 'kysely/*' --external jsdom",

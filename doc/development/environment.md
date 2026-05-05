@@ -140,6 +140,12 @@ The project provides a Makefile for common tasks:
 
 ### Environment Variables
 
+Environment mode conventions:
+
+- `make up-local` uses `.env.development` (auto-created from `.env.development.example` if missing).
+- `make up-production` uses `.env` (auto-created from `.env.dist` if missing).
+- `make up` (Docker, via `docker-compose.yml`) loads `.env.dist` and then `.env` (`.env` overrides defaults).
+
 Copy `.env.dist` to `.env` and customize as needed:
 
 ```bash

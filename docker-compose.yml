@@ -1,51 +1,72 @@
 # ⚠️ WARNING: This docker-compose file is mainly intended for development.
 # For production deployments, please use the example docker-compose files
-# provided in doc/deploy/ (examples available for SQLite, MariaDB and PostgreSQL).
+# provided in doc/deploy/ examples for SQLite, MariaDB and PostgreSQL.
 ---
-services:
 
+services:
   exelearning:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUN_VERSION: ${BUN_VERSION:-1.3}
+        VERSION: ${VERSION:-v0.0.0-alpha}
+
+    image: exelearning-local:dev
     container_name: exelearning
-    hostname: exelearning # Important! To be called from chrome container
+    hostname: exelearning
+
+    # Apple Silicon fallback:
+    # Keep this commented by default. Only enable it if the native arm64 build fails.
+    # platform: linux/amd64
+
+    # Local Docker defaults: .env.dist baseline + .env overrides
     env_file:
       - .env.dist
-      - .env # Overrides what is defined in .env
+      - .env
+
     ports:
-      - "${APP_PORT:-8080}:${APP_PORT:-8080}" # Maps the host's $APP_PORT to the container's ${APP_PORT} internal port
-    restart: unless-stopped # Restart the container unless it is stopped manually
+      - "${APP_PORT:-8080}:${APP_PORT:-8080}"
+
+    restart: unless-stopped
+
     volumes:
-      # Persistent data only - no source code mounting
-      - mnt-data:/mnt/data:rw         # Uploaded assets
-      - ./data:/app/data:rw           # SQLite database persistence
-    # Always run in production mode (pre-compiled, no watchers)
-    # For development with hot reload, run locally: make up-local
+      # Persistent uploaded assets
+      - mnt-data:/mnt/data:rw
+
+      # SQLite database persistence
+      - ./data:/app/data:rw
+
     environment:
+      # Development/demo Docker credentials.
+      # For real deployments, override these in .env with strong values.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-user@exelearning.net}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-1234}
+
       PRE_CONFIGURE_COMMANDS:
       POST_CONFIGURE_COMMANDS: |
-        echo "this is a test line 1"
-        echo "this is a test line 2"
+        echo "Docker post-configuration completed"
+      # ⚠️ WARNING: Uncomment this for using MariaDB as local database for development
+      # DB_DRIVER: pdo_mysql
+      # DB_HOST: mariadb
+      # DB_PORT: 3306
+      # DB_NAME: "${DB_NAME:-exelearning}"
+      # DB_USER: "${DB_USER:-exelearning}"
+      # DB_PASSWORD: "${DB_PASSWORD:-exelearning}"
+      # DB_CHARSET: "${DB_CHARSET:-utf8mb4}"
+      # DB_SERVER_VERSION: 10.6
 
-  #  ⚠️ WARNING: Uncomment this for using mariadb as local database for development
-  #     # Database settings
-  #     DB_DRIVER: pdo_mysql
-  #     DB_HOST: mariadb
-  #     DB_PORT: 3306
-  #     DB_NAME: "${DB_NAME:-exelearning}"
-  #     DB_USER: "${DB_USER:-exelearning}"
-  #     DB_PASSWORD: "${DB_PASSWORD:-exelearning}"
-  #     DB_CHARSET: "${DB_CHARSET:-utf8mb4}"
-  #     DB_SERVER_VERSION: 10.6
-  #   depends_on:
-  #     - mariadb
-  # mariadb:
-  #   image: mariadb:12.0
-  #   restart: unless-stopped
-  #   environment:
-  #     MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-root}"
-  #     MARIADB_DATABASE: "${DB_NAME:-exelearning}"
-  #     MARIADB_USER: "${DB_USER:-exelearning}"
-  #     MARIADB_PASSWORD: "${DB_PASSWORD:-exelearning}"
+      # depends_on:
+      #   - mariadb
+
+      # mariadb:
+      #   image: mariadb:12.0
+      #   restart: unless-stopped
+      #   environment:
+      #     MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-root}"
+      #     MARIADB_DATABASE: "${DB_NAME:-exelearning}"
+      #     MARIADB_USER: "${DB_USER:-exelearning}"
+      #     MARIADB_PASSWORD: "${DB_PASSWORD:-exelearning}"
 
 volumes:
   mnt-data:
