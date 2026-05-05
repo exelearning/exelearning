@@ -3487,7 +3487,10 @@ class AssetManager {
             const mime = assetResponse.headers.get('X-Original-Mime') || 'application/octet-stream';
             const hash = assetResponse.headers.get('X-Asset-Hash') || '';
             const size = parseInt(assetResponse.headers.get('X-Original-Size') || '0');
-            const filename = assetResponse.headers.get('X-Filename') || undefined;
+            const rawFilename = assetResponse.headers.get('X-Filename');
+            let filename;
+            try { filename = rawFilename ? decodeURIComponent(rawFilename) : undefined; }
+            catch { filename = rawFilename || undefined; }
 
             const asset = {
               id: assetId,

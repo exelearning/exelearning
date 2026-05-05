@@ -17,6 +17,7 @@ import {
 } from '../services/translation';
 import { getAppVersion } from '../utils/version';
 import { db as defaultDb } from '../db/client';
+import { buildContentDisposition } from '../shared/http/headers';
 import {
     getAuthMethods,
     getSettingBoolean,
@@ -366,7 +367,7 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
 
             // Return file with proper headers
             set.headers['Content-Type'] = 'application/zip';
-            set.headers['Content-Disposition'] = `attachment; filename="${template.filename}.elpx"`;
+            set.headers['Content-Disposition'] = buildContentDisposition(`${template.filename}.elpx`);
 
             return file;
         },

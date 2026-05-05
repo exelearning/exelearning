@@ -18,6 +18,7 @@ import { cookie } from '@elysiajs/cookie';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
+import { buildContentDisposition } from '../shared/http/headers';
 import type { Kysely } from 'kysely';
 
 import { db as defaultDb } from '../db/client';
@@ -362,7 +363,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         if (download && result.data) {
                             const exportFilename = result.filename || 'converted.elpx';
                             set.headers['content-type'] = 'application/x-exelearning';
-                            set.headers['content-disposition'] = `attachment; filename="${exportFilename}"`;
+                            set.headers['content-disposition'] = buildContentDisposition(exportFilename);
                             set.headers['content-length'] = String(result.data.length);
                             return result.data;
                         }
@@ -455,7 +456,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         if (download && result.data) {
                             const exportFilename = result.filename || `export_${format}.${formatInfo.extension}`;
                             set.headers['content-type'] = formatInfo.mimeType;
-                            set.headers['content-disposition'] = `attachment; filename="${exportFilename}"`;
+                            set.headers['content-disposition'] = buildContentDisposition(exportFilename);
                             set.headers['content-length'] = String(result.data.length);
                             return result.data;
                         }
