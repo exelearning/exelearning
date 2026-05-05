@@ -199,26 +199,6 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
     }
 
     /**
-     * Broadcast message to all clients in project except one (the sender)
-     */
-    function broadcastToProjectExcept(projectUuid: string, excludeClientId: string, message: AssetMessage): void {
-        const projectSocketsMap = clientSockets.get(projectUuid);
-        if (!projectSocketsMap) return;
-
-        const binaryMessage = encodeAssetMessage(message);
-        projectSocketsMap.forEach((socket, cId) => {
-            if (cId !== excludeClientId) {
-                try {
-                    socket.send(binaryMessage);
-                } catch (err: unknown) {
-                    const errMessage = getErrorMessage(err);
-                    console.error(`[AssetCoordinator] Failed to broadcast to ${cId}:`, errMessage);
-                }
-            }
-        });
-    }
-
-    /**
      * Send asset not found message
      */
     function sendAssetNotFound(projectUuid: string, clientId: string, assetId: string, error: string): void {
@@ -854,10 +834,9 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 return;
             }
 
-            // Get user ID from first client connection (they must be authenticated to have a socket)
-            // For now, we'll use a placeholder - in production this would come from JWT token
-            // The userId is used for session validation but the actual auth is via the session token
-            const userId = project.user_id || 0;
+            // Use the project owner as the upload-session user identity for now.
+            // This remains a placeholder until the socket carries the authenticated user context.
+            const userId = project.owner_id;
 
             // Create session (async due to jose JWT library)
             const { sessionToken, expiresAt } = await uploadSessionManager.createSession({

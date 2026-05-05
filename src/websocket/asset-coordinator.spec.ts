@@ -1155,6 +1155,28 @@ describe('Asset Coordinator Service (DI)', () => {
     // Note: Rename sync tests removed - Yjs now handles rename sync automatically
 
     describe('Edge cases - broadcastToProject error handling', () => {
+        it('should handle socket send error during asset-available broadcast', async () => {
+            const sender = createMockSocket();
+            const failingReceiver = createMockSocket();
+            failingReceiver.send = () => {
+                throw new Error('Broadcast failed on asset-available');
+            };
+
+            coordinator.registerClient('asset-broadcast-project', 'sender-client', sender);
+            coordinator.registerClient('asset-broadcast-project', 'failing-client', failingReceiver);
+
+            await coordinator.handleMessage('asset-broadcast-project', 'sender-client', {
+                type: 'asset-uploaded',
+                data: {
+                    assetId: 'asset-for-broadcast',
+                    success: true,
+                    size: 123,
+                },
+            });
+
+            coordinator.cleanupProject('asset-broadcast-project');
+        });
+
         it('should handle socket send error during broadcast', async () => {
             const errorSocket = createMockSocket();
             const normalSocket = createMockSocket();
@@ -1242,7 +1264,7 @@ describe('Asset Coordinator Service (DI)', () => {
             mockDeps = createMockDeps({
                 findProjectByUuid: async (_db: any, uuid: string) => {
                     if (uuid === 'upload-session-project') {
-                        return { id: 42, uuid: 'upload-session-project', user_id: 1 };
+                        return { id: 42, uuid: 'upload-session-project', owner_id: 1 };
                     }
                     return undefined;
                 },
@@ -1324,6 +1346,106 @@ describe('Asset Coordinator Service (DI)', () => {
             expect(decoded.data.error).toBeDefined();
 
             coordinator.cleanupProject('non-existent-project');
+        });
+
+        it('should stop when created session token cannot be validated', async () => {
+            const invalidSessionCoordinator = createAssetCoordinator({
+                ...mockDeps,
+                uploadSessionManager: {
+                    ...(mockDeps.uploadSessionManager as any),
+                    createSession: async () => ({
+                        sessionToken: 'invalid-token',
+                        expiresAt: Date.now() + 60_000,
+                    }),
+                    validateSession: async () => null,
+                    onProgress: () => {},
+                    onBatchComplete: () => {},
+                },
+            });
+
+            const socket = createMockSocket();
+            invalidSessionCoordinator.registerClient('upload-session-project', 'client-upload', socket);
+
+            await invalidSessionCoordinator.handleMessage('upload-session-project', 'client-upload', {
+                type: 'upload-session-create',
+                data: {
+                    projectId: 'upload-session-project',
+                    totalFiles: 2,
+                    totalBytes: 200,
+                    manifest: [],
+                },
+            });
+
+            invalidSessionCoordinator.cleanupProject('upload-session-project');
+        });
+
+        it('should catch top-level handler errors and send upload-session error response', async () => {
+            const throwingCoordinator = createAssetCoordinator({
+                ...mockDeps,
+                uploadSessionManager: {
+                    ...(mockDeps.uploadSessionManager as any),
+                    createSession: async () => {
+                        throw new Error('Session create failed');
+                    },
+                    validateSession: async () => null,
+                    onProgress: () => {},
+                    onBatchComplete: () => {},
+                },
+            });
+
+            const socket = createMockSocket();
+            throwingCoordinator.registerClient('upload-session-project', 'client-upload', socket);
+
+            await throwingCoordinator.handleMessage('upload-session-project', 'client-upload', {
+                type: 'upload-session-create',
+                data: {
+                    projectId: 'upload-session-project',
+                    totalFiles: 1,
+                    totalBytes: 100,
+                    manifest: [],
+                },
+            });
+
+            expect(socket.messages.length).toBeGreaterThan(0);
+            const lastMessage = socket.messages[socket.messages.length - 1];
+            const decoded = JSON.parse(new TextDecoder().decode(lastMessage.slice(1)));
+            expect(decoded.type).toBe('upload-session-ready');
+            expect(decoded.data.error).toBe('Session create failed');
+
+            throwingCoordinator.cleanupProject('upload-session-project');
+        });
+
+        it('should catch message-level errors for malformed upload-session sender id', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('upload-session-project', 'client-upload', socket);
+
+            await coordinator.handleMessage('upload-session-project', null as any, {
+                type: 'upload-session-create',
+                data: {
+                    projectId: 'upload-session-project',
+                    totalFiles: 1,
+                    totalBytes: 100,
+                    manifest: [],
+                },
+            });
+
+            coordinator.cleanupProject('upload-session-project');
+        });
+    });
+
+    describe('Edge cases - collaboration reference selection', () => {
+        it('should handle projects with awareness but zero announced assets', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('zero-assets-project', 'client-1', socket);
+
+            await coordinator.handleMessage('zero-assets-project', 'client-1', {
+                type: 'awareness-update',
+                data: { availableAssets: [] },
+            });
+
+            await coordinator.onCollaborationDetected('zero-assets-project');
+
+            coordinator.cleanupProject('zero-assets-project');
         });
     });
 });
