@@ -205,6 +205,53 @@ describe('NavbarFile — folder project actions', () => {
             }
         });
 
+        it('reveals entries on Alt keydown even when altKey is unset (Linux regression)', () => {
+            // Some Linux builds of Chromium/Firefox dispatch the keydown for
+            // Alt itself with `altKey === false`. The reveal must still trigger
+            // on the key name alone.
+            window.electronAPI = { openProjectFolder: vi.fn() };
+            const nav = new NavbarFile({ navbar });
+            nav.setFolderProjectActionsEvents();
+
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: false }));
+            for (const item of nav.folderProjectActionItems) {
+                expect(item.classList.contains('d-none')).toBe(false);
+            }
+        });
+
+        it('hides entries when the File dropdown closes', () => {
+            window.electronAPI = { openProjectFolder: vi.fn() };
+            const nav = new NavbarFile({ navbar });
+            nav.setFolderProjectActionsEvents();
+
+            // Reveal first.
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt' }));
+            for (const item of nav.folderProjectActionItems) {
+                expect(item.classList.contains('d-none')).toBe(false);
+            }
+
+            // Bootstrap fires `hide.bs.dropdown` on the toggle when the menu
+            // closes. The previous `window.blur` listener mis-fired on Linux
+            // when Alt briefly grabbed focus; this assertion guards against a
+            // regression to that approach.
+            nav.button.dispatchEvent(new Event('hide.bs.dropdown'));
+            for (const item of nav.folderProjectActionItems) {
+                expect(item.classList.contains('d-none')).toBe(true);
+            }
+        });
+
+        it('does not hide entries when the window blurs (Linux Alt-tap)', () => {
+            window.electronAPI = { openProjectFolder: vi.fn() };
+            const nav = new NavbarFile({ navbar });
+            nav.setFolderProjectActionsEvents();
+
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt' }));
+            window.dispatchEvent(new Event('blur'));
+            for (const item of nav.folderProjectActionItems) {
+                expect(item.classList.contains('d-none')).toBe(false);
+            }
+        });
+
         it('wires the Electron click handler when present', () => {
             window.electronAPI = {
                 openProjectFolder: vi.fn().mockResolvedValue({ ok: false, canceled: true }),

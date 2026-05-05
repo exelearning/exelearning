@@ -206,15 +206,24 @@ export default class NavbarFile {
         if (flagEnabled) {
             setVisible(true);
         } else {
-            // Reveal on Alt; hide again on key-up or when the menu closes.
+            // Reveal while Alt is held. Detect by key name only — `event.altKey`
+            // is not reliably true on the keydown of Alt itself in some Linux
+            // builds of Chromium/Firefox, which left the entries permanently
+            // hidden on that platform.
             const onKey = (event) => {
-                if (event.key === 'Alt' || event.altKey) {
-                    setVisible(event.type === 'keydown' && event.altKey);
+                if (event.key === 'Alt') {
+                    setVisible(event.type === 'keydown');
                 }
             };
             document.addEventListener('keydown', onKey);
             document.addEventListener('keyup', onKey);
-            window.addEventListener('blur', () => setVisible(false));
+            // Hide again when the File dropdown closes. We previously hid on
+            // window blur, but on Linux a bare Alt tap can briefly transfer
+            // focus to the WM/menu mnemonics and fire blur, which immediately
+            // re-hid the entries we had just revealed.
+            if (this.button) {
+                this.button.addEventListener('hide.bs.dropdown', () => setVisible(false));
+            }
         }
 
         if (this.openFolderOfflineButton) {
