@@ -68,6 +68,7 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'true-or-false',
         'scrambled-list',
         'magnifier',
+        'three-sixty-viewer',
     ];
     const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
 
@@ -128,6 +129,7 @@ const IDEVICE_JS_DEPENDENCIES: Record<string, string[]> = {
     'progress-report': ['html2canvas.js'],
     'select-media-files': ['mansory-jq.js'],
     'image-gallery': ['simple-lightbox.min.js'],
+    'three-sixty-viewer': ['three.min.js', 'OrbitControls.js'],
 };
 
 /**
