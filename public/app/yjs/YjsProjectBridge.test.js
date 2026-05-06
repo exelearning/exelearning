@@ -4704,6 +4704,41 @@ describe('YjsProjectBridge', () => {
       await expect(bridge.exportToElpx()).rejects.toThrow('Export failed');
     });
 
+    it('calls ensureScreenshotForExport before exporter.export so meta.screenshot is populated', async () => {
+      const callOrder = [];
+      const ensureSpy = mock(async () => {
+        callOrder.push('ensureScreenshot');
+      });
+      bridge.ensureScreenshotForExport = ensureSpy;
+
+      const exportSpy = mock(() => {
+        callOrder.push('export');
+        return Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'test.elpx',
+        });
+      });
+      global.window.SharedExporters = {
+        createExporter: mock(() => ({ export: exportSpy })),
+      };
+
+      const mockLink = { href: '', download: '', click: mock(() => {}) };
+      global.URL.createObjectURL = mock(() => 'blob:test');
+      global.URL.revokeObjectURL = mock(() => {});
+      global.document.createElement = mock(() => mockLink);
+      global.document.body = {
+        appendChild: mock(() => {}),
+        removeChild: mock(() => {}),
+      };
+
+      await bridge.exportToElpx();
+
+      expect(ensureSpy).toHaveBeenCalled();
+      expect(exportSpy).toHaveBeenCalled();
+      expect(callOrder).toEqual(['ensureScreenshot', 'export']);
+    });
+
     it('uses electronAPI.saveBuffer() in Electron mode (always prompts)', async () => {
       const mockExporter = {
         export: mock(() => Promise.resolve({
@@ -7176,6 +7211,43 @@ describe('YjsProjectBridge', () => {
       await bridge.generateScreenshotFromFirstPage();
 
       expect(bridge._screenshotGenerating).toBe(false);
+    });
+  });
+
+  describe('ensureScreenshotForExport', () => {
+    it('awaits generateScreenshotFromFirstPage when present', async () => {
+      const generate = mock(async () => {});
+      bridge.generateScreenshotFromFirstPage = generate;
+
+      await bridge.ensureScreenshotForExport();
+
+      expect(generate).toHaveBeenCalled();
+    });
+
+    it('is a no-op when generateScreenshotFromFirstPage is missing', async () => {
+      delete bridge.generateScreenshotFromFirstPage;
+      await expect(bridge.ensureScreenshotForExport()).resolves.toBeUndefined();
+    });
+
+    it('returns within the timeout when generation hangs', async () => {
+      bridge.generateScreenshotFromFirstPage = mock(
+        () => new Promise((r) => setTimeout(r, 60000)),
+      );
+
+      const start = Date.now();
+      await bridge.ensureScreenshotForExport(25);
+      const elapsed = Date.now() - start;
+
+      expect(elapsed).toBeLessThan(2000);
+      expect(elapsed).toBeGreaterThanOrEqual(20);
+    });
+
+    it('swallows generator rejections', async () => {
+      bridge.generateScreenshotFromFirstPage = mock(
+        async () => { throw new Error('render failed'); },
+      );
+
+      await expect(bridge.ensureScreenshotForExport()).resolves.toBeUndefined();
     });
   });
 
