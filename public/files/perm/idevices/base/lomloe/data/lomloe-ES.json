@@ -1,0 +1,5 @@
+{
+  "__notice__": "National (state-level) LOMLOE concretion data (ISO 3166-2:ES code: ES) is not yet available. Replace this file with the real data once published, following the same structure as lomloe-ES-CN.json. Then set 'available: true' on the ES entry in the DATASETS array in edition/lomloe.js.",
+  "__format__": "Etapa -> Nivel -> CodArea -> { denominacion, competencias_especificas, saberes_basicos }",
+  "__iso_code__": "ES"
+}
