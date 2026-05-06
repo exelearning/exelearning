@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v4.0.0 – 2026-04-29
+## v4.0.0 – 2026-04-30
 
 eXeLearning 4.0 is a complete rebuild of the application. Every part of the stack has been rethought, from the server runtime to the collaboration engine, the distribution model and the user interface. The following summarises the most significant changes since version 3.
 
