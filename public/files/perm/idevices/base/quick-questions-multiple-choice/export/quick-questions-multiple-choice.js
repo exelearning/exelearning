@@ -514,7 +514,7 @@ var $quickquestionsmultiplechoice = {
     showStartedButton: function () {
         $quickquestionsmultiplechoice.options.forEach((option, i) => {
             if (!option.gameStarted && !option.gameOver) {
-                $(`#seleccionaStartGame-${ì}`).show();
+                $(`#seleccionaStartGame-${i}`).show();
                 $quickquestionsmultiplechoice.showMessage(1, '', i);
             }
         });

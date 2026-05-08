@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as mimeTypes from 'mime-types';
 
 import { db } from '../db/client';
+import { buildContentDisposition, encodeHeaderValue } from '../shared/http/headers';
 import type { Asset, Database } from '../db/types';
 import {
     createAsset,
@@ -620,11 +621,11 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 // Return file blob with metadata headers for collaborative sync
                 const fileBuffer = await readFile(asset.storage_path);
                 set.headers['content-type'] = asset.mime_type || 'application/octet-stream';
-                set.headers['content-disposition'] = `attachment; filename="${asset.filename}"`;
+                set.headers['content-disposition'] = buildContentDisposition(asset.filename);
                 // Add metadata headers for AssetWebSocketHandler prefetch
                 set.headers['x-original-mime'] = asset.mime_type || 'application/octet-stream';
-                set.headers['x-filename'] = asset.filename;
-                set.headers['x-folder-path'] = asset.folder_path || '';
+                set.headers['x-filename'] = encodeHeaderValue(asset.filename);
+                set.headers['x-folder-path'] = encodeHeaderValue(asset.folder_path || '');
                 set.headers['x-file-size'] = asset.file_size || '0';
                 return fileBuffer;
             })
@@ -673,7 +674,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 // Return file
                 const fileBuffer = await readFile(asset.storage_path);
                 set.headers['content-type'] = asset.mime_type || 'application/octet-stream';
-                set.headers['content-disposition'] = `attachment; filename="${asset.filename}"`;
+                set.headers['content-disposition'] = buildContentDisposition(asset.filename);
                 return fileBuffer;
             })
 

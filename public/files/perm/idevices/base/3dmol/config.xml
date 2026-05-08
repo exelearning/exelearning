@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<idevice>
+    <title>3DMol</title>
+    <css-class>dmole</css-class>
+    <category>Science</category>
+    <icon>
+        <name>3dmol-icon</name>
+        <url>3dmol-icon.png</url>
+        <type>img</type>
+    </icon>
+    <downloadable>0</downloadable>
+</idevice>
