@@ -1155,6 +1155,12 @@ describe('AssetManager', () => {
       expect(assetManager.getMimeType('image.svg')).toBe('image/svg+xml');
       expect(assetManager.getMimeType('video.mp4')).toBe('video/mp4');
       expect(assetManager.getMimeType('audio.mp3')).toBe('audio/mpeg');
+      expect(assetManager.getMimeType('structure.pdb')).toBe('chemical/x-pdb');
+      expect(assetManager.getMimeType('data.xyz')).toBe('chemical/x-xyz');
+      expect(assetManager.getMimeType('model.mmtf')).toBe('application/vnd.mmtf');
+      expect(assetManager.getMimeType('archive.gz')).toBe('application/gzip');
+      expect(assetManager.getMimeType('archive.tgz')).toBe('application/gzip');
+      expect(assetManager.getMimeType('archive.tar')).toBe('application/x-tar');
     });
 
     it('returns application/octet-stream for unknown extensions', () => {

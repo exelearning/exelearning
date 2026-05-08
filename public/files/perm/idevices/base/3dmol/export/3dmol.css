@@ -1,0 +1,2040 @@
+
+.DMOLP-MainContainer a,
+.DMOLP-MainContainer a:visited,
+.DMOLP-MainContainer a:focus {
+    border: 0;
+    border-bottom: none;
+    border-width: 0;
+    text-decoration: none !important;
+}
+
+/* Contenedor */
+.DMOLP-MainContainer {
+    font-size: 1rem;
+    margin: 0 auto;
+    padding: 0;
+    width: 100%;
+    max-width: 850px;
+    position: relative;
+    padding-bottom: 1em;
+}
+
+.DMOLP-MainContainer * {
+    box-sizing: border-box;
+}
+
+.DMOLP-MainContainer p {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Modo Pizarra digital */
+.DMOLP-DivModeBoard {
+    margin-top: .8em;
+    display: flex;
+    justify-content: center;
+    display: none;
+    position: relative;
+}
+
+a.DMOLP-ModeBoard,
+a.DMOLP-ModeBoardShow {
+    color: #6e6e6e;
+    font: normal 12px Helvetica, Arial, sans-serif;
+    text-decoration: none !important;
+    position: relative;
+    display: inline-block;
+    text-shadow: 0 1px 0 #fff;
+    -webkit-transition: border-color .218s;
+    -moz-transition: border .218s;
+    -o-transition: border-color .218s;
+    transition: border-color .218s;
+    background: #f3f3f3;
+    background: -moz-linear-gradient(linear, 0% 40%, 0% 70%, from(#F5F5F5), to(#F1F1F1));
+    border: solid 1px #dcdcdc;
+    border-radius: 3px;
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    margin-right: 1em;
+    font-size: 1em;
+    padding: 0.6em 1em;
+    position: relative;
+    z-index: 10;
+    cursor: pointer;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-user-select: none;
+    text-align: center;
+    user-select: none;
+    white-space: nowrap;
+}
+
+a.DMOLP-ModeBoard:hover,
+a.DMOLP-ModeBoardShow:hover {
+    color: #333;
+    border-color: #999;
+    -moz-box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+    -webkit-box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+a.DMOLP-ModeBoard:active,
+a.DMOLP-ModeBoardShow:active {
+    color: #000;
+    border-color: #444;
+}
+
+a.DMOLP-ModeBoardShow {
+    position: absolute;
+    bottom: 0;
+    right: 0
+}
+
+/* Instrucciones */
+.DMOLP-instructions {
+    margin: 0.3em auto;
+    width: 100%;
+    overflow: auto;
+}
+
+/* Minimizado */
+.DMOLP-GameMinimize {
+    display: none;
+    margin: 1em auto;
+    width: 100%;
+}
+
+.DMOLP-LinkMaximize {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+.DMOLP-IconMinimize {
+    height: 2em;
+    margin-right: 0.5em;
+    width: 2em;
+}
+
+/* Juego */
+.DMOLP-GameContainer {
+    margin: 0 auto;
+    max-width: 850px;
+    padding: 1em 0.3em 0 0.3em;
+    position: relative;
+    width: 100%;
+}
+
+/* barra de puntuaciones */
+.DMOLP-GameScoreBoard {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.3em;
+    width: 100%;
+}
+
+.DMOLP-GameScoreBoard p {
+    font-size: 1.4em !important;
+    margin-right: 0.3em !important;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.DMOLP-GameScores {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.DMOLP-GameScores>p:last-child {
+    text-align: left;
+}
+
+.DMOLP-LifesGame {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+.DMOLP-NumberLifesGame {
+    display: none;
+}
+
+.DMOLP-TimeNumber {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.DMOLP-PTime {
+    margin-left: 0.3em;
+    min-width: 3.5em;
+    text-align: center;
+    width: auto;
+}
+
+/* Pista */
+.DMOLP-ShowClue {
+    color: #5877c6 !important;
+    font-weight: bold !important;
+    margin: 0.3em auto;
+    min-height: 0.4em;
+    padding: 0;
+    text-align: center !important;
+    width: 100%;
+}
+
+.DMOLP-PShowClue {
+    color: #5877c6 !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    width: 100%;
+}
+
+/* Multimedia */
+.DMOLP-ModelWithLegend {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    margin: 0.3em auto;
+    max-width: 700px;
+}
+
+.DMOLP-Multimedia {
+    background-color: transparent;
+    border-radius: 0.6em;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.DMOLP-Multimedia:before {
+    content: '';
+    display: block;
+    padding-top: 75%;
+}
+
+.DMOLP-Cover {
+    bottom: 4%;
+    left: 4%;
+    margin: auto;
+    position: absolute;
+    right: 4%;
+    top: 4%;
+    width: 92%;
+    height: 92%;
+    object-fit: contain;
+}
+
+.DMOLP-GameOver {
+    border: 0;
+    border-radius: 0.6em;
+    height: 100%;
+    left: 0;
+    position: absolute;
+    text-decoration: none !important;
+    top: 0;
+    width: 100%;
+}
+
+/* 3D model preview area */
+.DMOLP-ModelPreview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 92%;
+    height: 92%;
+    position: absolute;
+    top: 4%;
+    left: 4%;
+    z-index: 5;
+    overflow: hidden;
+}
+
+.DMOLP-ModelPreview canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    pointer-events: none;
+}
+
+.DMOLP-ModelStyleControl {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45em;
+    justify-content: center;
+    margin: 0 auto .5em auto;
+    width: 100%;
+}
+
+.DMOLP-ModelStyleLabel {
+    margin: 0;
+    white-space: nowrap;
+}
+
+.DMOLP-ModelStyleInputGroup {
+    align-items: center;
+    display: flex;
+    gap: .35em;
+}
+
+.DMOLP-ModelStyleSelect {
+    flex: 1 1 auto;
+    min-width: 10em;
+    max-width: 14em;
+}
+
+.DMOLP-ModelSizeBtn {
+    align-items: center;
+    border: 1px solid #bdbdbd;
+    border-radius: .35em;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 1.1em;
+    font-weight: 700;
+    height: 2em;
+    justify-content: center;
+    line-height: 1;
+    min-width: 2em;
+    padding: 0;
+    width: 2em;
+}
+
+.DMOLP-ModelSizeBtn:hover {
+    background-color: #f0f0f0;
+}
+
+.DMOLP-ToggleBgBtn[aria-pressed="true"] {
+    background-color: #e8e8e8;
+    border-color: #999;
+}
+
+.DMOLP-LinkAudio {
+    bottom: 3px;
+    display: none;
+    position: absolute;
+    right: 3px;
+    width: 2em;
+    z-index: 15;
+}
+
+/* Game Over */
+.DMOLP-GameOver {
+    position: absolute;
+    width: 100%;
+    max-width: 700px;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.DMOLP-DataImage {
+    height: 100%;
+    padding: 0;
+    position: relative;
+    width: 50%;
+}
+
+.DMOLP-DataScore {
+    padding: 0;
+    width: 50%;
+}
+
+.DMOLP-DataScore p {
+    margin: 0.7em;
+}
+
+.DMOLP-HistGGame,
+.DMOLP-LostGGame {
+    bottom: 0;
+    display: none;
+    left: 0;
+    margin: auto;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 80%;
+}
+
+.DMOLP-HistGGame:before,
+.DMOLP-LostGGame:before {
+    content: '';
+    display: block;
+    padding-top: 100%;
+}
+
+
+
+/* Barra de navegación */
+.DMOLP-NavigationButtons {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin-top: 1em;
+    width: 100%;
+    display: none;
+}
+
+.DMOLP-NavigationButton {
+    height: 1.5em;
+    margin: 0 .3em;
+    min-width: 1.5em;
+    width: 1.5em;
+}
+
+.DMOLP-NumberQuestion {
+    font-weight: bold;
+    height: 1.5em;
+    line-height: 1.5em;
+    text-align: center;
+    vertical-align: middle;
+    width: 2em;
+}
+
+/* Author */
+.DMOLP-AuthorLicence {
+    margin: 0.3em auto 0 auto;
+    min-height: 0.4em;
+    width: 100%;
+}
+
+.DMOLP-AuthorLicence p {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    width: 100%;
+}
+
+/* Código acceso */
+.DMOLP-Cubierta {
+    width: 100%;
+    height: 95%;
+    position: absolute;
+    top: 1%;
+    left: 0;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-direction: column;
+    z-index: 1001;
+    background-color: rgb(255, 255, 255, 0.1)
+}
+
+.DMOLP-Cubierta .exeQuextIcons-Submit {
+    background: url(exequextreply.svg) no-repeat;
+    background-size: 100% 100%;
+    height: 1.7em;
+    width: 1.7em;
+}
+
+.DMOLP-CodeAccessDiv {
+    padding: 1.5em 0.5em 1.5em 0.5em;
+    margin: 0 auto;
+    width: 95%;
+    max-width: 450px;
+    background-color: white;
+    border-radius: 0.5em;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.20), 0 3px 6px 0 rgba(0, 0, 0, 0.19);
+}
+
+.DMOLP-MessageCodeAccessE {
+    text-align: center;
+    vertical-align: middle;
+    width: 100%;
+}
+
+.DMOLP-DataCodeAccessE {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin: 0.7em auto 0 auto;
+    width: 100%;
+}
+
+.DMOLP-CodeAccessE {
+    margin: 0 .3em;
+    max-width: 350px;
+    width: 60%;
+    text-align: center;
+}
+
+/* Inicio juego */
+.DMOLP-StartGame {
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-user-select: none;
+    margin: 1em auto 0 auto;
+    text-align: center;
+    user-select: none;
+    width: 100%;
+}
+
+.DMOLP-StartGame a:hover {
+    text-decoration: underline;
+}
+
+/* Pegunta tipo test */
+.DMOLP-QuestionDiv {
+    display: none;
+    margin: 0.3em auto;
+    width: 100%;
+}
+
+.DMOLP-Question {
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-user-select: none;
+    border-radius: 0.3em;
+    margin: 0 auto;
+    margin-bottom: 0.4em;
+    min-height: 3.2em;
+    padding: 0.3em;
+    text-align: center;
+    user-select: none;
+    vertical-align: middle;
+    background-color: transparent;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Respuesta  tipo test */
+.DMOLP-OptionsDiv {
+    background-color: transparent;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.DMOLP-MainContainer a.DMOLP-Options {
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-user-select: none;
+    align-items: center;
+    background-color: #FFF;
+    border: 1px solid #777777;
+    border-radius: 0.4em;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0.1em;
+    min-height: 3em;
+    padding: 0.3em;
+    user-select: none;
+    width: 48%;
+    text-align: center;
+}
+
+.DMOLP-OptionsDiv a {
+    border: 1px solid #777777;
+    color: #1c1b1b;
+}
+
+.DMOLP-AnswersDiv {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    padding: 0;
+}
+
+.DMOLP-Answers {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    margin-right: 0.3em;
+    padding: 0;
+    width: 8em;
+}
+
+.DMOLP-AnswersOptions {
+    border-radius: 2px;
+    height: 1.4em;
+    width: 1.4em;
+}
+
+.DMOLP-Answer1 {
+    background-color: #b3092f;
+    border: 1px solid #1c1b1b;
+    border-radius: 3px;
+    margin-left: 0.1em;
+}
+
+.DMOLP-Answer2 {
+    background-color: #5877c6;
+    border: 1px solid #1c1b1b;
+    border-radius: 3px;
+    margin-left: 0.1em;
+}
+
+.DMOLP-Answer3 {
+    background-color: #00a300;
+    border: 1px solid #1c1b1b;
+    border-radius: 3px;
+    margin-left: 0.1em;
+}
+
+.DMOLP-Answer4 {
+    background-color: #f3d55a;
+    border: 1px solid #1c1b1b;
+    border-radius: 2px;
+    margin-left: 0.1em;
+}
+
+/* Pregunta tipo ahorcado */
+.DMOLP-Definition {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
+    justify-content: center;
+    margin: 0.5em auto;
+    min-height: 2em;
+    text-align: center;
+    width: 90%;
+}
+
+.DMOLP-Definition a {
+    cursor: pointer;
+    margin: 0;
+    text-align: center;
+    text-decoration: none !important;
+    width: 100%;
+    z-index: 8;
+}
+
+.DMOLP-Prhase {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0.5em auto;
+    min-height: 3em;
+    width: 97%;
+}
+
+.DMOLP-Word {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    padding: 6px;
+    padding-bottom: 2px;
+    padding-top: 3px;
+}
+
+.DMOLP-Letter {
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    align-items: center;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    display: flex;
+    font-size: 1.3em;
+    font-weight: 600;
+    height: 1.8em;
+    justify-content: center;
+    margin: 1px;
+    padding: 0;
+    text-align: center;
+    user-select: none;
+    width: 1.3em;
+}
+
+.DMOLP-Letter.blue {
+    color: #5877c6;
+}
+
+.DMOLP-Letter.green {
+    color: #00a300;
+}
+
+.DMOLP-Letter.red {
+    color: #b3092f;
+}
+
+.DMOLP-Letter.black {
+    color: #1c1b1b;
+}
+
+/* Respuesta ahorcado */
+.DMOLP-DivReply {
+    align-items: center;
+    background-color: transparent;
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.DMOLP-EdReply {
+    margin: auto 0.6em;
+    max-width: 400px;
+    width: 60%;
+    text-align: center;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-MoveOne,
+.DMOLP-GameContainer .exeQuextIcons-Submit {
+    height: 2em;
+    width: 2em;
+}
+
+
+
+.DMOLP-BottonContainerDiv,
+.Games-BottonContainer {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    margin: 0.1em auto;
+    padding: 0;
+    width: 100%;
+}
+
+.DMOLP-BottonContainerDivEnd {
+    justify-content: flex-end;
+}
+
+/* Modo Pizarra digital */
+.DMOLP-DivModeBoard {
+    margin-top: .8em;
+    display: flex;
+    justify-content: center;
+    display: none;
+    position: relative;
+}
+
+a.DMOLP-ModeBoard,
+a.DMOLP-ModeBoardShow {
+    color: #6e6e6e;
+    font: normal 12px Helvetica, Arial, sans-serif;
+    text-decoration: none !important;
+    position: relative;
+    display: inline-block;
+    text-shadow: 0 1px 0 #fff;
+    -webkit-transition: border-color .218s;
+    -moz-transition: border .218s;
+    -o-transition: border-color .218s;
+    transition: border-color .218s;
+    background: #f3f3f3;
+    background: -webkit-gradient(linear, 0% 40%, 0% 70%, from(#F5F5F5), to(#F1F1F1));
+    background: -moz-linear-gradient(linear, 0% 40%, 0% 70%, from(#F5F5F5), to(#F1F1F1));
+    border: solid 1px #dcdcdc;
+    border-radius: 3px;
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    margin-right: 1em;
+    font-size: 1em;
+    padding: 0.6em 1em;
+    position: relative;
+    z-index: 4;
+    cursor: pointer;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-user-select: none;
+    text-align: center;
+    user-select: none;
+    white-space: nowrap;
+}
+
+a.DMOLP-ModeBoard:hover,
+a.DMOLP-ModeBoardShow:hover {
+    color: #333;
+    border-color: #999;
+    -moz-box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+    -webkit-box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+a.DMOLP-ModeBoard:active,
+a.DMOLP-ModeBoardShow:active {
+    color: #000;
+    border-color: #444;
+}
+
+a.DMOLP-ModeBoardShow {
+    position: absolute;
+    bottom: 0;
+    right: 0
+}
+
+/*Intrucciones */
+.DMOLP-DivInstructions {
+    margin: 1em 0 0 0;
+    text-align: center;
+    width: 95%;
+}
+
+.DMOLP-parpadea {
+    -webkit-animation-duration: 1s;
+    -webkit-animation-iteration-count: 5;
+    -webkit-animation-name: DMOLP-parpadeo;
+    -webkit-animation-timing-function: linear;
+    animation-duration: 1s;
+    animation-iteration-count: 5;
+    animation-name: DMOLP-parpadeo;
+    animation-timing-function: linear;
+}
+
+/* FeedBack*/
+.DMOLP-DivFeedBack {
+    align-items: center;
+    background-color: rgba(232, 232, 232, 0.8);
+    border-radius: .6em;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: center;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    z-index: 11;
+}
+
+.DMOLP-DivFeedBack button {
+    cursor: pointer;
+}
+
+.dmole-feedback-game {
+    -moz-box-shadow: 0 10px 6px -6px #999;
+    -webkit-box-shadow: 0 10px 6px -6px #999999;
+    background-color: #fff;
+    border: 1px solid #999;
+    border-radius: .6em;
+    box-shadow: 0 10px 6px -6px #999;
+    display: none;
+    margin-bottom: 1em;
+    max-height: 80%;
+    min-height: 10em;
+    overflow-y: auto;
+    padding: 1em;
+    width: 95%;
+}
+
+.dmole-extra-content {
+    margin-top: 1.7em;
+}
+
+/*  Preview QuExtion */
+.DMOLP-ReloadContainer {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    margin: 5px;
+    padding: 0;
+    width: 98%;
+}
+
+.DMOLP-previewQuestions {
+    background-color: transparent;
+    display: none;
+    margin: 5px auto;
+    max-width: 700px;
+    position: relative;
+    width: 100%;
+}
+
+.DMOLP-previewQuestionsDiv {
+    background-color: #071717;
+    border-radius: 0.6em;
+    color: #ffffff;
+    display: none;
+    height: 100%;
+    left: 0;
+    overflow-y: auto;
+    padding: 0.5em;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    z-index: 200;
+}
+
+.DMOLP-PreviewQuestionsTitle {
+    font-weight: bold;
+    margin: 0 auto 0.5em auto;
+    text-align: center;
+    width: 95%;
+}
+
+.DMOLP-prevQuestP {
+    font-size: 0.9em;
+    margin: 3px auto;
+    margin-left: 5px;
+    width: 90%;
+}
+
+.DMOLP-previewQuestionsClose {
+    bottom: 0.4em;
+    position: absolute;
+    right: 0.5em;
+}
+
+.exeQuextIcons-Preview {
+    background-image: url(exequextsq.svg);
+    background-size: 100% 100%;
+}
+
+
+
+.exeQuextIcons-Reload {
+    background-image: url(exequextreload.svg);
+    background-size: 100% 100%;
+}
+
+.exeQuextIcons-First {
+    background-image: url(exequextfirstr.png);
+    background-size: 100% 100%;
+}
+
+.exeQuextIcons-Next {
+    background-image: url(exequextnextr.png);
+    background-size: 100% 100%;
+}
+
+.exeQuextIcons-Previous {
+    background-image: url(exequextpreviousr.png);
+    background-size: 100% 100%;
+}
+
+.exeQuextIcons-Last {
+    background-image: url(exequextlastr.png);
+    background-size: 100% 100%;
+}
+
+/* Enlace activo */
+.DMOLP-Activo {
+    -moz-transition: transform 0.3s;
+    -ms-transition: transform 0.3s;
+    -o-transition: transform 0.3s;
+    -webkit-filter: drop-shadow(.12em .12em .12em rgba(0, 0, 0, 0.5));
+    -webkit-transition: transform 0.3s;
+    cursor: pointer;
+    filter: drop-shadow(.12em .12em .12em rgba(0, 0, 0, 0.5));
+    transition: transform 0.3s;
+}
+
+.DMOLP-LinkMaximize:hover .DMOLP-Activo,
+.DMOLP-Activo:hover {
+    -moz-transform: scale(1.1);
+    -ms-transform: scale(1.1);
+    -o-transform: scale(1.1);
+    -webkit-transform: scale(1.1);
+    transform: scale(1.1);
+}
+
+/* Puntuacion */
+.Games-BottonContainer {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.Games-BottonContainer * {
+    margin: 0;
+    padding: 0;
+}
+
+.Games-GetScore input[type=button] {
+    padding: 0.3em 0.5em;
+    margin: 0 .5em 0 0.5em;
+    width: auto;
+}
+
+.Games-GetScore span {
+    display: block;
+}
+
+.Games-GetScore form {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+.Games-GetScore {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 1em
+}
+
+.Games-OverlayImage {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.Games-FullScreenImage {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Iconos */
+.DMOLP-GameContainer .exeQuextIcons {
+    background-size: 100% 100%;
+    height: 1.4em;
+    margin-right: 0.3em;
+    width: 1.4em;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-Submit {
+    height: 1.7em;
+    width: 1.7em;
+}
+
+.DMOLP-MainContainer .exeQuextIcons-Submit {
+    background: url(exequextreply.svg) no-repeat;
+    background-size: 100% 100%;
+}
+
+.DMOLP-MainContainer .exeQuextIcons-MoveOne {
+    background: url(exequextmoveon.svg) no-repeat;
+    background-size: 100% 100%;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-Minimize {
+    background-image: url(exequextmin.svg);
+    background-size: 100% 100%;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-Hit {
+    background-image: url(exequexthits.svg);
+    background-size: 100% 100%;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-FullScreen {
+    background-image: url(exequextfull.svg);
+    background-size: 100% 100%;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-Error {
+    background-image: url(exequextrerrors.svg);
+    background-size: 100% 100%;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-Score {
+    background-image: url(exequextscore.svg);
+    background-size: 100% 100%;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-Time {
+    background-image: url(exequexttime.svg);
+    background-size: 100% 100%;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-Number {
+    background-image: url(exequextnumber.svg);
+    background-size: 100% 100%;
+}
+
+.DMOLP-GameContainer .exeQuextIcons-Life {
+    background-image: url(exequextlive.png);
+    background-size: 100% 100%;
+}
+
+
+/* Full Screen */
+div:fullscreen .exeQuextIcons-FullScreen {
+    background-image: url(exequextfull.svg);
+    background-size: 100% 100%;
+}
+
+div:-webkit-full-screen .exeQuextIcons-FullScreen {
+    background: url(exequextfull.svg);
+    background-size: 100% 100%;
+}
+
+div:-moz-full-screen .exeQuextIcons-FullScreen {
+    background: url(exequextfull.svg);
+    background-size: 100% 100%;
+}
+
+div:-webkit-full-screen .DMOLP-Options {
+    min-height: 2.6em;
+}
+
+div:-moz-full-screen .DMOLP-Options {
+    min-height: 2.6em;
+}
+
+div:fullscreen .DMOLP-Options {
+    min-height: 2.6em;
+}
+
+div:fullscreen .DMOLP-Question {
+    min-height: 2.2em;
+    margin-bottom: 0.2em;
+    padding: 0.2em;
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+}
+
+div:-webkit-full-screen .DMOLP-Question {
+    min-height: 2.2em;
+    margin-bottom: 0.2em;
+    padding: 0.2em;
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+}
+
+div:-moz-full-screen .DMOLP-Question {
+    min-height: 2.2em;
+    margin-bottom: 0.2em;
+    padding: 0.2em;
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+}
+
+div:fullscreen .DMOLP-LinkMinimize {
+    display: none;
+}
+
+.DMOLP-GameContainer:-webkit-full-screen,
+.DMOLP-GameContainer:-moz-full-screen,
+.DMOLP-GameContainer:-ms-full-screen,
+.DMOLP-GameContainer:fullscreen,
+.DMOLP-GameContainer:-o-full-screen {
+    background-color: white;
+    font-size: 1.5em;
+    height: 100vh;
+    width: 100%;
+    max-width: none;
+    padding: 0.25em 0.4em 0.4em;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-GameScoreBoard,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-GameScoreBoard,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-GameScoreBoard,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-GameScoreBoard,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-GameScoreBoard {
+    flex: 0 0 auto;
+    justify-content: space-between;
+    margin-bottom: 0;
+    order: 10;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-LifesGame,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-LifesGame,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-LifesGame,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-LifesGame,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-LifesGame,
+.DMOLP-GameContainer:fullscreen .DMOLP-NumberLifesGame,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-NumberLifesGame,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-NumberLifesGame,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-NumberLifesGame,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-NumberLifesGame,
+.DMOLP-GameContainer:fullscreen .DMOLP-TimeNumber .DMOLP-LinkMinimize,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-TimeNumber .DMOLP-LinkMinimize,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-TimeNumber .DMOLP-LinkMinimize,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-TimeNumber .DMOLP-LinkMinimize,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-TimeNumber .DMOLP-LinkMinimize {
+    display: none;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-TimeNumber,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-TimeNumber,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-TimeNumber,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-TimeNumber,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-TimeNumber {
+    justify-content: flex-end;
+    margin-left: auto;
+    width: auto;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-TimeNumber .DMOLP-LinkFullScreen,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-TimeNumber .DMOLP-LinkFullScreen,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-TimeNumber .DMOLP-LinkFullScreen,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-TimeNumber .DMOLP-LinkFullScreen,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-TimeNumber .DMOLP-LinkFullScreen {
+    align-items: center;
+    display: inline-flex !important;
+    justify-content: center;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-ShowClue,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-ShowClue,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-ShowClue,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-ShowClue,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-ShowClue,
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-ShowClue {
+    flex: 0 0 auto;
+    margin: 0;
+    min-height: 0;
+    order: 11;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-ModelStyleControl,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-ModelStyleControl,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-ModelStyleControl,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-ModelStyleControl,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-ModelStyleControl {
+    flex: 0 0 auto;
+    justify-content: center;
+    margin: 0.2em auto 0;
+    order: 21;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-ShowFullScreenRow,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-ShowFullScreenRow,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-ShowFullScreenRow,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-ShowFullScreenRow,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-ShowFullScreenRow {
+    flex: 0 0 auto;
+    margin: 0.15em auto 0.2em;
+    order: 22;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-ShowMode:fullscreen .DMOLP-ShowFullScreenRow,
+.DMOLP-GameContainer.DMOLP-ShowMode:-webkit-full-screen .DMOLP-ShowFullScreenRow,
+.DMOLP-GameContainer.DMOLP-ShowMode:-moz-full-screen .DMOLP-ShowFullScreenRow,
+.DMOLP-GameContainer.DMOLP-ShowMode:-ms-full-screen .DMOLP-ShowFullScreenRow,
+.DMOLP-GameContainer.DMOLP-ShowMode:-o-full-screen .DMOLP-ShowFullScreenRow {
+    display: flex !important;
+    justify-content: flex-end;
+    margin: 0 0 0.2em;
+    order: -4;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-ShowMode:fullscreen .DMOLP-ShowClue,
+.DMOLP-GameContainer.DMOLP-ShowMode:-webkit-full-screen .DMOLP-ShowClue,
+.DMOLP-GameContainer.DMOLP-ShowMode:-moz-full-screen .DMOLP-ShowClue,
+.DMOLP-GameContainer.DMOLP-ShowMode:-ms-full-screen .DMOLP-ShowClue,
+.DMOLP-GameContainer.DMOLP-ShowMode:-o-full-screen .DMOLP-ShowClue {
+    flex: 0 0 auto;
+    margin: 0 0 0.2em;
+    min-height: 0;
+    order: -3;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-ShowMode:fullscreen .DMOLP-ShowNavigation,
+.DMOLP-GameContainer.DMOLP-ShowMode:-webkit-full-screen .DMOLP-ShowNavigation,
+.DMOLP-GameContainer.DMOLP-ShowMode:-moz-full-screen .DMOLP-ShowNavigation,
+.DMOLP-GameContainer.DMOLP-ShowMode:-ms-full-screen .DMOLP-ShowNavigation,
+.DMOLP-GameContainer.DMOLP-ShowMode:-o-full-screen .DMOLP-ShowNavigation {
+    align-items: center;
+    display: flex !important;
+    justify-content: space-between;
+    margin: 0 auto 0.4em;
+    max-width: 700px;
+    order: -2;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-ShowNavigation,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-ShowNavigation,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-ShowNavigation,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-ShowNavigation,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-ShowNavigation {
+    flex: 0 0 auto;
+    margin: 0 auto;
+    max-width: none;
+    order: 13;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-ModelWithLegend,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-ModelWithLegend,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-ModelWithLegend,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-ModelWithLegend,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-ModelWithLegend {
+    flex: 1 1 0%;
+    margin: 0;
+    max-width: none;
+    min-height: 0;
+    order: 20;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-Multimedia,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-Multimedia,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-Multimedia,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-Multimedia,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-Multimedia {
+    background-color: #fff;
+    flex: 1 1 0%;
+    margin: 0;
+    max-width: none;
+    min-height: 0;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-Multimedia:before,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-Multimedia:before,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-Multimedia:before,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-Multimedia:before,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-Multimedia:before {
+    display: none;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-AuthorLicence,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-AuthorLicence,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-AuthorLicence,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-AuthorLicence,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-AuthorLicence {
+    flex: 0 0 auto;
+    margin: 0.2em auto 0;
+    order: 23;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-QuestionDiv,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-QuestionDiv,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-QuestionDiv,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-QuestionDiv,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-QuestionDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    margin-top: auto;
+    order: 30;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-WordsDiv,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-WordsDiv,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-WordsDiv,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-WordsDiv,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-WordsDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    margin-top: auto;
+    order: 31;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-BottonContainerDiv,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-BottonContainerDiv,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-BottonContainerDiv,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-BottonContainerDiv,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-BottonContainerDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    order: 32;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-StartGame,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-StartGame,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-StartGame,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-StartGame,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-StartGame {
+    flex: 0 0 auto;
+    margin: 0.2em auto 1em;
+    order: 24;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-StartGame {
+    flex: 0 0 auto;
+    margin: 0.2em auto 1em;
+    order: 24;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-OptionsDiv,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-OptionsDiv,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-OptionsDiv,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-OptionsDiv,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-OptionsDiv {
+    margin: 0;
+}
+
+.DMOLP-GameContainer:fullscreen a.DMOLP-Options,
+.DMOLP-GameContainer:-webkit-full-screen a.DMOLP-Options,
+.DMOLP-GameContainer:-moz-full-screen a.DMOLP-Options,
+.DMOLP-GameContainer:-ms-full-screen a.DMOLP-Options,
+.DMOLP-GameContainer:-o-full-screen a.DMOLP-Options {
+    min-height: 2.6em;
+    padding: 0.2em;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-ModelPreview,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-ModelPreview,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-ModelPreview,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-ModelPreview,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-ModelPreview {
+    width: 100% !important;
+    height: 100% !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-Cover,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-Cover,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-Cover,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-Cover,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-Cover {
+    width: 100% !important;
+    height: 100% !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen {
+    background-color: white;
+    font-size: 1em;
+    height: 100vh;
+    width: 100%;
+    max-width: none;
+    padding: 0.25em 0.4em 0.4em;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-GameScoreBoard {
+    flex: 0 0 auto;
+    justify-content: space-between;
+    margin-bottom: 0;
+    order: 10;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-ShowClue {
+    flex: 0 0 auto;
+    margin: 0;
+    min-height: 0;
+    order: 11;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-LifesGame,
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-NumberLifesGame,
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-TimeNumber .DMOLP-LinkMinimize {
+    display: none;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-TimeNumber {
+    justify-content: flex-end;
+    margin-left: auto;
+    width: auto;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-TimeNumber .DMOLP-LinkFullScreen {
+    align-items: center;
+    display: inline-flex !important;
+    justify-content: center;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-ModelWithLegend {
+    flex: 1 1 0%;
+    margin: 0;
+    max-width: none;
+    min-height: 0;
+    order: 20;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-Multimedia {
+    background-color: #fff;
+    flex: 1 1 0%;
+    margin: 0;
+    max-width: none;
+    min-height: 0;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-ModelStyleControl {
+    flex: 0 0 auto;
+    justify-content: center;
+    margin: 0.2em auto 0;
+    order: 21;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-ShowFullScreenRow {
+    flex: 0 0 auto;
+    margin: 0.15em auto 0.2em;
+    order: 23;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen.DMOLP-ShowMode .DMOLP-ShowFullScreenRow {
+    display: flex !important;
+    justify-content: flex-end;
+    margin: 0 0 0.2em;
+    order: -4;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen.DMOLP-ShowMode .DMOLP-ShowClue {
+    flex: 0 0 auto;
+    margin: 0 0 0.2em;
+    min-height: 0;
+    order: -3;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen.DMOLP-ShowMode .DMOLP-ShowNavigation {
+    align-items: center;
+    display: flex !important;
+    justify-content: space-between;
+    margin: 0 auto 0.4em;
+    max-width: 700px;
+    order: -2;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-Multimedia:before {
+    display: none;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-AtomLegend {
+    flex: 0 0 auto;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-AtomLegend,
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-AtomLegend,
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-AtomLegend,
+.DMOLP-GameContainer:-ms-full-screen .DMOLP-AtomLegend,
+.DMOLP-GameContainer:-o-full-screen .DMOLP-AtomLegend {
+    flex: 0 0 auto;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-AuthorLicence {
+    flex: 0 0 auto;
+    margin: 0.2em auto 0;
+    order: 24;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-QuestionDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    margin-top: auto;
+    order: 30;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-WordsDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    margin-top: auto;
+    order: 31;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-BottonContainerDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    order: 32;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen a.DMOLP-Options {
+    min-height: 2.6em;
+    padding: 0.2em;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-ModelPreview {
+    width: 100% !important;
+    height: 100% !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-Cover {
+    width: 100% !important;
+    height: 100% !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+}
+
+.Games-ReportIconDiv {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.1em;
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.Games-ReportIconDiv img {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.Games-ReportIconDiv span {
+    font-size: 0.9em;
+}
+
+@-moz-keyframes DMOLP-parpadeo {
+    0% {
+        opacity: 1.0;
+    }
+
+    50% {
+        opacity: 0.0;
+    }
+
+    100% {
+        opacity: 1.0;
+    }
+}
+
+@-webkit-keyframes DMOLP-parpadeo {
+    0% {
+        opacity: 1.0;
+    }
+
+    50% {
+        opacity: 0.0;
+    }
+
+    100% {
+        opacity: 1.0;
+    }
+}
+
+@keyframes DMOLP-parpadeo {
+    0% {
+        opacity: 1.0;
+    }
+
+    50% {
+        opacity: 0.0;
+    }
+
+    100% {
+        opacity: 1.0;
+    }
+}
+
+@media screen and (max-width:550px) {
+    .DMOLP-MainContainer {
+        font-size: 0.9rem;
+    }
+
+    .DMOLP-Question {
+        margin-bottom: 0.5em;
+    }
+
+    .DMOLP-LinkFullScreen {
+        display: none;
+    }
+
+    .DMOLP-instructions {
+        margin: 0.1em auto;
+    }
+
+    .DMOLP-DivInstructions {
+        display: none;
+    }
+
+    .DMOLP-ShowClue {
+        font-size: 0.9em;
+    }
+
+    .DMOLP-StartGame a {
+        font-size: 0.9em;
+    }
+
+    .DMOLP-AuthorLicence p {
+        font-size: 0.9em;
+    }
+}
+
+@media screen and (max-width:470px) {
+    .DMOLP-MainContainer {
+        font-size: 0.9rem;
+    }
+
+    .DMOLP-PShowClue {
+        font-size: 0.8em;
+    }
+
+    .DMOLP-AuthorLicence p {
+        font-size: 0.8em;
+    }
+
+    .DMOLP-Question {
+        margin-bottom: 0.3em;
+    }
+
+    .DMOLP-Multimedia {
+        width: 100%;
+    }
+
+    .DMOLP-ModelStyleControl {
+        justify-content: center;
+    }
+
+    .DMOLP-ModelStyleInputGroup {
+        width: 100%;
+    }
+
+    .DMOLP-ModelStyleSelect {
+        max-width: none;
+        width: auto;
+    }
+
+    .DMOLP-LifesGame {
+        display: none;
+    }
+
+    .DMOLP-NumberLifesGame {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+    }
+
+    .DMOLP-LinkMinimize {
+        display: none;
+    }
+
+    .DMOLP-DataCodeAccessE label {
+        display: none;
+    }
+
+    .DMOLP-GameContainer .exeQuextIcons-MoveOne,
+    .DMOLP-GameContainer .exeQuextIcons-Submit {
+        height: 2em;
+        width: 2em;
+    }
+
+
+}
+
+@media screen and (max-width:340px) {
+    .DMOLP-MainContainer {
+        font-size: 0.8rem;
+    }
+
+    .DMOLP-GameScoreBoard p {
+        font-weight: normal;
+        margin: 0.1em;
+        padding: 0;
+    }
+
+    .DMOLP-GameContainer .exeQuextIcons {
+        margin: 0;
+        padding: 0;
+    }
+
+    .DMOLP-GameContainer .DMOLP-GameScoreBoard p {
+        padding: 0;
+    }
+
+    .DMOLP-GameScores {
+        width: 50%;
+    }
+
+    .DMOLP-TimeNumber {
+        width: 45%;
+    }
+
+    .DMOLP-instructions p {
+        margin: 0 auto;
+    }
+}
+
+@media screen and (max-width:295px) {
+    .DMOLP-MainContainer {
+        font-size: 0.7rem;
+    }
+
+    .DMOLP-GameScoreBoard {
+        justify-content: flex-start;
+    }
+
+    .DMOLP-GameScores {
+        width: 50%;
+    }
+
+    .DMOLP-TimeNumber {
+        width: 42%;
+    }
+}
+
+@media screen and (max-width:265px) {
+    .DMOLP-MainContainer {
+        font-size: 0.6rem;
+    }
+
+    .DMOLP-GameScoreBoard p {
+        font-weight: normal;
+        margin: 2px;
+    }
+
+    .DMOLP-GameContainer .exeQuextIcons {
+        height: 1.1em;
+        width: 1.1em;
+    }
+
+    .DMOLP-GameContainer .exeQuextIcons-Submit {
+        height: 2em;
+        width: 2em;
+    }
+
+    .DMOLP-GameScores {
+        width: auto;
+    }
+
+    .DMOLP-TimeNumber {
+        justify-content: flex-start;
+        width: auto;
+    }
+
+    .DMOLP-Letter {
+        font-size: 1.2em;
+        height: 1.7em;
+        margin: 0;
+        width: 1.2em;
+    }
+}
+
+@media screen and (max-width:235px) {
+
+    .DMOLP-GameScoreBoard .exeQuextIcons-Life,
+    .DMOLP-GameScoreBoard .exeQuextIcons-Time {
+        display: none;
+    }
+}
+
+@media screen and (min-width: 1400px) {
+    .DMOLP-GameContainer:fullscreen .DMOLP-ModelWithLegend,
+    .DMOLP-GameContainer:-webkit-full-screen .DMOLP-ModelWithLegend,
+    .DMOLP-GameContainer:-moz-full-screen .DMOLP-ModelWithLegend {
+        margin: 0;
+        top: auto;
+    }
+}
+
+@media screen and (min-width: 700px) and (max-height: 700px) {
+    .DMOLP-GameContainer:fullscreen .DMOLP-ModelWithLegend,
+    .DMOLP-GameContainer:-webkit-full-screen .DMOLP-ModelWithLegend,
+    .DMOLP-GameContainer:-moz-full-screen .DMOLP-ModelWithLegend {
+        margin: 0;
+    }
+}
+
+/* Show mode — let ModelWithLegend span full width so nav/fullscreen bars are 100% */
+.DMOLP-GameContainer.DMOLP-ShowMode .DMOLP-ModelWithLegend {
+    max-width: none;
+    width: 100%;
+}
+
+/* Show mode navigation bar */
+.DMOLP-ShowNavigation {
+    align-items: center;
+    display: none;
+    justify-content: space-between;
+    margin: 0 auto 0.5em auto;
+    width: 85%;
+    max-width: 1024px;
+}
+
+.DMOLP-GameContainer.DMOLP-ShowMode .DMOLP-ShowFullScreenRow {
+    justify-content: flex-end;
+    margin: 0 0 0.2em;
+    width: 100%;
+}
+
+.DMOLP-GameContainer.DMOLP-ShowMode .DMOLP-ShowNavigation {
+    margin: 0 auto 0.4em;
+    max-width: 700px;
+    width: 100%;
+}
+
+.DMOLP-ShowNavBtn {
+    display: inline-block;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+.DMOLP-ShowNavImg {
+    height: 2em;
+    width: auto;
+}
+
+.DMOLP-ShowFullScreenRow {
+    display: none;
+    justify-content: flex-end;
+    margin: 0 auto 0.5em auto;
+    width: 100%;
+}
+
+.DMOLP-ShowNavigation .DMOLP-ShowFullScreenRow {
+    margin: 0;
+    width: auto;
+}
+
+.DMOLP-ShowFullScreenBtn {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-width: 2.2em;
+}
+
+.DMOLP-ShowFullScreenBtn .exeQuextIcons {
+    height: 2em;
+    margin-right: 0;
+    width: 2em;
+}
+
+.DMOLP-ShowCounter {
+    flex: 1 1 auto;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Show mode model area */
+.DMOLP-ShowMultimedia {
+    max-width: 700px;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+}
+
+.DMOLP-ShowMultimedia:before {
+    padding-top: 56.25%;
+}
+
+/* Description div for Show/presentation mode (separate from QuestionDiv) */
+.DMOLP-Description {
+    box-sizing: border-box;
+    margin: 0.4em auto 0.6em;
+    max-width: 1024px;
+    min-height: 2.2em;
+    padding: 0.3em 0.5em;
+    text-align: center;
+    width: 85%;
+}
+
+/* Fullscreen Description — separate rules to avoid browser rejection of unknown pseudo-classes */
+.DMOLP-GameContainer.DMOLP-IsFullscreen .DMOLP-Description {
+    align-self: stretch;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    margin: auto 0 0.5em;
+    max-width: none;
+    order: 22;
+    padding: 0.3em 0.5em;
+    text-align: center;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:fullscreen .DMOLP-Description {
+    align-self: stretch;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    margin: auto 0 0.5em;
+    max-width: none;
+    order: 22;
+    padding: 0.3em 0.5em;
+    text-align: center;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:-webkit-full-screen .DMOLP-Description {
+    align-self: stretch;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    margin: auto 0 0.5em;
+    max-width: none;
+    order: 22;
+    padding: 0.3em 0.5em;
+    text-align: center;
+    width: 100%;
+}
+
+.DMOLP-GameContainer:-moz-full-screen .DMOLP-Description {
+    align-self: stretch;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    margin: auto 0 0.5em;
+    max-width: none;
+    order: 22;
+    padding: 0.3em 0.5em;
+    text-align: center;
+    width: 100%;
+}
+
+.dmole-instructions {
+    overflow: auto;
+}
+
+/* Reset camera button — hidden, remove this rule to re-enable */
+[id^="dmolpResetCamera-"] {
+    display: none;
+}
+
+/* Atom color legend */
+.DMOLP-AtomLegend {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: .4em;
+    justify-content: center;
+    margin: 0;
+    order: -1;
+    padding-bottom: .4em;
+    width: 100%;
+}
+
+.DMOLP-AtomLegend > span {
+    display: inline-flex;
+    align-items: center;
+}
+
+.DMOLP-AtomBadge {
+    align-items: center;
+    border: 1px solid #000;
+    border-radius: 50%;
+    display: inline-flex;
+    font-size: .75em;
+    font-weight: 700;
+    height: 2.2em;
+    justify-content: center;
+    line-height: 1;
+    width: 2.2em;
+}
+
+/* Fullscreen font size */
+.DMOLP-GameContainer:fullscreen,
+.DMOLP-GameContainer:-webkit-full-screen,
+.DMOLP-GameContainer:-moz-full-screen,
+.DMOLP-GameContainer:-ms-full-screen,
+.DMOLP-GameContainer:-o-full-screen {
+    font-size: 1.5em;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen {
+    font-size: 1.5em;
+}

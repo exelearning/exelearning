@@ -1,0 +1,552 @@
+#dMoleIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
+}
+
+#dMoleIdeviceForm input[type="number"] {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+    flex-shrink: 0;
+}
+
+.DMOLE-EPanel {
+    margin: 0.7em auto;
+    padding: 0;
+    position: relative;
+    width: 100%;
+}
+
+.DMOLE-EMultiMediaOption {
+    height: 100%;
+    min-height: 300px;
+    min-width: 400px;
+    position: relative;
+    width: 50%;
+}
+
+.DMOLE-EMultimedia {
+    aspect-ratio: 4 / 3;
+    background-color: #fff;
+    border-radius: .5em;
+    margin: 40px auto 0;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+#dmoleModelPreview {
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+
+#dmoleModelPreview canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    pointer-events: none;
+}
+
+.DMOLE-EMedia {
+    border: 1px solid #cccccc;
+    border-radius: .5em;
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    z-index: 1; /* appear above WebGL canvas */
+}
+
+.DMOLE-EMedia:last-of-type {
+    display: block;
+}
+
+.DMOLE-Flex {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+}
+
+.DMOLE-EOptionsGame {
+    min-height: 300px;
+    width: 50%;
+}
+
+.DMOLE-EOptionsGame input[type=text] {
+    margin-right: .2em;
+    width: 5em;
+}
+
+.DMOLE-TypeGameHelp {
+    display: none;
+    font-size: .95em;
+}
+
+.DMOLE-EInputAudio {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.DMOLE-EInputAudio input[type=text] {
+    flex-flow: 1;
+    margin-right: .2em;
+    min-width: 100px;
+    width: 100%;
+}
+
+.DMOLE-EInputAudio input[type=button] {
+    flex-shrink: 0;
+}
+
+.DMOLE-ButtonLink {
+    display: block;
+    height: 1.6em;
+    width: 1.6em;
+}
+
+.DMOLE-EQuestionDiv {
+    margin-bottom: .3em;
+    width: 100%;
+}
+
+#dmoleDescriptionDiv {
+    align-items: center;
+    gap: .5em;
+}
+
+.DMOLE-EQuestion {
+    width: 98%;
+}
+
+.DMOLE-EAnswers {
+    background: transparent;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .6em .8em;
+    justify-content: stretch;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.DMOLE-EOptionDiv {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+    margin: 0;
+    min-height: 35px;
+    width: 100%;
+}
+
+.DMOLE-EAnwersOptions {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+}
+
+.DMOLE-ESolutionWord {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-bottom: .8em;
+    width: 100%;
+}
+
+.DMOLE-ESolutionWord label {
+    display: inline-block;
+    width: 11em;
+    text-align: right;
+    padding-right: .5em;
+}
+
+.DMOLE-SolitionOptionsDiv {
+    width: 98%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.DMOLE-EOrders {
+    margin-top: .5em;
+    display: none;
+}
+
+.DMOLE-EOrders>div {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-bottom: .5em;
+}
+
+.DMOLE-EOrders>div * {
+    margin-right: .2em;
+}
+
+.DMOLE-EOrders input[type=text] {
+    width: 100%;
+}
+
+.DMOLE-EOrders label {
+    white-space: nowrap;
+}
+
+.DMOLE-EHit {
+    background-image: url(quextIEHit.png);
+    background-size: 100% 100%;
+    display: inline-block;
+    height: 1.5em;
+    width: 1.5em;
+}
+
+.DMOLE-EError {
+    background-image: url(quextIEError.png);
+    background-size: 100% 100%;
+    display: inline-block;
+    height: 1.5em;
+    width: 1.5em;
+}
+
+.DMOLE-ENumQuestionDiv {
+    align-items: center;
+    display: flex;
+    height: 1.5em;
+    justify-content: center;
+    position: absolute;
+    right: 0;
+    top: .3em;
+    width: 3em;
+    z-index: 2000;
+}
+
+.DMOLE-ENumQ {
+    background-image: url(quextIENumber.png);
+    background-size: 100% 100%;
+    display: inline-block;
+    height: 1.5em;
+    width: 1.5em;
+}
+
+.DMOLE-ENumQuestions {
+    font-weight: bold;
+    height: 1.5em;
+    text-align: center;
+    width: 2em;
+}
+
+.DMOLE-ECustomMessage {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 1em;
+    width: 100%;
+}
+
+.DMOLE-ECustomMessage input[type=text] {
+    width: 100%;
+    margin-right: .1em;
+}
+
+.DMOLE-ECustomMessage label {
+    margin: 0 .1em;
+}
+
+.DMOLE-ENavigationButtons {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin-top: 1em;
+    width: 100%;
+}
+
+.DMOLE-ENavigationButton {
+    width: 1.7em;
+    height: 1.7em;
+    min-width: 1.7em;
+}
+
+.DMOLE-EModelInput .DMOLE-EModelFileInput {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.DMOLE-EButtonImage {
+    height: 100%;
+    transition: all .3s ease-in-out;
+    width: 100%;
+}
+
+.DMOLE-EButtonImage:hover {
+    -webkit-transform: scale(1.05);
+    transform: scale(1.05);
+}
+
+.DMOLE-NumberQuestion {
+    text-align: center;
+    vertical-align: middle;
+    width: 3em;
+}
+
+.DMOLE-DP,
+.DMOLE-ScoreQuestionDiv,
+.DMOLE-EFeedbackP,
+.DMOLE-ESolutionSelect input[type=number],
+.DMOLE-ESolutionSelect label {
+    display: none;
+}
+
+.DMOLE-ESolutionSelect {
+    margin-bottom: .5em;
+}
+
+.DMOLE-ESolutionSelect input[type=number] {
+    margin: auto .2em;
+}
+
+#dMoleIdeviceForm .DMOLE-EOptionDiv label {
+    margin-right: .2em;
+}
+
+.DMOLE-EWordDiv {
+    margin: .5em auto;
+    width: 100%;
+}
+
+#dMoleIdeviceForm .DMOLE-ESolutionWord label {
+    display: inline-block;
+}
+
+#dMoleIdeviceForm .DMOLE-ESolutionWord input[type=text] {
+    width: 100%;
+}
+
+#dMoleIdeviceFormTab3 p:first-child {
+    margin-top: 0;
+}
+
+#dMoleIdeviceFormTab3 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2%;
+}
+
+#dMoleIdeviceFormTab3>* {
+    flex: 0 0 48%;
+}
+
+#dMoleIdeviceFormTab3>:first-child {
+    flex: 0 0 100%;
+}
+
+@media screen and (max-width:720px) {
+    #dMoleIdeviceFormTab3>* {
+        flex: 0 0 100%;
+    }
+}
+
+#dMoleIdeviceForm #dMoleIdeviceFormTab3 label {
+    display: block;
+    margin-bottom: .2em;
+    color: #0BA1A1;
+    font-weight: 500;
+}
+
+#dMoleIdeviceForm #dMoleIdeviceFormTab3 input {
+    width: 100%;
+}
+
+#dMoleIdeviceForm .exe-block-info img {
+    margin-left: .2em;
+    vertical-align: middle;
+}
+
+.exe-block-close {
+    position: absolute;
+    top: 6px;
+    right: 5px;
+}
+
+.exe-form-tabs {
+    list-style: none;
+    margin: 0 0 1.5em 0;
+    padding: 0;
+}
+
+#main .exe-form-tabs li {
+    display: inline;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.exe-form-tabs li:first-child a {
+    border-bottom-left-radius: 4px;
+    border-top-left-radius: 4px;
+}
+
+.exe-form-tabs li:last-child a {
+    border-bottom-right-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.exe-form-tabs a {
+    background: #F9F9F9;
+    border: 1px solid #CCC;
+    color: #666;
+    display: inline-block;
+    padding: .5em 1em;
+}
+
+.exe-form-tabs li:not(:last-child) a {
+    border-right: none;
+}
+
+.exe-form-tabs .exe-form-active-tab {
+    background: #FFF;
+    color: #000;
+    font-weight: 500;
+}
+
+#gameQESCORMoptions {
+    margin-left: 1.5em;
+    visibility: hidden;
+}
+
+label[for=gameQEActivitySCORM] {
+    font-weight: bold;
+}
+
+#gameQESCORMinstructionsButton,
+#gameQESCORMinstructionsAuto {
+    color: #777;
+    display: none;
+    margin: 10px 0 0 25px;
+}
+
+#gameQESCORMinstructionsButton ul,
+#gameQESCORMinstructionsAuto ul {
+    list-style: none;
+    margin: 1.5em 0 .7em 0;
+    padding: 0;
+}
+
+#gameQESCORMinstructionsButton ul li,
+#gameQESCORMinstructionsAuto ul li {
+    margin: 0 0 .5em 0;
+    padding: 0;
+}
+
+.GameModeHelpLink {
+    margin: 0 2px;
+    vertical-align: middle;
+    flex: 0 0 auto !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.DMOLE-EInputNumbers {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: .2rem;
+    margin-right: .35rem;
+}
+
+/* Show mode edition layout */
+.DMOLE-ShowMode .DMOLE-EOptionsGame {
+    display: none !important;
+}
+
+.DMOLE-ShowMode .DMOLE-EOptionsMedia {
+    display: block !important;
+}
+
+.DMOLE-ShowMode .DMOLE-EMultiMediaOption {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    min-width: unset;
+    min-height: unset;
+    height: auto;
+}
+
+.DMOLE-ShowMode .DMOLE-EMultimedia {
+    margin-top: 0;
+    aspect-ratio: 16 / 9;
+}
+
+.DMOLE-ShowMode #dmoleModelPreview canvas {
+    height: 100% !important;
+}
+
+/* Reset camera button — hidden, remove this rule to re-enable */
+.DMOLE-EResetCamera {
+    display: none;
+}
+
+/* Viewer toolbar */
+.DMOLE-ModelStyleControl {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45em;
+    justify-content: center;
+    margin: .4em auto .5em;
+    width: 100%;
+}
+
+.DMOLE-ModelStyleLabel {
+    margin: 0;
+    white-space: nowrap;
+}
+
+.DMOLE-ModelStyleInputGroup {
+    align-items: center;
+    display: flex;
+    gap: .35em;
+}
+
+.DMOLE-ModelStyleSelect {
+    flex: 1 1 auto;
+    min-width: 10em;
+    max-width: 14em;
+}
+
+.DMOLE-ModelSizeBtn {
+    align-items: center;
+    background: none;
+    border: 1px solid #bdbdbd;
+    border-radius: .35em;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 1.1em;
+    font-weight: 700;
+    height: 2em;
+    justify-content: center;
+    line-height: 1;
+    min-width: 2em;
+    padding: 0;
+    width: 2em;
+}
+
+.DMOLE-ModelSizeBtn:hover {
+    background-color: #f0f0f0;
+}
+
+.DMOLE-ToggleBgBtn[aria-pressed="true"] {
+    background-color: #e8e8e8;
+    border-color: #999;
+}
+
+/* Model filename label — hidden */
+#dmoleModelFileName {
+    display: none;
+}
