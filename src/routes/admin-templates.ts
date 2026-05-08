@@ -9,6 +9,7 @@ import { jwt } from '@elysiajs/jwt';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { db as defaultDb } from '../db/client';
+import { buildContentDisposition } from '../shared/http/headers';
 import type { Kysely } from 'kysely';
 import type { Database, Template } from '../db/types';
 import type { JwtPayload } from './auth';
@@ -227,7 +228,7 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
 
                 const fileBuffer = await fs.readFile(filePath);
                 set.headers['content-type'] = 'application/zip';
-                set.headers['content-disposition'] = `attachment; filename="${template.filename}.elpx"`;
+                set.headers['content-disposition'] = buildContentDisposition(`${template.filename}.elpx`);
 
                 return fileBuffer;
             })
