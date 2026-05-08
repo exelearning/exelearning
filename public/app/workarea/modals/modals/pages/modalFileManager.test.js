@@ -1145,6 +1145,12 @@ describe('ModalFilemanager', () => {
       expect(modal.getAssetTypeCategory('application/pdf')).toBe('pdf');
     });
 
+    it('should return model for molecular and model mime types', () => {
+      expect(modal.getAssetTypeCategory('model/stl')).toBe('model');
+      expect(modal.getAssetTypeCategory('chemical/x-pdb')).toBe('model');
+      expect(modal.getAssetTypeCategory('application/vnd.mmtf')).toBe('model');
+    });
+
     it('should return other for unknown types', () => {
       expect(modal.getAssetTypeCategory('application/json')).toBe('other');
       expect(modal.getAssetTypeCategory('text/plain')).toBe('other');
@@ -1159,16 +1165,18 @@ describe('ModalFilemanager', () => {
       modal.assets = [
         { id: '1', filename: 'a.png', mime: 'image/png' },
         { id: '2', filename: 'b.mp4', mime: 'video/mp4' },
-        { id: '3', filename: 'c.pdf', mime: 'application/pdf' },
+        { id: '3', filename: 'c.pdb', mime: 'chemical/x-pdb' },
+        { id: '4', filename: 'd.pdf', mime: 'application/pdf' },
       ];
       modal.updateFilterOptions();
 
       const options = modal.filterSelect.querySelectorAll('option');
-      expect(options.length).toBe(4); // All + image + video + pdf
+      expect(options.length).toBe(5); // All + image + video + model + pdf
       expect(options[0].value).toBe('');
       expect(options[1].value).toBe('image');
       expect(options[2].value).toBe('video');
-      expect(options[3].value).toBe('pdf');
+      expect(options[3].value).toBe('model');
+      expect(options[4].value).toBe('pdf');
     });
 
     it('should only show types that exist', () => {
@@ -1438,10 +1446,16 @@ describe('ModalFilemanager', () => {
       expect(modal.getMimeTypeFromFilename('test.md')).toBe('text/markdown');
       expect(modal.getMimeTypeFromFilename('test.csv')).toBe('text/csv');
       expect(modal.getMimeTypeFromFilename('test.stl')).toBe('model/stl');
+      expect(modal.getMimeTypeFromFilename('test.pdb')).toBe('chemical/x-pdb');
+      expect(modal.getMimeTypeFromFilename('test.xyz')).toBe('chemical/x-xyz');
+      expect(modal.getMimeTypeFromFilename('test.mmtf')).toBe('application/vnd.mmtf');
+      expect(modal.getMimeTypeFromFilename('test.gz')).toBe('application/gzip');
+      expect(modal.getMimeTypeFromFilename('test.tgz')).toBe('application/gzip');
+      expect(modal.getMimeTypeFromFilename('test.tar')).toBe('application/x-tar');
     });
 
     it('should return octet-stream for unknown extensions', () => {
-      expect(modal.getMimeTypeFromFilename('test.xyz')).toBe('application/octet-stream');
+      expect(modal.getMimeTypeFromFilename('test.abc123')).toBe('application/octet-stream');
       expect(modal.getMimeTypeFromFilename('noextension')).toBe('application/octet-stream');
     });
 
@@ -1458,6 +1472,7 @@ describe('ModalFilemanager', () => {
       expect(modal.getFileIcon('audio/mpeg', 'test.mp3')).toBe('audiotrack');
       expect(modal.getFileIcon('application/pdf', 'test.pdf')).toBe('picture_as_pdf');
       expect(modal.getFileIcon('application/zip', 'test.zip')).toBe('folder_zip');
+      expect(modal.getFileIcon('chemical/x-pdb', 'test.pdb')).toBe('view_in_ar');
     });
 
     it('should return correct icon for file extensions', () => {
@@ -1465,6 +1480,7 @@ describe('ModalFilemanager', () => {
       expect(modal.getFileIcon(null, 'test.elp')).toBe('school');
       expect(modal.getFileIcon(null, 'test.elpx')).toBe('school');
       expect(modal.getFileIcon(null, 'test.stl')).toBe('view_in_ar');
+      expect(modal.getFileIcon(null, 'test.pdb')).toBe('view_in_ar');
       expect(modal.getFileIcon(null, 'test.docx')).toBe('description');
       expect(modal.getFileIcon(null, 'test.xlsx')).toBe('table_chart');
       expect(modal.getFileIcon(null, 'test.pptx')).toBe('slideshow');
@@ -3057,6 +3073,12 @@ describe('ModalFilemanager', () => {
 
     it('should return PDF for pdf mime type', () => {
       expect(modal.getFileTypeLabel('application/pdf')).toBe('PDF');
+    });
+
+    it('should return 3D Model for molecular and model mime types', () => {
+      expect(modal.getFileTypeLabel('model/stl')).toBe('3D Model');
+      expect(modal.getFileTypeLabel('chemical/x-pdb')).toBe('3D Model');
+      expect(modal.getFileTypeLabel('application/vnd.mmtf')).toBe('3D Model');
     });
 
     it('should return File for other mime types', () => {

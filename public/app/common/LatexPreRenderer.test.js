@@ -141,6 +141,60 @@ describe('LatexPreRenderer', () => {
             expect(result.expressions[0].display).toBe('block');
             expect(result.expressions[0].latex).toContain('<br>');
         });
+
+        test('does NOT extract \\begin{tikzpicture} environments', () => {
+            const html = '<p>\\begin{tikzpicture}\\draw (0,0) circle (1in);\\end{tikzpicture}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(0);
+            expect(result.html).toBe(html);
+        });
+
+        test('does NOT extract \\begin{circuitikz} environments', () => {
+            const html = '<p>\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(0);
+            expect(result.html).toBe(html);
+        });
+
+        test('extracts math but skips tikzpicture in mixed content', () => {
+            const html = '<p>\\(x^2\\) and \\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(1);
+            expect(result.expressions[0].latex).toBe('\\(x^2\\)');
+            expect(result.expressions[0].display).toBe('inline');
+            // tikzpicture should remain in the HTML untouched
+            expect(result.html).toContain('\\begin{tikzpicture}');
+        });
+
+        test('extracts math but skips circuitikz in mixed content', () => {
+            const html = '<p>\\[E = mc^2\\] and \\begin{circuitikz}\\draw (0,0) to[V=5V] (0,2);\\end{circuitikz}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(1);
+            expect(result.expressions[0].latex).toBe('\\[E = mc^2\\]');
+            expect(result.expressions[0].display).toBe('block');
+            // circuitikz should remain in the HTML untouched
+            expect(result.html).toContain('\\begin{circuitikz}');
+        });
+
+        test('still extracts other \\begin environments (e.g. align, equation)', () => {
+            const html = '<p>\\begin{equation}a^2 + b^2 = c^2\\end{equation}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(1);
+            expect(result.expressions[0].display).toBe('block');
+        });
+
+        test('does NOT extract tikzpicture with multiline content and <br> tags', () => {
+            const html = '<p>\\begin{tikzpicture}<br>\\draw (0,0) -- (1,1);<br>\\draw (1,1) -- (2,0);<br>\\end{tikzpicture}</p>';
+            const result = LatexPreRenderer._extractLatexExpressions(html);
+
+            expect(result.expressions.length).toBe(0);
+            expect(result.html).toBe(html);
+        });
     });
 
     describe('_cleanLatexFromHtml', () => {
@@ -531,6 +585,46 @@ describe('LatexPreRenderer', () => {
             expect(result.count).toBeGreaterThanOrEqual(1);
             expect(result.html).toContain('data-latex="\\mathrm{ABCdef}"');
             expect(result.html).not.toMatch(/>\s*\\\(\\mathrm\{ABCdef\}\\\)\s*</);
+        });
+
+        test('does NOT render \\begin{tikzpicture} environments', async () => {
+            const html = '<div><p>\\(x^2\\)</p><p>\\begin{tikzpicture}\\draw (0,0) circle (1in);\\end{tikzpicture}</p></div>';
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(1); // Only the \(x^2\) expression
+            expect(result.html).toContain('exe-math-rendered');
+            // tikzpicture should remain untouched
+            expect(result.html).toContain('\\begin{tikzpicture}');
+            expect(result.html).toContain('\\end{tikzpicture}');
+        });
+
+        test('does NOT render \\begin{circuitikz} environments', async () => {
+            const html = '<div><p>\\(y^2\\)</p><p>\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}</p></div>';
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(1); // Only the \(y^2\) expression
+            expect(result.html).toContain('exe-math-rendered');
+            // circuitikz should remain untouched
+            expect(result.html).toContain('\\begin{circuitikz}');
+            expect(result.html).toContain('\\end{circuitikz}');
+        });
+
+        test('renders math environments but not TikZ when both coexist', async () => {
+            const html = `<div>
+                <p>\\begin{equation}E = mc^2\\end{equation}</p>
+                <p>\\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}</p>
+                <p>\\begin{circuitikz}\\draw (0,0) to[V] (0,2);\\end{circuitikz}</p>
+                <p>\\(F = ma\\)</p>
+            </div>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(2); // equation + inline \(F = ma\)
+            // Both TikZ environments should remain untouched
+            expect(result.html).toContain('\\begin{tikzpicture}');
+            expect(result.html).toContain('\\begin{circuitikz}');
         });
     });
 

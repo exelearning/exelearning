@@ -73,7 +73,6 @@ var $padlock = {
             mOption.idevicePath = $padlock.idevicePath;
             mOption.main = 'candadoMainContainer-' + i;
             mOption.idevice = 'candado-IDevice';
-            +i;
 
             const candado = $padlock.createInterfaceCandado(i);
             dl.before(candado).remove();
@@ -168,7 +167,7 @@ var $padlock = {
         const mOptions =
             $exeDevices.iDevice.gamification.helpers.isJsonString(json);
         mOptions.score = 0;
-        mOptions.gameStarted = true;
+        mOptions.gameStarted = false;
         return mOptions;
     },
 
