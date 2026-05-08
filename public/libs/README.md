@@ -339,3 +339,6 @@
 *   Files: /public/style/workarea/fonts/\Inter*
     *   Copyright: The Inter Project Authors. Designed by Rasmus Andersson
     *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/idevices/base/3dmol/export/3Dmol-min.js and /public/files/perm/idevices/base/3dmol/edition/3Dmol-min.js
+    *   Copyright: 2014, University of Pittsburgh and contributors
+    *   License: BSD-3-Clause (https://github.com/3dmol/3Dmol.js/blob/master/LICENSE)
