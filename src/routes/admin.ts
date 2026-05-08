@@ -8,6 +8,7 @@ import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
+import { buildContentDisposition } from '../shared/http/headers';
 import { invalidateMaintenanceCache } from '../services/maintenance';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
@@ -1274,7 +1275,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 const safeFilename = `project-${project.id}-${slug}.elpx`;
 
                 set.headers['content-type'] = 'application/zip';
-                set.headers['content-disposition'] = `attachment; filename="${safeFilename}"`;
+                set.headers['content-disposition'] = buildContentDisposition(safeFilename);
                 set.headers['content-length'] = result.data.length.toString();
                 return result.data;
             })

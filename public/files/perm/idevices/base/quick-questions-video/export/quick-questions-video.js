@@ -1224,7 +1224,7 @@ var $quickquestionsvideo = {
             $quextOverPoint = $('#vquextOverScore-' + instance),
             $quextOverHits = $('#vquextOverHits-' + instance),
             $quextOverErrors = $('#vquextOverErrors-' + instance),
-            $quextPShowClue = $('#vuextPShowClue-' + instance),
+            $quextPShowClue = $('#vquextPShowClue-' + instance),
             $quextGamerOver = $('#vquextGamerOver-' + instance),
             $quextOverNumber = $('#vquextOverNumber-' + instance);
         let message = '',
@@ -1841,8 +1841,7 @@ var $quickquestionsvideo = {
                 mOptions.msgs.msgIndicateSolution,
                 instance
             );
-            r;
-            eturn;
+            return;
         }
         mOptions.gameActived = false;
 
