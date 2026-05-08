@@ -755,6 +755,20 @@ var $exeDevicesEdition = {
                             examples: [`${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`],
                             allowRegex: /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/
                         },
+                        10: { // Electric circuits
+                            format: [
+                                `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}#${c_('OptionD')}`,
+                                `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}`,
+                                `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}`
+                            ],
+                            explanation: `${c_('One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.')}`,
+                            examples: [
+                                `${c_('Simple resistor circuit')}#\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}#${c_('A')}#${c_('What is the resistance value?')}#${c_('1 kΩ')}#${c_('2 kΩ')}#${c_('500 Ω')}#${c_('10 kΩ')}`,
+                                `${c_('Battery and lamp circuit')}#\\begin{circuitikz}\\draw (0,0) to[battery1] (2,0) to[lamp] (2,2) -- (0,2) to[switch] (0,0);\\end{circuitikz}#${c_('B')}#${c_('What happens when the switch is closed?')}#${c_('Nothing')}#${c_('The lamp turns on')}#${c_('The battery drains')}`
+                            ],
+                            allowRegex: /^([^#]+#[^#]+#([0-3]|[A-D]{1,4})#[^#]+#[^#]+(?:#[^#]*){1,3}|[^#]+#[^#]+)$/,
+                            prompt: c_(`Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.`)
+                        },
                     };
 
                     const game = gameFormats[gameId];

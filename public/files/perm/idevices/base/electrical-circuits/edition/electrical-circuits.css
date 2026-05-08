@@ -1,0 +1,479 @@
+#electricalCircuitsIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
+}
+
+#electricalCircuitsIdeviceForm #elcePercentajeQuestions,
+#electricalCircuitsIdeviceForm #elcePercentajeQuestionsValue,
+#electricalCircuitsIdeviceForm #elcePercentajeFB {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
+
+.ELCE-EPanel {
+    margin: 0.7em auto;
+    padding: 0;
+    position: relative;
+    width: 100%;
+}
+
+.ELCE-EMultiMediaOption {
+    height: 100%;
+    min-height: 300px;
+    min-width: 400px;
+    position: relative;
+    width: 50%;
+}
+
+.ELCE-EMultimedia {
+    background-color: #fff;
+    border-radius: .5em;
+    min-height: 227px;
+    margin: 40px auto 0;
+    position: relative;
+    width: 100%;
+}
+
+#elceTikzPreview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 200px;
+}
+
+#elceTikzPreview svg {
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+}
+
+.ELCE-EMedia {
+    border: 1px solid #cccccc;
+    border-radius: .5em;
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+
+.ELCE-EMedia:last-of-type {
+    display: block;
+}
+
+.ELCE-Flex {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+}
+
+.ELCE-EOptionsGame {
+    min-height: 300px;
+    width: 50%;
+}
+
+.ELCE-EOptionsGame input[type=text] {
+    margin-right: .2em;
+    width: 5em;
+}
+
+.ELCE-TypeGameHelp {
+    display: none;
+    font-size: .95em;
+}
+
+.ELCE-EInputAudio {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.ELCE-EInputAudio input[type=text] {
+    flex-flow: 1;
+    margin-right: .2em;
+    min-width: 100px;
+    width: 100%;
+}
+
+.ELCE-EInputAudio input[type=button] {
+    flex-shrink: 0;
+}
+
+.ELCE-ButtonLink {
+    display: block;
+    height: 1.6em;
+    width: 1.6em;
+}
+
+.ELCE-EQuestionDiv {
+    margin-bottom: .3em;
+    width: 100%;
+}
+
+.ELCE-EQuestion {
+    width: 98%;
+}
+
+.ELCE-EAnswers {
+    background: transparent;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.ELCE-EOptionDiv {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin: 8px 0;
+    min-height: 35px;
+    width: 49%;
+}
+
+.ELCE-EAnwersOptions {
+    width: 100%;
+}
+
+.ELCE-ESolutionWord {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-bottom: .8em;
+    width: 100%;
+}
+
+.ELCE-ESolutionWord label {
+    display: inline-block;
+    width: 11em;
+    text-align: right;
+    padding-right: .5em;
+}
+
+.ELCE-SolitionOptionsDiv {
+    width: 98%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ELCE-EOrders {
+    margin-top: .5em;
+    display: none;
+}
+
+.ELCE-EOrders>div {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-bottom: .5em;
+}
+
+.ELCE-EOrders>div * {
+    margin-right: .2em;
+}
+
+.ELCE-EOrders input[type=text] {
+    width: 100%;
+}
+
+.ELCE-EOrders label {
+    white-space: nowrap;
+}
+
+.ELCE-EHit {
+    background-image: url(quextIEHit.png);
+    background-size: 100% 100%;
+    display: inline-block;
+    height: 1.5em;
+    width: 1.5em;
+}
+
+.ELCE-EError {
+    background-image: url(quextIEError.png);
+    background-size: 100% 100%;
+    display: inline-block;
+    height: 1.5em;
+    width: 1.5em;
+}
+
+.ELCE-ENumQuestionDiv {
+    align-items: center;
+    display: flex;
+    height: 1.5em;
+    justify-content: center;
+    position: absolute;
+    right: 0;
+    top: .3em;
+    width: 3em;
+    z-index: 2000;
+}
+
+.ELCE-ENumQ {
+    background-image: url(quextIENumber.png);
+    background-size: 100% 100%;
+    display: inline-block;
+    height: 1.5em;
+    width: 1.5em;
+}
+
+.ELCE-ENumQuestions {
+    font-weight: bold;
+    height: 1.5em;
+    text-align: center;
+    width: 2em;
+}
+
+.ELCE-ECustomMessage {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 1em;
+    width: 100%;
+}
+
+.ELCE-ECustomMessage input[type=text] {
+    width: 100%;
+    margin-right: .1em;
+}
+
+.ELCE-ECustomMessage label {
+    margin: 0 .1em;
+}
+
+.ELCE-ENavigationButtons {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin-top: 1em;
+    width: 100%;
+}
+
+.ELCE-ENavigationButton {
+    width: 1.7em;
+    height: 1.7em;
+    min-width: 1.7em;
+}
+
+.ELCE-EButtonImage {
+    height: 100%;
+    transition: all .3s ease-in-out;
+    width: 100%;
+}
+
+.ELCE-EButtonImage:hover {
+    -webkit-transform: scale(1.05);
+    transform: scale(1.05);
+}
+
+.ELCE-NumberQuestion {
+    text-align: center;
+    vertical-align: middle;
+    width: 3em;
+}
+
+.ELCE-DP,
+.ELCE-ScoreQuestionDiv,
+.ELCE-EFeedbackP,
+.ELCE-ESolutionSelect input[type=number],
+.ELCE-ESolutionSelect label {
+    display: none;
+}
+
+.ELCE-ESolutionSelect {
+    margin-bottom: .5em;
+}
+
+.ELCE-ESolutionSelect input[type=number] {
+    margin: auto .2em;
+}
+
+#electricalCircuitsIdeviceForm .ELCE-EOptionDiv label {
+    margin-right: .2em;
+}
+
+.ELCE-EWordDiv {
+    margin: .5em auto;
+    width: 100%;
+}
+
+#electricalCircuitsIdeviceForm .ELCE-ESolutionWord label {
+    display: inline-block;
+}
+
+#electricalCircuitsIdeviceForm .ELCE-ESolutionWord input[type=text] {
+    width: 100%;
+}
+
+#electricalCircuitsIdeviceFormTab3 p:first-child {
+    margin-top: 0;
+}
+
+#electricalCircuitsIdeviceFormTab3 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2%;
+}
+
+#electricalCircuitsIdeviceFormTab3>* {
+    flex: 0 0 48%;
+}
+
+#electricalCircuitsIdeviceFormTab3>:first-child {
+    flex: 0 0 100%;
+}
+
+@media screen and (max-width:720px) {
+    #electricalCircuitsIdeviceFormTab3>* {
+        flex: 0 0 100%;
+    }
+}
+
+#electricalCircuitsIdeviceForm #electricalCircuitsIdeviceFormTab3 label {
+    display: block;
+    margin-bottom: .2em;
+    color: #0BA1A1;
+    font-weight: 500;
+}
+
+#electricalCircuitsIdeviceForm #electricalCircuitsIdeviceFormTab3 input {
+    width: 100%;
+}
+
+#electricalCircuitsIdeviceForm .exe-block-info img {
+    margin-left: .2em;
+    vertical-align: middle;
+}
+
+.exe-block-close {
+    position: absolute;
+    top: 6px;
+    right: 5px;
+}
+
+.exe-form-tabs {
+    list-style: none;
+    margin: 0 0 1.5em 0;
+    padding: 0;
+}
+
+#main .exe-form-tabs li {
+    display: inline;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.exe-form-tabs li:first-child a {
+    border-bottom-left-radius: 4px;
+    border-top-left-radius: 4px;
+}
+
+.exe-form-tabs li:last-child a {
+    border-bottom-right-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.exe-form-tabs a {
+    background: #F9F9F9;
+    border: 1px solid #CCC;
+    color: #666;
+    display: inline-block;
+    padding: .5em 1em;
+}
+
+.exe-form-tabs li:not(:last-child) a {
+    border-right: none;
+}
+
+.exe-form-tabs .exe-form-active-tab {
+    background: #FFF;
+    color: #000;
+    font-weight: 500;
+}
+
+#gameQESCORMoptions {
+    margin-left: 1.5em;
+    visibility: hidden;
+}
+
+label[for=gameQEActivitySCORM] {
+    font-weight: bold;
+}
+
+#gameQESCORMinstructionsButton,
+#gameQESCORMinstructionsAuto {
+    color: #777;
+    display: none;
+    margin: 10px 0 0 25px;
+}
+
+#gameQESCORMinstructionsButton ul,
+#gameQESCORMinstructionsAuto ul {
+    list-style: none;
+    margin: 1.5em 0 .7em 0;
+    padding: 0;
+}
+
+#gameQESCORMinstructionsButton ul li,
+#gameQESCORMinstructionsAuto ul li {
+    margin: 0 0 .5em 0;
+    padding: 0;
+}
+
+.GameModeHelpLink {
+    margin: 0 2px;
+    vertical-align: middle;
+    flex: 0 0 auto !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.ELCE-EInputNumbers {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: .2rem;
+    margin-right: .35rem;
+}
+
+/* Show mode edition layout */
+.ELCE-ShowMode .ELCE-EOptionsGame {
+    display: none !important;
+}
+
+.ELCE-ShowMode .ELCE-EOptionsMedia {
+    display: block !important;
+}
+
+.ELCE-ShowMode .ELCE-EMultiMediaOption {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    min-width: unset;
+    min-height: unset;
+    height: auto;
+}
+
+.ELCE-ShowMode .ELCE-EMultimedia {
+    margin-top: 0;
+    min-height: unset;
+    aspect-ratio: 16 / 9;
+}
+
+.ELCE-ShowMode #elceTikzPreview {
+    min-height: unset;
+    height: 100%;
+}
+
+.ELCE-ShowMode #elceTikzPreview svg {
+    max-height: 100%;
+}
