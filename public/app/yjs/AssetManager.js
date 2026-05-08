@@ -3561,12 +3561,28 @@ class AssetManager {
       pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       // Archives
       zip: 'application/zip',
+      gz: 'application/gzip',
+      tgz: 'application/gzip',
+      tar: 'application/x-tar',
       rar: 'application/vnd.rar',
       '7z': 'application/x-7z-compressed',
       // 3D Models
       gltf: 'model/gltf+json',
       glb: 'model/gltf-binary',
       stl: 'model/stl',
+      // Molecular / structural formats
+      pdb: 'chemical/x-pdb',
+      sdf: 'chemical/x-mdl-sdfile',
+      mol2: 'chemical/x-mol2',
+      xyz: 'chemical/x-xyz',
+      cif: 'chemical/x-cif',
+      mmcif: 'chemical/x-cif',
+      mmtf: 'application/vnd.mmtf',
+      gro: 'chemical/x-gromacs',
+      pqr: 'chemical/x-pqr',
+      prmtop: 'chemical/x-amber-prmtop',
+      vasp: 'model/x-poscar',
+      cube: 'chemical/x-gaussian-cube',
       // Code
       css: 'text/css',
       js: 'application/javascript',

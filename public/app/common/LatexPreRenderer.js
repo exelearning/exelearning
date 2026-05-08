@@ -26,7 +26,8 @@
         // Display: $$...$$ (may span multiple lines with <br>)
         { regex: /\$\$([\s\S]*?)\$\$/g, display: 'block' },
         // Block: \begin{...}...\end{...} (may span multiple lines with <br>)
-        { regex: /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g, display: 'block' },
+        // Exclude TikZ/circuitikz environments (handled by TikZJax, not MathJax)
+        { regex: /\\begin\{(?!(?:tikzpicture|circuitikz)\})[^}]+\}[\s\S]*?\\end\{[^}]+\}/g, display: 'block' },
         // Inline: \(...\) (typically single line but support multi)
         { regex: /\\\([\s\S]*?\\\)/g, display: 'inline' },
         // Bare \ref{...} and \eqref{...} - used in text mode to reference equations
