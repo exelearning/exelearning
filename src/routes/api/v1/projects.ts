@@ -73,27 +73,25 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
             }
             const auth = authResult.user;
 
-            // Generate UUID for new project
-            const uuid = crypto.randomUUID();
-
-            // Create project in database
+            // Create project in database (createProject generates its own UUID internally)
             const project = await createProject(db, {
-                uuid,
                 title: body.title,
                 owner_id: auth.userId,
             });
 
+            const projectUuid = project.uuid;
+
             // Initialize Yjs document for the project
-            await ensureDocument(uuid);
+            await ensureDocument(projectUuid);
 
             set.status = 201;
             return successResponse({
-                id: Number(project.insertId),
-                uuid,
+                id: project.id,
+                uuid: projectUuid,
                 title: body.title,
                 owner_id: auth.userId,
-                created_at: Date.now(),
-                updated_at: null,
+                created_at: project.created_at,
+                updated_at: project.updated_at,
                 saved_once: false,
             });
         },
