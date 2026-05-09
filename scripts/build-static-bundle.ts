@@ -811,8 +811,6 @@ function generateModalsHtml(): string {
         'generic/modalInfo.njk',
         'generic/modalConfirm.njk',
         'generic/modalSessionLogout.njk',
-        'pages/uploadtodrive.njk',
-        'pages/uploadtodropbox.njk',
         'pages/filemanager.njk',
         'pages/stylemanager.njk',
         'pages/idevicemanager.njk',
