@@ -26,6 +26,7 @@ import {
     UpdateComponentBody,
     SetHtmlBody,
     BlockIdParam,
+    PageBlockParam,
     ComponentIdParam,
     type AuthenticatedUser,
     type ApiErrorResponse,
@@ -90,7 +91,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
 
     // Create a new component in a block
     .post(
-        '/:uuid/blocks/:blockId/components',
+        '/:uuid/pages/:pageId/blocks/:blockId/components',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
             if (!authResult.success) {
@@ -107,6 +108,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
 
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 createComponent(ydoc, {
+                    pageId: params.pageId,
                     blockId: params.blockId,
                     ideviceType: body.ideviceType,
                     initialData: body.initialData,
@@ -123,7 +125,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
             return successResponse(result.data);
         },
         {
-            params: BlockIdParam,
+            params: PageBlockParam,
             body: CreateComponentBody,
             detail: {
                 summary: 'Create Component',
@@ -187,8 +189,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
-                updateComponent(ydoc, {
-                    componentId: params.componentId,
+                updateComponent(ydoc, params.componentId, {
                     htmlContent: body.htmlContent,
                     htmlView: body.htmlView,
                     properties: body.properties,
