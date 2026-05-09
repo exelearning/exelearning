@@ -226,7 +226,9 @@ describe('Themes Routes', () => {
                 expect(siteTheme).toBeDefined();
                 expect(siteTheme.type).toBe('site');
                 expect(siteTheme.isDefault).toBe(true);
-                expect(siteTheme.url).toBe('/v9.9.9/site-files/themes/site-test-theme');
+                // URL embeds the theme's updated_at as a cache-buster suffix
+                // so re-uploaded themes invalidate the browser cache automatically.
+                expect(siteTheme.url).toMatch(/^\/v9\.9\.9-\d+\/site-files\/themes\/site-test-theme$/);
                 expect(body.defaultTheme).toEqual({ type: 'site', dirName: 'site-test-theme' });
             } finally {
                 await resetClientCacheForTesting();

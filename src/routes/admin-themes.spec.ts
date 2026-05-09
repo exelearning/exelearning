@@ -76,7 +76,7 @@ function createMockDeps(overrides?: Partial<ThemesDependencies['queries']>): The
             getEnabledSiteThemes: mock(() => Promise.resolve([mockTheme])),
             getBaseThemes: mock(() => Promise.resolve([mockBaseTheme])),
             findThemeById: mock(() => Promise.resolve(mockTheme)),
-            findThemeByDirName: mock(() => Promise.resolve(mockTheme)),
+            findThemeByDirName: mock(() => Promise.resolve(undefined)),
             createTheme: mock(() => Promise.resolve(mockTheme)),
             updateTheme: mock(() => Promise.resolve(mockTheme)),
             deleteTheme: mock(() => Promise.resolve()),
@@ -346,8 +346,62 @@ describe('Admin Themes Routes', () => {
             expect(data.message).toContain('conflicts with a built-in theme');
         });
 
-        test('should return 400 when theme already exists', async () => {
-            mockDeps.queries.themeDirNameExists = mock(() => Promise.resolve(true));
+        test('should replace existing site theme with same dir_name', async () => {
+            // Existing site theme (is_builtin=0) is found
+            const existingSiteTheme = { ...mockTheme, id: 42, is_default: 1, is_enabled: 1, sort_order: 7 };
+            mockDeps.queries.findThemeByDirName = mock(() => Promise.resolve(existingSiteTheme));
+            mockDeps.queries.updateTheme = mock((_db, id, updates) =>
+                Promise.resolve({ ...existingSiteTheme, ...updates, id }),
+            );
+            app = createTestApp(mockDeps);
+
+            const formData = new FormData();
+            formData.append('file', new Blob(['test']), 'test.zip');
+
+            const response = await app.handle(
+                createAuthRequest('http://localhost/api/admin/themes/upload', adminToken, {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.replaced).toBe(true);
+            expect(data.message).toMatch(/replaced/i);
+            expect(data.theme).toBeDefined();
+            expect(data.theme.dirName).toBe('test-theme');
+            // Replacement preserves enabled/default/sort_order
+            expect(data.theme.isDefault).toBe(true);
+            expect(data.theme.isEnabled).toBe(true);
+            // No new theme is created via createTheme
+            expect(mockDeps.queries.createTheme).not.toHaveBeenCalled();
+            expect(mockDeps.queries.updateTheme).toHaveBeenCalled();
+            // Files should be re-extracted
+            expect(mockDeps.validator.extractTheme).toHaveBeenCalled();
+        });
+
+        test('should return 500 when replace flow fails to update DB record', async () => {
+            const existingSiteTheme = { ...mockTheme, id: 42 };
+            mockDeps.queries.findThemeByDirName = mock(() => Promise.resolve(existingSiteTheme));
+            mockDeps.queries.updateTheme = mock(() => Promise.resolve(undefined));
+            app = createTestApp(mockDeps);
+
+            const formData = new FormData();
+            formData.append('file', new Blob(['test']), 'test.zip');
+
+            const response = await app.handle(
+                createAuthRequest('http://localhost/api/admin/themes/upload', adminToken, {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+            expect(response.status).toBe(500);
+            const data = await response.json();
+            expect(data.message).toMatch(/Failed to update theme record/i);
+        });
+
+        test('should reject upload when name conflicts with built-in theme in DB', async () => {
+            mockDeps.queries.findThemeByDirName = mock(() => Promise.resolve(mockBaseTheme));
             app = createTestApp(mockDeps);
 
             const formData = new FormData();
@@ -361,7 +415,7 @@ describe('Admin Themes Routes', () => {
             );
             expect(response.status).toBe(400);
             const data = await response.json();
-            expect(data.message).toContain('already exists');
+            expect(data.message).toMatch(/built-in/i);
         });
 
         test('should return 500 when extractTheme throws error', async () => {

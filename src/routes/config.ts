@@ -16,6 +16,7 @@ import {
     translateObject,
 } from '../services/translation';
 import { getAppVersion } from '../utils/version';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import { db as defaultDb } from '../db/client';
 import { buildContentDisposition } from '../shared/http/headers';
 import {
@@ -393,7 +394,7 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
                             type: 'site',
                             dirName: siteTheme.dir_name,
                             displayName: siteTheme.display_name,
-                            url: `/${version}/site-files/themes/${siteTheme.dir_name}`,
+                            url: buildSiteThemeUrl(version, siteTheme.dir_name, siteTheme.updated_at),
                         },
                     };
                 }

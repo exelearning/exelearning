@@ -43,6 +43,7 @@ import {
 import { getSettingString } from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 import { getAppVersion } from '../utils/version';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
@@ -566,7 +567,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                             defaultTheme = {
                                 dirName: siteTheme.dir_name,
                                 displayName: siteTheme.display_name,
-                                url: `/${version}/site-files/themes/${siteTheme.dir_name}`,
+                                url: buildSiteThemeUrl(version, siteTheme.dir_name, siteTheme.updated_at),
                                 type: 'site',
                             };
                         }

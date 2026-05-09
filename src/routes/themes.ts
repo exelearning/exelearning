@@ -12,6 +12,7 @@ import * as path from 'path';
 import { db } from '../db/client';
 import { getEnabledSiteThemes, getDefaultTheme, getBaseThemes } from '../db/queries/themes';
 import type { Theme } from '../db/types';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
 
 // Base path for themes (bundled with the app)
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
@@ -296,8 +297,10 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
     const siteThemesPath = getSiteThemesPath();
     const themePath = path.join(siteThemesPath, siteTheme.dir_name);
 
-    // Build URL paths - site themes are served from FILES_DIR
-    const themeUrl = `/${version}/site-files/themes/${siteTheme.dir_name}`;
+    // Build URL paths - site themes are served from FILES_DIR.
+    // Embed the theme's updated_at as a cache-buster so a re-uploaded theme
+    // forces clients to drop the cached CSS/icons on the next page load.
+    const themeUrl = buildSiteThemeUrl(version, siteTheme.dir_name, siteTheme.updated_at);
 
     // Scan for CSS, JS, and icons
     const cssFiles = deps.fs.existsSync(themePath) ? scanThemeFiles(themePath, '.css') : ['style.css'];
