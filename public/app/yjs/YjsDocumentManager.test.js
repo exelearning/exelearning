@@ -2643,4 +2643,59 @@ describe('YjsDocumentManager', () => {
       expect(setLocalStateSpy).toHaveBeenCalled();
     });
   });
+
+  // -----------------------------------------------------------------------
+  // createBlankProjectStructure — default-theme precedence
+  // -----------------------------------------------------------------------
+  // The blank Yjs document is the source of truth for new (especially static
+  // mode) projects, so the user's "Default style" preference has to be honored
+  // here too. Otherwise initialiceProject() finds Yjs already declaring a
+  // theme and skips the preference logic.
+  describe('createBlankProjectStructure default theme', () => {
+    function setupExeLearning({ siteDefault, userDefault, legacy } = {}) {
+      global.window.eXeLearning = {
+        config: { basePath: '', defaultTheme: siteDefault },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                ...(userDefault !== undefined ? { defaultTheme: { value: userDefault } } : {}),
+                ...(legacy !== undefined ? { theme: { value: legacy } } : {}),
+              },
+            },
+          },
+        },
+      };
+    }
+
+    it('uses the user defaultTheme preference when set', async () => {
+      setupExeLearning({ siteDefault: 'site-default', userDefault: 'neo' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('neo');
+    });
+
+    it('falls back to the site default when defaultTheme preference is empty', async () => {
+      setupExeLearning({ siteDefault: 'site-default', userDefault: '' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('site-default');
+    });
+
+    it('honors the legacy theme preference when defaultTheme is missing', async () => {
+      setupExeLearning({ siteDefault: 'site-default', legacy: 'legacy-theme' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('legacy-theme');
+    });
+
+    it('prefers defaultTheme over the legacy theme preference', async () => {
+      setupExeLearning({ siteDefault: 'site-default', userDefault: 'neo', legacy: 'legacy-theme' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('neo');
+    });
+
+    it('falls back to "base" when nothing is configured', async () => {
+      global.window.eXeLearning = { config: { basePath: '' } };
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('base');
+    });
+  });
 });
