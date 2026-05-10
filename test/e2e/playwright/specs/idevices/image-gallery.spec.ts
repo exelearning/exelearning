@@ -1153,42 +1153,120 @@ test.describe('Image Gallery iDevice', () => {
         }
 
         /**
-         * Helper to navigate into a folder by double-clicking
+         * Helper to navigate into a folder by double-clicking.
+         *
+         * After dblclick the file manager updates its breadcrumb trail
+         * (`renderBreadcrumbs()` in modalFileManager.js) and re-renders the
+         * grid for the new path. We wait for the breadcrumb to actually
+         * reflect the target folder before returning so subsequent uploads
+         * happen in the right `currentPath`.
          */
         async function navigateToFolder(page: Page, folderName: string): Promise<void> {
-            const folderItem = page.locator(`.media-library-folder[data-folder-name="${folderName}"]`);
-            await folderItem.dblclick();
-            // Wait for navigation to complete
-            await page.waitForTimeout(500);
+            // Wait for the folder tile to be in the grid before issuing the
+            // navigation request. We don't need to actually click it: each
+            // file-manager re-render replaces the DOM nodes, which makes
+            // Playwright's dblclick race with the re-render. We instead
+            // ask the file manager directly to enter the folder by name,
+            // which mirrors the JS path triggered by the dblclick handler
+            // (`item.dblclick → enterFolder(folderName)` in
+            // public/app/workarea/modals/modals/pages/modalFileManager.js).
+            const folderItem = page.locator(`.media-library-folder[data-folder-name="${folderName}"]`).first();
+            await folderItem.waitFor({ state: 'visible', timeout: 10000 });
+
+            await page.evaluate((name: string) => {
+                const w = window as unknown as {
+                    eXeLearning?: { modals?: { fileManager?: { enterFolder?: (name: string) => void } } };
+                };
+                const fm = w.eXeLearning?.modals?.fileManager;
+                if (fm?.enterFolder) {
+                    fm.enterFolder(name);
+                    return;
+                }
+                // Fallback: dispatch a real dblclick event on the folder tile.
+                const el = document.querySelector(
+                    `#modalFileManager .media-library-folder[data-folder-name="${name.replace(/"/g, '\\"')}"]`,
+                );
+                if (!el) throw new Error(`Folder tile not found: ${name}`);
+                el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+            }, folderName);
+
+            // Wait for the breadcrumb's leaf segment to equal the folder
+            // we just entered.
+            await page.waitForFunction(
+                (name: string) => {
+                    const items = document.querySelectorAll(
+                        '#modalFileManager .media-library-breadcrumbs .breadcrumb-item',
+                    );
+                    if (!items.length) return false;
+                    const last = items[items.length - 1];
+                    return last.textContent?.trim() === name;
+                },
+                folderName,
+                { timeout: 8000 },
+            );
+
+            // Allow the grid re-render to settle before counting items.
+            await page.waitForTimeout(250);
         }
 
         /**
-         * Helper to upload an image and select it
+         * Helper to upload an image and confirm its insertion.
+         *
+         * `modalFileManager.uploadFiles()` auto-selects the freshly uploaded
+         * asset (`autoSelectUploadedAsset`, modalFileManager.js:2091), which
+         * is what enables the insert button. Trying to click the item again
+         * from the test races with the grid re-render and frequently leaves
+         * the button disabled, so we let auto-select do its job and only
+         * fall back to manual selection if the button is still disabled
+         * after the upload settles.
+         *
+         * Steps:
+         *   1. Snapshot the current item count.
+         *   2. Trigger the upload via the hidden file input.
+         *   3. Wait for a NEW item to appear and for every item's
+         *      `data-asset-loading` placeholder attribute to clear.
+         *   4. Wait for the insert button to be enabled (auto-selection).
+         *      If that times out, click the new item explicitly as a fallback.
+         *   5. Click insert.
          */
         async function uploadAndSelectImage(page: Page, fixturePath: string): Promise<void> {
-            // Find the upload input
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            // The file manager tags each item tile with `data-filename` set
+            // to the original upload filename. Waiting for the SPECIFIC
+            // filename to appear is more robust than counting items, which
+            // can stay constant when the grid switches folder views in the
+            // same render tick (sample-3 in /photos -> sample-4 in
+            // /photos/vacation: count is "1" before AND after).
+            const filename = fixturePath.split('/').pop() ?? fixturePath;
+            const newItem = page.locator(`#modalFileManager .media-library-item[data-filename="${filename}"]`).first();
+
             const fileInput = page.locator('#modalFileManager input[type="file"]').first();
             await fileInput.setInputFiles(fixturePath);
 
-            // Wait for upload to complete and item to appear
-            await page.waitForSelector('#modalFileManager .media-library-item:not(.media-library-folder)', {
-                timeout: 15000,
-            });
+            // Wait for the new item identified by filename
+            await newItem.waitFor({ state: 'visible', timeout: 20000 });
 
-            const newItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').last();
-            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            // Wait for placeholder/loading state to clear on the new item
+            await page.waitForFunction(
+                (fname: string) => {
+                    const el = document.querySelector(
+                        `#modalFileManager .media-library-item[data-filename="${fname}"]`,
+                    );
+                    if (!el) return false;
+                    return el.getAttribute('data-asset-loading') !== 'true';
+                },
+                filename,
+                { timeout: 30000 },
+            );
 
-            // Retry clicking the item until the insert button becomes enabled.
-            // After upload the grid re-renders and event handlers may not be ready on the first click.
-            await expect
-                .poll(
-                    async () => {
-                        await newItem.click();
-                        return insertBtn.isEnabled();
-                    },
-                    { timeout: 30000, intervals: [500, 1000, 2000] },
-                )
-                .toBe(true);
+            // Auto-select kicks in inside uploadFiles(). Give it a brief
+            // window to enable the insert button before falling back.
+            try {
+                await expect(insertBtn).toBeEnabled({ timeout: 10000 });
+            } catch {
+                await newItem.click();
+                await expect(insertBtn).toBeEnabled({ timeout: 15000 });
+            }
 
             await insertBtn.click();
             await page.waitForTimeout(500);

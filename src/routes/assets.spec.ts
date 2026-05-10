@@ -465,6 +465,59 @@ describe('Assets Routes', () => {
             const body = await res.json();
             expect(body.error).toContain('not found');
         });
+
+        // Regression for issue #1749: Bun's Response constructor rejects header
+        // values containing bytes outside printable ASCII, so any filename with
+        // accented characters (e.g. "San Marcial de Rubicón.png") used to surface
+        // as a 500 with "Header has invalid value" instead of streaming the file.
+        it('should download asset whose filename contains non-ASCII characters', async () => {
+            const filePath = path.join(testDir, 'rubicon-asset.png');
+            await fs.writeFile(filePath, 'Rubicón content');
+
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 1,
+                filename: 'San Marcial de Rubicón.png',
+                folder_path: 'imágenes/canarias',
+                storage_path: filePath,
+                mime_type: 'image/png',
+            });
+
+            const res = await app.handle(new Request(`http://localhost/api/projects/1/assets/1`));
+
+            expect(res.status).toBe(200);
+            const disposition = res.headers.get('content-disposition') ?? '';
+            expect(disposition).toContain(`filename="San Marcial de Rubic_n.png"`);
+            expect(disposition).toContain(`filename*=UTF-8''San%20Marcial%20de%20Rubic%C3%B3n.png`);
+            expect(await res.text()).toBe('Rubicón content');
+        });
+
+        it('should expose the asset filename in by-client-id X-Filename header without throwing on accents', async () => {
+            const filePath = path.join(testDir, 'valeron-asset.png');
+            await fs.writeFile(filePath, 'Valerón content');
+
+            const clientId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 1,
+                filename: 'Cenobio de Valerón.png',
+                folder_path: 'imágenes/canarias',
+                storage_path: filePath,
+                mime_type: 'image/png',
+                file_size: '15',
+                client_id: clientId,
+            });
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/${clientId}`),
+            );
+
+            expect(res.status).toBe(200);
+            const xFilename = res.headers.get('x-filename') ?? '';
+            const xFolderPath = res.headers.get('x-folder-path') ?? '';
+            expect(decodeURIComponent(xFilename)).toBe('Cenobio de Valerón.png');
+            expect(decodeURIComponent(xFolderPath)).toBe('imágenes/canarias');
+        });
     });
 
     describe('GET /api/projects/:projectId/assets/by-client-id/:clientId', () => {

@@ -1,0 +1,67 @@
+# eXeLearning
+
+> eXeLearning is an open-source (AGPL-3.0) educational content authoring tool.
+> Educators create interactive learning materials and export them as SCORM 1.2/2004,
+> HTML5, EPUB3, IMS Content Packages, or eXeLearning's native `.elpx` package.
+> The new backend runs on Bun + Elysia + Kysely with Yjs for real-time collaboration;
+> the frontend is vanilla JavaScript; desktop builds use Electron. This file indexes
+> the documentation most relevant for LLMs and AI agents working with the project
+> and especially with the `.elpx` file format. The format is documented exhaustively
+> in `doc/elpx-format/`. For end-to-end project context, also load `AGENTS.md`.
+
+## ELPX file format — start here for AI generation
+
+- [ELPX format hub](doc/elpx-format.md): top-level overview, quick-reference table, ZIP layout at a glance, links to every detail subdoc
+- [AI generation rules](doc/elpx-format/ai-generation.md): the ten non-negotiable rules, recommended four-stage pipeline (plan → JSON → XML → ZIP), pre-flight checklist, prompt-engineering hints. Read this before generating an `.elpx`.
+
+## ELPX format — container and structure
+
+- [Container layout](doc/elpx-format/container.md): every file and directory inside an `.elpx` ZIP, mandatory vs optional, where each entry comes from in the export pipeline
+- [content.xml reference](doc/elpx-format/content-xml.md): full element-by-element ODE 2.0 reference, DOCTYPE, `<ode>` root, `<userPreferences>`, `<odeResources>`, `<odeProperties>`, `<odeNavStructures>`, plus the bundled DTD verbatim and pointer to the XSD
+- [ID format](doc/elpx-format/ids.md): `[0-9]{14}[A-Z0-9]{6}` ODE identifier format, generation, lifecycle, and cross-hierarchy synchronization rules
+- [Metadata properties](doc/elpx-format/metadata.md): every `pp_*` key with type, default, internal-key mapping, plus `userPreferences` and `odeResources`
+- [Pages and blocks](doc/elpx-format/pages-blocks.md): flat-list navigation model, parent-child IDs via `<odeParentPageId>`, ordering, `exe-node:` internal links
+
+## ELPX format — iDevices
+
+- [iDevice catalog](doc/elpx-format/idevices/catalog.md): every supported type (43 modern names, plus legacy/FPD aliases) with category, downloadable flag, description
+- [iDevice content patterns](doc/elpx-format/idevices/patterns.md): the four storage patterns (Standard JSON, URI-encoded JSON, `<script type="application/json">`, `htmlView`-only) with decision flow
+- [Per-iDevice config.xml](doc/elpx-format/idevices/config-xml.md): schema for the `config.xml` in `public/files/perm/idevices/base/<type>/`
+- [iDevice XML snippets](doc/elpx-format/idevices/snippets.md): copy-pasteable `<odeComponent>` XML for every type, extracted from real fixtures
+
+## ELPX format — resources, themes, assets
+
+- [Themes](doc/elpx-format/themes.md): theme bundle layout, the 6 in-tree themes (`base`, `flux`, `neo`, `nova`, `universal`, `zen`), per-theme `config.xml`, custom user themes
+- [Bundled libraries](doc/elpx-format/libraries.md): `libs/` contents and inclusion rules, base libraries (jQuery, Bootstrap, common.js, common_i18n.js, exe_export.js), conditionally bundled libraries, `elpx-manifest.js` for download support
+- [Assets and `{{context_path}}`](doc/elpx-format/assets.md): asset URL lifecycle (`asset://uuid` → `{{context_path}}/content/resources/<filename>` → relative path), placement under `content/resources/`
+- [screenshot.png spec](doc/elpx-format/screenshot.md): root project thumbnail, dimensions, generation hooks, base64 round-trip
+
+## ELPX format — pipelines and validation
+
+- [Export pipeline](doc/elpx-format/export-pipeline.md): end-to-end flow with file:line refs to `Html5Exporter`, `ElpxExporter`, `OdeXmlGenerator`
+- [Import pipeline](doc/elpx-format/import-pipeline.md): three-phase import, modern vs legacy fallback, ID remapping, internal-link rewriting
+- [Validation](doc/elpx-format/validation.md): DTD vs XSD coverage, mandatory presence checklist, common rejection causes, how to run `xmllint` and `OdeXmlValidator`
+
+## ELPX format — examples
+
+- [Minimal content.xml](doc/elpx-format/examples/minimal-content-xml.md): smallest valid `content.xml` (1 page, 1 block, 1 text iDevice) plus a `zip` recipe
+- [Multi-page content.xml](doc/elpx-format/examples/multi-page-content-xml.md): hierarchy + multiple iDevices covering all four storage patterns
+- [Annotated package tree](doc/elpx-format/examples/full-package-tree.md): annotated `unzip -l` of `test/fixtures/really-simple-test-project.elpx`
+
+## Project context for AI agents
+
+- [AGENTS.md](AGENTS.md): canonical instruction file for AI coding agents working in this repo (project identity, work types, commands, testing rules, architecture)
+- [Architecture](doc/architecture.md): system architecture (client as source of truth, Yjs document model, server-side asset storage, file storage layout)
+- [Conventions](doc/conventions.md): code conventions
+- [Real-time / Yjs](doc/development/real-time.md): WebSocket collaboration model
+- [REST API](doc/development/rest-api.md): external REST API v1
+- [Embedding](doc/development/embedding.md): embedding the static editor in LMS plugins
+- [Internationalization](doc/development/internationalization.md): translation keys (`_()`, `c_()`), `.xlf` files
+- [Profiling](doc/development/profiling.md): debug flags for export/save profiling
+- [Styles / theme authoring](doc/development/styles.md): how to author a new theme
+- [Testing](doc/development/testing.md): unit, integration, and E2E test rules
+
+## Optional
+
+- [Legacy .elp / contentv3.xml](doc/contentv3-format.md): pre-v3.0 Python-pickle format, kept for import compatibility
+- [Full bundled docs](llms-full.txt): single-file concatenation of every ELPX-format subdoc plus architecture and conventions, for context windows that prefer one file

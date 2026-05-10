@@ -237,6 +237,13 @@ jobs:
           rsync -a site-docs/ site/ || true
           rsync -a site-repo/  site/ || true
 
+          # Publish /llms.txt and /llms-full.txt at the GitHub Pages root so
+          # AI agents can discover the project documentation per the
+          # https://llmstxt.org/ convention. The canonical sources live at
+          # the repo root; we copy them here so they ship alongside MkDocs.
+          [ -f llms.txt ] && cp llms.txt site/llms.txt || true
+          [ -f llms-full.txt ] && cp llms-full.txt site/llms-full.txt || true
+
       - name: Generate recursive autoindex
         shell: bash
         run: |
