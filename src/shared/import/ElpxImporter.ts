@@ -49,7 +49,7 @@ import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 
 import { LegacyXmlParser } from './LegacyXmlParser';
 import type { LegacyParseResult, LegacyPage, LegacyBlock, LegacyIdevice, LegacyMetadata } from './LegacyXmlParser';
-import { generateOdeId } from '../export/generators/OdeXmlGenerator';
+import { generateOdeId } from '../export/utils/odeId';
 
 /**
  * ElpxImporter class

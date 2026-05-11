@@ -20,6 +20,9 @@
 import type { ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
 import { ODE_DTD_FILENAME } from '../constants';
 import { isExcludedFromXml, getXmlKeyForProperty, valueToXmlString } from '../metadata-properties';
+import { generateOdeId } from '../utils/odeId';
+
+export { generateOdeId };
 
 /**
  * Options for ODE XML generation
@@ -316,29 +319,6 @@ function generateComponentPropertyEntry(key: string, value: string): string {
               <key>${escapeXml(key)}</key>
               <value>${escapeXml(value)}</value>
             </odeComponentsProperty>\n`;
-}
-
-/**
- * Generate ODE identifier
- * Format: YYYYMMDDHHmmss + 6 random alphanumeric chars
- */
-export function generateOdeId(): string {
-    const now = new Date();
-    const timestamp =
-        now.getFullYear().toString() +
-        String(now.getMonth() + 1).padStart(2, '0') +
-        String(now.getDate()).padStart(2, '0') +
-        String(now.getHours()).padStart(2, '0') +
-        String(now.getMinutes()).padStart(2, '0') +
-        String(now.getSeconds()).padStart(2, '0');
-
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let random = '';
-    for (let i = 0; i < 6; i++) {
-        random += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-
-    return timestamp + random;
 }
 
 /**
