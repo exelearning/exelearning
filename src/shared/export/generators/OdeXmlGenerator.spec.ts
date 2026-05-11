@@ -331,6 +331,45 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('<value>CUSTOM-VERSION-ID</value>');
         });
 
+        it('should use meta.odeVersionId when options.versionId is not set', () => {
+            const meta: ExportMetadata = {
+                title: 'Test',
+                odeVersionId: '20251201123456FEDCBA',
+            };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toMatch(/<key>odeVersionId<\/key>\s*<value>20251201123456FEDCBA<\/value>/);
+        });
+
+        it('should generate a fresh versionId when neither options.versionId nor meta.odeVersionId is set', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages);
+
+            // Extract the odeVersionId value
+            const match = xml.match(/<key>odeVersionId<\/key>\s*<value>([^<]+)<\/value>/);
+            expect(match).not.toBeNull();
+            expect(match![1]).toMatch(/^\d{14}[A-Z0-9]{6}$/);
+        });
+
+        it('should prefer options.versionId over meta.odeVersionId', () => {
+            const meta: ExportMetadata = {
+                title: 'Test',
+                odeVersionId: '20251201123456FEDCBA',
+            };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages, {
+                versionId: '20251231235959AAAAAA',
+            });
+
+            expect(xml).toMatch(/<key>odeVersionId<\/key>\s*<value>20251231235959AAAAAA<\/value>/);
+            expect(xml).not.toContain('20251201123456FEDCBA');
+        });
+
         it('should include DOCTYPE by default', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [];

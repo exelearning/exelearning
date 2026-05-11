@@ -2252,4 +2252,202 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
             ydoc.destroy();
         });
     });
+
+    describe('odeResources preservation', () => {
+        it('should populate metadata.odeIdentifier and metadata.odeVersionId from <odeResources> on v4 import', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>20251201123456FEDCBA</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>OdeResources Preservation</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+            expect(metadata.get('odeVersionId')).toBe('20251201123456FEDCBA');
+
+            ydoc.destroy();
+        });
+
+        it('should tolerate missing <odeResources> block on v4 import', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            // v4-style content.xml WITHOUT odeResources
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>No OdeResources</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const odeId = metadata.get('odeIdentifier');
+            const odeVersionId = metadata.get('odeVersionId');
+            // Either undefined or empty string — export-side fallback will fill them in.
+            expect(odeId === undefined || odeId === '').toBe(true);
+            expect(odeVersionId === undefined || odeVersionId === '').toBe(true);
+
+            ydoc.destroy();
+        });
+
+        it('should tolerate empty <odeResources> block on v4 import', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources></odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Empty OdeResources</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const odeId = metadata.get('odeIdentifier');
+            const odeVersionId = metadata.get('odeVersionId');
+            expect(odeId === undefined || odeId === '').toBe(true);
+            expect(odeVersionId === undefined || odeVersionId === '').toBe(true);
+
+            ydoc.destroy();
+        });
+
+        it('should generate odeIdentifier and odeVersionId once on legacy v3 import', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_tema-10-ejemplo.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            const metadata = ydoc.getMap('metadata');
+            const odeId = metadata.get('odeIdentifier') as string;
+            const odeVersionId = metadata.get('odeVersionId') as string;
+            expect(typeof odeId).toBe('string');
+            expect(typeof odeVersionId).toBe('string');
+            expect(odeId).toMatch(/^\d{14}[A-Z0-9]{6}$/);
+            expect(odeVersionId).toMatch(/^\d{14}[A-Z0-9]{6}$/);
+
+            ydoc.destroy();
+        });
+
+        it('should round-trip odeId and odeVersionId through import -> generateOdeXml -> re-parse', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+            const { generateOdeXml } = await import('../export/generators/OdeXmlGenerator');
+
+            const inputOdeId = '20251201123456ABCDEF';
+            const inputOdeVersionId = '20251201123456FEDCBA';
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>${inputOdeId}</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>${inputOdeVersionId}</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Round Trip</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const exportedXml = generateOdeXml(
+                {
+                    title: 'Round Trip',
+                    author: '',
+                    language: 'en',
+                    theme: 'base',
+                    odeIdentifier: metadata.get('odeIdentifier') as string,
+                    odeVersionId: metadata.get('odeVersionId') as string,
+                },
+                [],
+            );
+
+            const odeIdMatch = exportedXml.match(/<key>odeId<\/key>\s*<value>([^<]+)<\/value>/);
+            const odeVersionIdMatch = exportedXml.match(/<key>odeVersionId<\/key>\s*<value>([^<]+)<\/value>/);
+            expect(odeIdMatch).not.toBeNull();
+            expect(odeVersionIdMatch).not.toBeNull();
+            expect(odeIdMatch![1]).toBe(inputOdeId);
+            expect(odeVersionIdMatch![1]).toBe(inputOdeVersionId);
+
+            ydoc.destroy();
+        });
+    });
 });

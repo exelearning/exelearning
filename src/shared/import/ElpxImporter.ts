@@ -49,6 +49,7 @@ import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 
 import { LegacyXmlParser } from './LegacyXmlParser';
 import type { LegacyParseResult, LegacyPage, LegacyBlock, LegacyIdevice, LegacyMetadata } from './LegacyXmlParser';
+import { generateOdeId } from '../export/generators/OdeXmlGenerator';
 
 /**
  * ElpxImporter class
@@ -418,6 +419,17 @@ export class ElpxImporter {
         // Extract metadata
         const odeProperties = this.getElement(xmlDoc, 'odeProperties');
         const metadataValues = this.extractMetadata(xmlDoc, odeProperties);
+
+        // Preserve stable identifiers from <odeResources> (odeId, odeVersionId).
+        // Without this, every round-trip generates a fresh pair, defeating
+        // diff stability and SCORM manifest identity. See #1784.
+        const odeResources = this.extractOdeResources(xmlDoc);
+        if (odeResources.odeId) {
+            metadataValues.odeIdentifier = odeResources.odeId;
+        }
+        if (odeResources.odeVersionId) {
+            metadataValues.odeVersionId = odeResources.odeVersionId;
+        }
 
         // Extract screenshot.png from archive root if present
         const screenshot = this.extractScreenshotFromZip(zip);
@@ -812,6 +824,12 @@ export class ElpxImporter {
 
         metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
         metadata.set('footer', legacyMeta.footer);
+
+        // Legacy contentv3.xml has no <odeResources>. Generate fresh stable
+        // identifiers once at import time so subsequent re-exports of the
+        // converted project keep the same odeId / odeVersionId. See #1784.
+        metadata.set('odeIdentifier', generateOdeId());
+        metadata.set('odeVersionId', generateOdeId());
     }
 
     /**
@@ -873,6 +891,28 @@ export class ElpxImporter {
             this.logger.warn('[ElpxImporter] Failed to read screenshot.png:', error);
             return undefined;
         }
+    }
+
+    /**
+     * Extract <odeResources> entries from a v4 content.xml document.
+     * Returns an empty object when the section is missing or empty so callers
+     * can fall back to fresh identifiers without crashing.
+     */
+    private extractOdeResources(xmlDoc: Document): Record<string, string> {
+        const result: Record<string, string> = {};
+        const container = this.getElement(xmlDoc, 'odeResources');
+        if (!container) return result;
+        const resources = this.getElements(container, 'odeResource');
+        for (const res of resources) {
+            const keyEl = this.getElement(res, 'key');
+            const valEl = this.getElement(res, 'value');
+            const key = keyEl?.textContent?.trim();
+            const value = valEl?.textContent?.trim();
+            if (key && value) {
+                result[key] = value;
+            }
+        }
+        return result;
     }
 
     /**
@@ -946,6 +986,14 @@ export class ElpxImporter {
         // Screenshot (optional, extracted from archive root)
         if (values.screenshot) {
             metadata.set('screenshot', values.screenshot);
+        }
+        // Stable identifiers preserved from <odeResources>. Only set when present —
+        // export-side fallback (OdeXmlGenerator) generates fresh values otherwise.
+        if (values.odeIdentifier) {
+            metadata.set('odeIdentifier', values.odeIdentifier);
+        }
+        if (values.odeVersionId) {
+            metadata.set('odeVersionId', values.odeVersionId);
         }
     }
 

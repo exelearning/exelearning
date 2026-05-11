@@ -42,7 +42,7 @@ export interface OdeXmlOptions {
  */
 export function generateOdeXml(meta: ExportMetadata, pages: ExportPage[], options?: OdeXmlOptions): string {
     const odeId = options?.odeId || meta.odeIdentifier || generateOdeId();
-    const versionId = options?.versionId || generateOdeId();
+    const versionId = options?.versionId || meta.odeVersionId || generateOdeId();
     const includeDoctype = options?.includeDoctype ?? true;
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
