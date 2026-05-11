@@ -502,7 +502,9 @@ body.exe-export.exe-epub .exe-content {
 .daddy:hover,
 .active.daddy:hover { background-color: #ffd940; }
 
-/* Submenu toggle button (chevron) — dark on light backgrounds */
+/* Submenu toggle button (chevron) — dark on light backgrounds.
+   Uses background-image (not CSS mask) so the icon also works under file://
+   without running into CORS restrictions on mask resources. */
 #siteNav a.daddy > button {
     position: absolute;
     top: 50%;
@@ -512,9 +514,11 @@ body.exe-export.exe-epub .exe-content {
     height: 32px;
     padding: 0;
     border: 0;
-    background-color: #282573;
-    -webkit-mask: url(img/arrow_down.svg) no-repeat center / 22px;
-            mask: url(img/arrow_down.svg) no-repeat center / 22px;
+    background-color: transparent;
+    background-image: url(img/arrow_down.svg);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 22px;
     transition: transform 0.2s ease;
     cursor: pointer;
 }
