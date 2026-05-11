@@ -466,13 +466,16 @@ class ComponentImporter {
   }
 
   /**
-   * Generate a unique ID
+   * Generate a unique ID.
+   *
+   * Mirrors src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+   *
    * @param {string} prefix - ID prefix
    * @returns {string}
    */
   generateId(prefix) {
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substr(2, 9);
+    const random = Math.random().toString(36).substring(2, 11);
     return `${prefix}-${timestamp}-${random}`;
   }
 }

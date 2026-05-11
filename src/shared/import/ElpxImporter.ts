@@ -48,6 +48,7 @@ import {
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 
 import { LegacyXmlParser } from './LegacyXmlParser';
+import { generateId } from '../ids';
 import type { LegacyParseResult, LegacyPage, LegacyBlock, LegacyIdevice, LegacyMetadata } from './LegacyXmlParser';
 
 /**
@@ -652,11 +653,11 @@ export class ElpxImporter {
         // Legacy IDs are stable inside .elp files (e.g. page-4, idevice-2).
         // On repeated imports into the same Y.Doc we must remap to unique IDs to avoid collisions.
         for (const legacyPage of legacyPages) {
-            pageIdRemap.set(legacyPage.id, this.generateId('page'));
+            pageIdRemap.set(legacyPage.id, generateId('page'));
         }
 
         for (const legacyPage of legacyPages) {
-            const pageId = pageIdRemap.get(legacyPage.id) || this.generateId('page');
+            const pageId = pageIdRemap.get(legacyPage.id) || generateId('page');
             const parentId =
                 legacyPage.parent_id === null ? rootParentId : (pageIdRemap.get(legacyPage.parent_id) ?? rootParentId);
             const order = legacyPage.parent_id === null ? rootOrderOffset + legacyPage.position : legacyPage.position;
@@ -692,7 +693,7 @@ export class ElpxImporter {
      * Convert legacy block to BlockData format
      */
     private convertLegacyBlockToBlockData(legacyBlock: LegacyBlock): BlockData {
-        const blockId = this.generateId('block');
+        const blockId = generateId('block');
 
         const blockData: BlockData = {
             id: blockId,
@@ -718,7 +719,7 @@ export class ElpxImporter {
      * Convert legacy iDevice to ComponentData format
      */
     private convertLegacyIdeviceToComponentData(legacyIdevice: LegacyIdevice): ComponentData {
-        const componentId = this.generateId('idevice');
+        const componentId = generateId('idevice');
 
         // Build HTML view with feedback if present
         let htmlView = legacyIdevice.htmlView || '';
@@ -966,7 +967,7 @@ export class ElpxImporter {
 
         for (const navNode of navNodes) {
             const originalPageId = this.getPageId(navNode);
-            const newPageId = this.generateId('page');
+            const newPageId = generateId('page');
 
             if (originalPageId) {
                 idRemap.set(originalPageId, newPageId);
@@ -1056,7 +1057,7 @@ export class ElpxImporter {
         const blockId =
             pagNode.getAttribute('odePagStructureId') ||
             this.getTextContent(pagNode, 'odeBlockId') ||
-            this.generateId('block');
+            generateId('block');
         const blockName = pagNode.getAttribute('blockName') || this.getTextContent(pagNode, 'blockName') || '';
         const order = this.getPagOrder(pagNode);
         const iconName = pagNode.getAttribute('iconName') || this.getTextContent(pagNode, 'iconName') || '';
@@ -1096,7 +1097,7 @@ export class ElpxImporter {
         const componentId =
             compNode.getAttribute('odeComponentId') ||
             this.getTextContent(compNode, 'odeIdeviceId') ||
-            this.generateId('idevice');
+            generateId('idevice');
 
         let ideviceType =
             compNode.getAttribute('odeIdeviceTypeDirName') ||
@@ -1816,15 +1817,6 @@ export class ElpxImporter {
     private getTextContent(parent: Element, tagName: string): string | null {
         const el = this.getElement(parent, tagName);
         return el ? el.textContent : null;
-    }
-
-    /**
-     * Generate a unique ID
-     */
-    private generateId(prefix: string): string {
-        const timestamp = Date.now().toString(36);
-        const random = Math.random().toString(36).substring(2, 11);
-        return `${prefix}-${timestamp}-${random}`;
     }
 
     /**
