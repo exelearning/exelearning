@@ -662,7 +662,7 @@ describe('IdeviceBlockNode', () => {
 
             expect(icon.getAttribute('tabindex')).toBe('0');
             expect(icon.getAttribute('icon-id')).toBe('0');
-            expect(icon.title).toBe('Empty');
+            expect(icon.title).toBe('Remove icon');
         });
 
         it('sets selected to true when no iconName', () => {
@@ -767,13 +767,21 @@ describe('IdeviceBlockNode', () => {
             expect(body.querySelector('#block-icon-custom-button')).not.toBeNull();
         });
 
-        it('includes material icons and no theme icon entries', () => {
-            const body = block.makeModalChangeIconBody();
-            const icons = body.querySelectorAll('.option-block-icon[data-icon-source="material"]');
-            const legacyThemeIcons = body.querySelectorAll('.option-block-icon[data-icon-source="theme"]');
+        it('includes theme icons in the style tab and material icons in the common tab', () => {
+			const body = block.makeModalChangeIconBody();
 
-            expect(icons.length).toBeGreaterThan(1);
-            expect(legacyThemeIcons.length).toBe(0);
+			const styleTabContent = body.querySelector('#tab-style-icon-content');
+			const themeIcons = styleTabContent.querySelectorAll('.option-block-icon');
+			expect(themeIcons.length).toBe(2);
+
+			themeIcons.forEach(icon => {
+				expect(icon.getAttribute('icon-id')).not.toBeNull();
+				expect(icon.getAttribute('data-icon-source')).toBeNull();
+			});
+
+			const commonTabContent = body.querySelector('#tab-common-icon-content');
+			const materialIcons = commonTabContent.querySelectorAll('.option-block-icon[data-icon-source="material"]');
+			expect(materialIcons.length).toBeGreaterThan(1);
         });
 
         it('renders material modal options from the sprite', () => {
@@ -1747,6 +1755,7 @@ describe('IdeviceBlockNode', () => {
     });
 
     describe('makeModalChangeIconBody', () => {
+       
         it('sets icon-id attribute to material icon ids', () => {
             const body = block.makeModalChangeIconBody();
             const iconElements = body.querySelectorAll('.option-block-icon:not(.empty-block-icon)');

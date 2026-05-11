@@ -226,7 +226,12 @@ export default class IdeviceBlockNode {
 <path d="M20 13V27M13 20H27" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
     }
-
+    getRemoveIconSvg() {
+        return `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="0.5" y="0.5" width="39" height="39" rx="5.5" stroke="#9ca3af" stroke-dasharray="5 5"/>
+<path d="M10 20H27" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+    }
     getModalNoIconSvg() {
         return `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
 <circle cx="20" cy="20" r="13" stroke="currentColor" stroke-width="2.5"/>
@@ -1721,23 +1726,54 @@ export default class IdeviceBlockNode {
      */
     makeModalChangeIconBody() {
         let modalBody = document.createElement('div');
-        modalBody.id = 'change-block-icon-modal-content';
-        modalBody.style.setProperty('--modal-icon-color', this.getCurrentThemeIconColor());
+        let themeIcons = document.createElement('div');
+        themeIcons.id='block-style-icon-content';
+        themeIcons.className = 'icon-options-grid';
+        modalBody.id = 'change-block-icon-modal-content';   
+        // Add theme icons
+        for (let [id, icon] of Object.entries(
+            eXeLearning.app.themes.getThemeIcons()
+        )) {
+            let iconElement = document.createElement('div');
+            iconElement.classList.add('exe-icon');
+            iconElement.classList.add('option-block-icon');
+            iconElement.setAttribute('tabindex', 0);
+            iconElement.setAttribute('icon-id', icon.id);
+            let iconValue = this.makeIconValueElement(icon);
+            iconElement.append(iconValue);
+            // Check if selected
+            if (
+                this.iconName == icon.value ||
+                this.iconName == iconValue.getAttribute('icon-id')
+            ) {
+                iconElement.setAttribute('selected', true);
+                if (this.iconName == icon.value) {
+                    iconElement.classList.add('selected-provisional');
+                }
+            }
+            // Add icon element to content
+            themeIcons.appendChild(iconElement);
+        }
+        
+        
+        let commonIcons = document.createElement('div');
+        commonIcons.id='block-common-icon-content';
+        commonIcons.style.setProperty('--modal-icon-color', this.getCurrentThemeIconColor());
 
         const toolbar = document.createElement('div');
         toolbar.className = 'icon-picker-toolbar';
-        modalBody.appendChild(toolbar);
+        commonIcons.appendChild(toolbar);
 
         const search = this.createModalIconSearchInput();
         toolbar.appendChild(search);
 
         const customButton = this.createModalIconCustomButton();
-        toolbar.appendChild(customButton);
+        //toolbar.appendChild(customButton);
 
         const optionsContainer = document.createElement('div');
         optionsContainer.className = 'icon-options-grid';
         optionsContainer.id = 'block-icon-options-grid';
-        modalBody.appendChild(optionsContainer);
+        commonIcons.appendChild(optionsContainer);
 
         const currentIcon = this.getEffectiveIcon();
         const appendOption = (iconConfig, title, options) => {
@@ -1745,13 +1781,13 @@ export default class IdeviceBlockNode {
             optionsContainer.appendChild(iconElement);
             return iconElement;
         };
-
+		/*
         appendOption(
             { source: 'none', value: '' },
             _('No icon'),
             { className: 'empty-block-icon', iconId: '0', innerHtml: this.getModalNoIconSvg() }
         );
-
+		*/
         for (const iconName of MATERIAL_ICON_CATALOG) {
             const option = appendOption({ source: 'material', value: iconName, name: iconName }, iconName);
             option.setAttribute('icon-id', `mi-${iconName}`);
@@ -1759,7 +1795,26 @@ export default class IdeviceBlockNode {
         if (currentIcon.source === 'asset' && currentIcon.value) {
             this.setModalCustomSelection(modalBody, customButton, currentIcon);
         }
-
+        
+        let contentHtml=`
+        <div>${this.makeEmptyIcon().outerHTML}</div>
+        <ul class="nav nav-tabs" id="selectIconsTab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="nav-style-tab" data-bs-toggle="tab" data-bs-target="#tab-style-icon-content" type="button" role="tab" aria-controls="icons-style" aria-selected="true">${_('Theme icons')}</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="nav-others-tab" data-bs-toggle="tab" data-bs-target="#tab-common-icon-content" type="button" role="tab" aria-controls="nav-profile" aria-selected="false">${_('Common icons')}</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="nav-custom-tab" data-bs-toggle="tab" data-bs-target="#tab-custom-icon-content" type="button" role="tab" aria-controls="nav-profile" aria-selected="false">${_('Custom icon')}</button>
+           </li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-style-icon-content">${themeIcons.outerHTML}</div>
+            <div class="tab-pane fade" id="tab-common-icon-content">${commonIcons.outerHTML}</div>
+            <div class="tab-pane fade" id="tab-custom-icon-content">${customButton.outerHTML}</div>
+        </div>`;
+        modalBody.innerHTML = contentHtml;
         return modalBody;
     }
 
@@ -1774,8 +1829,8 @@ export default class IdeviceBlockNode {
         emptyIconElement.setAttribute('icon-id', '0');
         emptyIconElement.setAttribute('data-icon-source', 'none');
         emptyIconElement.setAttribute('data-icon-value', '');
-        emptyIconElement.title = _('Empty');
-        emptyIconElement.innerHTML = this.getEmptyIconSvg();
+        emptyIconElement.title = _('Remove icon');
+        emptyIconElement.innerHTML = this.getRemoveIconSvg();
         emptyIconElement.setAttribute('selected', !this.iconName ? 'true' : 'false');
         return emptyIconElement;
     }
