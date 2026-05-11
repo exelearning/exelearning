@@ -463,6 +463,19 @@ describe('ImsExporter', () => {
             expect(manifest).toContain('20251201123456ABCDEF');
             expect(contentXml).toContain('20251201123456ABCDEF');
         });
+
+        it('shares a single root id across manifest and organization on the FALLBACK path (#1785)', async () => {
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new ImsExporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const manifestMatch = manifest.match(/<manifest\s+identifier="eXe-MANIFEST-([A-Z0-9]+)"/);
+            const orgMatch = manifest.match(/<organization\s+identifier="eXe-([A-Z0-9]+)"/);
+            expect(manifestMatch).not.toBeNull();
+            expect(orgMatch).not.toBeNull();
+            expect(orgMatch![1]).toBe(manifestMatch![1]);
+        });
     });
 
     describe('ZIP Validation', () => {

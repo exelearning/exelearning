@@ -504,6 +504,32 @@ describe('Scorm12Exporter', () => {
             expect(manifest).toContain('20251201123456ABCDEF');
             expect(lom).toContain('20251201123456ABCDEF');
         });
+
+        it('shares a single root id across manifest, organization and LOM entry on the FALLBACK path (#1785)', async () => {
+            // No odeIdentifier, no scormIdentifier -> getManifestIdentifier() falls back
+            // to generateOdeId(). The bug: getBareProjectIdentifier() invokes
+            // getManifestIdentifier() a SECOND time, generating a different random id,
+            // so the manifest, organization and LOM end up referencing unrelated roots.
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new Scorm12Exporter(document, resources, assets, localZip);
+            await exporter.export();
+
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const lom = localZip.files.get('imslrm.xml') as string;
+
+            const manifestMatch = manifest.match(/<manifest\s+identifier="eXe-MANIFEST-([A-Z0-9]+)"/);
+            const orgMatch = manifest.match(/<organization\s+identifier="eXe-([A-Z0-9]+)"/);
+            const lomEntryMatch = lom.match(/<entry[^>]*>\s*ODE-([A-Z0-9]+)/);
+
+            expect(manifestMatch).not.toBeNull();
+            expect(orgMatch).not.toBeNull();
+            expect(lomEntryMatch).not.toBeNull();
+
+            const root = manifestMatch![1];
+            expect(orgMatch![1]).toBe(root);
+            expect(lomEntryMatch![1]).toBe(root);
+        });
     });
 
     describe('ZIP Validation', () => {
