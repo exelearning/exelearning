@@ -1,8 +1,4 @@
 @charset "UTF-8";
-:root {
-    --flux-header-h: 100px;
-    --flux-title-gap: 20px;
-}
 @font-face {
     font-family: "Fredoka";
     src: url(fonts/Fredoka-Regular.woff) format("woff");
@@ -31,13 +27,13 @@ a {
 .page-title {
     font-weight: bold;
     color: white;
-    margin: 0 0 var(--flux-title-gap) 0;
+    margin: 0 0 20px 0;
     text-shadow: 0 0 4px rgba(21, 32, 61, .8);
 }
 
 .exe-web-site .page-content > .page-title,
 .exe-export .page-content > .page-title {
-    padding: var(--flux-title-gap) 0 0;
+    padding: 20px 0 0;
 }
 
 .exe-epub .page-title, .exe-scorm .page-title, .exe-ims .page-title {
@@ -124,11 +120,53 @@ main header:not(#head) {
     right: 0;
     left: 0;
     z-index: 400;
-    height: var(--flux-header-h);
+    height: 100px;
     display: flex !important;
     align-items: center;
     background: #fff;
     border-bottom: 2px solid #282573;
+}
+
+/* Single-page export: only the .package-header at the top of <main> is fixed.
+   Per-section <header class="main-header"> elements must render inline so the
+   white page-title sits on the dark backdrop (instead of stacking multiple
+   fixed white bars over each other at top:0). */
+body.exe-single-page .package-header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 400;
+    height: 100px;
+    display: flex !important;
+    align-items: center;
+    background: #fff;
+    border-bottom: 2px solid #282573;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body.exe-single-page section > .main-header {
+    position: static;
+    height: auto;
+    background: transparent;
+    border-bottom: 0;
+    display: block !important;
+    padding: 0 32px;
+    margin: 0;
+}
+
+body.exe-single-page section > .main-header .page-header {
+    padding: 0;
+    margin: 0;
+}
+
+body.exe-single-page section > .main-header .page-title {
+    padding: 0;
+    margin: 0 0 20px 0;
+    color: #fff;
+    text-shadow: 0 0 4px rgba(21, 32, 61, .8);
 }
 
 .page > header .package-title,
@@ -151,15 +189,39 @@ body.exe-export.exe-epub {
     width: 100%;
 }
 
+/* SCORM/IMS/ePub: stack package-title (small grey) above page-title (purple).
+   The .main-header switches to flex-column so the two rows render one over
+   the other instead of overlapping in the same flex row. */
+body.exe-scorm .main-header,
+body.exe-ims .main-header,
+body.exe-epub .main-header {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8px 32px;
+}
+
+body.exe-scorm .main-header .package-header,
+body.exe-ims .main-header .package-header,
+body.exe-epub .main-header .package-header,
+body.exe-scorm .main-header .page-header,
+body.exe-ims .main-header .page-header,
+body.exe-epub .main-header .page-header {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
 body.exe-scorm .package-title,
 body.exe-ims .package-title,
 body.exe-epub .package-title{
-    position: absolute;
-    top: 24px;
-    left: 0;
+    position: static;
     font-weight: normal;
     font-size: .95em;
     color: #777;
+    margin: 0 0 2px 0;
+    padding: 0;
+    line-height: 1.2;
 }
 
 body.exe-scorm .package-subtitle,
@@ -183,14 +245,16 @@ body.exe-epub .package-subtitle,
 body.exe-scorm .page-title,
 body.exe-ims .page-title,
 body.exe-epub .page-title {
-    padding: 0 32px;
+    padding: 0;
+    margin: 0;
+    line-height: 1.2;
 }
 
 @media (max-width: 750px) {
-    body.exe-scorm .page-title,
-    body.exe-ims .page-title,
-    body.exe-epub .page-title {
-        padding: 0 24px;
+    body.exe-scorm .main-header,
+    body.exe-ims .main-header,
+    body.exe-epub .main-header {
+        padding: 8px 24px;
     }
 }
 
@@ -346,7 +410,7 @@ body#tinymce {
 
 .exe-web-site main.page,
 .exe-export main {
-    padding-top: var(--flux-header-h);
+    padding-top: 100px;
 }
 
 .exe-single-page .exe-content {
@@ -359,7 +423,7 @@ body#tinymce {
     margin: 0 auto;
 }
 .exe-single-page .exe-content main {
-    padding-top: 4em;
+    padding-top: 130px;
 }
 
 .exe-web-site .exe-content {
@@ -387,16 +451,16 @@ body.exe-export.exe-epub .exe-content {
 /* siteNav */
 #siteNav {
     float: left;
-    padding: var(--flux-header-h) 16px 48px 16px;
+    padding: 100px 16px 48px 16px;
     background-color: #2c2977;
-    height: calc(100vh - var(--flux-header-h));
+    height: calc(100vh - 100px);
     border-radius: 0 40px 40px 0;
     width: 330px;
     z-index: 1;
     position: fixed;
     transition: left 0.3s ease;
     left: 0;
-    top: var(--flux-header-h);
+    top: 100px;
     overflow: visible;
     border-top: 2px solid #6d68d9;
     border-right: 2px solid #6d68d9;
@@ -540,7 +604,9 @@ body.exe-web-site.siteNav-off #siteFooter {
 .daddy:hover,
 .active.daddy:hover { background-color: #ffd940; }
 
-/* Submenu toggle button (chevron) — white by default, dark on highlighted states */
+/* Submenu toggle button (chevron) — white by default, dark on highlighted states.
+   Uses background-image (not CSS mask) so the icon also works under file:// without
+   running into CORS restrictions on mask resources. */
 #siteNav a.daddy > button {
     position: absolute;
     top: 50%;
@@ -550,9 +616,11 @@ body.exe-web-site.siteNav-off #siteFooter {
     height: 32px;
     padding: 0;
     border: 0;
-    background-color: #fff;
-    -webkit-mask: url(img/arrow_down.svg) no-repeat center / 22px;
-            mask: url(img/arrow_down.svg) no-repeat center / 22px;
+    background-color: transparent;
+    background-image: url(img/arrow_down_white.svg);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 22px;
     transition: transform 0.2s ease;
     cursor: pointer;
 }
@@ -562,7 +630,7 @@ body.exe-web-site.siteNav-off #siteFooter {
 #siteNav .current-page-parent a.daddy > button,
 #siteNav a.daddy:hover > button,
 #siteNav a.daddy:focus > button {
-    background-color: #282573;
+    background-image: url(img/arrow_down.svg);
 }
 #siteNav a.daddy > button.closed-ul {
     transform: translateY(-50%) rotate(0);
@@ -1281,7 +1349,7 @@ button#searchBarTogger {
     }
     .exe-scorm .exe-export main,
     .exe-ims .exe-export main,
-    .exe-pub .exe-export main {
+    .exe-epub .exe-export main {
         padding-top: 7em;
     }
 }
