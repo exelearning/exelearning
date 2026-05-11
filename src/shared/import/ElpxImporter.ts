@@ -1480,9 +1480,14 @@ export class ElpxImporter {
     private remapInternalPageLinks(pageStructures: PageData[], idRemap: Map<string, string>): void {
         if (idRemap.size === 0) return;
 
-        // Build regex that matches any of the old page IDs
-        const escapedIds = Array.from(idRemap.keys()).map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        const pattern = new RegExp(`(exe-node:)(${escapedIds.join('|')})(#[^"'\\s]*)?`, 'g');
+        // Sort keys by descending length so longer ids (e.g. "page-10") are tried
+        // before shorter prefixes (e.g. "page-1") in the regex alternation.
+        // Combined with the (?![A-Za-z0-9_-]) boundary lookahead below, this
+        // prevents partial-prefix remaps that would otherwise rewrite
+        // "exe-node:page-10" using the mapping for "page-1" and leave a stray "0".
+        const sortedKeys = Array.from(idRemap.keys()).sort((a, b) => b.length - a.length);
+        const escapedIds = sortedKeys.map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(`(exe-node:)(${escapedIds.join('|')})(?![A-Za-z0-9_-])(#[^"'\\s]*)?`, 'g');
 
         const replacer = (_m: string, prefix: string, oldId: string, fragment: string | undefined) => {
             const newId = idRemap.get(oldId) ?? oldId;

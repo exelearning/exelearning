@@ -2493,3 +2493,115 @@ describe('ElpxImporter - id preservation across v4 import', () => {
         ydoc.destroy();
     });
 });
+
+describe('ElpxImporter - remapInternalPageLinks prefix-collision safety', () => {
+    it('does not partially remap when one page id is a prefix of another (page-1 vs page-10)', async () => {
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        // Two pages with prefix-colliding short ids; page-1 carries a link to page-10.
+        // After a merge-mode collision both ids get remapped via idRemap. The link
+        // must remap to the new <page-10> id verbatim -- not to the new <page-1> id
+        // plus a trailing "0", which is what a naive alternation regex produces.
+        const buildContent = () => `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Prefix collision</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-1</odePageId>
+  <pageName>Page 1</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>idevice-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <htmlView>&lt;p&gt;&lt;a href="exe-node:page-10"&gt;Go to page 10&lt;/a&gt;&lt;/p&gt;</htmlView>
+          <odeComponentOrder>0</odeComponentOrder>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+<odeNavStructure>
+  <odePageId>page-10</odePageId>
+  <pageName>Page 10</pageName>
+  <odeNavStructureOrder>1</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zipData = fflate.zipSync({ 'content.xml': encoder.encode(buildContent()) });
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        // First import preserves page-1 and page-10 verbatim (fresh doc, no collision).
+        await importer.importFromBuffer(zipData, { clearExisting: true });
+        // Second import collides on both ids -> both get remapped, link must follow.
+        await importer.importFromBuffer(zipData, { clearExisting: false });
+
+        const navigation = ydoc.getArray('navigation');
+        const idsByName = new Map<string, string>();
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            idsByName.set((page.get('pageName') ?? page.get('title')) as string, page.get('id') as string);
+        }
+        // Sanity: first import kept the originals, second created two new ids -> 4 pages.
+        expect(navigation.length).toBe(4);
+
+        // Find the htmlView that originated from the SECOND import (its links must
+        // have been remapped). It's on the remapped "Page 1" -- not on the original.
+        let remappedLink: string | null = null;
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            const pageId = page.get('id') as string;
+            if (pageId === 'page-1') continue; // skip the originals from first import
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            for (let j = 0; j < (blocks?.length ?? 0); j++) {
+                const block = blocks.get(j) as Y.Map<unknown>;
+                const components = block.get('components') as Y.Array<unknown>;
+                for (let k = 0; k < (components?.length ?? 0); k++) {
+                    const comp = components.get(k) as Y.Map<unknown>;
+                    const html = comp.get('htmlView') as string | undefined;
+                    if (html?.includes('exe-node:')) {
+                        remappedLink = html;
+                    }
+                }
+            }
+        }
+        expect(remappedLink).not.toBeNull();
+
+        // Find the second-import id for page-10 (not equal to the original "page-10").
+        const newPage10Ids: string[] = [];
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            const id = page.get('id') as string;
+            const name = page.get('pageName') as string;
+            if (name === 'Page 10' && id !== 'page-10') newPage10Ids.push(id);
+        }
+        expect(newPage10Ids.length).toBe(1);
+        const newPage10 = newPage10Ids[0];
+
+        // Bug pinned: the link must point at the new page-10 id, exactly.
+        expect(remappedLink).toContain(`exe-node:${newPage10}`);
+        // ...and must NOT contain a partial remap leaving a stray "0" tail.
+        // A naive alternation regex would produce e.g. exe-node:<new-page-1>0.
+        const stray = /exe-node:[a-z0-9-]+0(?![a-z0-9-])/i;
+        const matches = remappedLink!.match(stray);
+        if (matches) {
+            const m = matches[0];
+            // Acceptable only if it equals the legitimate newPage10 link itself.
+            expect(m).toBe(`exe-node:${newPage10}`);
+        }
+
+        ydoc.destroy();
+    });
+});
