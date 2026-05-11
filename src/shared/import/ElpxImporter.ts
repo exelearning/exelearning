@@ -435,6 +435,11 @@ export class ElpxImporter {
         // Build all page structures as a FLAT list
         const pageStructures: PageData[] = [];
         const idRemap = new Map<string, string>();
+        // Pre-seed the set of "ids already taken" with whatever lives in the
+        // target Y.Doc navigation when merging. On a fresh import (clearExisting)
+        // the navigation will be wiped inside the transaction below, so we start
+        // empty and let the original ids from content.xml flow through verbatim.
+        const usedIds = clearExisting ? new Set<string>() : this.collectExistingIds();
         this.buildFlatPageList(
             rootNavStructures,
             zip,
@@ -444,6 +449,7 @@ export class ElpxImporter {
             orderOffset,
             idRemap,
             true,
+            usedIds,
         );
         this.logger.log(
             '[ElpxImporter] Built flat page list:',
@@ -961,19 +967,27 @@ export class ElpxImporter {
         orderOffset: number,
         idRemap: Map<string, string>,
         isRootLevel: boolean,
+        usedIds: Set<string>,
     ): void {
         let siblingOrder = 0;
 
         for (const navNode of navNodes) {
             const originalPageId = this.getPageId(navNode);
-            const newPageId = this.generateId('page');
+            // Preserve the original <odePageId> verbatim when it is present and
+            // does not collide with an id already used in the target Y.Doc or
+            // assigned earlier in this same import. Collisions only happen in
+            // merge-mode imports (clearExisting=false); when they do, we
+            // regenerate and the remap is later used to rewrite internal
+            // exe-node: links.
+            const newPageId = originalPageId && !usedIds.has(originalPageId) ? originalPageId : this.generateId('page');
+            usedIds.add(newPageId);
 
-            if (originalPageId) {
+            if (originalPageId && newPageId !== originalPageId) {
                 idRemap.set(originalPageId, newPageId);
             }
 
             const calculatedOrder = isRootLevel ? orderOffset + siblingOrder : siblingOrder;
-            const pageData = this.buildPageData(navNode, zip, parentId, newPageId, calculatedOrder);
+            const pageData = this.buildPageData(navNode, zip, parentId, newPageId, calculatedOrder, usedIds);
 
             if (pageData) {
                 flatList.push(pageData);
@@ -1000,6 +1014,7 @@ export class ElpxImporter {
                         0,
                         idRemap,
                         false,
+                        usedIds,
                     );
                 }
             }
@@ -1015,6 +1030,7 @@ export class ElpxImporter {
         parentId: string | null,
         newPageId: string,
         calculatedOrder: number,
+        usedIds: Set<string>,
     ): PageData {
         const pageId = newPageId;
         const pageName = this.getPageName(navNode);
@@ -1040,7 +1056,7 @@ export class ElpxImporter {
         });
 
         for (const pagNode of sortedPagStructures) {
-            const blockData = this.buildBlockData(pagNode, zip);
+            const blockData = this.buildBlockData(pagNode, zip, usedIds);
             if (blockData) {
                 pageData.blocks.push(blockData);
             }
@@ -1052,11 +1068,14 @@ export class ElpxImporter {
     /**
      * Build plain JavaScript data structure for a block
      */
-    private buildBlockData(pagNode: Element, zip: Record<string, Uint8Array>): BlockData {
-        const blockId =
-            pagNode.getAttribute('odePagStructureId') ||
-            this.getTextContent(pagNode, 'odeBlockId') ||
-            this.generateId('block');
+    private buildBlockData(pagNode: Element, zip: Record<string, Uint8Array>, usedIds: Set<string>): BlockData {
+        // Preserve the original block id from XML when present and not colliding
+        // with an id already used in this import or in the target Y.Doc.
+        // Otherwise generate a fresh id.
+        const originalBlockId =
+            pagNode.getAttribute('odePagStructureId') || this.getTextContent(pagNode, 'odeBlockId') || null;
+        const blockId = originalBlockId && !usedIds.has(originalBlockId) ? originalBlockId : this.generateId('block');
+        usedIds.add(blockId);
         const blockName = pagNode.getAttribute('blockName') || this.getTextContent(pagNode, 'blockName') || '';
         const order = this.getPagOrder(pagNode);
         const iconName = pagNode.getAttribute('iconName') || this.getTextContent(pagNode, 'iconName') || '';
@@ -1080,7 +1099,7 @@ export class ElpxImporter {
         });
 
         for (const compNode of sortedComponents) {
-            const compData = this.buildComponentData(compNode, zip);
+            const compData = this.buildComponentData(compNode, zip, usedIds);
             if (compData) {
                 blockData.components.push(compData);
             }
@@ -1092,11 +1111,19 @@ export class ElpxImporter {
     /**
      * Build plain JavaScript data structure for a component
      */
-    private buildComponentData(compNode: Element, _zip: Record<string, Uint8Array>): ComponentData {
+    private buildComponentData(
+        compNode: Element,
+        _zip: Record<string, Uint8Array>,
+        usedIds: Set<string>,
+    ): ComponentData {
+        // Preserve the original iDevice id from XML when present and not colliding
+        // with an id already used in this import or in the target Y.Doc.
+        // Otherwise generate a fresh id.
+        const originalComponentId =
+            compNode.getAttribute('odeComponentId') || this.getTextContent(compNode, 'odeIdeviceId') || null;
         const componentId =
-            compNode.getAttribute('odeComponentId') ||
-            this.getTextContent(compNode, 'odeIdeviceId') ||
-            this.generateId('idevice');
+            originalComponentId && !usedIds.has(originalComponentId) ? originalComponentId : this.generateId('idevice');
+        usedIds.add(componentId);
 
         let ideviceType =
             compNode.getAttribute('odeIdeviceTypeDirName') ||
@@ -1825,6 +1852,51 @@ export class ElpxImporter {
         const timestamp = Date.now().toString(36);
         const random = Math.random().toString(36).substring(2, 11);
         return `${prefix}-${timestamp}-${random}`;
+    }
+
+    /**
+     * Collect every page, block and component (iDevice) id currently present in
+     * the Y.Doc navigation. Used by merge-mode v4 imports to detect collisions
+     * with the existing document before deciding to preserve or regenerate ids.
+     *
+     * On a clean v4 import (clearExisting=true) the navigation will be wiped
+     * inside the import transaction, so the caller starts with an empty Set
+     * instead of invoking this scan.
+     */
+    private collectExistingIds(): Set<string> {
+        const ids = new Set<string>();
+        const navigation = this.getNavigation();
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            if (!page) continue;
+            const pageIdValue = page.get('id');
+            if (typeof pageIdValue === 'string') ids.add(pageIdValue);
+            const pageIdMirror = page.get('pageId');
+            if (typeof pageIdMirror === 'string') ids.add(pageIdMirror);
+
+            const blocks = page.get('blocks') as Y.Array<unknown> | undefined;
+            if (!blocks || typeof blocks.length !== 'number') continue;
+            for (let j = 0; j < blocks.length; j++) {
+                const block = blocks.get(j) as Y.Map<unknown>;
+                if (!block) continue;
+                const blockIdValue = block.get('id');
+                if (typeof blockIdValue === 'string') ids.add(blockIdValue);
+                const blockIdMirror = block.get('blockId');
+                if (typeof blockIdMirror === 'string') ids.add(blockIdMirror);
+
+                const components = block.get('components') as Y.Array<unknown> | undefined;
+                if (!components || typeof components.length !== 'number') continue;
+                for (let k = 0; k < components.length; k++) {
+                    const comp = components.get(k) as Y.Map<unknown>;
+                    if (!comp) continue;
+                    const compIdValue = comp.get('id');
+                    if (typeof compIdValue === 'string') ids.add(compIdValue);
+                    const compIdMirror = comp.get('ideviceId');
+                    if (typeof compIdMirror === 'string') ids.add(compIdMirror);
+                }
+            }
+        }
+        return ids;
     }
 
     /**
