@@ -21,7 +21,7 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
-import { generateOdeXml } from '../generators/OdeXmlGenerator';
+import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 
@@ -360,6 +360,48 @@ export abstract class BaseExporter {
         const timestamp = Date.now().toString(36);
         const random = Math.random().toString(36).substring(2, 8);
         return `${prefix}${timestamp}${random}`.toUpperCase();
+    }
+
+    /**
+     * Stable identifier used in SCORM/IMS manifests and LOM catalog/entry.
+     *
+     * Derives from the project's odeIdentifier so the LMS treats updated
+     * re-uploads as the same course (preserving learner tracking). Honours
+     * an explicit `scormIdentifier` override from project metadata.
+     *
+     * Resolution order:
+     * 1. `meta.scormIdentifier` if set (user override -- used verbatim).
+     * 2. `'eXe-MANIFEST-' + meta.odeIdentifier` (default -- shares root with content.xml).
+     * 3. `'eXe-MANIFEST-' + generateOdeId()` (fallback for legacy projects).
+     *
+     * The returned string is the FINAL `manifest@identifier` value. Manifest
+     * generators must use it as-is (i.e. they must NOT prepend their own
+     * `eXe-MANIFEST-` prefix).
+     *
+     * Related: exelearning/exelearning#1785.
+     */
+    protected getManifestIdentifier(): string {
+        const meta = this.getMetadata();
+        if (meta.scormIdentifier) {
+            return meta.scormIdentifier;
+        }
+        if (meta.odeIdentifier) {
+            return 'eXe-MANIFEST-' + meta.odeIdentifier;
+        }
+        return 'eXe-MANIFEST-' + generateOdeId();
+    }
+
+    /**
+     * Bare project identifier (without the `eXe-MANIFEST-` prefix).
+     *
+     * Used for the manifest `organization@identifier` (`eXe-<bareId>`) and
+     * for the LOM `catalog/entry` (`ODE-<bareId>`) so a single project
+     * identity flows through every artifact in the export.
+     */
+    protected getBareProjectIdentifier(): string {
+        const fullId = this.getManifestIdentifier();
+        const PREFIX = 'eXe-MANIFEST-';
+        return fullId.startsWith(PREFIX) ? fullId.slice(PREFIX.length) : fullId;
     }
 
     // =========================================================================
