@@ -1,4 +1,5 @@
 export const MATERIAL_ICON_CATALOG = [
+    "alarm",
     "work",
     "work_alert",
     "work_history",
