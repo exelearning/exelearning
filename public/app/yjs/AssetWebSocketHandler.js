@@ -20,6 +20,13 @@
  *   // Handler will auto-announce availability on connect
  *   // And respond to asset requests from server/peers
  */
+
+function safeDecodeURIComponent(value) {
+  if (value === null || value === undefined) return undefined;
+  try { return decodeURIComponent(value); }
+  catch { return value; }
+}
+
 class AssetWebSocketHandler {
   /**
    * @param {AssetManager} assetManager - Asset manager instance
@@ -927,8 +934,8 @@ class AssetWebSocketHandler {
       // Get metadata from headers
       const mime = response.headers.get('X-Original-Mime') || 'application/octet-stream';
       const hash = response.headers.get('X-Asset-Hash') || '';
-      const filename = response.headers.get('X-Filename') || undefined;
-      const folderPath = response.headers.get('X-Folder-Path') || '';
+      const filename = safeDecodeURIComponent(response.headers.get('X-Filename'));
+      const folderPath = safeDecodeURIComponent(response.headers.get('X-Folder-Path')) || '';
       const size = parseInt(response.headers.get('X-File-Size') || '0', 10);
 
       // Get blob
@@ -1056,8 +1063,8 @@ class AssetWebSocketHandler {
 
         const mime = response.headers.get('X-Original-Mime') || 'application/octet-stream';
         const hash = response.headers.get('X-Asset-Hash') || '';
-        const filename = response.headers.get('X-Filename') || undefined;
-        const folderPath = response.headers.get('X-Folder-Path') || '';
+        const filename = safeDecodeURIComponent(response.headers.get('X-Filename'));
+        const folderPath = safeDecodeURIComponent(response.headers.get('X-Folder-Path')) || '';
         const size = parseInt(response.headers.get('X-File-Size') || '0', 10);
         const blob = await response.blob();
 

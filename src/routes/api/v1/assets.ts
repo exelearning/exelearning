@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs-extra';
 
 import { db } from '../../../db/client';
+import { buildContentDisposition } from '../../../shared/http/headers';
 import {
     findProjectByUuid,
     createAsset,
@@ -310,7 +311,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             // Return file
             const fileBuffer = await readFile(asset.storage_path);
             set.headers['content-type'] = asset.mime_type || 'application/octet-stream';
-            set.headers['content-disposition'] = `attachment; filename="${asset.filename}"`;
+            set.headers['content-disposition'] = buildContentDisposition(asset.filename);
             return fileBuffer;
         },
         {

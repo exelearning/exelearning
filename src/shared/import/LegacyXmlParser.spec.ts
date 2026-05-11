@@ -164,6 +164,13 @@ describe('LegacyXmlParser', () => {
             const result = parser.preprocessLegacyXml(input);
             expect(result).toContain('&#10;');
         });
+
+        it('should keep encoded pre content inside unicode value attribute', () => {
+            const input = 'x     <unicode value="before\t&lt;pre&gt;\tkeep     spacing&lt;/pre&gt;\tafter     end"/>';
+            const result = parser.preprocessLegacyXml(input);
+
+            expect(result).toBe('x<unicode value="before&lt;pre&gt;\tkeep     spacing&lt;/pre&gt;afterend"/>');
+        });
     });
 
     describe('parse', () => {

@@ -11,6 +11,7 @@ import { Elysia } from 'elysia';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
+import { buildContentDisposition } from '../shared/http/headers';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
 import {
@@ -660,16 +661,9 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
 
                     // Set headers for download
                     const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
-                    // ASCII-only filename for compatibility
-                    const safeFilename = rawFilename.replace(/[^\x20-\x7E]/g, '_');
-                    // UTF-8 encoded filename for modern browsers (RFC 5987)
-                    const encodedFilename = encodeURIComponent(rawFilename)
-                        .replace(/['()]/g, escape)
-                        .replace(/\*/g, '%2A');
 
                     set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] =
-                        `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`;
+                    set.headers['content-disposition'] = buildContentDisposition(rawFilename);
                     set.headers['content-length'] = zipBuffer.length.toString();
 
                     return zipBuffer;
@@ -736,16 +730,9 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
 
                     // Set headers for download
                     const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
-                    // ASCII-only filename for compatibility
-                    const safeFilename = rawFilename.replace(/[^\x20-\x7E]/g, '_');
-                    // UTF-8 encoded filename for modern browsers (RFC 5987)
-                    const encodedFilename = encodeURIComponent(rawFilename)
-                        .replace(/['()]/g, escape)
-                        .replace(/\*/g, '%2A');
 
                     set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] =
-                        `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`;
+                    set.headers['content-disposition'] = buildContentDisposition(rawFilename);
                     set.headers['content-length'] = zipBuffer.length.toString();
 
                     return zipBuffer;

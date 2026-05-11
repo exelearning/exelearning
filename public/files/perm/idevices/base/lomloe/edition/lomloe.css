@@ -1,0 +1,826 @@
+/* ════════════════════════════════════════════════════════════════
+   LOMLOE iDevice — Editor Styles
+   ════════════════════════════════════════════════════════════════ */
+
+/* Pull in the export styles so the in-editor summary modal renders
+   correctly before the first save (the workarea only links the export
+   CSS after the iDevice's html view is generated). Resolves to
+   ../export/lomloe.css via the CSS file's own location. */
+@import url('../export/lomloe.css');
+
+/* ── Root container ─────────────────────────────────────────── */
+.lomloe-editor {
+    font-family: inherit;
+    font-size: 0.95em;
+    color: inherit;
+    box-sizing: border-box;
+}
+
+.lomloe-editor *,
+.lomloe-editor *::before,
+.lomloe-editor *::after {
+    box-sizing: inherit;
+}
+
+/* ── Header: framework / dataset selectors ──────────────────── */
+.lomloe-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--brand-primary-50, #e3f8f9);
+    border: 1px solid var(--brand-primary-200, #99F6EB);
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+}
+
+.lomloe-header label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    font-size: 0.88em;
+    color: var(--brand-primary-dark, #107275);
+    white-space: nowrap;
+}
+
+.lomloe-header select {
+    padding: 0.3em 0.6em;
+    border: 1px solid var(--brand-primary-200, #99F6EB);
+    border-radius: 4px;
+    background: white;
+    font-size: 0.9em;
+    color: inherit;
+    min-width: 160px;
+}
+
+.lomloe-header select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ── Two-column main layout ─────────────────────────────────── */
+.lomloe-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 0.75rem;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .lomloe-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Panel base ─────────────────────────────────────────────── */
+.lomloe-panel {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fafafa;
+    overflow: hidden;
+}
+
+.lomloe-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: var(--brand-primary, #0BA1A1);
+    color: white;
+    font-weight: 600;
+    font-size: 0.88em;
+}
+
+/* ── Loading / error states ─────────────────────────────────── */
+.lomloe-loading {
+    padding: 2rem;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+.lomloe-loading::before {
+    content: "⏳ ";
+}
+
+.lomloe-error {
+    padding: 1rem;
+    color: #b71c1c;
+    background: #ffebee;
+    border-radius: 4px;
+    margin: 0.5rem;
+}
+
+/* ── Browser panel — left ───────────────────────────────────── */
+.lomloe-browser {
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+    max-height: 75vh;
+}
+
+/* Browser body — flex child that grows and allows nested overflow */
+.lomloe-browser-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Etapa selector */
+.lomloe-etapa-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.5rem 0.75rem;
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+}
+
+.lomloe-etapa-btn {
+    padding: 0.3em 0.75em;
+    border: 1px solid var(--brand-primary-200, #99F6EB);
+    border-radius: 20px;
+    background: white;
+    color: var(--brand-primary-dark, #107275);
+    font-size: 0.82em;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+
+.lomloe-etapa-btn:hover {
+    background: var(--brand-primary-50, #e3f8f9);
+}
+
+.lomloe-etapa-btn.active {
+    background: var(--brand-primary, #0BA1A1);
+    color: white;
+    border-color: var(--brand-primary, #0BA1A1);
+}
+
+/* Nivel selector */
+.lomloe-nivel-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.4rem 0.75rem;
+    background: #fafafa;
+    border-bottom: 1px solid #eee;
+}
+
+.lomloe-nivel-btn {
+    padding: 0.2em 0.6em;
+    border: 1px solid #ccc;
+    border-radius: 16px;
+    background: white;
+    color: #444;
+    font-size: 0.82em;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+
+.lomloe-nivel-btn:hover {
+    background: var(--brand-primary-50, #e3f8f9);
+    border-color: var(--brand-primary-200, #99F6EB);
+}
+
+.lomloe-nivel-btn.active {
+    background: var(--brand-primary, #0BA1A1);
+    color: white;
+    border-color: var(--brand-primary, #0BA1A1);
+}
+
+/* Materia + content area */
+.lomloe-materia-content {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+@media (max-width: 900px) {
+    .lomloe-materia-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Materia list */
+.lomloe-materia-col {
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.lomloe-materia-search {
+    padding: 0.4rem 0.5rem;
+    border: none;
+    border-bottom: 1px solid #eee;
+    font-size: 0.85em;
+    outline: none;
+    background: white;
+}
+
+.lomloe-materia-search:focus {
+    border-bottom-color: var(--brand-primary, #0BA1A1);
+    background: var(--brand-primary-50, #e3f8f9);
+}
+
+.lomloe-materia-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.lomloe-materia-item {
+    padding: 0.45em 0.75em;
+    cursor: pointer;
+    font-size: 0.83em;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.12s;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.lomloe-materia-item:hover {
+    background: var(--brand-primary-50, #e3f8f9);
+}
+
+.lomloe-materia-item.active {
+    background: var(--brand-primary-100, #CCFBF7);
+    font-weight: 600;
+    color: var(--brand-primary-dark, #107275);
+}
+
+.lomloe-materia-placeholder {
+    padding: 0.5em;
+    color: #999;
+    font-size: 0.85em;
+    list-style: none;
+}
+
+.lomloe-materia-item .lomloe-sel-count {
+    margin-left: auto;
+    background: var(--brand-primary, #0BA1A1);
+    color: white;
+    border-radius: 10px;
+    padding: 0.05em 0.45em;
+    font-size: 0.78em;
+    min-width: 1.4em;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* Content area: tabs + content */
+.lomloe-content-col {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.lomloe-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--brand-primary, #0BA1A1);
+    background: white;
+}
+
+.lomloe-tab-btn {
+    padding: 0.5em 1em;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.lomloe-tab-btn:hover {
+    color: var(--brand-primary, #0BA1A1);
+}
+
+.lomloe-tab-btn.active {
+    color: var(--brand-primary, #0BA1A1);
+    border-bottom-color: var(--brand-primary, #0BA1A1);
+}
+
+.lomloe-tab-content {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    padding: 0.5rem 0.75rem;
+}
+
+.lomloe-no-materia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 120px;
+    color: #999;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* Saberes: blocks */
+.lomloe-block {
+    margin-bottom: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.lomloe-block-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: var(--brand-primary-50, #e3f8f9);
+    font-size: 0.83em;
+    font-weight: 700;
+    color: var(--brand-primary-dark, #107275);
+    cursor: pointer;
+    user-select: none;
+}
+
+.lomloe-block-toggle {
+    font-size: 0.75em;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+
+.lomloe-block-header.collapsed .lomloe-block-toggle {
+    transform: rotate(-90deg);
+}
+
+.lomloe-block-items {
+    padding: 0.3rem 0;
+}
+
+.lomloe-block-items.hidden {
+    display: none;
+}
+
+/* Individual saber item */
+.lomloe-saber-item {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    padding: 0.35em 0.6em;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.lomloe-saber-item:last-child {
+    border-bottom: none;
+}
+
+.lomloe-saber-item:hover {
+    background: var(--brand-primary-50, #e3f8f9);
+}
+
+.lomloe-saber-item input[type="checkbox"] {
+    margin-top: 0.2em;
+    flex-shrink: 0;
+    accent-color: var(--brand-primary, #0BA1A1);
+    cursor: pointer;
+}
+
+.lomloe-saber-texts {
+    flex: 1;
+    min-width: 0;
+}
+
+.lomloe-saber-code {
+    font-family: monospace;
+    font-size: 0.78em;
+    color: var(--brand-primary-dark, #107275);
+    background: var(--brand-primary-50, #e3f8f9);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 0.2em;
+}
+
+.lomloe-saber-s1 {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: #333;
+}
+
+.lomloe-saber-s2 {
+    font-size: 0.8em;
+    color: #555;
+    margin-top: 0.1em;
+}
+
+/* Competencias */
+.lomloe-comp-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.lomloe-comp-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: #fff8e1;
+    cursor: pointer;
+    user-select: none;
+}
+
+.lomloe-comp-toggle {
+    font-size: 0.75em;
+    margin-top: 0.2em;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+
+.lomloe-comp-header.collapsed .lomloe-comp-toggle {
+    transform: rotate(-90deg);
+}
+
+.lomloe-comp-code {
+    font-family: monospace;
+    font-size: 0.78em;
+    color: #e65100;
+    background: #fff3e0;
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.lomloe-comp-desc {
+    font-size: 0.82em;
+    color: #333;
+    flex: 1;
+}
+
+/* Criterios list */
+.lomloe-criterios {
+    padding: 0.2rem 0;
+    background: white;
+}
+
+.lomloe-criterios.hidden {
+    display: none;
+}
+
+.lomloe-criterio-item {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    padding: 0.3em 0.6em 0.3em 1.5em;
+    border-bottom: 1px solid #f5f5f5;
+    transition: background 0.12s;
+}
+
+.lomloe-criterio-item:last-child {
+    border-bottom: none;
+}
+
+.lomloe-criterio-item:hover {
+    background: #fff8e1;
+}
+
+.lomloe-criterio-item input[type="checkbox"] {
+    margin-top: 0.2em;
+    flex-shrink: 0;
+    accent-color: #e65100;
+    cursor: pointer;
+}
+
+.lomloe-criterio-texts {
+    flex: 1;
+    min-width: 0;
+}
+
+.lomloe-criterio-code {
+    font-family: monospace;
+    font-size: 0.78em;
+    color: #e65100;
+    font-weight: 600;
+    display: inline-block;
+    margin-bottom: 0.15em;
+}
+
+.lomloe-criterio-desc {
+    font-size: 0.8em;
+    color: #444;
+}
+
+.lomloe-cc-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 0.2em;
+}
+
+.lomloe-cc-tag {
+    font-size: 0.72em;
+    padding: 0.05em 0.3em;
+    border-radius: 3px;
+    background: var(--brand-primary-50, #e3f8f9);
+    color: var(--brand-primary-dark, #107275);
+    border: 1px solid var(--brand-primary-100, #CCFBF7);
+}
+
+/* ── Selected panel — right ─────────────────────────────────── */
+.lomloe-selected-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: 75vh;
+}
+
+.lomloe-selected-header {
+    padding: 0.5rem 0.75rem;
+    background: var(--brand-primary, #0BA1A1);
+    color: white;
+    font-weight: 600;
+    font-size: 0.88em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.lomloe-selected-count {
+    background: white;
+    color: var(--brand-primary, #0BA1A1);
+    border-radius: 12px;
+    padding: 0.1em 0.5em;
+    font-size: 0.85em;
+    font-weight: 700;
+}
+
+.lomloe-selected-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.3rem 0;
+}
+
+.lomloe-selected-empty {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    font-size: 0.85em;
+}
+
+.lomloe-selected-group-title {
+    padding: 0.3em 0.6em;
+    background: #f0f0f0;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: #555;
+    border-top: 1px solid #ddd;
+}
+
+.lomloe-sel-item {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.82em;
+}
+
+.lomloe-sel-item-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+}
+
+.lomloe-sel-type-icon {
+    font-size: 0.9em;
+    flex-shrink: 0;
+    margin-top: 0.1em;
+}
+
+.lomloe-sel-label {
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+    color: #333;
+}
+
+.lomloe-sel-code {
+    font-family: monospace;
+    font-size: 0.85em;
+    color: var(--brand-primary-dark, #107275);
+    display: block;
+}
+
+.lomloe-sel-remove {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 1em;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.15s;
+}
+
+.lomloe-sel-remove:hover {
+    color: #c62828;
+}
+
+.lomloe-sel-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    align-items: center;
+}
+
+.lomloe-sel-meta label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.78em;
+    color: #666;
+}
+
+.lomloe-sel-partial-label {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.3rem !important;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.lomloe-sel-partial-label input[type="checkbox"] {
+    accent-color: #e65100;
+    cursor: pointer;
+}
+
+/* ── Action buttons ─────────────────────────────────────────── */
+.lomloe-actions {
+    padding: 0.6rem 0.75rem;
+    border-top: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    background: white;
+}
+
+.lomloe-btn {
+    padding: 0.4em 0.75em;
+    border-radius: 4px;
+    border: 1px solid;
+    cursor: pointer;
+    font-size: 0.84em;
+    font-weight: 600;
+    text-align: center;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.lomloe-btn-primary {
+    background: var(--brand-primary, #0BA1A1);
+    color: white;
+    border-color: var(--brand-primary, #0BA1A1);
+}
+
+.lomloe-btn-primary:hover {
+    background: var(--brand-primary-dark, #107275);
+    border-color: var(--brand-primary-dark, #107275);
+}
+
+.lomloe-btn-secondary {
+    background: white;
+    color: #555;
+    border-color: #ccc;
+}
+
+.lomloe-btn-secondary:hover {
+    background: #f5f5f5;
+}
+
+.lomloe-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Modal — summary preview ────────────────────────────────── */
+.lomloe-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.lomloe-modal-overlay[hidden] {
+    display: none;
+}
+
+.lomloe-modal-box {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.lomloe-modal-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--brand-primary, #0BA1A1);
+    color: white;
+}
+
+.lomloe-modal-top h2 {
+    margin: 0;
+    font-size: 1em;
+    font-weight: 700;
+}
+
+.lomloe-modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.3em;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+}
+
+.lomloe-modal-close:hover {
+    opacity: 1;
+}
+
+.lomloe-modal-body {
+    overflow-y: auto;
+    padding: 1rem;
+    flex: 1;
+}
+
+/* Dataset coming-soon notice */
+.lomloe-dataset-notice {
+    padding: 0.75rem 1rem;
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 5px;
+    font-size: 0.85em;
+    color: #5d4037;
+    margin-bottom: 0.75rem;
+}
+
+/* ── Tooltip (Popover API + JS positioning, see installTooltipController) ── */
+.lomloe-editor [data-lomloe-tip] {
+    cursor: help;
+}
+
+#lomloe-tooltip {
+    margin: 0;
+    padding: 8px 12px;
+    border: 0;
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    font-size: 13px;
+    font-weight: normal;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    border-radius: 6px;
+    max-width: 360px;
+    min-width: 80px;
+    width: max-content;
+    text-align: left;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    position: fixed;
+    /* Fallback z-index for browsers without the Popover API top layer. */
+    z-index: 2147483647;
+}

@@ -118,6 +118,10 @@ export const API_ROUTES: RouteMap = {
 
     // Platform
     set_platform_new_ode: { path: '/api/platform/integration/set_platform_new_ode', methods: ['POST'] },
+    set_platform_new_ode_browser: {
+        path: '/api/platform/integration/set_platform_new_ode_browser',
+        methods: ['POST'],
+    },
     open_platform_elp: { path: '/api/platform/integration/openPlatformElp', methods: ['POST'] },
 
     // Config

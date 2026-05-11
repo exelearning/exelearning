@@ -1459,6 +1459,7 @@ export default class ModalFilemanager extends Modal {
         if (mime.startsWith('image/')) return _('Image');
         if (mime.startsWith('video/')) return _('Video');
         if (mime.startsWith('audio/')) return _('Audio');
+        if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/vnd.mmtf') return _('3D Model');
         if (mime.includes('pdf')) return _('PDF');
         return _('File');
     }
@@ -1477,7 +1478,7 @@ export default class ModalFilemanager extends Modal {
             if (mime.startsWith('audio/')) return 'audiotrack';
             if (mime === 'application/pdf') return 'picture_as_pdf';
             if (mime === 'application/zip' || mime === 'application/x-zip-compressed') return 'folder_zip';
-            if (mime === 'model/stl' || mime === 'application/sla') return 'view_in_ar';
+            if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/sla' || mime === 'application/vnd.mmtf') return 'view_in_ar';
         }
 
         // Check by file extension
@@ -1500,6 +1501,18 @@ export default class ModalFilemanager extends Modal {
                 case 'fbx':
                 case 'gltf':
                 case 'glb':
+                case 'pdb':
+                case 'sdf':
+                case 'mol2':
+                case 'xyz':
+                case 'cif':
+                case 'mmcif':
+                case 'mmtf':
+                case 'gro':
+                case 'pqr':
+                case 'prmtop':
+                case 'vasp':
+                case 'cube':
                     return 'view_in_ar';
                 case 'doc':
                 case 'docx':
@@ -1544,6 +1557,7 @@ export default class ModalFilemanager extends Modal {
         if (mime.startsWith('image/')) return 'image';
         if (mime.startsWith('video/')) return 'video';
         if (mime.startsWith('audio/')) return 'audio';
+        if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/vnd.mmtf') return 'model';
         if (mime === 'application/pdf') return 'pdf';
         return 'other';
     }
@@ -1569,12 +1583,13 @@ export default class ModalFilemanager extends Modal {
             image: _('Images'),
             video: _('Videos'),
             audio: _('Audio'),
+            model: _('3D Models'),
             pdf: _('PDF'),
             other: _('Other')
         };
 
         // Type order for consistent display
-        const typeOrder = ['image', 'video', 'audio', 'pdf', 'other'];
+        const typeOrder = ['image', 'video', 'audio', 'model', 'pdf', 'other'];
 
         // Add options for existing types
         for (const type of typeOrder) {
@@ -3342,6 +3357,9 @@ export default class ModalFilemanager extends Modal {
             'odp':  'application/vnd.oasis.opendocument.presentation',
             // Other
             'zip': 'application/zip',
+            'gz': 'application/gzip',
+            'tgz': 'application/gzip',
+            'tar': 'application/x-tar',
             'json': 'application/json',
             'xml': 'application/xml',
             'html': 'text/html',
@@ -3351,6 +3369,19 @@ export default class ModalFilemanager extends Modal {
             'md': 'text/markdown',
             'csv': 'text/csv',
             'stl': 'model/stl',
+            // Molecular / structural formats
+            'pdb': 'chemical/x-pdb',
+            'sdf': 'chemical/x-mdl-sdfile',
+            'mol2': 'chemical/x-mol2',
+            'xyz': 'chemical/x-xyz',
+            'cif': 'chemical/x-cif',
+            'mmcif': 'chemical/x-cif',
+            'mmtf': 'application/vnd.mmtf',
+            'gro': 'chemical/x-gromacs',
+            'pqr': 'chemical/x-pqr',
+            'prmtop': 'chemical/x-amber-prmtop',
+            'vasp': 'model/x-poscar',
+            'cube': 'chemical/x-gaussian-cube',
         };
         return mimeTypes[ext] || 'application/octet-stream';
     }
