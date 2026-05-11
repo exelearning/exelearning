@@ -1,0 +1,11 @@
+{
+    "name": "slide-idevice-bundle",
+    "private": true,
+    "scripts": {
+        "build": "bun run src/build.ts"
+    },
+    "dependencies": {
+        "dompurify": "^3.2.4",
+        "fabric": "^6.5.4"
+    }
+}

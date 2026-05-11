@@ -68,6 +68,7 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'true-or-false',
         'scrambled-list',
         'magnifier',
+        'slide',
     ];
     const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
 
