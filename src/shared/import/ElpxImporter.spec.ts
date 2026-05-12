@@ -2333,6 +2333,45 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
             ydoc.destroy();
         });
 
+        it('should still populate metadata.odeIdentifier when <odeProperties> is absent (DTD edge case)', async () => {
+            // The DTD makes <odeProperties> optional. A valid v4 content.xml
+            // may carry <odeResources> alone. Stable identifiers must reach the
+            // Y.Doc metadata regardless of whether <odeProperties> exists.
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>20251201123456FEDCBA</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+            expect(metadata.get('odeVersionId')).toBe('20251201123456FEDCBA');
+
+            ydoc.destroy();
+        });
+
         it('should tolerate empty <odeResources> block on v4 import', async () => {
             const fflate = await import('fflate');
             const encoder = new TextEncoder();

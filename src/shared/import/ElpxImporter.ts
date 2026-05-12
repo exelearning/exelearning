@@ -487,8 +487,13 @@ export class ElpxImporter {
                     this.logger.log('[ElpxImporter] Navigation cleared');
                 }
 
-                // Set metadata only if clearing (replacing) the document
-                if (odeProperties && clearExisting) {
+                // Set metadata only if clearing (replacing) the document.
+                // <odeProperties> is optional per the DTD, so we also write
+                // when <odeResources> alone carried stable identifiers --
+                // otherwise odeIdentifier / odeVersionId would never reach
+                // the Y.Doc on those minimal documents.
+                const hasStableIdentifiers = Boolean(metadataValues.odeIdentifier || metadataValues.odeVersionId);
+                if (clearExisting && (odeProperties || hasStableIdentifiers)) {
                     this.logger.log('[ElpxImporter] Setting metadata...');
                     this.setMetadata(metadata, metadataValues);
                     this.logger.log('[ElpxImporter] Metadata set');
