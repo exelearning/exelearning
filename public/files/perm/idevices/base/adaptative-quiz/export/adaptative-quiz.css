@@ -166,9 +166,20 @@
     flex-shrink: 0;
 }
 
+/*
+ * Option variant: anchored inside the option's top-right corner. Identical
+ * placement whether the question has an image (2-column grid layout) or not
+ * (single-column layout), so the play button looks the same in both cases.
+ */
+.ADAPTATIVEQUIZ-AudioToggle--option {
+    top: 0.35em;
+    right: 0.35em;
+}
+
 .ADAPTATIVEQUIZ-Option--has-audio {
     position: relative;
-    padding-right: 1.5em;
+    padding-top: 1.75em;
+    padding-right: 0.75em;
 }
 
 .ADAPTATIVEQUIZ-Options {

@@ -69,6 +69,20 @@
     width: 100%;
 }
 
+.ADQ-EAudioField .ADQ-EAudioPlay {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.ADQ-EAudioField .ADQ-EAudioPlay img {
+    display: block;
+    height: 1.7em;
+    width: 1.7em;
+}
+
 .ADQ-EInputWithToggle {
     width: 100%;
 }

@@ -653,8 +653,29 @@ var $adaptativequiz = {
             }
             $container.find('.ADAPTATIVEQUIZ-AudioToggle').removeClass('is-playing');
         };
-        const play = url => {
+        const play = async url => {
             if (!url) return;
+            // Audio URLs entered via the file picker are stored as `asset://`
+            // identifiers. The AssetResolver auto-resolves these for media
+            // tags and anchor hrefs inserted in the DOM, but not for the
+            // `data-audio-url` attribute we render on the toggle button, so
+            // the raw `asset://` URL would reach `new Audio()` and the
+            // browser would fail with `ERR_UNKNOWN_URL_SCHEME`. Resolve it
+            // here (the resolver is a no-op for non-asset URLs and in real
+            // exports where URLs are rewritten to relative paths).
+            if (
+                url.startsWith('asset://') &&
+                typeof window !== 'undefined' &&
+                window.eXeLearningAssetResolver &&
+                typeof window.eXeLearningAssetResolver.resolve === 'function'
+            ) {
+                try {
+                    const resolved = await window.eXeLearningAssetResolver.resolve(url);
+                    if (resolved) url = resolved;
+                } catch (_err) {
+                    // Fall through with the original URL — playSound will log.
+                }
+            }
             if (
                 typeof $exeDevices !== 'undefined' &&
                 $exeDevices.iDevice &&
@@ -734,8 +755,13 @@ var $adaptativequiz = {
         } else if (tSel === 1) {
             // Sort: drag-and-drop reorderable list. Each item shows a live
             // rank badge (1..n) reflecting its visual position.
+            //
+            // Use a 2-column grid when there is an option audio (so the
+            // audio buttons don't push the rows too wide) or when the
+            // question itself has a stem image (so the answers don't push
+            // the image off-screen on narrow viewports).
             const hasOptionAudio = order.some(origIndex => (question.options[origIndex] || {}).audio);
-            const layoutClass = hasOptionAudio ? ' ADAPTATIVEQUIZ-OptionsGrid' : '';
+            const layoutClass = hasOptionAudio || stemImage ? ' ADAPTATIVEQUIZ-OptionsGrid' : '';
             html += `<ol class="ADAPTATIVEQUIZ-Options ADAPTATIVEQUIZ-SortList${layoutClass}" data-type-select="1">`;
             for (let visualIndex = 0; visualIndex < order.length; visualIndex++) {
                 const origIndex = order[visualIndex];
@@ -760,8 +786,11 @@ var $adaptativequiz = {
             }
             html += '</ol>';
         } else {
+            // Same rationale as the sort branch above: switch to the
+            // 2-column layout when option audio is present, or when the
+            // question has a stem image.
             const hasOptionAudio = order.some(origIndex => (question.options[origIndex] || {}).audio);
-            const layoutClass = hasOptionAudio ? ' ADAPTATIVEQUIZ-OptionsGrid' : '';
+            const layoutClass = hasOptionAudio || stemImage ? ' ADAPTATIVEQUIZ-OptionsGrid' : '';
             // Default to multi-select (checkbox) for tSel===0 and any unknown.
             html += `<div class="ADAPTATIVEQUIZ-Options${layoutClass}" role="group" data-type-select="${tSel}">`;
             const groupName = `adaptativeQuizAnswer-${id}`;

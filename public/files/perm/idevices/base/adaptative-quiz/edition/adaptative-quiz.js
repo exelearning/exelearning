@@ -161,13 +161,21 @@ var $exeDevice = {
      * `data-voice-recorder` pattern so common_edition wires the mic control.
      * Collapsed by default; revealed via the "more" toggle rendered next to
      * the corresponding text input (see `audioToggleButton`).
+     *
+     * A play button (image link) is appended next to the picker, mirroring
+     * `#quextEPlayAudio` in quick-questions: clicking it plays the currently
+     * referenced audio, or toggles playback if the same file is already
+     * sounding (toggle behavior lives in `helpers.playSound`).
      */
     audioField: idSuffix => {
         const inputId = 'adaptativeQuizAudio-' + idSuffix;
+        const path = $exeDevice.idevicePath || '';
+        const playLabel = _('Play audio');
         return `
             <div class="ADQ-EAudioField d-flex align-items-center gap-2 flex-nowrap mb-2" data-voice-recorder data-voice-input="#${inputId}" data-audio-slot="${idSuffix}" style="display:none">
                 <label class="sr-av" for="${inputId}">${_('Audio URL')}</label>
                 <input type="text" class="exe-file-picker w-100 form-control me-0 ADQ-EAudioInput" id="${inputId}" data-audio-slot="${idSuffix}" />
+                <a href="#" class="ADQ-ENavigationButton ADQ-EAudioPlay" data-audio-play="${idSuffix}" title="${playLabel}" aria-label="${playLabel}"><img src="${path}quextIEPlay.png" alt="${playLabel}" class="ADQ-ENavigationButton" /></a>
             </div>
         `;
     },
@@ -381,13 +389,7 @@ var $exeDevice = {
                                     </div>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                         <label for="adaptativeQuizDifficulty">${_('Difficulty')}:</label>
-                                        <select id="adaptativeQuizDifficulty" class="form-control form-control-sm ADQ-EDifficulty" style="width:auto">
-                                            <option value="1">1</option>
-                                            <option value="2" selected>2</option>
-                                            <option value="3">3</option>
-                                            <option value="4" data-level-extra="4" style="display:none">4</option>
-                                            <option value="5" data-level-extra="5" style="display:none">5</option>
-                                        </select>
+                                        <select id="adaptativeQuizDifficulty" class="form-control form-control-sm ADQ-EDifficulty" style="width:auto"></select>
                                     </div>
                                     <span id="adaptativeQuizTitleImage" style="display:none">${_('Image URL')}</span>
                                 </div>
@@ -563,7 +565,7 @@ var $exeDevice = {
         solutionWord: '',
         solutionWordAudio: '',
         percentageShow: 35,
-        difficulty: 2,
+        difficulty: 1,
         msgHit: '',
         msgHitAudio: '',
         msgError: '',
@@ -592,7 +594,7 @@ var $exeDevice = {
         $('input[name="adqtypeselect"][value="' + tSel + '"]').prop('checked', true);
         $('input[name="adqtype"][value="' + (q.type || 0) + '"]').prop('checked', true);
         $('input[name="adqnumber"][value="' + (q.numberOptions || 4) + '"]').prop('checked', true);
-        $('#adaptativeQuizDifficulty').val(String(q.difficulty || 2));
+        $('#adaptativeQuizDifficulty').val(String(q.difficulty || 1));
 
         if (q.type === 1) {
             $('#adaptativeQuizInputImage').removeClass('d-none').addClass('d-flex');
@@ -714,13 +716,11 @@ var $exeDevice = {
     },
 
     /**
-     * Rebuild the level-filter `<select>` options based on the current
-     * `numLevels` and the user-defined level names. Preserves the current
-     * `levelFilter` value when still valid; otherwise resets to “All”.
+     * Build the list of level names currently in use. Reads the user-edited
+     * inputs in the Options panel and falls back to the translated defaults
+     * (Easy/Medium/Hard/Expert/Master) when an input is missing or empty.
      */
-    populateLevelFilter: function () {
-        const $sel = $('#adaptativeQuizELevelFilter');
-        if (!$sel.length) return;
+    getLevelNames: function () {
         const names = [];
         for (let i = 1; i <= this.numLevels; i++) {
             const $input = $('#adaptativeQuizLevelName' + i);
@@ -736,6 +736,38 @@ var $exeDevice = {
             const name = ($input.val() || fallback || ('Level ' + i)).toString();
             names.push(name);
         }
+        return names;
+    },
+
+    /**
+     * Rebuild the difficulty `<select>` so the author sees the configured
+     * level names (Easy/Medium/Hard/…) instead of bare numbers. The option
+     * value is still the 1-based level index used everywhere internally.
+     * Preserves the current selection when still in range.
+     */
+    populateDifficultyOptions: function () {
+        const $sel = $('#adaptativeQuizDifficulty');
+        if (!$sel.length) return;
+        const names = this.getLevelNames();
+        const previous = parseInt($sel.val(), 10);
+        let html = '';
+        for (let i = 0; i < names.length; i++) {
+            html += `<option value="${i + 1}">${names[i]}</option>`;
+        }
+        $sel.html(html);
+        const desired = Number.isInteger(previous) && previous >= 1 && previous <= this.numLevels ? previous : 1;
+        $sel.val(String(desired));
+    },
+
+    /**
+     * Rebuild the level-filter `<select>` options based on the current
+     * `numLevels` and the user-defined level names. Preserves the current
+     * `levelFilter` value when still valid; otherwise resets to “All”.
+     */
+    populateLevelFilter: function () {
+        const $sel = $('#adaptativeQuizELevelFilter');
+        if (!$sel.length) return;
+        const names = this.getLevelNames();
         const previous = this.levelFilter;
         let html = `<option value="0">${_('All')}</option>`;
         for (let i = 0; i < names.length; i++) {
@@ -887,16 +919,11 @@ var $exeDevice = {
         $('#adaptativeQuizLevelName5Wrap').toggle(showFive);
         $('#adaptativeQuizInitialLevel option[data-level-extra="4"]').toggle(showFour);
         $('#adaptativeQuizInitialLevel option[data-level-extra="5"]').toggle(showFive);
-        $('#adaptativeQuizDifficulty option[data-level-extra="4"]').toggle(showFour);
-        $('#adaptativeQuizDifficulty option[data-level-extra="5"]').toggle(showFive);
         $('input[name="adqnumlevels"][value="' + value + '"]').prop('checked', true);
 
         const maxLevel = this.LEVELS[this.LEVELS.length - 1];
         if (parseInt($('#adaptativeQuizInitialLevel').val(), 10) > maxLevel) {
             $('#adaptativeQuizInitialLevel').val(String(maxLevel));
-        }
-        if (parseInt($('#adaptativeQuizDifficulty').val(), 10) > maxLevel) {
-            $('#adaptativeQuizDifficulty').val(String(maxLevel));
         }
         for (const q of this.questionsGame) {
             if (q && Number.isInteger(q.difficulty) && q.difficulty > maxLevel) {
@@ -904,6 +931,7 @@ var $exeDevice = {
             }
         }
         if (this.levelFilter > maxLevel) this.levelFilter = 0;
+        this.populateDifficultyOptions();
         this.populateLevelFilter();
         this.updateAIHint();
     },
@@ -945,8 +973,8 @@ var $exeDevice = {
         q.typeSelect = tSel;
         q.type = parseInt($('input[name="adqtype"]:checked').val()) || 0;
         q.numberOptions = parseInt($('input[name="adqnumber"]:checked').val()) || 4;
-        q.difficulty = parseInt($('#adaptativeQuizDifficulty').val()) || 2;
-        if (this.LEVELS.indexOf(q.difficulty) === -1) q.difficulty = 2;
+        q.difficulty = parseInt($('#adaptativeQuizDifficulty').val()) || 1;
+        if (this.LEVELS.indexOf(q.difficulty) === -1) q.difficulty = 1;
         q.url = q.type === 1 ? $('#adaptativeQuizEURLImage').val() || '' : '';
         if (q.typeSelect === 2) {
             // Word type reads its own dedicated inputs.
@@ -1330,7 +1358,7 @@ var $exeDevice = {
         if (Number.isInteger(difficulty) && this.LEVELS.indexOf(difficulty) === -1 && legacyMap[difficulty]) {
             difficulty = legacyMap[difficulty];
         }
-        if (this.LEVELS.indexOf(difficulty) === -1) difficulty = 2;
+        if (this.LEVELS.indexOf(difficulty) === -1) difficulty = 1;
 
         const numberOptions = Math.max(
             this.MIN_OPTIONS,
@@ -1748,7 +1776,7 @@ var $exeDevice = {
         const maxLevel = this.LEVELS[this.LEVELS.length - 1];
         const difficulty = Number.isInteger(q.difficulty)
             ? Math.min(Math.max(q.difficulty, 1), maxLevel)
-            : 2;
+            : 1;
         const level = difficulty - 1;
         const tSelRaw = Number.isInteger(q.typeSelect) ? q.typeSelect : 0;
         const typeSelect = tSelRaw === 1 || tSelRaw === 2 ? tSelRaw : 0;
@@ -2019,12 +2047,18 @@ var $exeDevice = {
         });
         $('#adaptativeQuizENumberQuestion').on('change', () => $exeDevice.goToQuestion());
 
-        // Level-filter dropdown: refresh its options when level names change
-        // and apply the new filter when the value is changed.
+        // Level-filter and difficulty dropdowns: refresh their options when
+        // level names change and apply the new filter when the value is
+        // changed. The difficulty select shows the user-defined level names
+        // (e.g. Easy/Medium/Hard) rather than bare numbers.
+        $exeDevice.populateDifficultyOptions();
         $exeDevice.populateLevelFilter();
         $('#adaptativeQuizLevelName1, #adaptativeQuizLevelName2, #adaptativeQuizLevelName3, #adaptativeQuizLevelName4, #adaptativeQuizLevelName5').on(
             'change',
-            () => $exeDevice.populateLevelFilter(),
+            () => {
+                $exeDevice.populateDifficultyOptions();
+                $exeDevice.populateLevelFilter();
+            },
         );
         $('#adaptativeQuizELevelFilter').on('change', function () {
             $exeDevice.applyLevelFilter($(this).val());
@@ -2078,6 +2112,20 @@ var $exeDevice = {
             $field.css('display', isHidden ? '' : 'none');
             this.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
             this.classList.toggle('ADQ-EAudioToggle--active', isHidden);
+        });
+
+        // Audio play button: mirrors quick-questions' `#quextEPlayAudio`.
+        // Plays the file referenced by the sibling .ADQ-EAudioInput; if the
+        // same file is already sounding, helpers.playSound toggles pause.
+        $('#adaptativeQuizIdeviceForm').on('click', '.ADQ-EAudioPlay', function (e) {
+            e.preventDefault();
+            const slot = this.getAttribute('data-audio-play');
+            if (!slot) return;
+            const $input = $('#adaptativeQuizIdeviceForm .ADQ-EAudioInput[data-audio-slot="' + slot + '"]');
+            const selectedFile = ($input.val() || '').trim();
+            if (selectedFile.length > 4) {
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+            }
         });
     },
 

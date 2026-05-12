@@ -391,13 +391,39 @@ describe('adaptative-quiz edition', () => {
     });
 
     describe('save', () => {
+        // The save path goes through validateData(), which requires every
+        // active level to have at least 2 questions. The active question
+        // (index 0) is always overwritten by readQuestionFromDom() using the
+        // form's #adaptativeQuizDifficulty value (2 in the minimal form), so
+        // we seed the rest of the array with one extra level-2 question plus
+        // two each at levels 1 and 3 to satisfy the gate.
+        function buildValidQuestions(idev) {
+            const make = difficulty => ({
+                ...idev.getCuestionDefault(),
+                difficulty,
+                question: 'Q',
+                options: [
+                    { text: 'A', audio: '' },
+                    { text: 'B', audio: '' },
+                    { text: '', audio: '' },
+                    { text: '', audio: '' },
+                    { text: '', audio: '' },
+                    { text: '', audio: '' },
+                ],
+                numberOptions: 2,
+                solutionMulti: [0],
+            });
+            // [0] is the active row and is rebuilt from the DOM (difficulty 2).
+            return [make(2), make(2), make(1), make(1), make(3), make(3)];
+        }
+
         function buildMinimalForm() {
             document.body.innerHTML = `
                 <div class="idevice_node adaptative-quiz" id="idevice-42">
                     <div id="adaptativeQuizIdeviceForm">
                         <input type="radio" name="adqtype" value="0" checked />
                         <input type="radio" name="adqnumber" value="2" checked />
-                        <select id="adaptativeQuizDifficulty"><option value="2" selected>2</option></select>
+                        <select id="adaptativeQuizDifficulty"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
                         <input id="adaptativeQuizEURLImage" value="" />
                         <input id="adaptativeQuizAudio-question" value="" />
                         <input id="adaptativeQuizEQuestion" value="Sample question?" />
@@ -474,7 +500,7 @@ describe('adaptative-quiz edition', () => {
 
             buildMinimalForm();
             idevice.ideviceBody = document.querySelector('.idevice_node.adaptative-quiz');
-            idevice.questionsGame = [idevice.getCuestionDefault()];
+            idevice.questionsGame = buildValidQuestions(idevice);
             idevice.active = 0;
             idevice.refreshTranslations();
             idevice.setMessagesInfo();
@@ -525,7 +551,7 @@ describe('adaptative-quiz edition', () => {
             form.appendChild(time);
 
             idevice.ideviceBody = document.querySelector('.idevice_node.adaptative-quiz');
-            idevice.questionsGame = [idevice.getCuestionDefault()];
+            idevice.questionsGame = buildValidQuestions(idevice);
             idevice.active = 0;
             idevice.refreshTranslations();
             idevice.setMessagesInfo();
@@ -620,15 +646,14 @@ describe('adaptative-quiz edition', () => {
 
             buildMinimalForm();
             idevice.ideviceBody = document.querySelector('.idevice_node.adaptative-quiz');
-            idevice.questionsGame = [idevice.getCuestionDefault()];
+            idevice.questionsGame = buildValidQuestions(idevice);
             idevice.active = 0;
             idevice.refreshTranslations();
             idevice.setMessagesInfo();
-
             const result = idevice.save();
             expect(result).toBeTruthy();
             expect(result.typeGame).toBe('Adaptative Quiz');
-            expect(result.questionsGame).toHaveLength(1);
+            expect(result.questionsGame).toHaveLength(6);
             expect(result.questionsGame[0].question).toBe('Sample question?');
             expect(result.id).toBe('idevice-42');
         });
@@ -679,7 +704,7 @@ describe('adaptative-quiz edition', () => {
             form.appendChild(t);
 
             idevice.ideviceBody = document.querySelector('.idevice_node.adaptative-quiz');
-            idevice.questionsGame = [idevice.getCuestionDefault()];
+            idevice.questionsGame = buildValidQuestions(idevice);
             idevice.active = 0;
             idevice.refreshTranslations();
             idevice.setMessagesInfo();
@@ -816,7 +841,7 @@ describe('adaptative-quiz edition', () => {
                         <input type="radio" name="adqtypeselect" value="2" id="adaptativeQuizTypeWord" />
                         <input type="radio" name="adqtype" value="0" checked />
                         <input type="radio" name="adqnumber" value="4" checked />
-                        <select id="adaptativeQuizDifficulty"><option value="2" selected>2</option></select>
+                        <select id="adaptativeQuizDifficulty"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
                         <input id="adaptativeQuizEURLImage" value="" />
                         <input id="adaptativeQuizAudio-question" value="" />
                         <input id="adaptativeQuizEQuestion" value="Q" />
