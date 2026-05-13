@@ -131,9 +131,7 @@ var $exeDevice = {
             msgQuestionEmpty: _('Question %s: the question text cannot be empty.'),
             msgOptionsIncomplete: _('Question %s: please fill in all answer options.'),
             msgNoCorrectSelected: _('Question %s: please mark which option is the correct answer.'),
-            msgNumQuestionsRange: _(
-                'Number of questions per round must be between 1 and the total number of questions.',
-            ),
+            msgNumQuestionsRange: _('You must add at least %s questions.'),
             msgInitialLevelEmpty: _(
                 'Warning: the selected initial level has no questions. The quiz will start using the fallback level.',
             ),
@@ -150,6 +148,15 @@ var $exeDevice = {
     showMessage: msg => {
         eXe.app.alert(msg);
     },
+
+    cleanQuestionPrefix: function (msg, questionNumber) {
+        const clean = String(msg || '')
+            .replace('%s', questionNumber)
+            .replace(/^[^:]+:\s*/, '');
+        return clean.charAt(0).toUpperCase() + clean.slice(1);
+    },
+
+    normalizeQuestionsPerRound: value => Math.max(parseInt(value, 10) || 1, 1),
 
     removeTags: str =>
         String(str ?? '')
@@ -260,11 +267,11 @@ var $exeDevice = {
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="adaptativeQuizNumRound" class="mb-0">${_('Questions per round')}:</label>
-                                <input type="number" id="adaptativeQuizNumRound" class="form-control form-control-sm" style="width:8ch" value="10" min="1" />
+                                <input type="number" id="adaptativeQuizNumRound" class="form-control form-control-sm ADQ-ENumberInput" value="6" min="1" />
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="adaptativeQuizETime" class="mb-0">${_('Time (minutes)')}:</label>
-                                <input type="number" id="adaptativeQuizETime" class="form-control form-control-sm" style="width:8ch" value="0" min="0" max="59" />
+                                <input type="number" id="adaptativeQuizETime" class="form-control form-control-sm ADQ-ENumberInput" value="0" min="0" max="59" />
                                 <small class="text-muted">${_('Set to 0 to disable the time limit.')}</small>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
@@ -1049,10 +1056,10 @@ var $exeDevice = {
             // learner has to type, so the matching error message is
             // "please provide the solution word" rather than
             // "the question text cannot be empty".
-            const msg =
-                tSel === 2
-                    ? this.msgs.msgEProvideWord.replace('%s', human)
-                    : this.msgs.msgQuestionEmpty.replace('%s', human);
+            const msg = this.cleanQuestionPrefix(
+                tSel === 2 ? this.msgs.msgEProvideWord : this.msgs.msgQuestionEmpty,
+                human,
+            );
             this.showMessage(msg);
             return false;
         }
@@ -1062,7 +1069,7 @@ var $exeDevice = {
             // shown to the learner), so a missing value here is reported as
             // a missing definition.
             if (!q.solutionWord || this.removeTags(q.solutionWord).length === 0) {
-                this.showMessage(this.msgs.msgEDefinition.replace('%s', human));
+                this.showMessage(this.cleanQuestionPrefix(this.msgs.msgEDefinition, human));
                 return false;
             }
             return true;
@@ -1071,7 +1078,7 @@ var $exeDevice = {
         const num = q.numberOptions || 4;
         for (let k = 0; k < num; k++) {
             if (!q.options[k] || !q.options[k].text || this.removeTags(q.options[k].text).length === 0) {
-                this.showMessage(this.msgs.msgOptionsIncomplete.replace('%s', human));
+                this.showMessage(this.cleanQuestionPrefix(this.msgs.msgOptionsIncomplete, human));
                 return false;
             }
         }
@@ -1086,7 +1093,7 @@ var $exeDevice = {
             // marked indexes must still be within range.
             const inRange = q.solutionMulti.every(idx => idx >= 0 && idx < num);
             if (!inRange) {
-                this.showMessage(this.msgs.msgESelectAtLeastOne.replace('%s', human));
+                this.showMessage(this.cleanQuestionPrefix(this.msgs.msgESelectAtLeastOne, human));
                 return false;
             }
         }
@@ -1433,9 +1440,10 @@ var $exeDevice = {
             return false;
         }
 
-        const numRound = parseInt($('#adaptativeQuizNumRound').val()) || this.DEFAULT_MIN_PLAY;
-        if (numRound < 1 || numRound > this.questionsGame.length) {
-            this.showMessage(this.msgs.msgNumQuestionsRange);
+        const numRound = this.normalizeQuestionsPerRound($('#adaptativeQuizNumRound').val());
+        $('#adaptativeQuizNumRound').val(numRound);
+        if (numRound > this.questionsGame.length) {
+            this.showMessage(this.msgs.msgNumQuestionsRange.replace('%s', numRound));
             return false;
         }
 
@@ -1987,9 +1995,7 @@ var $exeDevice = {
         $('#adaptativeQuizNumRound').on('focusout', () => {
             const el = document.getElementById('adaptativeQuizNumRound');
             if (!el) return;
-            const total = Math.max(1, this.questionsGame.length);
-            const current = parseInt(el.value) || 1;
-            el.value = Math.min(Math.max(current, 1), total);
+            el.value = this.normalizeQuestionsPerRound(el.value);
         });
 
         $('#adaptativeQuizETime').on('focusout', () => {

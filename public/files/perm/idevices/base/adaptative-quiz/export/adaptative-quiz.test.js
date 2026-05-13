@@ -154,6 +154,144 @@ describe('adaptative-quiz export', () => {
         });
     });
 
+    describe('pickNextQuestionIndex', () => {
+        it('uses lower-level fallback questions after exhausting the maximum level', () => {
+            const opts = {
+                maxLevel: 3,
+                currentLevel: 3,
+                maxLevelReached: 3,
+                answeredIndexes: [2, 3],
+                questions: [
+                    { difficulty: 1 },
+                    { difficulty: 1 },
+                    { difficulty: 3 },
+                    { difficulty: 3 },
+                ],
+            };
+
+            const idx = adq.pickNextQuestionIndex(opts);
+
+            expect([0, 1]).toContain(idx);
+            expect(opts.currentLevel).toBe(3);
+            expect(opts.maxLevelReached).toBe(3);
+        });
+
+        it('repeats the current non-maximum level when its pending questions are exhausted', () => {
+            const opts = {
+                maxLevel: 3,
+                currentLevel: 2,
+                maxLevelReached: 2,
+                answeredIndexes: [2, 3],
+                questions: [
+                    { difficulty: 1 },
+                    { difficulty: 1 },
+                    { difficulty: 2 },
+                    { difficulty: 2 },
+                    { difficulty: 3 },
+                ],
+            };
+
+            const idx = adq.pickNextQuestionIndex(opts);
+
+            expect([2, 3]).toContain(idx);
+            expect(opts.currentLevel).toBe(2);
+            expect(opts.maxLevelReached).toBe(2);
+        });
+
+        it('prefers pending lower-level questions from easy after exhausting the maximum level', () => {
+            const opts = {
+                maxLevel: 3,
+                currentLevel: 3,
+                maxLevelReached: 3,
+                answeredIndexes: [0, 4, 5],
+                questions: [
+                    { difficulty: 1 },
+                    { difficulty: 1 },
+                    { difficulty: 2 },
+                    { difficulty: 2 },
+                    { difficulty: 3 },
+                    { difficulty: 3 },
+                ],
+            };
+
+            const idx = adq.pickNextQuestionIndex(opts);
+
+            expect(idx).toBe(1);
+            expect(opts.currentLevel).toBe(3);
+            expect(opts.maxLevelReached).toBe(3);
+        });
+
+        it('repeats easy questions before medium after the maximum level and all lower pending questions are exhausted', () => {
+            const opts = {
+                maxLevel: 3,
+                currentLevel: 3,
+                maxLevelReached: 3,
+                answeredIndexes: [0, 1, 2, 3, 4, 5],
+                questions: [
+                    { difficulty: 1 },
+                    { difficulty: 1 },
+                    { difficulty: 2 },
+                    { difficulty: 2 },
+                    { difficulty: 3 },
+                    { difficulty: 3 },
+                ],
+            };
+
+            const idx = adq.pickNextQuestionIndex(opts);
+
+            expect([0, 1]).toContain(idx);
+            expect(opts.currentLevel).toBe(3);
+            expect(opts.maxLevelReached).toBe(3);
+        });
+    });
+
+    describe('applyAdaptation', () => {
+        const baseOpts = () => ({
+            maxLevel: 3,
+            currentLevel: 3,
+            maxLevelReached: 3,
+            consecutiveCorrect: 0,
+            consecutiveWrong: 0,
+        });
+
+        it('moves down after two consecutive wrong answers while staying in the current level', () => {
+            const opts = baseOpts();
+
+            expect(adq.applyAdaptation(opts, false)).toBe(0);
+            expect(opts.currentLevel).toBe(3);
+            expect(opts.consecutiveWrong).toBe(1);
+
+            expect(adq.applyAdaptation(opts, false)).toBe(-1);
+            expect(opts.currentLevel).toBe(2);
+            expect(opts.consecutiveWrong).toBe(0);
+        });
+
+        it('counts wrong fallback questions toward the current-level down streak', () => {
+            const opts = baseOpts();
+
+            expect(adq.applyAdaptation(opts, false)).toBe(0);
+            expect(adq.applyAdaptation(opts, false)).toBe(-1);
+
+            expect(opts.currentLevel).toBe(2);
+            expect(opts.consecutiveWrong).toBe(0);
+        });
+
+        it('resets a wrong streak when a correct answer is given', () => {
+            const opts = baseOpts();
+
+            expect(adq.applyAdaptation(opts, false)).toBe(0);
+            expect(opts.consecutiveWrong).toBe(1);
+
+            expect(adq.applyAdaptation(opts, true)).toBe(0);
+            expect(opts.consecutiveWrong).toBe(0);
+            expect(opts.consecutiveCorrect).toBe(1);
+
+            expect(adq.applyAdaptation(opts, false)).toBe(0);
+            expect(opts.currentLevel).toBe(3);
+            expect(opts.consecutiveWrong).toBe(1);
+        });
+    });
+
     describe('updateConfig question normalization (4 types)', () => {
         it('migrates legacy entries (no typeSelect, single solution) to typeSelect=0 with solutionMulti', () => {
             const data = {

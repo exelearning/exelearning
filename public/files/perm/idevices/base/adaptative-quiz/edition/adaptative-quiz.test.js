@@ -21,6 +21,18 @@ describe('adaptative-quiz edition', () => {
         expect(typeof idevice.parseAIQuestionLine).toBe('function');
     });
 
+    it('removes the question number prefix from validation messages', () => {
+        expect(idevice.cleanQuestionPrefix('Question %s: the question text cannot be empty.', 1)).toBe(
+            'The question text cannot be empty.',
+        );
+    });
+
+    it('normalizes questions per round without capping it to the current question count', () => {
+        expect(idevice.normalizeQuestionsPerRound('30')).toBe(30);
+        expect(idevice.normalizeQuestionsPerRound('0')).toBe(1);
+        expect(idevice.normalizeQuestionsPerRound('abc')).toBe(1);
+    });
+
     describe('parseAIQuestionLine', () => {
         describe('type 0 (select / multiple-choice)', () => {
             it('parses a 4-option line with single-letter solution and maps level 0 to difficulty 1', () => {
@@ -650,12 +662,127 @@ describe('adaptative-quiz edition', () => {
             idevice.active = 0;
             idevice.refreshTranslations();
             idevice.setMessagesInfo();
+            document.getElementById('adaptativeQuizNumRound').value = '6';
             const result = idevice.save();
             expect(result).toBeTruthy();
             expect(result.typeGame).toBe('Adaptative Quiz');
+            expect(result.numRound).toBe(6);
+            expect(document.getElementById('adaptativeQuizNumRound').value).toBe('6');
             expect(result.questionsGame).toHaveLength(6);
             expect(result.questionsGame[0].question).toBe('Sample question?');
             expect(result.id).toBe('idevice-42');
+        });
+
+        it('rejects save when questions per round is greater than the created questions', () => {
+            globalThis.$exeDevicesEdition = {
+                iDevice: {
+                    gamification: {
+                        itinerary: {
+                            getValues: () => ({
+                                showClue: false,
+                                clueGame: '',
+                                percentageClue: 40,
+                                showCodeAccess: false,
+                                codeAccess: '',
+                                messageCodeAccess: '',
+                            }),
+                        },
+                        scorm: {
+                            getValues: () => ({
+                                isScorm: 0,
+                                textButtonScorm: 'Save',
+                                repeatActivity: true,
+                                weighted: 100,
+                            }),
+                        },
+                        progressBar: {
+                            getValues: () => ({ evaluation: false, evaluationID: '' }),
+                            setValues: () => {},
+                            addEvents: () => {},
+                        },
+                    },
+                },
+            };
+            if (!globalThis.tinymce) globalThis.tinymce = { get: () => null };
+            if (!globalThis.tinyMCE) globalThis.tinyMCE = globalThis.tinymce;
+
+            buildMinimalForm();
+            idevice.ideviceBody = document.querySelector('.idevice_node.adaptative-quiz');
+            idevice.questionsGame = buildValidQuestions(idevice);
+            idevice.active = 0;
+            idevice.refreshTranslations();
+            idevice.setMessagesInfo();
+            document.getElementById('adaptativeQuizNumRound').value = '30';
+
+            let alerted = '';
+            const orig = globalThis.eXe.app.alert;
+            globalThis.eXe.app.alert = msg => {
+                alerted = msg;
+            };
+            try {
+                const result = idevice.save();
+                expect(result).toBe(false);
+                expect(alerted).toBe('You must add at least 30 questions.');
+                expect(document.getElementById('adaptativeQuizNumRound').value).toBe('30');
+            } finally {
+                globalThis.eXe.app.alert = orig;
+            }
+        });
+
+        it('rejects save when an active difficulty level has fewer than two questions', () => {
+            globalThis.$exeDevicesEdition = {
+                iDevice: {
+                    gamification: {
+                        itinerary: {
+                            getValues: () => ({
+                                showClue: false,
+                                clueGame: '',
+                                percentageClue: 40,
+                                showCodeAccess: false,
+                                codeAccess: '',
+                                messageCodeAccess: '',
+                            }),
+                        },
+                        scorm: {
+                            getValues: () => ({
+                                isScorm: 0,
+                                textButtonScorm: 'Save',
+                                repeatActivity: true,
+                                weighted: 100,
+                            }),
+                        },
+                        progressBar: {
+                            getValues: () => ({ evaluation: false, evaluationID: '' }),
+                            setValues: () => {},
+                            addEvents: () => {},
+                        },
+                    },
+                },
+            };
+            if (!globalThis.tinymce) globalThis.tinymce = { get: () => null };
+            if (!globalThis.tinyMCE) globalThis.tinyMCE = globalThis.tinymce;
+
+            buildMinimalForm();
+            idevice.ideviceBody = document.querySelector('.idevice_node.adaptative-quiz');
+            idevice.questionsGame = buildValidQuestions(idevice);
+            idevice.questionsGame.splice(3, 1);
+            idevice.active = 0;
+            idevice.refreshTranslations();
+            idevice.setMessagesInfo();
+            document.getElementById('adaptativeQuizNumRound').value = '5';
+
+            let alerted = '';
+            const orig = globalThis.eXe.app.alert;
+            globalThis.eXe.app.alert = msg => {
+                alerted = msg;
+            };
+            try {
+                const result = idevice.save();
+                expect(result).toBe(false);
+                expect(alerted).toBe('Level "Easy" must have at least 2 questions.');
+            } finally {
+                globalThis.eXe.app.alert = orig;
+            }
         });
 
         it('reads showSolution and timeShowSolution from the form when present', () => {

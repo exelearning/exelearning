@@ -8,8 +8,8 @@
  * Adaptive rules (micro-adaptativity):
  *  - Level UP after 2 consecutive correct answers (counters reset).
  *  - Level DOWN after 2 consecutive wrong answers (counters reset).
- *  - If the active level has no pending questions, fall back to a lower
- *    level first, then to a higher level. If neither is available, end.
+ *  - If the active level has no pending questions, repeat that level. At the
+ *    highest level, use lower-level questions starting from the easiest one.
  *
  * Reporting:
  *  - Tracks the maximum level reached during the session.
@@ -484,30 +484,57 @@ var $adaptativequiz = {
     },
 
     /**
-     * Pick the next question index using the current level.
-     * Fallback priority: active level → lower levels (descending) → higher
-     * levels (ascending). Returns -1 when no questions remain.
+     * Pick the next question index using the current level:
+     * - First, ask pending questions from the learner's current level.
+     * - If a non-maximum level is exhausted, repeat questions from that same
+     *   level so the learner keeps practising the level they reached.
+     * - If the maximum level is exhausted, use lower-level questions starting
+     *   from the easiest one, preferring pending questions before repeats.
+     * Returns -1 only when there are no questions at all.
      */
-    pickNextQuestionIndex: opts => {
+    pickNextQuestionIndex: function (opts) {
         const maxLevel = opts.maxLevel || 3;
-        const poolByLevel = {};
-        for (let lvl = 1; lvl <= maxLevel; lvl++) poolByLevel[lvl] = [];
+        const pendingByLevel = {};
+        const allByLevel = {};
+        for (let lvl = 1; lvl <= maxLevel; lvl++) {
+            pendingByLevel[lvl] = [];
+            allByLevel[lvl] = [];
+        }
         for (let i = 0; i < opts.questions.length; i++) {
-            if (opts.answeredIndexes.indexOf(i) !== -1) continue;
             const lvl = opts.questions[i].difficulty;
-            if (poolByLevel[lvl]) poolByLevel[lvl].push(i);
+            if (!allByLevel[lvl]) continue;
+            allByLevel[lvl].push(i);
+            if (opts.answeredIndexes.indexOf(i) === -1) pendingByLevel[lvl].push(i);
         }
 
-        const order = [opts.currentLevel];
-        for (let lvl = opts.currentLevel - 1; lvl >= 1; lvl--) order.push(lvl);
-        for (let lvl = opts.currentLevel + 1; lvl <= maxLevel; lvl++) order.push(lvl);
+        const pick = pool => {
+            if (!pool || pool.length === 0) return -1;
+            const filtered = pool.length > 1 ? pool.filter(idx => idx !== opts.currentQuestionIndex) : pool;
+            const candidates = filtered.length > 0 ? filtered : pool;
+            return candidates[Math.floor(Math.random() * candidates.length)];
+        };
 
-        for (const lvl of order) {
-            const pool = poolByLevel[lvl] || [];
-            if (pool.length > 0) {
-                opts.currentLevel = lvl;
-                if (lvl > opts.maxLevelReached) opts.maxLevelReached = lvl;
-                return pool[Math.floor(Math.random() * pool.length)];
+        let idx = pick(pendingByLevel[opts.currentLevel]);
+        if (idx >= 0) return idx;
+
+        if (opts.currentLevel < maxLevel) {
+            return pick(allByLevel[opts.currentLevel]);
+        }
+
+        for (let lvl = 1; lvl < maxLevel; lvl++) {
+            idx = pick(pendingByLevel[lvl]);
+            if (idx >= 0) return idx;
+        }
+
+        for (let lvl = 1; lvl < maxLevel; lvl++) {
+            idx = pick(allByLevel[lvl]);
+            if (idx >= 0) return idx;
+        }
+
+        for (let lvl = 1; lvl <= maxLevel; lvl++) {
+            idx = pick(allByLevel[lvl]);
+            if (idx >= 0) {
+                return idx;
             }
         }
         return -1;
@@ -981,9 +1008,10 @@ var $adaptativequiz = {
     },
 
     /**
-     * Update the adaptive level after an answer. Returns the delta applied
-     * (+1, -1 or 0). Counters reset whenever the level actually changes or
-     * when the streak is broken by an opposite answer.
+     * Update the adaptive level after an answer. The streak belongs to the
+     * learner's current level, not to the source difficulty of the question:
+     * any two consecutive wrong answers while staying in that level move the
+     * learner down. Returns the delta applied (+1, -1 or 0).
      */
     applyAdaptation: function (opts, isCorrect) {
         const maxLevel = opts.maxLevel || 3;

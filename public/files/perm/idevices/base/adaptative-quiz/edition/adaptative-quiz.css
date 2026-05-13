@@ -141,6 +141,16 @@
     min-width: 6ch;
 }
 
+article.box.idevice-element-in-content
+    .idevice_node[mode="edition"]
+    #adaptativeQuizIdeviceForm
+    input[type="number"].ADQ-ENumberInput {
+    flex: 0 0 10ch;
+    min-width: 10ch !important;
+    max-width: 10ch !important;
+    width: 10ch !important;
+}
+
 .ADQ-EContents {
     width: 100%;
 }
