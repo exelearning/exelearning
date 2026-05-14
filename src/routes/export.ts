@@ -220,6 +220,15 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStruc
     if (meta.extraHeadContent) metadata.set('extraHeadContent', meta.extraHeadContent);
     if (meta.footer) metadata.set('footer', meta.footer);
 
+    // Stable identifiers (#1786) -- only write when the client supplied them so
+    // a browser export carrying a stable project identity reaches BaseExporter
+    // with the same odeId/scormId. Without these, the server-side export path
+    // falls back to a fresh generateOdeId() and the LMS sees a new course on
+    // every re-upload.
+    if (meta.odeIdentifier) metadata.set('odeIdentifier', meta.odeIdentifier);
+    if (meta.odeVersionId) metadata.set('odeVersionId', meta.odeVersionId);
+    if (meta.scormIdentifier) metadata.set('scormIdentifier', meta.scormIdentifier);
+
     // Set navigation (pages with blocks)
     const navigation = ydoc.getArray('navigation');
 

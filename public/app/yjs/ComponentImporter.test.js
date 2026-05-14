@@ -306,6 +306,67 @@ describe('ComponentImporter', () => {
       expect(result.error).toBe('No content.xml found in component file');
     });
 
+    it('should rewrite embedded ideviceId in jsonProperties when component id is regenerated (#1786)', async () => {
+      // Component XML carries an ideviceId inside jsonProperties (text/quiz
+      // iDevices store it for self-reference). ComponentImporter always mints
+      // a fresh component id on import; the embedded value must follow so the
+      // Y.Map field and the JSON payload stay in sync.
+      const COMPONENT_WITH_EMBEDDED_ID = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>true</value>
+  </odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-orig-1</odeBlockId>
+    <blockName>Embedded id</blockName>
+    <iconName></iconName>
+    <odePagStructureOrder>0</odePagStructureOrder>
+    <odePagStructureProperties>{}</odePagStructureProperties>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-orig-1</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;hi&lt;/p&gt;</htmlView>
+        <jsonProperties>{"ideviceId":"idevice-orig-1","textTextarea":"&lt;p&gt;hi&lt;/p&gt;"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+        <odeComponentsProperties></odeComponentsProperties>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const assetManager = createMockAssetManager();
+      global.window.fflate = createMockFflate(COMPONENT_WITH_EMBEDDED_ID);
+      const importer = new ComponentImporter(docManager, assetManager);
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+      expect(result.success).toBe(true);
+
+      // Inspect the inserted component on page-1.
+      const navigation = docManager._navigation;
+      const pageMap = navigation.get(0);
+      const blocks = pageMap.get('blocks');
+      const blockMap = blocks.get(blocks.length - 1); // last appended
+      const components = blockMap.get('components');
+      const compMap = components.get(0);
+      const newCompId = compMap.get('id');
+      const jsonStr = compMap.get('jsonProperties');
+      const parsed = JSON.parse(jsonStr);
+
+      // Outer id was regenerated AND the embedded one followed.
+      expect(newCompId).not.toBe('idevice-orig-1');
+      expect(newCompId).toMatch(/^idevice-/);
+      expect(parsed.ideviceId).toBe(newCompId);
+      expect(parsed.ideviceId).not.toBe('idevice-orig-1');
+    });
+
     it('should generate new IDs for imported block and components', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
       const assetManager = createMockAssetManager();
@@ -422,6 +483,13 @@ describe('ComponentImporter', () => {
       expect(id2).toMatch(/^block-/);
       expect(id3).toMatch(/^idevice-/);
       expect(id1).not.toBe(id2); // Should be unique
+    });
+
+    it('should throw on empty prefix (mirrors src/shared/ids.ts)', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+      expect(() => importer.generateId('')).toThrow('generateId: prefix is required');
+      expect(() => importer.generateId(undefined)).toThrow('generateId: prefix is required');
     });
   });
 
