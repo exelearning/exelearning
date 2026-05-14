@@ -359,6 +359,40 @@
     <script src="./libs/abcjs/exe_abc_music.js?v={{BUILD_VERSION}}"></script>
 
     <!-- TinyMCE -->
+    <script>
+        // TinyMCE 5 autodetects its baseURL by scanning <script> tags for one
+        // whose src ends in tinymce.min.js. When this document is embedded by
+        // a host app via `<iframe srcdoc=…>` (the pattern documented in the
+        // embedding protocol, with a `<base href>` pointing at the deployed
+        // editor folder), Firefox's autodetection ends up with an undefined
+        // base. The first time a plugin script's onload fires inside
+        // tinymce.init(), URI.toAbsPath(undefined, …) then throws
+        // "can't access property 'split', e is undefined" and TinyMCE never
+        // registers — every text iDevice becomes un-editable. See
+        // https://github.com/exelearning/exelearning/issues/1799.
+        //
+        // Preset window.tinymce.baseURL and window.tinyMCEPreInit ourselves
+        // (derived from document.baseURI, which is the <base href> under
+        // srcdoc and the document URL otherwise). This bypasses autodetection
+        // entirely in every embedding context.
+        (function () {
+            try {
+                var tinymceBase = new URL('./libs/tinymce_5/js/tinymce', document.baseURI)
+                    .toString()
+                    .replace(/\/$/, '');
+                window.tinymce = window.tinymce || {};
+                window.tinymce.baseURL = tinymceBase;
+                window.tinymce.suffix = '.min';
+                window.tinyMCEPreInit = window.tinyMCEPreInit || {
+                    base: tinymceBase,
+                    suffix: '.min',
+                    query: ''
+                };
+            } catch (e) {
+                // Fall back to TinyMCE's autodetection if URL resolution fails.
+            }
+        })();
+    </script>
     <script src="./libs/tinymce_5/js/tinymce/tinymce.min.js?v={{BUILD_VERSION}}"></script>
     <script src="./app/editor/tinymce_5_settings.js?v={{BUILD_VERSION}}"></script>
 
