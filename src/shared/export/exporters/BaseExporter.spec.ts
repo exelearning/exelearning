@@ -1045,38 +1045,58 @@ describe('BaseExporter', () => {
             expect(trackingList).toContain('content/resources/track.css');
         });
 
-        // Regression coverage for exelearning/mod_exeweb#42 and exelearning/mod_exescorm#55:
-        // when an `asset://` reference in the rendered HTML cannot be resolved against the
-        // export path map, addFilenamesToAssetUrls falls back to a literal
-        // `content/resources/<id><ext>` URL. addAssetsToZipWithResourcePath must mirror that
-        // by writing each asset under its `<id><ext>` path too, so the URL resolves on
-        // downstream platforms (Moodle pluginfile.php) instead of returning 404.
-        it('should also write each asset under the <id><ext> fallback path', async () => {
+        // Regression coverage for exelearning/exelearning#1769 (hotfix/duplicate-assets):
+        // saving and exporting must NOT write each asset twice (once under the friendly
+        // filename and again under the literal `<assetId><ext>` UUID path). The earlier
+        // "defensive" fallback (PR #1740) did exactly that, leaving every saved .elpx and
+        // every .html5/.scorm/.ims/.epub3 export with duplicated `content/resources/`
+        // entries. The fix in this PR keeps a single, friendly entry per asset.
+        it('should not duplicate each asset under the <id><ext> UUID path', async () => {
             const forEachAssets = new MockAssetProviderWithForEach();
             forEachAssets.addAsset(
                 '12345678-1234-1234-1234-123456789012',
-                'photo.png',
+                'pie_pagina_FEDER_2027.png',
                 'image/png',
                 Buffer.from('png-data'),
+            );
+            forEachAssets.addAsset(
+                '49d44e76-3d6a-4b21-b911-41746ab60814',
+                'photo_2024-09-05_12-31-44.jpg',
+                'image/jpeg',
+                Buffer.from('jpg-data'),
             );
 
             const forEachZip = new MockZipProvider();
             const forEachDoc = new MockDocument({}, []);
             const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), forEachAssets, forEachZip);
 
-            await forEachExporter.addAssetsToZipWithResourcePath();
+            const trackingList: string[] = [];
+            const count = await forEachExporter.addAssetsToZipWithResourcePath(trackingList);
 
-            expect(forEachZip.files.has('content/resources/photo.png')).toBe(true);
-            expect(forEachZip.files.has('content/resources/12345678-1234-1234-1234-123456789012.png')).toBe(true);
+            // Each asset must be written exactly once, under its friendly path.
+            expect(count).toBe(2);
+            expect(forEachZip.files.size).toBe(2);
+            expect(forEachZip.files.has('content/resources/pie_pagina_FEDER_2027.png')).toBe(true);
+            expect(forEachZip.files.has('content/resources/photo_2024-09-05_12-31-44.jpg')).toBe(true);
+
+            // The UUID-named duplicates that PR #1740 used to write must NOT be present.
+            expect(forEachZip.files.has('content/resources/12345678-1234-1234-1234-123456789012.png')).toBe(false);
+            expect(forEachZip.files.has('content/resources/49d44e76-3d6a-4b21-b911-41746ab60814.jpg')).toBe(false);
+
+            // Tracking list (used by the ELPX manifest) must list each entry exactly once.
+            expect(trackingList).toEqual([
+                'content/resources/pie_pagina_FEDER_2027.png',
+                'content/resources/photo_2024-09-05_12-31-44.jpg',
+            ]);
         });
 
-        it('should not write the fallback when the resolved path is already <id><ext>', async () => {
-            // When the asset metadata does not yield a friendly filename, the resolved path
-            // already matches the fallback. Skip the duplicate write so we do not pollute
-            // the archive (or the ELPX manifest) with two pointers to the same path.
+        it('should write a single entry when an asset filename equals its UUID', async () => {
+            // Edge case: the asset metadata already yields a UUID-shaped filename. Before
+            // the fix this branch happened to write a single entry only because the
+            // resolved path matched the fallback path; the test still pins the invariant.
             const forEachAssets = new MockAssetProviderWithForEach();
             forEachAssets.addAsset(
-                'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png',
+                'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
                 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png',
                 'image/png',
                 Buffer.from('png'),
@@ -1089,13 +1109,15 @@ describe('BaseExporter', () => {
 
             await forEachExporter.addAssetsToZipWithResourcePath(trackingList);
 
-            const fallbackHits = trackingList.filter(
-                p => p === 'content/resources/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png',
-            );
-            expect(fallbackHits.length).toBe(1);
+            const hits = trackingList.filter(p => p === 'content/resources/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png');
+            expect(hits.length).toBe(1);
+            expect(forEachZip.files.size).toBe(1);
         });
 
-        it('should derive the fallback extension from the mime when filename is missing', async () => {
+        it('should not write a UUID-named copy when the filename is missing', async () => {
+            // Even when only the MIME type is available to derive the export filename,
+            // the export must still produce a single `content/resources/<derived>` entry
+            // and never the UUID-suffixed duplicate.
             const forEachAssets = new MockAssetProviderWithForEach();
             forEachAssets.addAsset('99999999-1111-2222-3333-444444444444', '', 'image/jpeg', Buffer.from('jpg'));
 
@@ -1105,10 +1127,9 @@ describe('BaseExporter', () => {
 
             await forEachExporter.addAssetsToZipWithResourcePath();
 
-            // The mime-derived friendly name (asset-99999999.jpg) plus the literal UUID fallback
-            // path must both end up in the archive.
-            const fallbackPath = 'content/resources/99999999-1111-2222-3333-444444444444.jpg';
-            expect(forEachZip.files.has(fallbackPath)).toBe(true);
+            const uuidPath = 'content/resources/99999999-1111-2222-3333-444444444444.jpg';
+            expect(forEachZip.files.has(uuidPath)).toBe(false);
+            expect(forEachZip.files.size).toBe(1);
         });
     });
 

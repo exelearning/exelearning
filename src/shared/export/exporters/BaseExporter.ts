@@ -425,18 +425,13 @@ export abstract class BaseExporter {
      * Add assets to ZIP with content/resources/ prefix
      * Uses folderPath-based structure for cleaner exports
      *
-     * Each asset is written to the resolved export path (the friendly filename
-     * derived from metadata) AND, when it differs, to a `<assetId><ext>`
-     * fallback path. The fallback covers downstream consumers (e.g. Moodle
-     * mod_exeweb / mod_exescorm activities -- exelearning/mod_exeweb#42 and
-     * exelearning/mod_exescorm#55) that load the package as a static site:
-     * if the HTML carries an unresolved `asset://uuid.ext` reference, the
-     * transformation in {@link addFilenamesToAssetUrls} falls back to a
-     * literal `content/resources/<uuid><ext>` URL. Without the fallback file
-     * in the ZIP that URL would 404 on the platform side. The cost of the
-     * extra entry is minimal (a duplicate file pointer in the same archive)
-     * and avoids broken images on legitimate exports while the upstream
-     * mismatch is being addressed.
+     * Each asset is written exactly once, under its resolved export path
+     * (the friendly filename derived from metadata). HTML and content.xml
+     * always reference the same path because both transformations resolve
+     * `asset://uuid.ext` URLs through {@link buildAssetExportPathMap}, so a
+     * literal `content/resources/<uuid><ext>` URL only appears for genuinely
+     * missing assets — and writing the file under that path would not help,
+     * because the asset is not in the iteration in the first place.
      *
      * @param trackingList - Optional array to track added file paths (for ELPX manifest)
      */
@@ -455,20 +450,12 @@ export abstract class BaseExporter {
                 }
 
                 const zipPath = `content/resources/${exportPath}`;
+                if (this.zip.hasFile(zipPath)) {
+                    return;
+                }
                 this.zip.addFile(zipPath, asset.data);
                 if (trackingList) trackingList.push(zipPath);
                 assetsAdded++;
-
-                // Write the same content under the `<assetId><ext>` fallback
-                // path that addFilenamesToAssetUrls falls back to when an
-                // asset:// URL cannot be resolved. Skip when the resolved path
-                // already matches the fallback to avoid creating a duplicate
-                // entry in the same location.
-                const fallbackPath = this.buildUuidFallbackZipPath(asset);
-                if (fallbackPath && fallbackPath !== zipPath && !this.zip.hasFile(fallbackPath)) {
-                    this.zip.addFile(fallbackPath, asset.data);
-                    if (trackingList) trackingList.push(fallbackPath);
-                }
             };
 
             await this.forEachAsset(processAsset);
@@ -481,28 +468,6 @@ export abstract class BaseExporter {
         }
 
         return assetsAdded;
-    }
-
-    /**
-     * Build the `content/resources/<assetId><ext>` fallback path for an
-     * asset, matching the literal URL produced by addFilenamesToAssetUrls
-     * when an `asset://` reference cannot be resolved against the export
-     * path map. Returns null when the asset metadata is not enough to derive
-     * a stable filename.
-     */
-    private buildUuidFallbackZipPath(asset: ExportAsset): string | null {
-        if (!asset.id) {
-            return null;
-        }
-        const filename = asset.filename ?? '';
-        let ext = '';
-        const dotIndex = filename.lastIndexOf('.');
-        if (dotIndex !== -1 && dotIndex < filename.length - 1) {
-            ext = filename.substring(dotIndex);
-        } else if (asset.mime) {
-            ext = this.getExtensionFromMime(asset.mime);
-        }
-        return `content/resources/${asset.id}${ext}`;
     }
 
     // =========================================================================
