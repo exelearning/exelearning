@@ -42,6 +42,25 @@ describe('adaptative-quiz export', () => {
         expect(typeof adq.formatTime).toBe('function');
     });
 
+    describe('export styles', () => {
+        it('lays out select options in two columns and keeps sort options in a single column', () => {
+            const css = readFileSync(join(__dirname, 'adaptative-quiz.css'), 'utf-8');
+            const optionsRule = css.match(/\.ADAPTATIVEQUIZ-Options\s*\{[\s\S]*?\}/)?.[0] || '';
+            const selectOptionsRule =
+                css.match(/\.ADAPTATIVEQUIZ-Options\[data-type-select="0"\]\s*\{[\s\S]*?\}/)?.[0] || '';
+            const optionsGridRule = css.match(/\.ADAPTATIVEQUIZ-OptionsGrid\s*\{[\s\S]*?\}/)?.[0] || '';
+            const sortListRule = css.match(/\.ADAPTATIVEQUIZ-SortList\s*\{[\s\S]*?\}/)?.[0] || '';
+
+            expect(optionsRule).toContain('display: flex;');
+            expect(optionsRule).toContain('flex-direction: column;');
+            expect(selectOptionsRule).toContain('display: grid;');
+            expect(selectOptionsRule).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
+            expect(optionsGridRule).toContain('grid-template-columns: 1fr;');
+            expect(sortListRule).toContain('display: flex;');
+            expect(sortListRule).toContain('flex-direction: column;');
+        });
+    });
+
     describe('formatTime', () => {
         it('pads minutes and seconds below 10', () => {
             expect(adq.formatTime(0)).toBe('00:00');
