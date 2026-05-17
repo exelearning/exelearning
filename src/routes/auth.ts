@@ -189,8 +189,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     }
 
                     if (!user.is_active) {
-                        set.status = 401;
-                        return { error: 'Unauthorized', message: 'Invalid credentials' };
+                        set.status = 403;
+                        return { error: 'Forbidden', message: 'Account deactivated' };
                     }
 
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
@@ -375,7 +375,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
                 if (!user.is_active) {
                     return Response.redirect(
-                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
+                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Account deactivated')}`,
                         302,
                     );
                 }

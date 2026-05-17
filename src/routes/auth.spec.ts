@@ -206,7 +206,7 @@ describe('Auth Routes', () => {
             expect(setCookie).toContain('auth=');
         });
 
-        it('should return 401 for disabled (inactive) user even with correct password', async () => {
+        it('should return 403 with "Account deactivated" for disabled user with correct password', async () => {
             const hashedPw = await hashPassword('correct-password');
             await testDb
                 .insertInto('users')
@@ -233,9 +233,10 @@ describe('Auth Routes', () => {
                 }),
             );
 
-            expect(response.status).toBe(401);
-            const data = (await response.json()) as { error: string };
-            expect(data.error).toBe('Unauthorized');
+            expect(response.status).toBe(403);
+            const data = (await response.json()) as { error: string; message: string };
+            expect(data.error).toBe('Forbidden');
+            expect(data.message).toBe('Account deactivated');
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie ?? '').not.toContain('auth=');
         });
@@ -590,7 +591,7 @@ describe('Auth Routes', () => {
             expect(location).toContain('/workarea');
         });
 
-        it('should redirect to login with error for disabled (inactive) user', async () => {
+        it('should redirect to login with "Account deactivated" error for disabled user', async () => {
             const hashedPw = await hashPassword('password');
             await testDb
                 .insertInto('users')
@@ -617,7 +618,7 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const location = response.headers.get('location');
             expect(location).toContain('/login');
-            expect(location).toContain('error=');
+            expect(location).toContain(`error=${encodeURIComponent('Account deactivated')}`);
             expect(location).not.toContain('/workarea');
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie ?? '').not.toContain('auth=');
