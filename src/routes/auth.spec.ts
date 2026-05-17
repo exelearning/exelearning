@@ -205,6 +205,40 @@ describe('Auth Routes', () => {
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie).toContain('auth=');
         });
+
+        it('should return 401 for disabled (inactive) user even with correct password', async () => {
+            const hashedPw = await hashPassword('correct-password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'disabled@example.com',
+                    user_id: 'disabled-user',
+                    password: hashedPw,
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'disabled@example.com',
+                        password: 'correct-password',
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(401);
+            const data = (await response.json()) as { error: string };
+            expect(data.error).toBe('Unauthorized');
+            const setCookie = response.headers.get('set-cookie');
+            expect(setCookie ?? '').not.toContain('auth=');
+        });
     });
 
     describe('POST /api/auth/logout', () => {
@@ -554,6 +588,39 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const location = response.headers.get('location');
             expect(location).toContain('/workarea');
+        });
+
+        it('should redirect to login with error for disabled (inactive) user', async () => {
+            const hashedPw = await hashPassword('password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'form-disabled@example.com',
+                    user_id: 'form-disabled-user',
+                    password: hashedPw,
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: '_username=form-disabled@example.com&_password=password',
+                }),
+            );
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('/login');
+            expect(location).toContain('error=');
+            expect(location).not.toContain('/workarea');
+            const setCookie = response.headers.get('set-cookie');
+            expect(setCookie ?? '').not.toContain('auth=');
         });
     });
 
