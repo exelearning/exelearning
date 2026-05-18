@@ -11,6 +11,7 @@ import * as os from 'os';
 import { db } from '../../../db/client';
 import { findProjectByUuid } from '../../../db/queries';
 import { getFilesDir } from '../../../services/file-helper';
+import { buildContentDisposition } from '../../../shared/http/headers';
 import {
     Html5Exporter,
     Scorm12Exporter,
@@ -274,8 +275,9 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                     const safeTitle = title.replace(/[^a-zA-Z0-9-_]/g, '_');
                     const filename = `${safeTitle}${formatInfo.extension}`;
 
+                    const contentDisposition = buildContentDisposition(filename);
                     set.headers['Content-Type'] = formatInfo.mimeType;
-                    set.headers['Content-Disposition'] = `attachment; filename="${filename}"`;
+                    set.headers['Content-Disposition'] = contentDisposition;
                     set.headers['Content-Length'] = result.data.length.toString();
 
                     // Clean up temp directory
@@ -285,7 +287,7 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                     return new Response(result.data, {
                         headers: {
                             'Content-Type': formatInfo.mimeType,
-                            'Content-Disposition': `attachment; filename="${filename}"`,
+                            'Content-Disposition': contentDisposition,
                             'Content-Length': result.data.length.toString(),
                         },
                     });

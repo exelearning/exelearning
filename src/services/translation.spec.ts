@@ -223,6 +223,19 @@ describe('translation service', () => {
             const catalogue = getCatalogueWithFallback('xx');
             expect(typeof catalogue).toBe('object');
         });
+
+        it('should never expose the "~" fuzzy marker in the catalogue', () => {
+            // XLF files keep "~" as a marker for machine-translated placeholders
+            // (so human translators can spot entries needing review), but the
+            // catalogue returned to the frontend must already have the marker
+            // stripped — otherwise it leaks into the UI and exports.
+            for (const locale of getAvailableLocales()) {
+                const catalogue = getCatalogueWithFallback(locale);
+                for (const value of Object.values(catalogue)) {
+                    expect(value.startsWith('~')).toBe(false);
+                }
+            }
+        });
     });
 
     describe('setGlobalParameters', () => {

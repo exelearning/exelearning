@@ -26,6 +26,18 @@ var $rubric = {
         print: 'Print',
         apply: 'Apply',
         newWindow: 'New Window',
+        msgEndGameScore: 'Please complete the rubric before saving your score.',
+        msgScoreScorm: "The score can't be saved because this page is not part of a SCORM package.",
+        msgOnlySaveScore: 'You can only save the score once!',
+        msgYouScore: 'Your score',
+        msgOnlySaveAuto: 'Your score will be saved after each change. You can only complete once.',
+        msgSaveAuto: 'Your score will be automatically saved after each change.',
+        msgSeveralScore: 'You can save the score as many times as you want',
+        msgYouLastScore: 'The last score saved is',
+        msgActityComply: 'You have already done this activity.',
+        msgPlaySeveralTimes: 'You can do this activity as many times as you want',
+        msgScore: 'Score',
+        msgWeight: 'Weight',
     },
     idevicePath: '',
     options: [],
@@ -59,6 +71,7 @@ var $rubric = {
             self.prepareInteractiveTable(data.table, data.scopeId, data.strings);
             self.initializeInteractiveState(data.table);
             self.addEvents(data.table, data.strings);
+            self.initScorm(data);
         });
     },
 
@@ -111,7 +124,10 @@ var $rubric = {
             .find('table.exe-table')
             .remove();
 
-        var id = scope.length === 1 ? scope.get(0).getAttribute('id') : '';
+        var id = this.getIdeviceDomId(scope);
+        if (!id && scope.length === 1) {
+            id = scope.get(0).getAttribute('id') || '';
+        }
         var instanceId = typeof instance === 'number' ? instance : 0;
 
         return {
@@ -120,7 +136,27 @@ var $rubric = {
             scopeId: id || 'rubric-' + instanceId,
             strings: this.getStringsFromData(stored),
             raw: stored,
+            isScorm: parseInt(stored.isScorm) || 0,
+            textButtonScorm: stored.textButtonScorm || '',
+            repeatActivity: stored.repeatActivity !== false,
+            weighted: stored.weighted || 100,
         };
+    },
+
+    getIdeviceDomId: function (scope) {
+        var $scope = $(scope);
+        if ($scope.length !== 1) return '';
+
+        var nodeId = $scope.closest('.idevice_node').attr('id') || '';
+        if (nodeId) return nodeId;
+
+        var scopeId = $scope.attr('id') || '';
+        if (scopeId) return scopeId;
+
+        var articleId = $scope.closest('article').attr('id') || '';
+        if (articleId) return articleId;
+
+        return '';
     },
 
     loadDataGame: function (scope) {
@@ -518,9 +554,29 @@ var $rubric = {
         $elements.on(events, handler);
     },
 
+    bindScopedDelegatedEvent: function ($root, events, selector, handler) {
+        if (!$root || typeof $root.off !== 'function' || typeof $root.on !== 'function') {
+            return;
+        }
+
+        var eventNames = String(events || '')
+            .split(/\s+/)
+            .filter(Boolean);
+
+        eventNames.forEach(function (eventName) {
+            var baseEvent = eventName.split('.')[0];
+            if (baseEvent) {
+                $root.off(baseEvent, selector);
+            }
+            $root.off(eventName, selector);
+        });
+
+        $root.on(events, selector, handler);
+    },
+
     addCheckboxEvents: function (table) {
         var $table = $(table);
-        this.bindScopedEvent($table.find('tbody input[type="checkbox"]'), 'change.rubric', function () {
+        this.bindScopedDelegatedEvent($table, 'change.rubric', 'tbody input[type="checkbox"]', function () {
             if (this.checked) {
                 $("input[name='" + this.name + "']").prop('checked', false);
                 $(this).prop('checked', true);
@@ -529,6 +585,11 @@ var $rubric = {
             var result = $rubric.calculateTableScore($table);
             $rubric.renderTableScore($table, result);
             $rubric.saveRubricData($table);
+
+            var data = $rubric.getDataForTable($table);
+            if (data && data.isScorm === 1) {
+                $rubric.sendRubricScore(true, data);
+            }
         });
     },
 
@@ -549,11 +610,22 @@ var $rubric = {
         this.bindScopedEvent($actions.find('.exe-rubrics-reset'), 'click.rubric', function () {
             if (confirm(strings.msgDelete || 'Are you sure you want clear all form fields?')) {
                 $rubric.resetRubricData($table);
+                var data = $rubric.getDataForTable($table);
+                if (data && data.isScorm > 0) {
+                    $rubric.resetScormScore(data);
+                }
             }
         });
 
         this.bindScopedEvent($actions.find('.exe-rubrics-download'), 'click.rubric', function () {
             $rubric.saveAsPdf($table);
+        });
+
+        this.bindScopedEvent($actions.find('.exe-rubrics-scorm-save'), 'click.rubric', function () {
+            var data = $rubric.getDataForTable($table);
+            if (data) {
+                $rubric.sendRubricScore(false, data);
+            }
         });
     },
 
@@ -679,6 +751,9 @@ var $rubric = {
                         <button type="button" class="exe-rubrics-reset btn btn-primary btn-sm">${safeStrings.reset}</button>
                     </p>
                     ${authorshipFooter}
+                    <div class="Games-GetScore mb-2 d-flex align-items-center justify-content-center w-100 mt-3">
+                        <span class="Games-RepeatActivity"></span>
+                    </div>
                 </div>
             </div>
         `;
@@ -733,11 +808,14 @@ var $rubric = {
         var explicitId = $table.attr('data-rubric-id') || '';
         if (explicitId) return 'rubricData-' + explicitId;
 
-        var scopeId = $table.attr('data-rubric-scope') || '';
-        if (scopeId) return 'rubricData-' + scopeId;
+        var tableIdeviceId = this.getIdeviceDomId($table.closest('.idevice_node.rubric, .rubric, article'));
+        if (tableIdeviceId) return 'rubricData-' + tableIdeviceId;
 
         var nodeId = $table.closest('.idevice_node').attr('id') || '';
         if (nodeId) return 'rubricData-' + nodeId;
+
+        var scopeId = $table.attr('data-rubric-scope') || '';
+        if (scopeId) return 'rubricData-' + scopeId;
 
         return 'rubricData-default';
     },
@@ -1354,6 +1432,143 @@ var $rubric = {
         return this.getColumnScore(table, colIndex);
     },
 
+    // --- SCORM integration ---
+
+    buildScormGame: function (data) {
+        var strings = data.strings || this.ci18n;
+        var $scope = $(data.scope);
+        var $node = $scope.closest('.idevice_node');
+        var nodeId = $node.length === 1 ? $node.attr('id') : '';
+        if (!nodeId) nodeId = $scope.attr('id') || data.scopeId || 'rubric';
+        return {
+            main: nodeId,
+            mainElement: $node.length === 1 ? $node : $scope,
+            isScorm: data.isScorm || 0,
+            textButtonScorm: data.textButtonScorm || '',
+            repeatActivity: data.repeatActivity !== false,
+            weighted: data.weighted || 100,
+            scorerp: 0,
+            gameStarted: false,
+            gameOver: false,
+            ideviceNumber: 0,
+            title: '',
+            previousScore: '',
+            userName: '',
+            msgs: {
+                msgYouScore: strings.msgYouScore || 'Your score',
+                msgScore: strings.msgScore || 'Score',
+                msgWeight: strings.msgWeight || 'Weight',
+                msgEndGameScore: strings.msgEndGameScore || 'Please complete the rubric before saving your score.',
+                msgScoreScorm: strings.msgScoreScorm || "The score can't be saved because this page is not part of a SCORM package.",
+                msgOnlySaveScore: strings.msgOnlySaveScore || 'You can only save the score once!',
+                msgOnlySaveAuto: strings.msgOnlySaveAuto || 'Your score will be saved after each change. You can only complete once.',
+                msgSaveAuto: strings.msgSaveAuto || 'Your score will be automatically saved after each change.',
+                msgSeveralScore: strings.msgSeveralScore || 'You can save the score as many times as you want',
+                msgYouLastScore: strings.msgYouLastScore || 'The last score saved is',
+                msgActityComply: strings.msgActityComply || 'You have already done this activity.',
+                msgPlaySeveralTimes: strings.msgPlaySeveralTimes || 'You can do this activity as many times as you want',
+            },
+        };
+    },
+
+    calculateScormScore: function (table) {
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(value, max));
+        }
+
+        var score = this.calculateTableScore(table);
+        var maxScore = this.calculateTableMaxScore(table);
+        if (isNaN(maxScore) || maxScore <= 0) return 0;
+        var tenScale = (score / maxScore) * 10;
+        var normalized = Math.round(tenScale * 100) / 100;
+        return clamp(normalized, 0, 10);
+    },
+
+    restoreVisibleScoreFromLms: function (data) {
+        if (!data || !data.scormGame) return;
+
+        var previousScore = parseFloat(data.scormGame.previousScore);
+        if (isNaN(previousScore)) return;
+        previousScore = Math.max(0, Math.min(previousScore, 10));
+
+        var $table = $(data.table);
+        if ($table.length !== 1) return;
+
+        var maxScore = this.calculateTableMaxScore($table);
+        if (isNaN(maxScore) || maxScore <= 0) return;
+
+        var rawScore = (previousScore / 10) * maxScore;
+        rawScore = Math.max(0, Math.min(rawScore, maxScore));
+        this.renderTableScore($table, rawScore);
+        this.saveRubricData($table);
+    },
+
+    initScorm: function (data) {
+        if (!data || data.isScorm <= 0) return;
+        if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
+            return;
+        }
+
+        var scormGame = this.buildScormGame(data);
+        data.scormGame = scormGame;
+
+        $exeDevices.iDevice.gamification.scorm.registerActivity(scormGame);
+
+        this.restoreVisibleScoreFromLms(data);
+
+        if (data.isScorm === 2) {
+            this.addScormSaveButton(data);
+        }
+    },
+
+    addScormSaveButton: function (data) {
+        var $table = $(data.table);
+        var $actions = this.getDataScope($table).find('.exe-rubrics-actions').first();
+        if ($actions.length !== 1) return;
+
+        var buttonText = data.textButtonScorm || data.strings.msgScore || 'Save score';
+        var $btn = $('<button type="button" class="exe-rubrics-scorm-save Games-SendScore btn btn-primary btn-sm"></button>');
+        $btn.text(buttonText);
+        $actions.prepend($btn).prepend(' ');
+    },
+
+    sendRubricScore: function (auto, data) {
+        if (!data || !data.scormGame) return;
+
+        var $table = $(data.table);
+        var score = this.calculateScormScore($table);
+        var game = data.scormGame;
+        game.scorerp = score;
+        game.gameStarted = true;
+        game.gameOver = false;
+
+        if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
+            $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, game);
+            return;
+        }
+    },
+
+    resetScormScore: function (data) {
+        if (!data || !data.scormGame || data.isScorm <= 0) return;
+        var game = data.scormGame;
+        game.scorerp = 0;
+        game.gameStarted = true;
+        game.gameOver = true;
+
+        if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
+            $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, game);
+        }
+    },
+
+    getDataForTable: function (table) {
+        var $table = $(table);
+        for (var i = 0; i < this.options.length; i++) {
+            if (this.options[i].table === $table.get(0) || $(this.options[i].table).get(0) === $table.get(0)) {
+                return this.options[i];
+            }
+        }
+        return null;
+    },
 
 };
 

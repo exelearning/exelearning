@@ -143,7 +143,7 @@ export class ElpxExporter extends Html5Exporter {
             this.logElpxExportDebugPhase('exporter:nav-labels:start', {
                 language: meta.language || 'en',
             });
-            const navLabels = await this.fetchNavLabels(meta.language || 'en');
+            const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
             this.logElpxExportDebugPhase('exporter:nav-labels:end', {
                 language: meta.language || 'en',
             });

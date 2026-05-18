@@ -252,6 +252,15 @@ var $interactivevideo = {
 
         // es.html(es.html()+html);
         es[0].innerHTML += html;
+        if (
+            $interactivevideo.mOptions &&
+            $interactivevideo.mOptions.evaluation
+        ) {
+            $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
+                $interactivevideo.mOptions,
+                $interactivevideo.isInExe
+            );
+        }
 
         // console.log(typeof top.interactiveVideoEditor.activityToSave);
         // Only show "no slides" message if there's truly no content at all
@@ -2798,7 +2807,10 @@ var $interactivevideo = {
         const $idevices = $('.idevice_node'),
             $video = $('.exe-interactive-video').eq(0),
             deviceId = $video.closest('.idevice_node').attr('id'),
-            index = $idevices.index($('#' + deviceId));
+            index = $idevices.index($('#' + deviceId)),
+            ideviceTarget = $video.closest('.interactive-videoIdevice').length
+                ? 'interactive-videoIdevice'
+                : 'idevice_node';
 
         let title =
             $video.closest('article').find('header .box-title').text() || '';
@@ -2813,11 +2825,11 @@ var $interactivevideo = {
             id: IV.ideviceID,
             scorerp: 0,
             weighted: IV.weighted != null ? IV.weighted : 100,
-            evaluation: !!(IV.evaluationID && IV.evaluationID.length),
+            evaluation: !!IV.evaluation,
             evaluationID: IV.evaluationID || '',
             isInExe: this.isInExe,
             main: '.exe-interactive-video',
-            idevice: 'exe-interactive-video',
+            idevice: ideviceTarget,
             idevicePath: this.idevicePath,
             textButtonScorm: IV.scorm.textButtonScorm,
             isScorm: IV.scorm.isScorm,

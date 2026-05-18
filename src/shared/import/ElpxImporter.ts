@@ -104,6 +104,39 @@ export class ElpxImporter {
     }
 
     /**
+     * If the ZIP's entries all live under a single top-level directory (and
+     * there are no files at root), strip that prefix. GitHub's repo archive
+     * downloads have this shape: "<repo>-<branch>/…".
+     * Returns the original zip unchanged when the pattern does not match.
+     */
+    private unwrapSingleTopLevelDirectory(zip: Record<string, Uint8Array>): Record<string, Uint8Array> {
+        const keys = Object.keys(zip);
+        if (keys.length === 0) return zip;
+
+        let singlePrefix: string | null = null;
+        for (const key of keys) {
+            const slashIdx = key.indexOf('/');
+            if (slashIdx === -1) return zip;
+            const prefix = key.slice(0, slashIdx);
+            if (singlePrefix === null) {
+                singlePrefix = prefix;
+            } else if (singlePrefix !== prefix) {
+                return zip;
+            }
+        }
+        if (!singlePrefix) return zip;
+
+        const prefixWithSlash = `${singlePrefix}/`;
+        const stripped: Record<string, Uint8Array> = {};
+        for (const [path, data] of Object.entries(zip)) {
+            const newPath = path.slice(prefixWithSlash.length);
+            if (newPath) stripped[newPath] = data;
+        }
+        this.logger.log(`[ElpxImporter] Stripped top-level directory wrapper '${prefixWithSlash}'`);
+        return stripped;
+    }
+
+    /**
      * Get the navigation Y.Array from the document
      */
     private getNavigation(): Y.Array<unknown> {
@@ -142,11 +175,12 @@ export class ElpxImporter {
         // Report decompression complete (10%)
         this.reportProgress('decompress', 10, 'File decompressed');
 
-        // Check for nested ELP file
-        let workingZip = zip;
+        // Strip a single top-level directory wrapper (GitHub-style archives)
+        // before running the nested-ELP / content.xml detection below.
+        let workingZip = this.unwrapSingleTopLevelDirectory(zip);
 
-        if (!zip['content.xml'] && !zip['contentv3.xml']) {
-            const elpFiles = Object.keys(zip).filter(
+        if (!workingZip['content.xml'] && !workingZip['contentv3.xml']) {
+            const elpFiles = Object.keys(workingZip).filter(
                 name =>
                     !name.includes('/') &&
                     (name.toLowerCase().endsWith('.elp') || name.toLowerCase().endsWith('.elpx')),
@@ -154,7 +188,7 @@ export class ElpxImporter {
 
             if (elpFiles.length === 1) {
                 this.logger.log(`[ElpxImporter] Found nested ELP file: ${elpFiles[0]}, extracting...`);
-                const nestedElpData = zip[elpFiles[0]];
+                const nestedElpData = workingZip[elpFiles[0]];
                 workingZip = fflate.unzipSync(nestedElpData);
             } else if (elpFiles.length > 1) {
                 throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
@@ -252,6 +286,9 @@ export class ElpxImporter {
 
         // Skip decompression phase since contents are already extracted
         this.reportProgress('decompress', 10, 'Files ready');
+
+        // Strip a single top-level directory wrapper (GitHub-style archives).
+        zipContents = this.unwrapSingleTopLevelDirectory(zipContents);
 
         // Find content.xml
         let contentFile = zipContents['content.xml'];

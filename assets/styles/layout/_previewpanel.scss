@@ -268,9 +268,11 @@ $preview-transition: 0.3s ease;
 }
 
 @media (max-width: 992px) {
-    // Panel a pantalla completa en pantallas pequeñas
+    // Full-viewport panel on small screens. Reset min-width so the panel
+    // does not overflow on viewports narrower than $preview-panel-min-width.
     #previewsidenav-content .preview-sidenav {
         width: 100vw;
+        min-width: 0;
         max-width: 100vw;
     }
 

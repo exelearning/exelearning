@@ -7,6 +7,16 @@
         font-size: var(--bs-body-font-size);
         font-family: var(--bs-font-sans-serif);
     }
+    .alert {
+        .alert-link {
+            color: inherit;
+        }
+        button.btn-close {
+            scale: .75;
+            margin-top: -9px;
+            margin-right: -5px;
+        }
+    }
     #eXeBetaWarning {
         z-index: 999;
         margin: 10px;
@@ -14,11 +24,6 @@
         padding: 10px 20px;
         font-size: var(--bs-body-font-size);
         font-family: var(--bs-font-sans-serif);
-        button {
-            scale: .75;
-            margin-top: -9px;
-            margin-right: -5px;
-        }
         i {
             vertical-align: middle;
             margin-right: .25em;

@@ -257,6 +257,49 @@ describe('MenuEngine', () => {
 
       expect(() => menuEngine.initMobileButtonHandlers()).not.toThrow();
     });
+
+    it('falls back to the next desktop button id when the first is missing', () => {
+      // `mobile-navbar-button-export-web` tries `navbar-button-exportas-html5` first
+      // (browser-only handler, rendered in static/offline) and falls back to
+      // `navbar-button-export-html5` in pure online mode where the first isn't rendered.
+      const exportWebMobile = { addEventListener: vi.fn() };
+      const onlineDesktopButton = { click: vi.fn() };
+
+      vi.spyOn(document, 'getElementById').mockImplementation((id) => {
+        if (id === 'mobile-navbar-button-export-web') return exportWebMobile;
+        if (id === 'navbar-button-exportas-html5') return null; // offline variant missing
+        if (id === 'navbar-button-export-html5') return onlineDesktopButton;
+        return null;
+      });
+
+      menuEngine.initMobileButtonHandlers();
+      const clickHandler = exportWebMobile.addEventListener.mock.calls[0]?.[1];
+      clickHandler?.({ preventDefault: vi.fn(), stopPropagation: vi.fn() });
+
+      expect(onlineDesktopButton.click).toHaveBeenCalled();
+    });
+
+    it('prefers the first desktop button id when it is present', () => {
+      // When both variants are rendered (static mode), the first id wins — the offline
+      // handler runs, which is the browser-only export that works without a server.
+      const exportWebMobile = { addEventListener: vi.fn() };
+      const preferredDesktopButton = { click: vi.fn() };
+      const fallbackDesktopButton = { click: vi.fn() };
+
+      vi.spyOn(document, 'getElementById').mockImplementation((id) => {
+        if (id === 'mobile-navbar-button-export-web') return exportWebMobile;
+        if (id === 'navbar-button-exportas-html5') return preferredDesktopButton;
+        if (id === 'navbar-button-export-html5') return fallbackDesktopButton;
+        return null;
+      });
+
+      menuEngine.initMobileButtonHandlers();
+      const clickHandler = exportWebMobile.addEventListener.mock.calls[0]?.[1];
+      clickHandler?.({ preventDefault: vi.fn(), stopPropagation: vi.fn() });
+
+      expect(preferredDesktopButton.click).toHaveBeenCalled();
+      expect(fallbackDesktopButton.click).not.toHaveBeenCalled();
+    });
   });
 
   describe('initMobileLayout', () => {

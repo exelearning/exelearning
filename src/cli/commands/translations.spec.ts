@@ -156,6 +156,63 @@ describe('Translations Command', () => {
             expect(content).not.toContain('backslash.key');
         });
 
+        it('should escape bare & in resname and source elements (clean-only)', async () => {
+            const xlfWithAmpersand = `<?xml version="1.0"?>
+<xliff version="1.2">
+  <file>
+    <body>
+      <trans-unit id="1" resname="Action & Expression">
+        <source>Action & Expression</source>
+        <target>Acción y expresión</target>
+      </trans-unit>
+      <trans-unit id="2" resname="Cats &amp; Dogs">
+        <source>Cats &amp; Dogs</source>
+        <target>Gatos y perros</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfWithAmpersand);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'clean-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('resname="Action &amp; Expression"');
+            expect(content).toContain('<source>Action &amp; Expression</source>');
+            // Already-escaped & must not be double-escaped
+            expect(content).toContain('resname="Cats &amp; Dogs"');
+            expect(content).not.toContain('&amp;amp;');
+        });
+
+        it('should escape bare & in resname and source elements (extract-only, as in make translations)', async () => {
+            const xlfWithAmpersand = `<?xml version="1.0"?>
+<xliff version="1.2">
+  <file>
+    <body>
+      <trans-unit id="1" resname="Action & Expression">
+        <source>Action & Expression</source>
+        <target>Acción y expresión</target>
+      </trans-unit>
+      <trans-unit id="2" resname="Cats &amp; Dogs">
+        <source>Cats &amp; Dogs</source>
+        <target>Gatos y perros</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfWithAmpersand);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('resname="Action &amp; Expression"');
+            expect(content).toContain('<source>Action &amp; Expression</source>');
+            expect(content).toContain('resname="Cats &amp; Dogs"');
+            expect(content).not.toContain('&amp;amp;');
+        });
+
         it('should clean multiple empty lines', async () => {
             const xlfWithEmptyLines = `<?xml version="1.0"?>
 <xliff version="1.2">

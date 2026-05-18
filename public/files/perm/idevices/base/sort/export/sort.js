@@ -837,7 +837,7 @@ var $eXeOrdena = {
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `ordenaPhrasesContainer-${instance}`
+                `#ordenaPhrasesContainer-${instance}`
             );
 
         // pass num to allow initializePhraseDragAndDrop to react to "num>0" cases

@@ -660,7 +660,7 @@ var $trueorfalse = {
         mOptions.active = 0;
         mOptions.scorep = 0;
         mOptions.main = `tofPMainContainer-${instance}`;
-        mOptions.idevice = 'trueorfalse';
+        mOptions.idevice = 'trueorfalseIdevice';
 
         $(`#tofPSendScore-${instance}`).attr('value', mOptions.textButtonScorm);
         $(`#tofPSendScore-${instance}`).hide();
@@ -987,7 +987,7 @@ var $trueorfalse = {
             'font-size': '1.1em',
         });
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMessage' + instance
+            '#tofPMessage-' + instance
         );
     },
 

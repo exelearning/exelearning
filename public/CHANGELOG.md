@@ -1,5 +1,141 @@
 # CHANGELOG
 
+## v4.0.0 – 2026-04-30
+
+eXeLearning 4.0 is a complete rebuild of the application. Every part of the stack has been rethought, from the server runtime to the collaboration engine, the distribution model and the user interface. The following summarises the most significant changes since version 3.
+
+### New technology stack
+
+The server has been rewritten from scratch, moving from **PHP/Symfony/Mercure** to **Bun** (fast JavaScript/TypeScript runtime), **Elysia** (lightweight HTTP framework) and **Kysely** (type-safe SQL query builder). The result is a faster server with lower memory usage, improved concurrency under load and a significantly simpler codebase.
+
+### Three ways to use eXeLearning
+
+- **Team Edition**: server installation, full online editor with real-time collaboration, user management, persistent project storage and database-backed persistence
+- **Personal Edition**: online, fully functional static Progressive Web App (PWA) that runs entirely in the browser
+- **Desktop**: local installation on device, native applications for Linux, Windows and macOS, built with Electron
+
+### New admin panel
+
+A new admin panel provides real-time visibility into the application, including activity metrics, active users, maintenance mode control and customisation options (application title, favicon, custom head HTML, and assets). This functionality was not available in version 3.
+
+### Collaborative editing
+
+The Yjs-based collaborative engine has been substantially improved. Multiple synchronisation and concurrency issues from version 3 have been resolved, including shared project deletion by non-owners, editor state loss on remote changes and block reorder inconsistencies. Collaborative sessions are now more reliable and consistent.
+
+### File Manager
+
+The File Manager has been improved in both usability and functionality. New features include file search, sorting options and a reference counter that shows where each asset is used within a project.
+
+### LMS and platform integration
+
+Compatibility with the latest Moodle plugins has been improved. The editor can be embedded in platforms such as WordPress, Moodle, Omeka-S or Drupal using iframe and postMessage, with a well-defined integration API. Host platforms can inject admin-approved custom styles, override themes or block style imports without rebuilding the editor bundle.
+
+### iDevices
+
+Significant improvements across multiple iDevices:
+
+- **Rubric**: PDF export, CSV import/export and SCORM score support
+- **Games**: native audio recording using the device microphone
+- **Classify**: maximum number of categories increased from 4 to 9
+- **Sort**: correct validation of exercises with identical cards
+- **Scrambled List**: configurable number of attempts
+- **Case Study**: separate labels for shown/hidden feedback states
+- **GeoGebra Activity**: options to display title and author
+- **DigCompEdu**: new iDevice for digital competence assessment
+- All iDevices now include a link to the online usage manual within the editing interface
+
+### Interface, accessibility and exports
+
+- Project thumbnails (`screenshot.png`) are automatically generated on each save and included in `.elpx` archives
+- Accessibility improvements in exported content, including proper heading structure, a skip navigation link and correct `<title>` elements per page
+- Improved responsive layout: modals, preview panel and navigation menus adapt to low-resolution screens
+- Teacher Mode: teacher-only content now includes a visual indicator in the editor
+- Pages, boxes and iDevices excluded from export are now visually marked in the work area; related presentation and functionality issues have been resolved
+- Export metadata has been improved: `content.xml` now records the actual eXeLearning version, and license information has been standardised
+
+### Performance and reliability
+
+Peak memory usage during save, preview and export has been significantly reduced, particularly in large projects. Asset persistence is now more robust and reliable across different environments.
+
+### Deployment
+
+Deployment of the Team Edition has been simplified. Configuration options have been streamlined, and documentation covering installation, environment variables and upgrade procedures has been improved.
+
+### Internationalization
+
+All languages have been reviewed. Languages with complete translations: **es, eu, ca, va, gl, ro, it, pt**. All other supported languages include automated placeholder translations to ensure full interface coverage.
+
+---
+
+## v4.0.0-rc3 – 2026-04-27
+
+### Added
+
+- Themes: host integrations (WordPress, Moodle, Omeka-S) can now inject admin-approved custom styles, hide built-in styles, block automatic style imports and define a fallback theme via a `themeRegistryOverride` hook without rebuilding the editor bundle
+- iDevices: a link to the online usage manual is now displayed in each iDevice editing interface
+
+### Fixed
+
+- Assets now persist correctly when eXeLearning is served over plain HTTP on externally accessible hosts (non-loopback environments); IndexedDB is used as fallback when the Cache API is unavailable in non-secure contexts
+- Auth: `AUTH_CREATE_USERS` setting is now enforced in CAS and OpenID Connect SSO flows, returning 401 when automatic user creation is disabled
+- Translation extraction mechanism now correctly generates valid XML XLF language files
+- Themes: the "Imported styles" tab is hidden when theme imports are blocked by admin configuration
+- Preview panel no longer overflows on screens below 992px width
+- User dropdown menu shows only essential actions on mobile devices
+- About, Preferences, Open file and File Manager modals now use responsive layout on mobile devices
+- iDevices: edition messages now use Bootstrap dismissible alerts
+- iDevices: the save dialog no longer appears twice when exporting questions in the desktop application
+- iDevices: AI prompt examples preserve line breaks correctly
+- iDevices: strings containing `%` are now correctly translated
+
+### Upgraded
+
+- uuid: 13.0.0 → 14.0.0
+
+---
+
+## v4.0.0-rc2 – 2026-04-22
+
+### Added
+
+- Projects now automatically generate a `screenshot.png` thumbnail on each save; included in `.elpx` archives and manageable from Project Properties
+- Admin panel link added to the user dropdown menu for admin users
+- Case Study iDevice: feedback button now supports separate labels for shown/hidden states using `Show|Hide` syntax (aligned with Text iDevice)
+- Download Source File iDevice: progress bar displayed while preparing the file
+- Rubric iDevice: add SCORM score support
+- File Manager: single-file uploads now automatically select the uploaded file
+- New `make translations-format` command to add `CDATA` tags where needed and normalize indentation in translation files
+- Updated Galician (GL), Italian (IT), Romanian (RO), Basque (EU) and Valencian (VA) translations
+
+### Fixed
+
+- Exports no longer produce missing images when cached asset blobs are evicted under storage pressure
+- Exported pages now include "Page title | Project title" in the `<title>` element for non-index pages
+- Standardized license naming and reviewed license HTML rendering in exports
+- Prevented machine-translated placeholder `~` from being included in exported HTML
+- Rubric iDevice: resolved UI and accessibility issues
+- Several iDevices: fixed LaTeX rendering issues
+- TinyMCE: images no longer appear broken after paste or drag-and-drop uploads
+- Workarea: content box minimize/restore arrows order corrected
+- File Manager: asset reference count now updates correctly after deleting an image without reopening the project
+- Export Page, Export Box and Export iDevice now correctly write files in the desktop app
+- Block reorder arrows now move to the correct position in collaborative sessions
+- Share modal: confirmation dialogs now use the application UI instead of the browser native dialog
+- Static bundle: allow `?url=` imports without `.elpx`, `.elp`, or `.zip` file extension in pathname
+- Desktop app: first save filename and last accessed folder are now preserved for subsequent saves in the same session
+- Auto-updater now activates correctly on official beta and RC builds
+- LMS integration: base64-encoded ELP resources sent via Moodle LTI are now correctly loaded on launch
+- LMS integration: standalone controls (New, Open, Share, Save) are now hidden when running inside an LMS
+
+### Upgraded
+
+- @codecov/bundle-analyzer: 1.9.1 → 2.0.1
+- actions/github-script: 8 → 9
+- actions/upload-pages-artifact: 4 → 5
+- esbuild: 0.27.7 → 0.28.0
+
+---
+
 ## v4.0.0-rc1 – 2026-04-07
 
 ### Added

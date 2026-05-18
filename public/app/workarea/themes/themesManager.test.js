@@ -512,6 +512,27 @@ describe('ThemesManager', () => {
       expect(themesManager.selected.id).toBe('default-theme');
     });
 
+    it('uses fallbackTheme from themeRegistryOverride when default is also missing', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      // Remove the default theme so the normal fallback path fails.
+      delete themesManager.list.installed['default-theme'];
+      themesManager.list.installed['safe-base'] = {
+        id: 'safe-base',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+      window.eXeLearning.config.themeRegistryOverride = {
+        fallbackTheme: 'safe-base',
+      };
+
+      await themesManager.selectTheme('missing-theme');
+
+      expect(themesManager.selected.id).toBe('safe-base');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Theme 'missing-theme' unavailable")
+      );
+      warnSpy.mockRestore();
+    });
+
     it('should select theme when forceReload is true', async () => {
       themesManager.selected = mockTheme;
 

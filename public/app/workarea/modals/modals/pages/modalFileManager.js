@@ -98,6 +98,32 @@ export default class ModalFilemanager extends Modal {
         this.dropdownCopyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
         this.fullSizeBtn = footer?.querySelector('.media-library-fullsize-btn');
 
+        // Mobile-only collapsed actions dropdown
+        this.mobileActionsWrapper = footer?.querySelector('.media-library-mobile-actions');
+        this.mobileActionsToggle = this.mobileActionsWrapper?.querySelector('.media-library-mobile-actions-toggle');
+        this.mobileActionTargets = {
+            delete: this.deleteBtn,
+            rename: this.renameBtn,
+            duplicate: this.duplicateBtn,
+            move: this.moveBtn,
+            download: this.downloadBtn,
+            'extract-zip': this.extractBtn,
+            copyurl: this.dropdownCopyUrlBtn,
+            fullsize: this.fullSizeBtn,
+        };
+        if (this.mobileActionsWrapper) {
+            this.mobileActionsWrapper.addEventListener('click', (event) => {
+                const item = event.target.closest('[data-mobile-action]');
+                if (!item) return;
+                event.preventDefault();
+                if (item.classList.contains('disabled') || item.classList.contains('d-none')) return;
+                const target = this.mobileActionTargets[item.dataset.mobileAction];
+                if (target && !target.disabled) {
+                    target.click();
+                }
+            });
+        }
+
         // WebSocket handler reference and bound event handlers for rename sync
         this._wsHandler = null;
         this._onAssetRenamed = null;
@@ -1063,6 +1089,29 @@ export default class ModalFilemanager extends Modal {
         if (this.extractBtn) {
             this.extractBtn.classList.toggle('d-none', !isZip);
         }
+
+        this.syncMobileActions();
+    }
+
+    syncMobileActions() {
+        if (!this.mobileActionsWrapper) return;
+        let anyEnabled = false;
+        for (const [action, target] of Object.entries(this.mobileActionTargets)) {
+            const item = this.mobileActionsWrapper.querySelector(`[data-mobile-action="${action}"]`);
+            if (!item) continue;
+            // Only `extract-zip` is genuinely hidden based on the target's d-none class (non-zip files).
+            // Main action buttons have d-none from `d-none d-md-inline-block`, which hides them on
+            // mobile only and must not propagate to the mobile dropdown items.
+            const hidden = !target || (action === 'extract-zip' && target.classList.contains('d-none'));
+            const disabled = !target || target.disabled;
+            item.classList.toggle('d-none', hidden);
+            item.classList.toggle('disabled', disabled);
+            item.setAttribute('aria-disabled', String(disabled));
+            if (!hidden && !disabled) anyEnabled = true;
+        }
+        if (this.mobileActionsToggle) {
+            this.mobileActionsToggle.disabled = !anyEnabled;
+        }
     }
 
     /**
@@ -1410,6 +1459,7 @@ export default class ModalFilemanager extends Modal {
         if (mime.startsWith('image/')) return _('Image');
         if (mime.startsWith('video/')) return _('Video');
         if (mime.startsWith('audio/')) return _('Audio');
+        if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/vnd.mmtf') return _('3D Model');
         if (mime.includes('pdf')) return _('PDF');
         return _('File');
     }
@@ -1428,7 +1478,7 @@ export default class ModalFilemanager extends Modal {
             if (mime.startsWith('audio/')) return 'audiotrack';
             if (mime === 'application/pdf') return 'picture_as_pdf';
             if (mime === 'application/zip' || mime === 'application/x-zip-compressed') return 'folder_zip';
-            if (mime === 'model/stl' || mime === 'application/sla') return 'view_in_ar';
+            if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/sla' || mime === 'application/vnd.mmtf') return 'view_in_ar';
         }
 
         // Check by file extension
@@ -1451,6 +1501,18 @@ export default class ModalFilemanager extends Modal {
                 case 'fbx':
                 case 'gltf':
                 case 'glb':
+                case 'pdb':
+                case 'sdf':
+                case 'mol2':
+                case 'xyz':
+                case 'cif':
+                case 'mmcif':
+                case 'mmtf':
+                case 'gro':
+                case 'pqr':
+                case 'prmtop':
+                case 'vasp':
+                case 'cube':
                     return 'view_in_ar';
                 case 'doc':
                 case 'docx':
@@ -1495,6 +1557,7 @@ export default class ModalFilemanager extends Modal {
         if (mime.startsWith('image/')) return 'image';
         if (mime.startsWith('video/')) return 'video';
         if (mime.startsWith('audio/')) return 'audio';
+        if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/vnd.mmtf') return 'model';
         if (mime === 'application/pdf') return 'pdf';
         return 'other';
     }
@@ -1520,12 +1583,13 @@ export default class ModalFilemanager extends Modal {
             image: _('Images'),
             video: _('Videos'),
             audio: _('Audio'),
+            model: _('3D Models'),
             pdf: _('PDF'),
             other: _('Other')
         };
 
         // Type order for consistent display
-        const typeOrder = ['image', 'video', 'audio', 'pdf', 'other'];
+        const typeOrder = ['image', 'video', 'audio', 'model', 'pdf', 'other'];
 
         // Add options for existing types
         for (const type of typeOrder) {
@@ -2010,13 +2074,15 @@ export default class ModalFilemanager extends Modal {
         Logger.log(`[MediaLibrary] uploadFiles: assetManager.projectId = ${this.assetManager.projectId}, folder = "${this.currentPath}"`);
 
         let uploadedCount = 0;
+        let lastUploadedUrl = null;
 
         for (const file of files) {
             try {
                 Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}, folder: "${this.currentPath}"`);
                 // Upload to current folder
-                await this.assetManager.insertImage(file, { folderPath: this.currentPath });
+                const url = await this.assetManager.insertImage(file, { folderPath: this.currentPath });
                 uploadedCount++;
+                lastUploadedUrl = url;
             } catch (err) {
                 console.error(`[MediaLibrary] Failed to upload ${file.name}:`, err);
             }
@@ -2025,6 +2091,28 @@ export default class ModalFilemanager extends Modal {
         if (uploadedCount > 0) {
             Logger.log(`[MediaLibrary] Uploaded ${uploadedCount} files to folder "${this.currentPath}"`);
             await this.loadAssets();
+
+            if (uploadedCount === 1 && lastUploadedUrl) {
+                const assetId = lastUploadedUrl.replace(/^asset:\/\//, '').replace(/\.[^.]*$/, '');
+                await this.autoSelectUploadedAsset(assetId);
+            }
+        }
+    }
+
+    /**
+     * Auto-select an asset after upload, as if the user clicked it.
+     * @param {string} assetId
+     */
+    async autoSelectUploadedAsset(assetId) {
+        const asset = this.assets.find(a => a.id === assetId);
+        if (!asset) return;
+
+        if (this.viewMode === 'list') {
+            const row = this.listTbody?.querySelector(`[data-asset-id="${assetId}"]`);
+            if (row) await this.selectAssetInList(asset, row);
+        } else {
+            const item = this.grid?.querySelector(`[data-asset-id="${assetId}"]`);
+            if (item) await this.selectAsset(asset, item);
         }
     }
 
@@ -3269,6 +3357,9 @@ export default class ModalFilemanager extends Modal {
             'odp':  'application/vnd.oasis.opendocument.presentation',
             // Other
             'zip': 'application/zip',
+            'gz': 'application/gzip',
+            'tgz': 'application/gzip',
+            'tar': 'application/x-tar',
             'json': 'application/json',
             'xml': 'application/xml',
             'html': 'text/html',
@@ -3278,6 +3369,19 @@ export default class ModalFilemanager extends Modal {
             'md': 'text/markdown',
             'csv': 'text/csv',
             'stl': 'model/stl',
+            // Molecular / structural formats
+            'pdb': 'chemical/x-pdb',
+            'sdf': 'chemical/x-mdl-sdfile',
+            'mol2': 'chemical/x-mol2',
+            'xyz': 'chemical/x-xyz',
+            'cif': 'chemical/x-cif',
+            'mmcif': 'chemical/x-cif',
+            'mmtf': 'application/vnd.mmtf',
+            'gro': 'chemical/x-gromacs',
+            'pqr': 'chemical/x-pqr',
+            'prmtop': 'chemical/x-amber-prmtop',
+            'vasp': 'model/x-poscar',
+            'cube': 'chemical/x-gaussian-cube',
         };
         return mimeTypes[ext] || 'application/octet-stream';
     }

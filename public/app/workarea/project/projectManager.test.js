@@ -3416,6 +3416,37 @@ describe('ProjectManager', () => {
                 expect(window.location.reload).toHaveBeenCalled();
             });
 
+            it('new action: clears the Electron saved path so the next Save starts fresh', async () => {
+                const clearSavedPath = vi.fn().mockResolvedValue(true);
+                window.electronAPI = { clearSavedPath };
+
+                await projectManager.transitionToProject({ action: 'new' });
+
+                expect(clearSavedPath).toHaveBeenCalled();
+                delete window.electronAPI;
+            });
+
+            it('new action: survives a missing clearSavedPath without throwing', async () => {
+                window.electronAPI = {};
+
+                await expect(
+                    projectManager.transitionToProject({ action: 'new' }),
+                ).resolves.not.toThrow();
+
+                delete window.electronAPI;
+            });
+
+            it('import action: persists the imported file name via setSavedPath', async () => {
+                const setSavedPath = vi.fn().mockResolvedValue(true);
+                window.electronAPI = { setSavedPath };
+                const file = new File(['content'], 'Imported.elpx');
+
+                await projectManager.transitionToProject({ action: 'import', file });
+
+                expect(setSavedPath).toHaveBeenCalledWith('Imported.elpx');
+                delete window.electronAPI;
+            });
+
             it('uses exportToElpxViaYjs for save instead of server saveManager', async () => {
                 const mockExport = vi.fn().mockResolvedValue({ saved: true });
                 const mockServerSave = vi.fn();

@@ -514,7 +514,7 @@ var $quickquestionsmultiplechoice = {
     showStartedButton: function () {
         $quickquestionsmultiplechoice.options.forEach((option, i) => {
             if (!option.gameStarted && !option.gameOver) {
-                $(`#seleccionaStartGame-${ì}`).show();
+                $(`#seleccionaStartGame-${i}`).show();
                 $quickquestionsmultiplechoice.showMessage(1, '', i);
             }
         });
@@ -1644,7 +1644,7 @@ var $quickquestionsmultiplechoice = {
         const htmlContent = $(`#seleccionaWordDiv-${instance}`).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(htmlContent)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `seleccionaWordDiv-${instance}`
+                `#seleccionaWordDiv-${instance}`
             );
         }
 
@@ -2481,7 +2481,7 @@ var $quickquestionsmultiplechoice = {
         const html = $(`#seleccionaQuestionDiv-${instance}`).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `seleccionaQuestionDiv-${instance}`
+                `#seleccionaQuestionDiv-${instance}`
             );
         }
     },

@@ -40,6 +40,20 @@ export class PageRenderer {
     }
 
     /**
+     * Build the HTML <title> value for a page.
+     * Index page uses the project title alone. Inner pages use
+     * "Page title | Project title" (falling back to the project title
+     * when the page title is empty or duplicates it).
+     */
+    private buildDocumentTitle(page: ExportPage, projectTitle: string, isIndex: boolean): string {
+        if (isIndex) return projectTitle;
+        const pageTitle = (page.title || '').trim();
+        if (!pageTitle) return projectTitle;
+        if (!projectTitle || pageTitle === projectTitle) return pageTitle;
+        return `${pageTitle} | ${projectTitle}`;
+    }
+
+    /**
      * Check if a property value is truthy (handles both boolean and string "true")
      */
     private isTruthyProperty(value: unknown): boolean {
@@ -102,7 +116,7 @@ export class PageRenderer {
             version,
         } = options;
 
-        const pageTitle = isIndex ? projectTitle : page.title || 'Page';
+        const pageTitle = this.buildDocumentTitle(page, projectTitle, isIndex);
 
         // Detect libraries from ORIGINAL content (before transformation)
         // This is important for exe-package:elp links which get transformed during rendering
@@ -115,6 +129,7 @@ export class PageRenderer {
             description: options.description,
             license: options.license,
             language: options.language,
+            translatedLicense: options.navLabels?.license,
         });
 
         // Calculate page counter values
@@ -168,7 +183,7 @@ ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadSc
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${pageContent}
 </div></main>${navButtonsHtml}
-${this.renderFooterSection({ license, licenseUrl, userFooterContent, language })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels: options.navLabels })}
 </div>
 ${madeWithExeHtml}
 </body>
@@ -609,7 +624,13 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         projectTitle?: string,
         assetExportPathMap?: Map<string, string>,
-        metadata?: { author?: string; description?: string; license?: string; language?: string },
+        metadata?: {
+            author?: string;
+            description?: string;
+            license?: string;
+            language?: string;
+            translatedLicense?: string;
+        },
     ): string {
         let html = '';
 
@@ -656,7 +677,9 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                         displayName = 'Proprietary license';
                     if (metadata.license.toLowerCase().trim() === 'not appropriate') displayName = 'Not appropriate';
                     if (metadata.license.toLowerCase().trim() === 'public domain') displayName = 'Public domain';
-                    safeLicenseHtml = this.escapeHtml(trans(displayName, {}, metadata.language));
+                    safeLicenseHtml = this.escapeHtml(
+                        metadata.translatedLicense || trans(displayName, {}, metadata.language),
+                    );
                 }
             }
 
@@ -799,8 +822,9 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         licenseUrl?: string;
         userFooterContent?: string;
         language?: string;
+        navLabels?: { license?: string };
     }): string {
-        const { license, licenseUrl = '', userFooterContent, language = 'en' } = options;
+        const { license, licenseUrl = '', userFooterContent, language = 'en', navLabels } = options;
 
         let userFooterHtml = '';
         if (userFooterContent) {
@@ -815,7 +839,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         }
 
         const licenseText = formatLicenseText(license);
-        const translatedLicenseText = trans(licenseText, {}, language);
+        const translatedLicenseText = navLabels?.license || trans(licenseText, {}, language);
         const licenseClass = getLicenseClass(license);
 
         // If there's a license URL, create a link; otherwise, just show the text
@@ -977,6 +1001,7 @@ ${userFooterHtml}</div></footer>`;
             version?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
+            navLabels?: { previous?: string; next?: string; page?: string; license?: string };
         } = {},
     ): string {
         const {
@@ -996,6 +1021,7 @@ ${userFooterHtml}</div></footer>`;
             detectedLibraries = [],
             addMathJax = false,
             addAccessibilityToolbar = false,
+            navLabels,
         } = options;
 
         let contentHtml = '';
@@ -1024,6 +1050,7 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
     description: options.description,
     license: options.license,
     language: options.language,
+    translatedLicense: navLabels?.license,
 })}
 </div>
 </section>\n`;
@@ -1071,7 +1098,7 @@ ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 <header class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
-${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, navLabels })}
 </div>
 ${addExeLink ? this.renderMadeWithEXe() : ''}
 </body>

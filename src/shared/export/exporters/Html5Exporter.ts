@@ -111,7 +111,7 @@ export class Html5Exporter extends BaseExporter {
             const assetExportPathMap = await this.buildAssetExportPathMap();
 
             // Fetch translated nav button labels for the content language
-            const navLabels = await this.fetchNavLabels(meta.language || 'en');
+            const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
 
             // 1. Generate HTML pages, pre-render LaTeX/Mermaid, and add directly to ZIP
             // Pages are added to ZIP immediately to avoid storing all HTML in memory
@@ -586,7 +586,7 @@ export class Html5Exporter extends BaseExporter {
             const assetExportPathMap = await this.buildAssetExportPathMap();
 
             // Fetch translated nav button labels for the content language
-            const navLabels = await this.fetchNavLabels(meta.language || 'en');
+            const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
 
             // 1. Generate HTML pages, pre-render LaTeX/Mermaid, and collect for later addition
             // We buffer page HTML because ELPX download scripts need libraries to be loaded first

@@ -1357,6 +1357,85 @@ describe('Pages Routes', () => {
             expect(templateData.t).toBeDefined();
         });
 
+        it('should expose isAdmin=false and admin_panel translation for non-admin users', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = { ...mockDeps, template: customTemplate };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' });
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            mockSessions.set('isadmin-false', { sessionId: 'isadmin-false', fileName: 'Test.elp' });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=isadmin-false', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(templateData).not.toBeNull();
+            expect(templateData.user.isAdmin).toBe(false);
+            expect(templateData.user.roles).toEqual(['ROLE_USER']);
+            expect(templateData.t.admin_panel).toBeDefined();
+        });
+
+        it('should expose isAdmin=true for users with ROLE_ADMIN', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = { ...mockDeps, template: customTemplate };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(77, {
+                id: 77,
+                email: 'admin-workarea@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' });
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 77,
+                email: 'admin-workarea@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            mockSessions.set('isadmin-true', { sessionId: 'isadmin-true', fileName: 'Test.elp' });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=isadmin-true', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(templateData).not.toBeNull();
+            expect(templateData.user.isAdmin).toBe(true);
+            expect(templateData.user.roles).toContain('ROLE_ADMIN');
+        });
+
         it('should include impersonation context in workarea view model', async () => {
             let templateData: any = null;
             const customTemplate: PagesTemplateDeps = {

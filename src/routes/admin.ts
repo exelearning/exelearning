@@ -8,6 +8,7 @@ import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
+import { buildContentDisposition } from '../shared/http/headers';
 import { invalidateMaintenanceCache } from '../services/maintenance';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
@@ -626,15 +627,6 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     OIDC_SCOPE: { value: process.env.OIDC_SCOPE || 'openid email', type: 'string' },
     OIDC_CLIENT_ID: { value: process.env.OIDC_CLIENT_ID || 'interactive.confidential', type: 'string' },
     OIDC_CLIENT_SECRET: { value: process.env.OIDC_CLIENT_SECRET || 'secret', type: 'string' },
-    GOOGLE_CLIENT_ID: {
-        value: process.env.GOOGLE_CLIENT_ID || 'example.com.apps.googleusercontent.com',
-        type: 'string',
-    },
-    GOOGLE_CLIENT_SECRET: { value: process.env.GOOGLE_CLIENT_SECRET || 'example.com', type: 'string' },
-    DROPBOX_CLIENT_ID: { value: process.env.DROPBOX_CLIENT_ID || 'example.com', type: 'string' },
-    DROPBOX_CLIENT_SECRET: { value: process.env.DROPBOX_CLIENT_SECRET || 'example.com', type: 'string' },
-    OPENEQUELLA_CLIENT_ID: { value: process.env.OPENEQUELLA_CLIENT_ID || 'example.com', type: 'string' },
-    OPENEQUELLA_CLIENT_SECRET: { value: process.env.OPENEQUELLA_CLIENT_SECRET || 'example.com', type: 'string' },
     CUSTOM_HEAD_HTML: { value: '', type: 'string' },
     APP_NAME: { value: '', type: 'string' },
     APP_FAVICON_PATH: { value: '', type: 'string' },
@@ -1283,7 +1275,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 const safeFilename = `project-${project.id}-${slug}.elpx`;
 
                 set.headers['content-type'] = 'application/zip';
-                set.headers['content-disposition'] = `attachment; filename="${safeFilename}"`;
+                set.headers['content-disposition'] = buildContentDisposition(safeFilename);
                 set.headers['content-length'] = result.data.length.toString();
                 return result.data;
             })

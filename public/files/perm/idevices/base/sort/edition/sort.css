@@ -476,12 +476,6 @@ label[for=gameQEActivitySCORM] {
     font-weight: normal
 }
 
-.ODNE-TypeGameHelp {
-    display: none;
-    font-size: .95em;
-    width: 100%;
-}
-
 .Games-Reportdiv {
     display: flex;
     justify-content: flex-start;

@@ -1136,6 +1136,53 @@ describe('NavbarFile', () => {
             expect(global.fetch).not.toHaveBeenCalled();
         });
 
+        // Regression for issue #1666: Save A.elpx → File → New → Save
+        // must NOT pre-fill A.elpx. The static/Electron branch of
+        // createSession() reloads via window.newProject() (a bare
+        // location.reload), so the main-process "current file" slot
+        // must be cleared first or the next Save dialog would still
+        // propose the previously saved name.
+        it('should clear the Electron saved path before reloading via window.newProject', async () => {
+            const clearSavedPath = vi.fn().mockResolvedValue(true);
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+            window.__EXE_STATIC_MODE__ = true;
+            window.electronAPI = { clearSavedPath };
+            window.newProject = vi.fn();
+
+            await navbarFile.createSession();
+
+            expect(clearSavedPath).toHaveBeenCalled();
+            expect(clearSavedPath.mock.invocationCallOrder[0]).toBeLessThan(
+                window.newProject.mock.invocationCallOrder[0],
+            );
+            expect(window.newProject).toHaveBeenCalled();
+        });
+
+        it('should also clear the Electron saved path on the transitionToProject branch', async () => {
+            const clearSavedPath = vi.fn().mockResolvedValue(true);
+            const transitionSpy = vi.fn().mockResolvedValue();
+            window.electronAPI = { clearSavedPath };
+            eXeLearning.app.project.transitionToProject = transitionSpy;
+
+            await navbarFile.createSession();
+
+            expect(clearSavedPath).toHaveBeenCalled();
+            expect(transitionSpy).toHaveBeenCalledWith({
+                action: 'new',
+                skipSave: true,
+            });
+        });
+
+        it('should survive a missing clearSavedPath without throwing', async () => {
+            window.electronAPI = {};
+            window.__EXE_STATIC_MODE__ = true;
+            window.newProject = vi.fn();
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+
+            await expect(navbarFile.createSession()).resolves.toBeUndefined();
+            expect(window.newProject).toHaveBeenCalled();
+        });
+
         it('should use transitionToProject when available', async () => {
             const transitionSpy = vi.fn().mockResolvedValue();
             eXeLearning.app.project.transitionToProject = transitionSpy;
@@ -1308,6 +1355,25 @@ describe('NavbarFile', () => {
             expect(window.electronAPI.openElp).toHaveBeenCalled();
             expect(eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalled();
             expect(window.__originalElpPath).toBe('/tmp/test.elpx');
+        });
+
+        it('should persist the opened file path via setSavedPath', async () => {
+            eXeLearning.config.isOfflineInstallation = true;
+            const setSavedPath = vi.fn().mockResolvedValue(true);
+            window.electronAPI = {
+                openElp: vi.fn().mockResolvedValue('/tmp/remembered.elpx'),
+                readFile: vi.fn().mockResolvedValue({
+                    ok: true,
+                    base64: Buffer.from('test').toString('base64'),
+                }),
+                setSavedPath,
+            };
+            global.atob = (value) => Buffer.from(value, 'base64').toString('binary');
+
+            navbarFile.openUserOdeFilesEvent();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(setSavedPath).toHaveBeenCalledWith('/tmp/remembered.elpx');
         });
 
         it('should show alert when offline file read fails', async () => {
@@ -2146,6 +2212,196 @@ describe('NavbarFile', () => {
 
             expect(global.eXe.app.alert).toHaveBeenCalled();
         });
+
+        // Regression coverage for the missing-images symptom on Moodle
+        // (mod_exeweb#42 / mod_exescorm#55): when the browser has the Yjs
+        // bridge and SharedExporters available, uploadPlatformEvent must
+        // generate the package locally and POST it as multipart to the
+        // browser-forwarder endpoint instead of relying on the server-side
+        // generation that was producing ZIPs without content/resources/.
+        it('uploadPlatformEvent generates the package client-side and forwards to the browser endpoint', async () => {
+            window.location.search = '?jwt_token=ignored';
+            const exportData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+            const quickExport = vi
+                .fn()
+                .mockResolvedValue({ success: true, data: exportData, filename: 'project.zip' });
+            window.SharedExporters = { quickExport };
+
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: () => ({ saveToServer: vi.fn().mockResolvedValue() }),
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+                assetCache: null,
+                resourceFetcher: null,
+            };
+
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: async () => ({ responseMessage: 'OK', returnUrl: 'http://platform/return' }),
+            });
+            const originalFetch = global.fetch;
+            global.fetch = fetchMock;
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            expect(quickExport).toHaveBeenCalled();
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            const [calledUrl, init] = fetchMock.mock.calls[0];
+            expect(String(calledUrl)).toContain('/api/platform/integration/set_platform_new_ode_browser');
+            expect(init.method).toBe('POST');
+            expect(init.body).toBeInstanceOf(FormData);
+            // Legacy server-side endpoint must NOT be hit when the browser flow handled it.
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
+            expect(window.location.replace).toHaveBeenCalledWith('http://platform/return');
+        });
+
+        it('uploadPlatformEvent surfaces export failures from SharedExporters', async () => {
+            window.location.search = '?jwt_token=ignored';
+            const quickExport = vi.fn().mockResolvedValue({ success: false, error: 'no document' });
+            window.SharedExporters = { quickExport };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+            };
+
+            const originalFetch = global.fetch;
+            global.fetch = vi.fn();
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            // No upload happens when the export fails to produce a package.
+            expect(global.eXe.app.alert).toHaveBeenCalled();
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
+        });
+
+        it('uploadPlatformEvent falls back to the legacy server endpoint when SharedExporters is unavailable', async () => {
+            window.location.search = '?jwt_token=ignored';
+            // No SharedExporters in window: client-side path is unavailable.
+            eXeLearning.app.project._yjsBridge = null;
+            eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mockResolvedValue({
+                responseMessage: 'OK',
+                returnUrl: 'http://return',
+            });
+
+            await navbarFile.uploadPlatformEvent();
+
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).toHaveBeenCalled();
+            expect(window.location.replace).toHaveBeenCalledWith('http://return');
+        });
+
+        it('_decodePlatformJwtPayload returns null for malformed tokens', () => {
+            expect(navbarFile._decodePlatformJwtPayload(null)).toBeNull();
+            expect(navbarFile._decodePlatformJwtPayload('')).toBeNull();
+            expect(navbarFile._decodePlatformJwtPayload('not-a-jwt')).toBeNull();
+            expect(navbarFile._decodePlatformJwtPayload('a.b.c')).toBeNull();
+        });
+
+        it('_decodePlatformJwtPayload extracts the payload from a well-formed JWT', () => {
+            const payload = { pkgtype: 'scorm', cmid: '99' };
+            const encoded = btoa(JSON.stringify(payload)).replace(/=+$/, '');
+            const token = `header.${encoded}.signature`;
+
+            const decoded = navbarFile._decodePlatformJwtPayload(token);
+            expect(decoded).toEqual(payload);
+        });
+
+        it('uploadPlatformEvent surfaces forwarder transport errors via alert', async () => {
+            window.location.search = '?jwt_token=ignored';
+            const exportData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+            window.SharedExporters = {
+                quickExport: vi
+                    .fn()
+                    .mockResolvedValue({ success: true, data: exportData, filename: 'project.zip' }),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+            };
+
+            const fetchMock = vi.fn().mockRejectedValue(new Error('network down'));
+            const originalFetch = global.fetch;
+            global.fetch = fetchMock;
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            // The transport failure must surface to the user; we must not silently
+            // drop the upload or fall back to the stale server-side path.
+            expect(global.eXe.app.alert).toHaveBeenCalled();
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
+            expect(window.location.replace).not.toHaveBeenCalled();
+        });
+
+        it('uploadPlatformEvent alerts when the platform returns a non-OK response', async () => {
+            window.location.search = '?jwt_token=ignored';
+            const exportData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+            window.SharedExporters = {
+                quickExport: vi
+                    .fn()
+                    .mockResolvedValue({ success: true, data: exportData, filename: 'project.zip' }),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+            };
+
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                json: async () => ({ responseMessage: 'Server exploded' }),
+            });
+            const originalFetch = global.fetch;
+            global.fetch = fetchMock;
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            expect(global.eXe.app.alert).toHaveBeenCalled();
+            expect(window.location.replace).not.toHaveBeenCalled();
+        });
+
+        it('uploadPlatformEvent alerts when SharedExporters.quickExport throws', async () => {
+            window.location.search = '?jwt_token=ignored';
+            window.SharedExporters = {
+                quickExport: vi.fn().mockRejectedValue(new Error('worker died')),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: { id: 'doc' },
+                assetManager: { id: 'asset' },
+            };
+
+            const originalFetch = global.fetch;
+            global.fetch = vi.fn();
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            expect(global.eXe.app.alert).toHaveBeenCalled();
+            expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
+        });
     });
 
     describe('importXmlPropertiesEvent', () => {
@@ -2707,6 +2963,87 @@ describe('NavbarFile', () => {
             await new Promise(resolve => setTimeout(resolve, 10));
 
             expect(largeFilesUploadSpy).toHaveBeenCalledWith(mockFile);
+        });
+
+        // Regression for issue #1666: save A → new → save B → open A via
+        // the static <input type="file"> must propose A.elpx in the next
+        // Save dialog, not B.elpx. The static path used to skip
+        // setSavedPath entirely, so the main-process "current file" slot
+        // still held B's name.
+        it('should persist the opened file name via setSavedPath in static mode', async () => {
+            const largeFilesUploadSpy = vi.fn();
+            const setSavedPath = vi.fn().mockResolvedValue(true);
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: largeFilesUploadSpy,
+            };
+            window.electronAPI = { setSavedPath };
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'documento-sin-titulo-x.elpx', {
+                type: 'application/octet-stream',
+            });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            expect(setSavedPath).toHaveBeenCalledWith('documento-sin-titulo-x.elpx');
+            expect(setSavedPath.mock.invocationCallOrder[0]).toBeLessThan(
+                largeFilesUploadSpy.mock.invocationCallOrder[0],
+            );
+
+            delete window.electronAPI;
+        });
+
+        it('should forward the full path via setSavedPath when electronAPI.getFilePath is available', async () => {
+            const largeFilesUploadSpy = vi.fn();
+            const setSavedPath = vi.fn().mockResolvedValue(true);
+            const getFilePath = vi.fn().mockReturnValue('/Users/me/Desktop/documento-sin-titulo-x.elpx');
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: largeFilesUploadSpy,
+            };
+            window.electronAPI = { setSavedPath, getFilePath };
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'documento-sin-titulo-x.elpx', {
+                type: 'application/octet-stream',
+            });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            expect(getFilePath).toHaveBeenCalledWith(mockFile);
+            expect(setSavedPath).toHaveBeenCalledWith('/Users/me/Desktop/documento-sin-titulo-x.elpx');
+
+            delete window.electronAPI;
+        });
+
+        it('should survive a missing setSavedPath without blocking the upload', async () => {
+            const largeFilesUploadSpy = vi.fn();
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: largeFilesUploadSpy,
+            };
+            window.electronAPI = {};
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'documento-sin-titulo-x.elpx', {
+                type: 'application/octet-stream',
+            });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            expect(largeFilesUploadSpy).toHaveBeenCalledWith(mockFile);
+
+            delete window.electronAPI;
         });
 
         it('should not process when no file selected', async () => {

@@ -17,6 +17,7 @@ import {
 } from '../services/translation';
 import { getAppVersion } from '../utils/version';
 import { db as defaultDb } from '../db/client';
+import { buildContentDisposition } from '../shared/http/headers';
 import {
     getAuthMethods,
     getSettingBoolean,
@@ -44,7 +45,7 @@ import { buildParameterResponse } from './parameter-response';
 const LICENSES: Record<string, string> = Object.fromEntries(
     Object.entries(LICENSE_REGISTRY)
         .filter(([, entry]) => !entry.legacy)
-        .map(([key, entry]) => [key, `${TRANS_PREFIX}${entry.displayName}`]),
+        .map(([key, entry]) => [key, `${TRANS_PREFIX}${key.startsWith('creative commons') ? key : entry.displayName}`]),
 );
 
 const configParams = buildConfigParams({ TRANS_PREFIX, LICENSES, PACKAGE_LOCALES, LOCALES });
@@ -366,7 +367,7 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
 
             // Return file with proper headers
             set.headers['Content-Type'] = 'application/zip';
-            set.headers['Content-Disposition'] = `attachment; filename="${template.filename}.elpx"`;
+            set.headers['Content-Disposition'] = buildContentDisposition(`${template.filename}.elpx`);
 
             return file;
         },

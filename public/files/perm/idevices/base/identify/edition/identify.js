@@ -93,7 +93,7 @@ var $exeDevice = {
                 'You can do this activity as many times as you want'
             ),
             msgTryAgain: c_(
-                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+                'You need at least %s% of correct answers to get the information. Please try again.'
             ),
             msgClose: c_('Close'),
             msgClue: c_('Hint'),
@@ -428,11 +428,10 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
             <div id="identifyQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which the players, with some clues, will have to guess a character, an object or the solution to a problem.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/identifica.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Create activities in which the players, with some clues, will have to guess a character, an object or the solution to a problem.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/identifica.html',
+                )}
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Use the clues to guess the hidden answer for each question.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -498,7 +497,7 @@ var $exeDevice = {
                                 <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="idfEPercentajeFB" class="mb-0">%FB</label>
                                     <input type="number" name="idfEPercentajeFB" id="idfEPercentajeFB" class="form-control" value="100" min="5" max="100" step="5" disabled />
-                                    <span class="ms-2">${_('&percnt; right to see the feedback')}</span>
+                                    <span class="ms-2">${_('% right to see the feedback')}</span>
                                 </div>
                             </div>
                             <div id="idfEFeedbackP" class="IDFE-EFeedbackP mb-3">
@@ -510,26 +509,8 @@ var $exeDevice = {
                                 <span id="idfENumeroPercentaje">1/1</span>
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="idfEEvaluation" class="toggle-input" data-target="#idfEEvaluationIDWrapper" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="idfEEvaluation">${_('Progress report')}.</label>
-                                </span>
-                                <span id="idfEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap" style="display:none;">
-                                    <label for="idfEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="idfEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
-                                </span>
-                                <strong class="GameModeLabel">
-                                    <a href="#idfEEvaluationHelp" id="idfEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </strong>
+                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
-                            <p id="idfEEvaluationHelp" class="IDFE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -831,9 +812,10 @@ var $exeDevice = {
         $('#idfEPercentajeFB').val(game.percentajeFB);
         $('#idfECustomMessages').prop('checked', game.customMessages);
         $('#idfEPercentajeQuestions').val(game.percentajeQuestions);
-        $('#idfEEvaluation').prop('checked', game.evaluation);
-        $('#idfEEvaluationID').val(game.evaluationID);
-        $('#idfEEvaluationID').prop('disabled', !game.evaluation);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
 
         $exeDevice.updateGameMode(game.feedBack);
         $exeDevice.showSelectOrder(game.customMessages);
@@ -1104,21 +1086,11 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.questionsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('identify')}.txt`;
-
-        document.getElementById('identifyQEIdeviceForm').appendChild(link);
-        link.click();
-        setTimeout(() => {
-            document.getElementById('identifyQEIdeviceForm').removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('identify')}.txt`,
+            'identifyQEIdeviceForm'
+        );
     },
 
     getLinesQuestions: function (questions) {
@@ -1249,11 +1221,12 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 $exeDevice.removeTags($('#idfEPercentajeQuestions').val())
             ),
-            evaluation = $('#idfEEvaluation').is(':checked'),
-            evaluationID = $('#idfEEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
+        if (!progressBar) return false;
 
         if (feedBack && textFeedBack.trim().length === 0) {
             eXe.app.alert($exeDevice.msgs.msgProvideFB);
@@ -1261,10 +1234,6 @@ var $exeDevice = {
         }
         if (showSolution && timeShowSolution.length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
-        if (evaluation && evaluationID.length < 5) {
-            eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;
         }
 
@@ -1311,8 +1280,8 @@ var $exeDevice = {
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
             avancedMode: avancedMode,
-            evaluation: evaluation,
-            evaluationID: evaluationID,
+            evaluation: progressBar.evaluation,
+            evaluationID: progressBar.evaluationID,
             id: id,
         };
     },
@@ -1558,14 +1527,7 @@ var $exeDevice = {
             }
         });
 
-        $('#idfEEvaluation').on('change', function () {
-            $('#idfEEvaluationID').prop('disabled', !$(this).is(':checked'));
-        });
-
-        $('#idfEEvaluationHelpLnk').click(() => {
-            $('#idfEEvaluationHelp').toggle();
-            return false;
-        });
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(

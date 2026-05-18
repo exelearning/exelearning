@@ -27,6 +27,9 @@ body {
 * {
     accent-color: var(--dark-exe-color);
 }
+.text-primary {
+    color: var(--brand-primary) !important;
+}
 body {
     /*
     font-family: "Inter", sans-serif;
@@ -122,16 +125,6 @@ body {
         }
     }
 }
-
-/*
-:root {
-    --dark-exe-color: rgba(112, 163, 0, 1);
-    --dark-exe-color-text: #577e02;
-    --dark-exe-color-08: rgba(112, 163, 0, 0.8);
-    --dark-exe-color-06: rgba(112, 163, 0, 0.6);
-    --dark-exe-color-04: rgba(112, 163, 0, 0.4);
-}
-    */
 
 /* ========================================================================
    Mobile Responsive Styles (< 768px)

@@ -270,6 +270,44 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect($exeDevice.isCSVFile({ name: 'rubrica.json', type: 'application/json' })).toBe(false);
   });
 
+  it('exportCSV delegates the CSV file to downloadBlob', () => {
+    const downloadBlobSpy = vi.spyOn($exeDevice, 'downloadBlob').mockReturnValue(true);
+    vi.spyOn($exeDevice, 'tableEditorToJSON').mockReturnValue({
+      categories: ['Criterion'],
+      scores: ['Level'],
+      descriptions: [[{ text: 'Descriptor', weight: '1' }]],
+    });
+    vi.spyOn($exeDevice, 'rubricDataToCSV').mockReturnValue('Criterion,Level');
+
+    $exeDevice.exportCSV();
+
+    expect(downloadBlobSpy).toHaveBeenCalledTimes(1);
+    expect(downloadBlobSpy.mock.calls[0][0]).toBeInstanceOf(Blob);
+    expect(downloadBlobSpy.mock.calls[0][1]).toBe('rubric.csv');
+    expect(downloadBlobSpy.mock.calls[0][2]).toBe('rubric-csv');
+  });
+
+  it('downloadBlob uses Electron saveBufferAs without creating a blob URL', async () => {
+    const originalElectronAPI = window.electronAPI;
+    const originalCreateObjectURL = URL.createObjectURL;
+    const saveBufferAs = vi.fn().mockResolvedValue(undefined);
+    URL.createObjectURL = vi.fn(() => 'blob:rubric');
+    window.electronAPI = { saveBufferAs };
+
+    expect($exeDevice.downloadBlob(new Blob(['csv']), 'rubric.csv', 'rubric-csv')).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(saveBufferAs).toHaveBeenCalledTimes(1);
+    });
+    expect(saveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
+    expect(saveBufferAs.mock.calls[0][1]).toBe('rubric-csv');
+    expect(saveBufferAs.mock.calls[0][2]).toBe('rubric.csv');
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+
+    window.electronAPI = originalElectronAPI;
+    URL.createObjectURL = originalCreateObjectURL;
+  });
+
   it('removeLegacyRenderedArtifacts removes residual export blocks from idevice root', () => {
     document.body.innerHTML = `
       <div class="idevice_node rubric" id="rubric_1">
@@ -284,6 +322,41 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     expect(document.querySelector('#rubric_1 .exe-rubrics-wrapper')).toBeNull();
     expect(document.querySelector('#rubric_1 .exe-rubrics-content')).toBeNull();
+  });
+
+  it('createForm uses common Bootstrap description helper in edition header', () => {
+    document.body.innerHTML = '<div id="rubric_body_create_form"></div>';
+    $exeDevice.ideviceBody = document.getElementById('rubric_body_create_form');
+
+    const getIdeviceDescriptionSpy = vi.fn(() => '<div class="alert alert-info alert-dismissible"></div>');
+    const getTextFieldsetSpy = vi.fn(() => '<fieldset class="text-after-fieldset"></fieldset>');
+    globalThis.$exeDevicesEdition.iDevice.common = {
+      getIdeviceDescription: getIdeviceDescriptionSpy,
+      getTextFieldset: getTextFieldsetSpy,
+    };
+    globalThis.$exeDevicesEdition.iDevice.tabs = { init: vi.fn() };
+    globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab = vi.fn(() => '<div class="scorm-tab"></div>');
+    globalThis.$exeDevicesEdition.iDevice.gamification.scorm.init = vi.fn();
+    globalThis.$exeDevicesEdition.iDevice.gamification.common.getLanguageTab = vi.fn(() => '<div class="lang-tab"></div>');
+
+    vi.spyOn($exeDevice, 'renderRubricTemplateControls').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'loadPreviousValues').mockImplementation(() => {});
+    vi.spyOn($exeDevice, 'initCSVTabControls').mockImplementation(() => {});
+
+    $exeDevice.createForm();
+
+    expect(getIdeviceDescriptionSpy).toHaveBeenCalledWith(
+      'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
+      'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rubrica.html'
+    );
+    expect($exeDevice.ideviceBody.innerHTML).toContain('alert alert-info alert-dismissible');
+    expect($exeDevice.ideviceBody.innerHTML).not.toContain('exe-block-dismissible');
+
+    const csvInput = $exeDevice.ideviceBody.querySelector('#ri_CsvFile');
+    expect(csvInput).not.toBeNull();
+    expect(csvInput.classList.contains('d-none')).toBe(true);
+    const csvTriggerBtn = $exeDevice.ideviceBody.querySelector('button.btn-primary.exe-file-btn[data-exe-file-trigger]');
+    expect(csvTriggerBtn).not.toBeNull();
   });
 
   it('openCellEditModal shows assessment criteria title and performance level from selected cell', () => {
@@ -463,5 +536,91 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     expect($('#ri_RubricAuthor').val()).toBe('Author "quoted"');
     expect($('#ri_RubricAuthorURL').val()).toBe('https://example.com/?q="quoted"');
+  });
+
+  // ==========================================================================
+  // SCORM integration
+  // ==========================================================================
+
+  describe('loadPreviousValues SCORM integration', () => {
+    function buildPreviousHtml(extraPayload) {
+      const payload = escape(JSON.stringify({
+        title: 'Rubrica',
+        categories: ['C1'],
+        scores: ['L1'],
+        descriptions: [[{ text: 'D1', weight: '1' }]],
+        ...extraPayload,
+      }));
+
+      return `
+        <div class="rubric-IDevice">
+          <div class="rubric">
+            <div class="exe-rubrics-DataGame js-hidden">${payload}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    it('forwards SCORM fields from stored data to scorm.setValues', () => {
+      vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
+      const setValuesSpy = vi.spyOn(
+        globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
+        'setValues'
+      );
+
+      $exeDevice.idevicePreviousData = buildPreviousHtml({
+        isScorm: 2,
+        textButtonScorm: 'Guardar nota',
+        repeatActivity: false,
+        weighted: 75,
+      });
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValuesSpy).toHaveBeenCalledTimes(1);
+      expect(setValuesSpy).toHaveBeenCalledWith(2, 'Guardar nota', false, 75);
+    });
+
+    it('passes undefined SCORM fields when absent in stored data', () => {
+      vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
+      const setValuesSpy = vi.spyOn(
+        globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
+        'setValues'
+      );
+
+      $exeDevice.idevicePreviousData = buildPreviousHtml({});
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValuesSpy).toHaveBeenCalledTimes(1);
+      // normalizeStoredRubricData may strip unknown fields; accept undefined
+      const [isScorm, textButtonScorm, repeatActivity, weighted] = setValuesSpy.mock.calls[0];
+      expect(isScorm).toBeUndefined();
+      expect(textButtonScorm).toBeUndefined();
+      expect(repeatActivity).toBeUndefined();
+      expect(weighted).toBeUndefined();
+    });
+
+    it('does nothing when idevicePreviousData is empty', () => {
+      const setValuesSpy = vi.spyOn(
+        globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
+        'setValues'
+      );
+      $exeDevice.idevicePreviousData = '';
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValuesSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ci18n SCORM strings', () => {
+    it('exposes SCORM-related translatable messages', () => {
+      expect($exeDevice.ci18n.msgYouScore).toBe('Your score');
+      expect($exeDevice.ci18n.msgEndGameScore).toMatch(/rubric/i);
+      expect($exeDevice.ci18n.msgScoreScorm).toMatch(/SCORM/);
+      expect($exeDevice.ci18n.msgScore).toBe('Score');
+      expect($exeDevice.ci18n.msgWeight).toBe('Weight');
+    });
   });
 });

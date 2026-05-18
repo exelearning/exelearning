@@ -175,6 +175,17 @@ describe('modalTemplateSelection', () => {
       expect(window.__originalElpPath).toBeUndefined();
     });
 
+    it('should also clear the Electron saved path via clearSavedPath', async () => {
+      const clearSavedPath = vi.fn().mockResolvedValue(true);
+      window.electronAPI = { clearSavedPath };
+
+      const template = { name: 'T1', path: 'P1' };
+      await modal.loadTemplate(template);
+
+      expect(clearSavedPath).toHaveBeenCalled();
+      delete window.electronAPI;
+    });
+
     it('should show alert when fetch fails', async () => {
       window.fetch.mockResolvedValue({ ok: false });
 

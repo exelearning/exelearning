@@ -2,7 +2,7 @@
  * BrowserAssetProvider tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, spyOn } from 'bun:test';
 import { BrowserAssetProvider } from './BrowserAssetProvider';
 
 // Create mock Blob
@@ -690,6 +690,68 @@ describe('BrowserAssetProvider', () => {
             expect(idsFromMeta.has('fallback-1')).toBe(true);
             expect(idsFromMeta.has('fallback-2')).toBe(true);
             expect(idsFromMeta.has('other-project')).toBe(false);
+        });
+    });
+
+    describe('Missing blob handling (#1685)', () => {
+        it('should skip assets with missing blobs and warn', async () => {
+            // Simulate Cache API eviction: metadata exists but getBlob returns null
+            const managerWithEvictedBlobs = {
+                getProjectAssets: async () => [],
+                getAllAssetsMetadata: () => [
+                    { id: 'present-1', filename: 'img1.png', mime: 'image/png', folderPath: '' },
+                    { id: 'evicted-2', filename: 'img2.png', mime: 'image/png', folderPath: '' },
+                    { id: 'present-3', filename: 'img3.png', mime: 'image/png', folderPath: '' },
+                ],
+                getAssetMetadata: (id: string) => {
+                    const map: Record<string, { id: string; filename: string; mime: string; folderPath: string }> = {
+                        'present-1': { id: 'present-1', filename: 'img1.png', mime: 'image/png', folderPath: '' },
+                        'evicted-2': { id: 'evicted-2', filename: 'img2.png', mime: 'image/png', folderPath: '' },
+                        'present-3': { id: 'present-3', filename: 'img3.png', mime: 'image/png', folderPath: '' },
+                    };
+                    return map[id] || null;
+                },
+                getBlobForExport: async (id: string) => {
+                    // Simulate: present-1 and present-3 have blobs, evicted-2 does not
+                    if (id === 'evicted-2') return null;
+                    return createMockBlob('data');
+                },
+            };
+
+            const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+            const evictedProvider = new BrowserAssetProvider(managerWithEvictedBlobs as any);
+
+            const collected: string[] = [];
+            const count = await evictedProvider.forEachAsset(async asset => {
+                collected.push(asset.id);
+            });
+
+            expect(count).toBe(2);
+            expect(collected).toContain('present-1');
+            expect(collected).toContain('present-3');
+            expect(collected).not.toContain('evicted-2');
+
+            // Should warn about the missing asset
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('missing 1/3 assets'));
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('evicted-2'));
+
+            warnSpy.mockRestore();
+        });
+
+        it('should return all assets when none are missing', async () => {
+            mockManager.addAsset('a1', 'data1', { filename: 'f1.png', mime: 'image/png' });
+            mockManager.addAsset('a2', 'data2', { filename: 'f2.png', mime: 'image/png' });
+
+            const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+            const count = await provider.forEachAsset(async () => {});
+
+            expect(count).toBe(2);
+            // Should NOT warn when all assets are present
+            const missingWarns = warnSpy.mock.calls.filter(c => typeof c[0] === 'string' && c[0].includes('missing'));
+            expect(missingWarns.length).toBe(0);
+
+            warnSpy.mockRestore();
         });
     });
 

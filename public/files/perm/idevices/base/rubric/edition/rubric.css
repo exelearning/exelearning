@@ -27,6 +27,15 @@
   margin: 0 auto;
 }
 
+#ri_IdeviceForm .exe-block-close {
+    position: absolute;
+    top: 6px;
+    right: 5px;
+  width: 0.6rem;
+  height: 0.6rem;
+  background-size: 0.6rem;
+}
+
 #ri_CsvTools .exe-block-info {
   margin-bottom: 0.85em;
 }
@@ -75,26 +84,19 @@
   position: absolute;
   right: 3px;
   bottom: 0.35em;
-  font-size: 1em;
-  display: inline-flex;
-  align-items: center;
-  text-decoration: underline;
+  display: inline-block;
+  width: var(--ri-icon-size);
+  height: var(--ri-icon-size);
+  background: url(exe-rubrics-actions.gif) no-repeat 0 -100px;
+  font-size: 0;
   opacity: var(--ri-icon-opacity);
-  color: var(--ri-icon-color);
   transform: scale(1);
   transform-origin: right bottom;
-  transition: opacity 0.15s ease, color 0.15s ease, transform 0.15s ease;
-}
-#ri_Table td .ri_EditTD .ri_EditTDIcon {
-  font-size: var(--ri-icon-size);
-  line-height: var(--ri-icon-size);
-  text-decoration: none;
-  color: inherit;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 #ri_Table td .ri_EditTD:hover,
 #ri_Table td .ri_EditTD:focus {
   opacity: 1;
-  color: #333;
   transform: scale(1.08);
 }
 #ri_Table .ri_Weight {
@@ -279,41 +281,19 @@
 #ri_Table .ri_Actions .ri_MoveTRDown {
   background-position: 0 -40px;
 }
-#ri_Table .ri_Actions .ri_MoveTRToTheRight {
-  background-position: 0 -80px;
-}
 #ri_Table .ri_Actions .ri_MoveTRToTheLeft {
   background-position: 0 -60px;
 }
-#ri_Table .ri_Actions .ri_EditTR {
-  background: none;
-  font-size: var(--ri-icon-size);
-  line-height: var(--ri-icon-size);
-  text-align: center;
-  color: var(--ri-icon-color);
-  opacity: var(--ri-icon-opacity);
+#ri_Table .ri_Actions .ri_MoveTRToTheRight {
+  background-position: 0 -80px;
 }
-#ri_Table .ri_Actions .ri_EditTR span[aria-hidden="true"] {
-  font-size: var(--ri-icon-size);
-  line-height: 1;
-}
-#ri_Table .ri_Actions .ri_EditTR:hover,
-#ri_Table .ri_Actions .ri_EditTR:focus,
-#ri_Table .ri_Actions .ri_EditColumn:hover,
-#ri_Table .ri_Actions .ri_EditColumn:focus {
-  color: #333;
-}
+#ri_Table .ri_Actions .ri_EditTR,
 #ri_Table .ri_Actions .ri_EditColumn {
-  background: none;
-  font-size: var(--ri-icon-size);
-  line-height: var(--ri-icon-size);
-  text-align: center;
-  color: var(--ri-icon-color);
-  opacity: var(--ri-icon-opacity);
+  background-position: 0 -100px;
 }
-#ri_Table .ri_Actions .ri_EditColumn span[aria-hidden="true"] {
-  font-size: var(--ri-icon-size);
-  line-height: 1;
+#ri_Table .ri_Actions .ri_DeleteTR,
+#ri_Table .ri_Actions .ri_DeleteColumn {
+  background-position: 0 0;
 }
 
 #ri_CellEditModal {

@@ -844,6 +844,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     }
                 }
 
+                const workareaRoles: string[] =
+                    typeof currentUser.roles === 'string'
+                        ? JSON.parse(currentUser.roles || '[]')
+                        : currentUser.roles || [];
+
                 const user = {
                     id: userId,
                     username: email,
@@ -852,6 +857,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     odePlatformId: null,
                     newOde: null,
                     gravatarUrl: createGravatarUrl(email, null, email),
+                    roles: workareaRoles,
+                    isAdmin: workareaRoles.includes('ROLE_ADMIN'),
                 };
 
                 const appAuthMethods = await getAuthMethods(
@@ -987,6 +994,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     private: trans('Private', {}, locale),
                     public: trans('Public', {}, locale),
                     preferences: trans('Preferences', {}, locale),
+                    admin_panel: 'Admin', // Admin panel is English-only; replace 'en' with `locale` to re-enable translations
                     logout: trans('Logout', {}, locale),
                     toggle_panels: trans('Toggle panels', {}, locale),
                     structure_panel: trans('Structure panel', {}, locale),
@@ -1163,14 +1171,6 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         client_id: process.env.OIDC_CLIENT_ID || 'interactive.confidential',
                         client_secret: process.env.OIDC_CLIENT_SECRET || 'secret',
                     },
-                    storage_integrations: {
-                        google_client_id: process.env.GOOGLE_CLIENT_ID || 'example.com.apps.googleusercontent.com',
-                        google_client_secret: process.env.GOOGLE_CLIENT_SECRET || 'example.com',
-                        dropbox_client_id: process.env.DROPBOX_CLIENT_ID || 'example.com',
-                        dropbox_client_secret: process.env.DROPBOX_CLIENT_SECRET || 'example.com',
-                        openequella_client_id: process.env.OPENEQUELLA_CLIENT_ID || 'example.com',
-                        openequella_client_secret: process.env.OPENEQUELLA_CLIENT_SECRET || 'example.com',
-                    },
                     presentation: {
                         custom_head_html: '',
                         app_name: '',
@@ -1222,15 +1222,6 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     OIDC_SCOPE: { path: ['oidc', 'scope'], type: 'string' },
                     OIDC_CLIENT_ID: { path: ['oidc', 'client_id'], type: 'string' },
                     OIDC_CLIENT_SECRET: { path: ['oidc', 'client_secret'], type: 'string' },
-                    GOOGLE_CLIENT_ID: { path: ['storage_integrations', 'google_client_id'], type: 'string' },
-                    GOOGLE_CLIENT_SECRET: { path: ['storage_integrations', 'google_client_secret'], type: 'string' },
-                    DROPBOX_CLIENT_ID: { path: ['storage_integrations', 'dropbox_client_id'], type: 'string' },
-                    DROPBOX_CLIENT_SECRET: { path: ['storage_integrations', 'dropbox_client_secret'], type: 'string' },
-                    OPENEQUELLA_CLIENT_ID: { path: ['storage_integrations', 'openequella_client_id'], type: 'string' },
-                    OPENEQUELLA_CLIENT_SECRET: {
-                        path: ['storage_integrations', 'openequella_client_secret'],
-                        type: 'string',
-                    },
                     CUSTOM_HEAD_HTML: { path: ['presentation', 'custom_head_html'], type: 'string' },
                     APP_NAME: { path: ['presentation', 'app_name'], type: 'string' },
                     APP_FAVICON_PATH: { path: ['presentation', 'app_favicon_path'], type: 'string' },

@@ -52,7 +52,11 @@ export function parseXlfTranslations(xlfContent: string): Map<string, string> {
 
         if (sourceMatch && targetMatch) {
             const source = decodeXmlEntities(sourceMatch[1].trim());
-            const target = decodeXmlEntities(targetMatch[1].trim());
+            const decodedTarget = decodeXmlEntities(targetMatch[1].trim());
+            // Strip the "~" fuzzy marker used to flag machine-translated
+            // placeholder entries. The marker stays in the XLF files so
+            // translators can review them, but must never reach exports.
+            const target = decodedTarget.startsWith('~') ? decodedTarget.slice(1) : decodedTarget;
             if (source && target) {
                 translations.set(source, target);
             }

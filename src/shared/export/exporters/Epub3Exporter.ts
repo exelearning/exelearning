@@ -142,13 +142,25 @@ export class Epub3Exporter extends BaseExporter {
             this.zip.addFile('EPUB/nav.xhtml', navXhtml);
             this.addManifestItem('nav', 'nav.xhtml', 'application/xhtml+xml', 'nav');
 
+            // Fetch translated nav labels for the content language (includes license)
+            const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
+
             // 4. Generate XHTML pages (with optional LaTeX and Mermaid pre-rendering)
             let latexWasRendered = false;
             let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                let xhtml = this.generatePageXhtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
+                let xhtml = this.generatePageXhtml(
+                    page,
+                    pages,
+                    meta,
+                    i === 0,
+                    i,
+                    themeRootFiles,
+                    faviconInfo,
+                    navLabels,
+                );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX
@@ -619,6 +631,7 @@ export class Epub3Exporter extends BaseExporter {
         pageIndex: number,
         themeFiles?: string[],
         faviconInfo?: FaviconInfo | null,
+        navLabels?: { license?: string },
     ): string {
         const lang = meta.language || 'en';
         const basePath = isIndex ? '' : '../';
@@ -666,10 +679,11 @@ export class Epub3Exporter extends BaseExporter {
             // Hide nav buttons - EPUB reader handles navigation
             hideNavButtons: true,
             addExeLink: meta.addExeLink ?? true,
-            // Page counter (only if user has the option enabled)
             addPagination: meta.addPagination === true,
             totalPages: allPages.length,
             currentPageIndex: pageIndex,
+            // Pre-translated labels (resolved from XLF at export time)
+            navLabels: navLabels as { previous: string; next: string; page: string; license?: string },
             // Application version for generator meta tag
             version: meta.exelearningVersion,
             // EPUB-specific: load guard script for duplicate execution protection
