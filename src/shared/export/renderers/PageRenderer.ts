@@ -18,6 +18,7 @@ import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
 import {
     LIBRARY_PATTERNS,
+    ELPX_DOWNLOAD_ONCLICK,
     getLicenseClass,
     formatLicenseText,
     shouldShowLicenseFooter,
@@ -738,10 +739,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         }
 
         // Replace href="exe-package:elp" with onclick handler
-        let result = content.replace(
-            /href="exe-package:elp"/g,
-            'href="#" onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"',
-        );
+        let result = content.replace(/href="exe-package:elp"/g, `href="#" onclick="${ELPX_DOWNLOAD_ONCLICK}"`);
 
         // Replace download="exe-package:elp-name" with actual filename
         const safeTitle = this.escapeHtml(projectTitle);
