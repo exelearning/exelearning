@@ -1214,7 +1214,10 @@ export class ElpxImporter {
         // Extract HTML view content
         const htmlViewNode = this.getElement(compNode, 'htmlView');
         if (htmlViewNode) {
-            let htmlContent = this.decodeHtmlContent(htmlViewNode.textContent || '') || '';
+            let htmlContent = this.getCdataAwareTextContent(htmlViewNode);
+            if (!this.hasCdataChild(htmlViewNode)) {
+                htmlContent = this.decodeHtmlContent(htmlContent);
+            }
             htmlContent = this.normalizeTextIdeviceHtml(ideviceType, htmlContent);
 
             // Convert {{context_path}} to asset:// URLs
@@ -1259,7 +1262,7 @@ export class ElpxImporter {
                     props = {};
                 }
 
-                props = this.decodeHtmlEntitiesInObject(props) as Record<string, unknown>;
+                props = this.decodeLegacyEncodedHtmlInObject(props) as Record<string, unknown>;
 
                 // Convert {{context_path}} in parsed JSON values
                 if (this.assetHandler && this.assetMap.size > 0 && props && typeof props === 'object') {
@@ -1346,13 +1349,30 @@ export class ElpxImporter {
             .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
     }
 
-    private decodeHtmlEntitiesInObject(obj: unknown): unknown {
+    private hasCdataChild(element: Element): boolean {
+        return Array.from(element.childNodes || []).some(child => child.nodeType === 4);
+    }
+
+    private getCdataAwareTextContent(element: Element): string {
+        const childNodes = Array.from(element.childNodes || []);
+        if (childNodes.some(child => child.nodeType === 4)) {
+            return childNodes.map(child => child.nodeValue || '').join('');
+        }
+
+        return element.textContent || '';
+    }
+
+    private decodeLegacyEncodedHtmlInObject(obj: unknown): unknown {
         if (typeof obj === 'string') {
-            return this.decodeHtmlContent(obj);
+            if (/&lt;div\b/i.test(obj) && /exe-text/i.test(obj)) {
+                return this.decodeHtmlContent(obj);
+            }
+
+            return obj;
         }
 
         if (Array.isArray(obj)) {
-            return obj.map(item => this.decodeHtmlEntitiesInObject(item));
+            return obj.map(item => this.decodeLegacyEncodedHtmlInObject(item));
         }
 
         if (!obj || typeof obj !== 'object') {
@@ -1361,7 +1381,7 @@ export class ElpxImporter {
 
         const result: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-            result[key] = this.decodeHtmlEntitiesInObject(value);
+            result[key] = this.decodeLegacyEncodedHtmlInObject(value);
         }
         return result;
     }

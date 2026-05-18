@@ -340,6 +340,86 @@ describe('ElpxImporter', () => {
 
             ydoc.destroy();
         });
+
+        it('should preserve escaped script-like text in text iDevice JSON properties', async () => {
+            const textTextarea =
+                'Text with the word &lt;script&gt; as plain text. Content after the marker must remain visible.';
+            const jsonProperties = JSON.stringify({ textTextarea });
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<userPreferences>
+  <userPreference>
+    <key>theme</key>
+    <value>base</value>
+  </userPreference>
+</userPreferences>
+<odeResources></odeResources>
+<odeProperties>
+  <odeProperty>
+    <key>pp_title</key>
+    <value>Script Literal Test</value>
+  </odeProperty>
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odeNavStructureProperties></odeNavStructureProperties>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>page-1</odePageId>
+        <odeBlockId>block-1</odeBlockId>
+        <blockName>Text</blockName>
+        <iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odePagStructureProperties></odePagStructureProperties>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>page-1</odePageId>
+            <odeBlockId>block-1</odeBlockId>
+            <odeIdeviceId>component-1</odeIdeviceId>
+            <odeIdeviceTypeName>FreeTextIdevice</odeIdeviceTypeName>
+            <htmlView><![CDATA[${textTextarea}]]></htmlView>
+            <jsonProperties><![CDATA[${jsonProperties}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+            <odeComponentsProperties>
+              <odeComponentsProperty>
+                <key>visibility</key>
+                <value>true</value>
+              </odeComponentsProperty>
+            </odeComponentsProperties>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            await importer.importFromZipContents({
+                'content.xml': new TextEncoder().encode(contentXml),
+            });
+
+            const navigation = ydoc.getArray('navigation');
+            const page = navigation.get(0) as Y.Map<unknown>;
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const components = block.get('components') as Y.Array<unknown>;
+            const component = components.get(0) as Y.Map<unknown>;
+            const importedProps = JSON.parse(component.get('jsonProperties') as string) as { textTextarea: string };
+
+            expect(importedProps.textTextarea).toBe(textTextarea);
+            expect(importedProps.textTextarea).toContain('&lt;script&gt;');
+            expect(importedProps.textTextarea).toContain('Content after the marker must remain visible.');
+            expect(importedProps.textTextarea).not.toContain('<script>');
+
+            ydoc.destroy();
+        });
     });
 
     describe('top-level directory wrapper', () => {
