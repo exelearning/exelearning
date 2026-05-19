@@ -16,7 +16,7 @@
 var $threesixtyviewer = {
     cssClass: 'three-sixty-viewer',
     SCHEMA_VERSION: 2,
-    HOTSPOT_ACTION_TYPES: ['goToScene', 'text', 'image', 'video'],
+    HOTSPOT_ACTION_TYPES: ['goToScene', 'text', 'image', 'video', 'link'],
     RENDER_QUALITY_VALUES: ['low', 'medium', 'high'],
     LABEL_POSITION_VALUES: ['right', 'left', 'top', 'bottom'],
     _instances: [],
@@ -195,6 +195,11 @@ var $threesixtyviewer = {
                 return {
                     src: typeof p.src === 'string' ? p.src : '',
                     poster: typeof p.poster === 'string' ? p.poster : '',
+                };
+            case 'link':
+                return {
+                    url: typeof p.url === 'string' ? p.url : '',
+                    newTab: p.newTab !== false,
                 };
             default:
                 return {};
@@ -806,6 +811,8 @@ var $threesixtyviewer = {
                 return 'View image';
             case 'video':
                 return 'Watch video';
+            case 'link':
+                return 'Open link';
             case 'text':
             default:
                 return 'View information';
@@ -863,7 +870,31 @@ var $threesixtyviewer = {
             if (targetId) instance.goToScene(targetId);
             return;
         }
+        if (hotspot.action.type === 'link') {
+            this._openLink(hotspot.action.payload);
+            return;
+        }
         this._openContentModal(instance, hotspot);
+    },
+
+    /**
+     * Open an external link from a hotspot. Defaults to a new tab and uses
+     * noopener/noreferrer so the target page cannot reach back into the viewer.
+     */
+    _openLink: payload => {
+        if (!payload || typeof payload.url !== 'string' || !payload.url) return;
+        var url = payload.url;
+        var newTab = payload.newTab !== false;
+        if (typeof window === 'undefined') return;
+        if (newTab && typeof window.open === 'function') {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        } else {
+            try {
+                window.location.href = url;
+            } catch (_) {
+                /* ignore */
+            }
+        }
     },
 
     _openContentModal: function (instance, hotspot) {

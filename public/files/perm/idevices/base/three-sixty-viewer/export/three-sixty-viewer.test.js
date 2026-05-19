@@ -225,6 +225,38 @@ describe('three-sixty-viewer iDevice (export)', () => {
             expect(n.scenes[0].hotspots[0].yaw).toBe(180);
             expect(n.scenes[0].hotspots[0].pitch).toBe(-90);
         });
+
+        it('accepts the "link" action type and defaults newTab to true', () => {
+            const n = $t.normalize({
+                version: 2,
+                scenes: [
+                    {
+                        id: 's',
+                        hotspots: [
+                            { id: 'h', action: { type: 'link', payload: { url: 'https://example.com' } } },
+                        ],
+                    },
+                ],
+            });
+            expect(n.scenes[0].hotspots[0].action.type).toBe('link');
+            expect(n.scenes[0].hotspots[0].action.payload.url).toBe('https://example.com');
+            expect(n.scenes[0].hotspots[0].action.payload.newTab).toBe(true);
+        });
+
+        it('coerces non-string link url to empty and preserves explicit newTab=false', () => {
+            const n = $t.normalize({
+                version: 2,
+                scenes: [
+                    {
+                        id: 's',
+                        hotspots: [{ id: 'h', action: { type: 'link', payload: { url: 42, newTab: false } } }],
+                    },
+                ],
+            });
+            const p = n.scenes[0].hotspots[0].action.payload;
+            expect(p.url).toBe('');
+            expect(p.newTab).toBe(false);
+        });
     });
 
     describe('extractState()', () => {
@@ -670,6 +702,113 @@ describe('three-sixty-viewer iDevice (export)', () => {
             expect(modal.getAttribute('role')).toBe('dialog');
             expect(modal.getAttribute('aria-modal')).toBe('true');
             expect(modal.querySelector('.three-sixty-viewer-modal-body').innerHTML).toContain('Hi');
+        });
+
+        it('clicking a link hotspot opens the URL in a new tab with noopener,noreferrer', () => {
+            const node = document.createElement('div');
+            document.body.appendChild(node);
+            const state = $t.normalize({
+                version: 2,
+                scenes: [
+                    {
+                        id: 'a',
+                        src: 'asset://a.jpg',
+                        hotspots: [
+                            {
+                                id: 'lnk',
+                                label: 'Docs',
+                                action: { type: 'link', payload: { url: 'https://exelearning.net' } },
+                            },
+                        ],
+                    },
+                ],
+            });
+            $t.renderOne(node, state, '', false);
+            const inst = $t._instances[0];
+            const originalOpen = window.open;
+            const openSpy = vi.fn();
+            window.open = openSpy;
+            inst.hotspotButtons[0].button.click();
+            expect(openSpy).toHaveBeenCalledWith('https://exelearning.net', '_blank', 'noopener,noreferrer');
+            // Link hotspots never open the content modal.
+            expect(node.querySelector('.three-sixty-viewer-modal')).toBeNull();
+            window.open = originalOpen;
+        });
+
+        it('a link hotspot with newTab=false navigates the current window', () => {
+            const node = document.createElement('div');
+            document.body.appendChild(node);
+            const state = $t.normalize({
+                version: 2,
+                scenes: [
+                    {
+                        id: 'a',
+                        src: 'asset://a.jpg',
+                        hotspots: [
+                            {
+                                id: 'lnk',
+                                label: 'Docs',
+                                action: {
+                                    type: 'link',
+                                    payload: { url: 'https://exelearning.net', newTab: false },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            });
+            $t.renderOne(node, state, '', false);
+            const inst = $t._instances[0];
+            const originalOpen = window.open;
+            const openSpy = vi.fn();
+            window.open = openSpy;
+            // Capture location.href writes without actually navigating jsdom.
+            const originalLocation = window.location;
+            let assigned = null;
+            delete window.location;
+            window.location = {
+                set href(v) {
+                    assigned = v;
+                },
+                get href() {
+                    return assigned || '';
+                },
+            };
+            inst.hotspotButtons[0].button.click();
+            expect(openSpy).not.toHaveBeenCalled();
+            expect(assigned).toBe('https://exelearning.net');
+            window.open = originalOpen;
+            window.location = originalLocation;
+        });
+
+        it('a link hotspot with an empty URL is a no-op (no modal, no open)', () => {
+            const node = document.createElement('div');
+            document.body.appendChild(node);
+            const state = $t.normalize({
+                version: 2,
+                scenes: [
+                    {
+                        id: 'a',
+                        src: 'asset://a.jpg',
+                        hotspots: [
+                            { id: 'lnk', label: 'Empty', action: { type: 'link', payload: { url: '' } } },
+                        ],
+                    },
+                ],
+            });
+            $t.renderOne(node, state, '', false);
+            const inst = $t._instances[0];
+            const originalOpen = window.open;
+            const openSpy = vi.fn();
+            window.open = openSpy;
+            inst.hotspotButtons[0].button.click();
+            expect(openSpy).not.toHaveBeenCalled();
+            expect(node.querySelector('.three-sixty-viewer-modal')).toBeNull();
+            window.open = originalOpen;
+        });
+
+        it('_defaultHotspotLabel returns "Open link" for the link action type', () => {
+            expect($t._defaultHotspotLabel('link')).toBe('Open link');
         });
 
         it('closing the modal removes it from the DOM', () => {

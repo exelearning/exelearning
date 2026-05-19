@@ -228,6 +228,27 @@ describe('three-sixty-viewer iDevice (edition)', () => {
             expect(h.pitch).toBe(90);
         });
 
+        it('keeps a well-formed link payload and defaults newTab to true', () => {
+            const h = $exeDevice.normalizeHotspot({
+                action: { type: 'link', payload: { url: 'https://example.com/x' } },
+            });
+            expect(h.action.type).toBe('link');
+            expect(h.action.payload.url).toBe('https://example.com/x');
+            expect(h.action.payload.newTab).toBe(true);
+        });
+
+        it('coerces non-string link url to empty string and preserves explicit newTab=false', () => {
+            const h = $exeDevice.normalizeHotspot({
+                action: { type: 'link', payload: { url: 123, newTab: false } },
+            });
+            expect(h.action.payload.url).toBe('');
+            expect(h.action.payload.newTab).toBe(false);
+        });
+
+        it('exposes "link" as a valid hotspot action type', () => {
+            expect($exeDevice.HOTSPOT_ACTION_TYPES).toContain('link');
+            expect($exeDevice.actionTypeLabel('link')).toMatch(/link/i);
+        });
     });
 
     describe('init with empty previousData', () => {
@@ -608,6 +629,59 @@ describe('three-sixty-viewer iDevice (edition)', () => {
             const texture = { encoding: 0 };
             $exeDevice.applyTextureColorSpace(texture);
             expect(texture.encoding).toBe(3001);
+        });
+    });
+
+    describe('link hotspot form wiring', () => {
+        beforeEach(() => {
+            $exeDevice.init(container, {}, '');
+            $exeDevice.updatePreviewSoon = function () {};
+            // Seed one hotspot so the list renders payload inputs we can target.
+            $exeDevice.addHotspot(0, 0);
+            $exeDevice.renderHotspotList();
+        });
+
+        it('switching action type to "link" renders a URL input and a newTab checkbox', () => {
+            const select = container.querySelector('.hotspot-action-type');
+            select.value = 'link';
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            expect(container.querySelector('.hotspot-payload-url')).not.toBeNull();
+            expect(container.querySelector('.hotspot-payload-newTab')).not.toBeNull();
+        });
+
+        it('typing in the URL input updates the active hotspot payload', () => {
+            const select = container.querySelector('.hotspot-action-type');
+            select.value = 'link';
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            const url = container.querySelector('.hotspot-payload-url');
+            url.value = 'https://exelearning.net';
+            url.dispatchEvent(new Event('input', { bubbles: true }));
+            expect($exeDevice.getActiveScene().hotspots[0].action.payload.url).toBe('https://exelearning.net');
+        });
+
+        it('unchecking newTab updates the active hotspot payload', () => {
+            const select = container.querySelector('.hotspot-action-type');
+            select.value = 'link';
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            const cb = container.querySelector('.hotspot-payload-newTab');
+            expect(cb.checked).toBe(true);
+            cb.checked = false;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+            expect($exeDevice.getActiveScene().hotspots[0].action.payload.newTab).toBe(false);
+        });
+
+        it('round-trips a link hotspot through save()/normalizeData()', () => {
+            const select = container.querySelector('.hotspot-action-type');
+            select.value = 'link';
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            const url = container.querySelector('.hotspot-payload-url');
+            url.value = 'https://example.org';
+            url.dispatchEvent(new Event('input', { bubbles: true }));
+            const saved = $exeDevice.save();
+            const hs = saved.scenes[0].hotspots[0];
+            expect(hs.action.type).toBe('link');
+            expect(hs.action.payload.url).toBe('https://example.org');
+            expect(hs.action.payload.newTab).toBe(true);
         });
     });
 

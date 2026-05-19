@@ -44,7 +44,7 @@ var $exeDevice = {
         action: { type: 'text', payload: { html: '' } },
     }),
 
-    HOTSPOT_ACTION_TYPES: ['goToScene', 'text', 'image', 'video'],
+    HOTSPOT_ACTION_TYPES: ['goToScene', 'text', 'image', 'video', 'link'],
     RENDER_QUALITY_VALUES: ['low', 'medium', 'high'],
     LABEL_POSITION_VALUES: ['right', 'left', 'top', 'bottom'],
 
@@ -187,6 +187,11 @@ var $exeDevice = {
                 return {
                     src: typeof payload.src === 'string' ? payload.src : '',
                     poster: typeof payload.poster === 'string' ? payload.poster : '',
+                };
+            case 'link':
+                return {
+                    url: typeof payload.url === 'string' ? payload.url : '',
+                    newTab: payload.newTab !== false,
                 };
             default:
                 return {};
@@ -636,6 +641,8 @@ var $exeDevice = {
                 return _('Image');
             case 'video':
                 return _('Video');
+            case 'link':
+                return _('External link');
             default:
                 return type;
         }
@@ -716,6 +723,23 @@ var $exeDevice = {
                     '">' +
                     _('Choose video…') +
                     '</button>'
+                );
+            case 'link':
+                return (
+                    '<label>' +
+                    _('Link URL') +
+                    ': <input type="url" class="form-control hotspot-payload-url" data-index="' +
+                    idx +
+                    '" value="' +
+                    this.escapeAttr(p.url || '') +
+                    '" placeholder="https://example.com" /></label>' +
+                    '<label class="toggle-label"><input type="checkbox" class="hotspot-payload-newTab" data-index="' +
+                    idx +
+                    '"' +
+                    (p.newTab !== false ? ' checked' : '') +
+                    ' /> ' +
+                    _('Open in a new tab') +
+                    '</label>'
                 );
             default:
                 return '';
@@ -868,6 +892,7 @@ var $exeDevice = {
             else if (t.classList.contains('hotspot-payload-html')) h.action.payload.html = String(t.value || '');
             else if (t.classList.contains('hotspot-payload-src')) h.action.payload.src = String(t.value || '');
             else if (t.classList.contains('hotspot-payload-caption')) h.action.payload.caption = String(t.value || '');
+            else if (t.classList.contains('hotspot-payload-url')) h.action.payload.url = String(t.value || '');
             this.updatePreviewSoon();
         });
 
@@ -882,6 +907,10 @@ var $exeDevice = {
                 h.action.payload = this.normalizeHotspotPayload(h.action.type, {});
                 this.renderHotspotList();
                 this.updatePreviewSoon();
+            } else if (t.classList.contains('hotspot-payload-newTab')) {
+                var hs = this.getActiveScene().hotspots[idx];
+                if (!hs) return;
+                hs.action.payload.newTab = !!t.checked;
             }
         });
 
