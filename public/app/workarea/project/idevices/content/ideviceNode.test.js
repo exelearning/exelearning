@@ -5071,6 +5071,142 @@ describe('IdeviceNode', () => {
         it('sets up file picker functionality without throwing', () => {
             expect(() => idevice.legacyExeIdevicesFilePicker()).not.toThrow();
         });
+
+        it('should detect 3D file picker from input id containing "3d"', () => {
+            // Create input with id containing "3d"
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'threeD3DModelFile';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method (actual code uses window.eXeLearning.app.modals.filemanager.show)
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            // Click the generated button
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('3d');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should detect 3D file picker from input id containing "model"', () => {
+            // Create input with id containing "model"
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'modelFileInput';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            // Click the generated button
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('3d');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should detect audio file picker from input id containing "audio"', () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'audioFileInput';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('audio');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should detect video file picker from input id containing "video"', () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'videoFileInput';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('video');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
     });
 
     describe('initExeDeviceEdition', () => {

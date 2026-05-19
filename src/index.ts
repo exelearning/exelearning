@@ -571,44 +571,56 @@ const app = new Elysia()
         }),
     );
 
-// Get BASE_PATH for route registration and add routes
-// Routes are always added at root, PLUS at BASE_PATH if configured
-// This allows frontend code that doesn't use BASE_PATH to still work
+// Get BASE_PATH for route registration and add routes.
+//
+// Default behaviour: routes are added at root AND at BASE_PATH (if configured).
+// This dual-mount lets frontend code that emits unprefixed URLs still work in a
+// flat `bun run dev`, but it ALSO masks BASE_PATH client bugs (issue #1802):
+// every URL emitted without BASE_PATH would 404 behind a real reverse proxy
+// that only mounts the BASE_PATH namespace.
+//
+// Set STRICT_BASE_PATH_ROUTES=true to disable the root mount when BASE_PATH
+// is configured, so dev/CI behaves like a production proxy and surfaces those
+// bugs immediately. Default is false (compat preserved).
 const routePrefix = getBasePath();
+const strictBasePathRoutes = process.env.STRICT_BASE_PATH_ROUTES === 'true';
+const registerRootRoutes = !routePrefix || !strictBasePathRoutes;
 
-// Always register routes at root
-app.use(healthRoutes)
-    .use(healthCheckAlias)
-    .use(authRoutes)
-    .use(platformIntegrationRoutes)
-    .use(pagesRoutes)
-    .use(projectRoutes)
-    .use(symfonyCompatProjectRoutes)
-    .use(assetsRoutes)
-    .use(fileManagerRoutes)
-    .use(exportRoutes)
-    .use(convertRoutes)
-    .use(configRoutes)
-    .use(idevicesRoutes)
-    .use(gamesRoutes)
-    .use(themesRoutes)
-    .use(resourcesRoutes)
-    .use(userRoutes)
-    .use(adminRoutes)
-    .use(adminThemesRoutes)
-    .use(adminTemplatesRoutes)
-    .use(yjsRoutes)
-    .use(apiV1Routes)
-    .use(uploadSessionRoutes)
-    .use(createWebSocketRoutes())
-    .get('/api', () => ({
-        name: 'eXeLearning API',
-        version: '4.0.0-elysia',
-        framework: 'Elysia',
-        runtime: 'Bun',
-    }))
-    .get('/api/websocket/info', () => getServerInfo())
-    .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }));
+// Register routes at root (skipped when STRICT_BASE_PATH_ROUTES=true AND BASE_PATH is set)
+if (registerRootRoutes) {
+    app.use(healthRoutes)
+        .use(healthCheckAlias)
+        .use(authRoutes)
+        .use(platformIntegrationRoutes)
+        .use(pagesRoutes)
+        .use(projectRoutes)
+        .use(symfonyCompatProjectRoutes)
+        .use(assetsRoutes)
+        .use(fileManagerRoutes)
+        .use(exportRoutes)
+        .use(convertRoutes)
+        .use(configRoutes)
+        .use(idevicesRoutes)
+        .use(gamesRoutes)
+        .use(themesRoutes)
+        .use(resourcesRoutes)
+        .use(userRoutes)
+        .use(adminRoutes)
+        .use(adminThemesRoutes)
+        .use(adminTemplatesRoutes)
+        .use(yjsRoutes)
+        .use(apiV1Routes)
+        .use(uploadSessionRoutes)
+        .use(createWebSocketRoutes())
+        .get('/api', () => ({
+            name: 'eXeLearning API',
+            version: '4.0.0-elysia',
+            framework: 'Elysia',
+            runtime: 'Bun',
+        }))
+        .get('/api/websocket/info', () => getServerInfo())
+        .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }));
+}
 
 // Also register routes at BASE_PATH if configured
 if (routePrefix) {

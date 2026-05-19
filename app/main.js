@@ -1226,6 +1226,69 @@ ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirN
     }
 });
 
+// Open an unpacked project folder, walk its contents, and return a
+// base64-encoded zip the renderer can feed into importFromElpxViaYjs.
+// The folder layout is the same one that lives inside an .elpx — this
+// handler is the inverse of app:exportBufferToFolder.
+ipcMain.handle('app:openProjectFolder', async (e) => {
+    const senderWindow = BrowserWindow.fromWebContents(e.sender);
+    const lastUsedDir = getLastUsedDir();
+    const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
+        title: tOrDefault(
+            'open.folderDialogTitle',
+            defaultLocale === 'es' ? 'Abrir proyecto desde carpeta' : 'Open project from folder',
+        ),
+        properties: ['openDirectory'],
+        ...(lastUsedDir ? { defaultPath: lastUsedDir } : {}),
+    });
+    if (canceled || !filePaths || !filePaths.length) {
+        return { ok: false, canceled: true };
+    }
+    const sourceDir = path.resolve(filePaths[0]);
+    setLastUsedDir(sourceDir);
+
+    // Validate that this folder looks like an unpacked project (has content.xml
+    // or contentv3.xml at the root). Done in main so we can show a native
+    // error dialog instead of bouncing through the renderer.
+    const contentXml = path.join(sourceDir, 'content.xml');
+    const contentV3Xml = path.join(sourceDir, 'contentv3.xml');
+    if (!fs.existsSync(contentXml) && !fs.existsSync(contentV3Xml)) {
+        return { ok: false, error: 'not-a-project-folder' };
+    }
+
+    const entries = {};
+    const walk = (currentDir) => {
+        const items = fs.readdirSync(currentDir, { withFileTypes: true });
+        for (const item of items) {
+            // Skip OS noise that would bloat the zip without belonging to the project.
+            if (item.name === '.DS_Store' || item.name === 'Thumbs.db') continue;
+            const absolute = path.join(currentDir, item.name);
+            if (item.isSymbolicLink()) continue; // never follow symlinks out of the root
+            // Defence-in-depth: ensure the absolute path stays under sourceDir.
+            const resolved = path.resolve(absolute);
+            if (!resolved.startsWith(sourceDir + path.sep) && resolved !== sourceDir) {
+                continue;
+            }
+            if (item.isDirectory()) {
+                walk(absolute);
+            } else if (item.isFile()) {
+                const relative = path.relative(sourceDir, absolute).split(path.sep).join('/');
+                entries[relative] = new Uint8Array(fs.readFileSync(absolute));
+            }
+        }
+    };
+
+    try {
+        walk(sourceDir);
+        const zipped = fflate.zipSync(entries, { level: 6 });
+        const base64 = Buffer.from(zipped).toString('base64');
+        const suggestedName = `${path.basename(sourceDir) || 'project'}.elpx`;
+        return { ok: true, base64, suggestedName, sourceDir };
+    } catch (err) {
+        return { ok: false, error: err?.message || 'unknown' };
+    }
+});
+
 // Every time any window is created, we apply the handler to it
 app.on('browser-window-created', (_event, window) => {
     attachOpenHandler(window);

@@ -56,6 +56,7 @@ export interface ExportMetadata {
     // eXeLearning-specific metadata
     exelearningVersion?: string;
     odeIdentifier?: string;
+    odeVersionId?: string;
     createdAt?: string;
     modifiedAt?: string;
 

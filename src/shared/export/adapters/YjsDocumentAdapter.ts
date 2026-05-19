@@ -116,6 +116,12 @@ export class YjsDocumentAdapter implements ExportDocument {
 
             // Project screenshot/thumbnail
             screenshot: (meta.get('screenshot') as string) || undefined,
+
+            // Stable identifiers (#1784, #1785) -- preserved across import/export so
+            // that content.xml diffs stay clean and LMS tracking survives SCORM re-uploads.
+            odeIdentifier: (meta.get('odeIdentifier') as string) || undefined,
+            odeVersionId: (meta.get('odeVersionId') as string) || undefined,
+            scormIdentifier: (meta.get('scormIdentifier') as string) || undefined,
         };
     }
 
