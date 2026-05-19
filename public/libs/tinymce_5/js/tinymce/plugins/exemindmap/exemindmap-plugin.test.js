@@ -8,53 +8,64 @@
 
 describe('exemindmap plugin - Path Handling', () => {
     describe('Editor URL selection', () => {
-        // Extract the logic from plugin.min.js lines 264-276
-        function getEditorUrl(config) {
-            let editorUrl = '/api/exemindmap-editor/index.html';
+        // Mirror plugin.min.js: in server mode, route through composeUrl() so
+        // BASE_PATH is prepended (issue #1802). Fall back to a bare path only
+        // when the eXeLearning app/composeUrl helper isn't available (early init,
+        // or environments without the host app).
+        function getEditorUrl(config, app) {
+            let editorUrl =
+                app && typeof app.composeUrl === 'function'
+                    ? app.composeUrl('/api/exemindmap-editor/index.html')
+                    : '/api/exemindmap-editor/index.html';
             if (config?.isStaticMode || config?.isOfflineInstallation) {
                 editorUrl = './libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html';
             }
             return editorUrl;
         }
 
-        it('should return API URL when config is null', () => {
-            const result = getEditorUrl(null);
-            expect(result).toBe('/api/exemindmap-editor/index.html');
+        // Mirror window.eXeLearning.app.composeUrl from public/app/app.js:849-858
+        function makeApp(basePath) {
+            return {
+                composeUrl(p) {
+                    const normalized = !basePath || basePath === '/' ? '' : basePath.replace(/\/+$/, '');
+                    const path = p.startsWith('/') ? p : `/${p}`;
+                    return `${normalized}${path}`;
+                },
+            };
+        }
+
+        it('should return bare API URL when no host app is available (back-compat fallback)', () => {
+            expect(getEditorUrl(null)).toBe('/api/exemindmap-editor/index.html');
+            expect(getEditorUrl(undefined)).toBe('/api/exemindmap-editor/index.html');
+            expect(getEditorUrl({})).toBe('/api/exemindmap-editor/index.html');
+            expect(getEditorUrl({ isStaticMode: false })).toBe('/api/exemindmap-editor/index.html');
         });
 
-        it('should return API URL when config is undefined', () => {
-            const result = getEditorUrl(undefined);
-            expect(result).toBe('/api/exemindmap-editor/index.html');
+        it('should prefix BASE_PATH via composeUrl in server mode (issue #1802)', () => {
+            const app = makeApp('/aplicaciones/medusa/exelearning');
+            expect(getEditorUrl(null, app)).toBe(
+                '/aplicaciones/medusa/exelearning/api/exemindmap-editor/index.html',
+            );
+            expect(getEditorUrl({}, app)).toBe(
+                '/aplicaciones/medusa/exelearning/api/exemindmap-editor/index.html',
+            );
+            expect(getEditorUrl({ isStaticMode: false }, app)).toBe(
+                '/aplicaciones/medusa/exelearning/api/exemindmap-editor/index.html',
+            );
         });
 
-        it('should return API URL in online mode (isStaticMode: false)', () => {
-            const result = getEditorUrl({ isStaticMode: false });
-            expect(result).toBe('/api/exemindmap-editor/index.html');
+        it('should fall through to bare URL when BASE_PATH is empty', () => {
+            const app = makeApp('');
+            expect(getEditorUrl(null, app)).toBe('/api/exemindmap-editor/index.html');
         });
 
-        it('should return relative URL in static mode (isStaticMode: true)', () => {
-            const result = getEditorUrl({ isStaticMode: true });
-            expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html');
-        });
-
-        it('should return relative URL for offline installation (isOfflineInstallation: true)', () => {
-            const result = getEditorUrl({ isOfflineInstallation: true });
-            expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html');
-        });
-
-        it('should return relative URL when both flags are true', () => {
-            const result = getEditorUrl({ isStaticMode: true, isOfflineInstallation: true });
-            expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html');
-        });
-
-        it('should return API URL when config has other properties but not mode flags', () => {
-            const result = getEditorUrl({ basePath: '/web/exe', version: 'v3.0' });
-            expect(result).toBe('/api/exemindmap-editor/index.html');
-        });
-
-        it('should handle config as empty object', () => {
-            const result = getEditorUrl({});
-            expect(result).toBe('/api/exemindmap-editor/index.html');
+        it('should return relative URL in static mode regardless of composeUrl', () => {
+            const expected = './libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html';
+            const app = makeApp('/aplicaciones/medusa/exelearning');
+            expect(getEditorUrl({ isStaticMode: true })).toBe(expected);
+            expect(getEditorUrl({ isStaticMode: true }, app)).toBe(expected);
+            expect(getEditorUrl({ isOfflineInstallation: true }, app)).toBe(expected);
+            expect(getEditorUrl({ isStaticMode: true, isOfflineInstallation: true }, app)).toBe(expected);
         });
     });
 

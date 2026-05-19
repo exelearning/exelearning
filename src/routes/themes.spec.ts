@@ -5,7 +5,7 @@
  * Only base and site themes are served from the server.
  * User themes from .elpx files are stored client-side in Yjs.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { themesRoutes, configure, resetDependencies } from './themes';
 import * as fs from 'fs';
@@ -15,8 +15,26 @@ import { migrateToLatest } from '../db/migrations';
 
 describe('Themes Routes', () => {
     let app: Elysia;
+    let originalBasePath: string | undefined;
+
+    beforeAll(() => {
+        // Tests must be deterministic regardless of the developer's local .env.
+        // Snapshot BASE_PATH so we can restore it on suite teardown.
+        originalBasePath = process.env.BASE_PATH;
+    });
+
+    afterAll(() => {
+        if (originalBasePath !== undefined) {
+            process.env.BASE_PATH = originalBasePath;
+        } else {
+            delete process.env.BASE_PATH;
+        }
+    });
 
     beforeEach(() => {
+        // Default each test to a root deployment (BASE_PATH cleared). Tests that
+        // exercise BASE_PATH set it explicitly inside their own describe block.
+        delete process.env.BASE_PATH;
         resetDependencies();
         app = new Elysia().use(themesRoutes);
     });
@@ -1132,6 +1150,91 @@ describe('Themes Routes', () => {
             const body = await res.json();
             // Falls back to themeId when name cannot be extracted from config.xml
             expect(body.zipFileName).toBe('base.zip');
+        });
+    });
+
+    describe('BASE_PATH handling (regression for issue #1802)', () => {
+        // When eXeLearning is deployed in a subdirectory, every URL the server
+        // emits must include BASE_PATH; otherwise the reverse proxy in front of
+        // Bun (which only mounts the BASE_PATH namespace) returns 404 for the
+        // bare-rooted URLs and the icon picker / TinyMCE plugins break.
+        let savedBasePath: string | undefined;
+
+        beforeEach(() => {
+            savedBasePath = process.env.BASE_PATH;
+            resetDependencies();
+            app = new Elysia().use(themesRoutes);
+        });
+
+        afterEach(() => {
+            if (savedBasePath !== undefined) {
+                process.env.BASE_PATH = savedBasePath;
+            } else {
+                delete process.env.BASE_PATH;
+            }
+            resetDependencies();
+        });
+
+        it('emits unprefixed URLs when BASE_PATH is empty', async () => {
+            delete process.env.BASE_PATH;
+            const localApp = new Elysia().use(themesRoutes);
+            const res = await localApp.handle(new Request('http://localhost/api/themes/installed'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            const themeWithIcons = body.themes.find(
+                (t: { icons?: Record<string, unknown> }) => Object.keys(t.icons || {}).length > 0,
+            );
+            expect(themeWithIcons).toBeDefined();
+
+            // Every URL stays at root (no /aplicaciones/... prefix)
+            expect(themeWithIcons.url.startsWith('/aplicaciones/')).toBe(false);
+            expect(themeWithIcons.preview.startsWith('/aplicaciones/')).toBe(false);
+            for (const icon of Object.values(themeWithIcons.icons) as Array<{ value: string }>) {
+                expect(icon.value.startsWith('/aplicaciones/')).toBe(false);
+                expect(icon.value).toMatch(/\/files\/perm\/themes\/.+\/icons\//);
+            }
+        });
+
+        it('prefixes every emitted URL with BASE_PATH when configured', async () => {
+            process.env.BASE_PATH = '/aplicaciones/medusa/exelearning';
+            const localApp = new Elysia().use(themesRoutes);
+            const res = await localApp.handle(new Request('http://localhost/api/themes/installed'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            const themeWithIcons = body.themes.find(
+                (t: { icons?: Record<string, unknown> }) => Object.keys(t.icons || {}).length > 0,
+            );
+            expect(themeWithIcons).toBeDefined();
+
+            // Theme's own URLs prefixed
+            expect(themeWithIcons.url.startsWith('/aplicaciones/medusa/exelearning/')).toBe(true);
+            expect(themeWithIcons.preview.startsWith('/aplicaciones/medusa/exelearning/')).toBe(true);
+
+            // Every icon URL prefixed - this is the regression test for the icon picker bug.
+            const iconValues = Object.values(themeWithIcons.icons) as Array<{ value: string }>;
+            expect(iconValues.length).toBeGreaterThan(0);
+            for (const icon of iconValues) {
+                expect(icon.value.startsWith('/aplicaciones/medusa/exelearning/')).toBe(true);
+            }
+        });
+
+        it('normalizes trailing slash on BASE_PATH (no double-slash in URLs)', async () => {
+            process.env.BASE_PATH = '/exe/';
+            const localApp = new Elysia().use(themesRoutes);
+            const res = await localApp.handle(new Request('http://localhost/api/themes/installed'));
+
+            const body = await res.json();
+            const themeWithIcons = body.themes.find(
+                (t: { icons?: Record<string, unknown> }) => Object.keys(t.icons || {}).length > 0,
+            );
+            for (const icon of Object.values(themeWithIcons.icons) as Array<{ value: string }>) {
+                expect(icon.value.startsWith('/exe/')).toBe(true);
+                expect(icon.value).not.toContain('/exe//');
+            }
+            expect(themeWithIcons.url.startsWith('/exe/')).toBe(true);
+            expect(themeWithIcons.url).not.toContain('/exe//');
         });
     });
 });
