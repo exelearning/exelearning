@@ -34,7 +34,6 @@ describe('NavbarHelp', () => {
     mockButtons = {
       assistant: { addEventListener: vi.fn() },
       tutorial: { addEventListener: vi.fn() },
-      apiDocs: { addEventListener: vi.fn() },
       releaseNotes: { addEventListener: vi.fn() },
       legalNotes: { addEventListener: vi.fn() },
       exeWeb: { addEventListener: vi.fn() },
@@ -48,7 +47,6 @@ describe('NavbarHelp', () => {
         if (selector === '#dropdownHelp') return { id: 'dropdownHelp' };
         if (selector === '#navbar-button-assistant') return mockButtons.assistant;
         if (selector === '#navbar-button-exe-tutorial') return mockButtons.tutorial;
-        if (selector === '#navbar-button-api-docs') return mockButtons.apiDocs;
         if (selector === '#navbar-button-release-notes') return mockButtons.releaseNotes;
         if (selector === '#navbar-button-legal-notes') return mockButtons.legalNotes;
         if (selector === '#navbar-button-exe-web') return mockButtons.exeWeb;
@@ -87,10 +85,6 @@ describe('NavbarHelp', () => {
       expect(mockNavbar.querySelector).toHaveBeenCalledWith('#navbar-button-exe-tutorial');
     });
 
-    it('should query API docs button', () => {
-      expect(mockNavbar.querySelector).toHaveBeenCalledWith('#navbar-button-api-docs');
-    });
-
     it('should query release notes button', () => {
       expect(mockNavbar.querySelector).toHaveBeenCalledWith('#navbar-button-release-notes');
     });
@@ -114,7 +108,6 @@ describe('NavbarHelp', () => {
     it('should store button references', () => {
       expect(navbarHelp.assistantButton).toBe(mockButtons.assistant);
       expect(navbarHelp.tutorialButton).toBe(mockButtons.tutorial);
-      expect(navbarHelp.apiDocsButton).toBe(mockButtons.apiDocs);
       expect(navbarHelp.releaseNotesButton).toBe(mockButtons.releaseNotes);
       expect(navbarHelp.legalNotesButton).toBe(mockButtons.legalNotes);
       expect(navbarHelp.exeWebButton).toBe(mockButtons.exeWeb);
@@ -128,7 +121,6 @@ describe('NavbarHelp', () => {
       const spies = {
         assistant: vi.spyOn(navbarHelp, 'setAssistantEvent'),
         tutorial: vi.spyOn(navbarHelp, 'setTutorialEvent'),
-        apiDocs: vi.spyOn(navbarHelp, 'setApiDocsEvent'),
         releaseNotes: vi.spyOn(navbarHelp, 'setReleaseNotesEvent'),
         legalNotes: vi.spyOn(navbarHelp, 'setLegalNotesEvent'),
         exeWeb: vi.spyOn(navbarHelp, 'setExeWebEvent'),
@@ -174,24 +166,6 @@ describe('NavbarHelp', () => {
       navbarHelp.setTutorialEvent();
 
       const clickHandler = mockButtons.tutorial.addEventListener.mock.calls[0][1];
-      clickHandler();
-
-      expect(spy).toHaveBeenCalled();
-    });
-  });
-
-  describe('setApiDocsEvent', () => {
-    it('should add click event listener to API docs button', () => {
-      navbarHelp.setApiDocsEvent();
-
-      expect(mockButtons.apiDocs.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
-    });
-
-    it('should call apiDocsEvent when button is clicked', () => {
-      const spy = vi.spyOn(navbarHelp, 'apiDocsEvent');
-      navbarHelp.setApiDocsEvent();
-
-      const clickHandler = mockButtons.apiDocs.addEventListener.mock.calls[0][1];
       clickHandler();
 
       expect(spy).toHaveBeenCalled();
@@ -313,23 +287,6 @@ describe('NavbarHelp', () => {
     });
   });
 
-  describe('apiDocsEvent', () => {
-    it('should open API docs URL in new tab', () => {
-      navbarHelp.apiDocsEvent();
-
-      expect(window.open).toHaveBeenCalledWith('/api/docs', '_blank');
-    });
-
-    it('should focus the new tab', () => {
-      const mockFocus = vi.fn();
-      window.open = vi.fn(() => ({ focus: mockFocus }));
-
-      navbarHelp.apiDocsEvent();
-
-      expect(mockFocus).toHaveBeenCalled();
-    });
-  });
-
   describe('releaseNotesEvent', () => {
     it('should show release notes modal', () => {
       navbarHelp.releaseNotesEvent();
@@ -394,7 +351,6 @@ describe('NavbarHelp', () => {
 
       expect(mockButtons.assistant.addEventListener).toHaveBeenCalled();
       expect(mockButtons.tutorial.addEventListener).toHaveBeenCalled();
-      expect(mockButtons.apiDocs.addEventListener).toHaveBeenCalled();
       expect(mockButtons.releaseNotes.addEventListener).toHaveBeenCalled();
       expect(mockButtons.legalNotes.addEventListener).toHaveBeenCalled();
       expect(mockButtons.exeWeb.addEventListener).toHaveBeenCalled();

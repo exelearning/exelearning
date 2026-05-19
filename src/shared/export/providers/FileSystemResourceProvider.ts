@@ -45,10 +45,10 @@ export class FileSystemResourceProvider implements ResourceProvider {
 
     /**
      * Fetch all files for a theme
-     * Checks for embedded themes in the extracted directory first (custom themes),
-     * then falls back to base themes in public/files/perm/themes/base/.
+     * Lookup order: embedded ELPX theme → site themes (FILES_DIR/themes/site/) →
+     * base themes (public/files/perm/themes/base/) → fallback to 'base'.
      *
-     * @param themeName - Name of the theme (e.g., 'base', 'intef', or custom like 'chiquito')
+     * @param themeName - Name of the theme (e.g., 'base', 'intef', or custom like 'my-theme')
      * @returns Map of file paths to content
      */
     async fetchTheme(themeName: string): Promise<Map<string, Buffer>> {
@@ -76,14 +76,22 @@ export class FileSystemResourceProvider implements ResourceProvider {
             }
         }
 
-        // 2. Try base themes from public/files/perm/themes/base/{themeName}/
+        // 2. Try site themes from FILES_DIR/themes/site/{themeName}/
+        const filesDir = process.env.FILES_DIR || './data';
+        const siteThemePath = path.join(filesDir, 'themes', 'site', themeName);
+        if (await fs.pathExists(siteThemePath)) {
+            console.log(`[FileSystemResourceProvider] Using site theme '${themeName}' from ${siteThemePath}`);
+            return this.readDirectoryRecursive(siteThemePath, '');
+        }
+
+        // 3. Try base themes from public/files/perm/themes/base/{themeName}/
         const themePath = path.join(this.publicDir, 'files', 'perm', 'themes', 'base', themeName);
         if (await fs.pathExists(themePath)) {
             console.log(`[FileSystemResourceProvider] Using base theme '${themeName}' from ${themePath}`);
             return this.readDirectoryRecursive(themePath, '');
         }
 
-        // 3. Final fallback to 'base' theme
+        // 5. Final fallback to 'base' theme
         if (themeName !== 'base') {
             const basePath = path.join(this.publicDir, 'files', 'perm', 'themes', 'base', 'base');
             if (await fs.pathExists(basePath)) {

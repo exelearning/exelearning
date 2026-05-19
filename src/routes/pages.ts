@@ -742,6 +742,13 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                     headers: { 'Content-Type': 'text/html; charset=utf-8' },
                                 });
                             }
+                            // Restore session in memory (lost on server restart)
+                            createSession({
+                                sessionId: projectUuid,
+                                fileName: project.title ? `${project.title}.elpx` : 'Untitled.elpx',
+                                filePath: '',
+                                userId: currentUser.id,
+                            });
                         } else {
                             // Project doesn't exist in DB nor in session - 404
                             console.log(`[Pages] Project not found: ${projectUuid}`);

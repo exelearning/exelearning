@@ -68,6 +68,11 @@
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-filemanager" href="#">{{ t.file_manager or 'File manager' }}</a></li>
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-about-exe" href="#">{{ t.about_exelearning or 'About eXeLearning' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>
+                    {% if config.appEnv === 'dev' %}
+                    <li class="d-md-none dropdown-divider"></li>
+                    <li class="d-md-none"><h6 class="dropdown-header">{{ t.developer or 'Developer' }}</h6></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-style-lab" href="{{ basePath }}/developer/style-lab" data-testid="developer-style-lab-mobile">{{ t.style_lab or 'Style Lab' }}</a></li>
+                    {% endif %}
 
                     {# Items existentes #}
                     <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ t.preferences or 'Preferences' }}</a></li>

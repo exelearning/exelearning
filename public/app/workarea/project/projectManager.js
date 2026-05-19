@@ -268,6 +268,27 @@ export default class projectManager {
 
                 // Check for pending local file import (stored in IndexedDB before reload)
                 await this._processPendingImport(urlParams);
+
+                // Apply theme from Style Lab redirect (?apply_theme=<dirName>)
+                const applyTheme = urlParams.get('apply_theme');
+                if (applyTheme && this.app?.themes) {
+                    Logger.log('[ProjectManager] Applying theme from URL param:', applyTheme);
+                    await this.app.themes.selectTheme(applyTheme, true, true, false);
+                    if (this.app.menus?.navbar?.styles?.updateSelectedTheme) {
+                        this.app.menus.navbar.styles.updateSelectedTheme(applyTheme);
+                    }
+                    // Save immediately so the theme change doesn't leave the project dirty
+                    try {
+                        await this._yjsBridge?.saveManager?.save?.();
+                    } catch (saveErr) {
+                        Logger.warn('[ProjectManager] Could not save after apply_theme:', saveErr);
+                    }
+                    // Clean the param from URL
+                    const cleanParams = new URLSearchParams(window.location.search);
+                    cleanParams.delete('apply_theme');
+                    const qs = cleanParams.toString();
+                    window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
+                }
             }
         } catch (error) {
             console.warn('[ProjectManager] Failed to initialize Yjs:', error);

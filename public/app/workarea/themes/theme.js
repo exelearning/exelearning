@@ -147,11 +147,16 @@ export default class Theme {
         }
 
         // Standard server theme loading
+        // Site themes (user-editable) get a cache-busting timestamp to ensure
+        // updates are reflected immediately after install/overwrite.
+        const isSiteTheme = this.path.includes('/site-files/');
         for (let i = 0; i < this.cssFiles.length; i++) {
             let pathCss = this.path + this.cssFiles[i];
-            await this.loadStyleByInsertingIt(
-                this.getResourceServicePath(pathCss)
-            );
+            let resolvedPath = this.getResourceServicePath(pathCss);
+            if (isSiteTheme) {
+                resolvedPath += (resolvedPath.includes('?') ? '&' : '?') + 't=' + Date.now();
+            }
+            await this.loadStyleByInsertingIt(resolvedPath);
         }
     }
 

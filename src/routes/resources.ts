@@ -422,7 +422,7 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
             const zipBuffer = zipSync(zipData, { level: 6 });
 
             set.headers['content-type'] = 'application/zip';
-            set.headers['cache-control'] = 'private, max-age=3600'; // Shorter cache for admin themes
+            set.headers['cache-control'] = 'no-cache, must-revalidate';
             return new Response(zipBuffer);
         }
 

@@ -74,6 +74,10 @@ export class IdeviceRenderer {
         if (resolved) {
             return resolved;
         }
+        if (this.iconResolutionMap.size > 0) {
+            const fallbackIcon = this.iconResolutionMap.get('activity') || this.iconResolutionMap.values().next().value;
+            if (fallbackIcon) return fallbackIcon;
+        }
         // Fallback to .png for backwards compatibility with legacy themes
         return `${baseName}.png`;
     }

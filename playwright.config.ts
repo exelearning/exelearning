@@ -36,6 +36,7 @@ const dynamicServerEnv = {
     FILES_DIR: path.join(os.tmpdir(), 'exelearning-e2e'),
     PORT: '3001',
     APP_PORT: '3001',
+    APP_ENV: 'dev',
     APP_AUTH_METHODS: 'password,guest',
     ADMIN_EMAIL: 'admin@exelearning.test',
     ADMIN_PASSWORD: 'AdminPass123!',

@@ -1679,6 +1679,42 @@ describe('ResourceFetcher', () => {
       expect(result.size).toBe(1);
     });
 
+    it('does not use cached files for site themes', async () => {
+      global.eXeLearning.app = {
+        themes: {
+          list: {
+            installed: {
+              'site-theme': { type: 'site' },
+            },
+          },
+        },
+      };
+      const fetcher = new ResourceFetcher();
+      const mockResourceCache = {
+        get: vi.fn().mockResolvedValue(new Map([['style.css', new Blob(['old'])]])),
+        set: vi.fn(),
+      };
+      fetcher.resourceCache = mockResourceCache;
+      fetcher.cache.set('theme:site-theme', new Map([['style.css', new Blob(['old-memory'])]]));
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([{ path: 'style.css', url: '/site-files/themes/site-theme/style.css' }]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(['fresh'])),
+        });
+
+      const result = await fetcher.fetchTheme('site-theme');
+
+      expect(mockResourceCache.get).not.toHaveBeenCalledWith('theme', 'site-theme', 'v3.1.0');
+      expect(mockResourceCache.set).not.toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/theme/site-theme');
+      expect(await result.get('style.css').text()).toBe('fresh');
+    });
+
     it('saves theme to IndexedDB cache after fetch', async () => {
       const fetcher = new ResourceFetcher();
       const mockResourceCache = {
@@ -1705,6 +1741,37 @@ describe('ResourceFetcher', () => {
         'v3.1.0',
         expect.any(Map)
       );
+    });
+
+    it('cache-busts bundle requests for site themes', async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(12345);
+      global.eXeLearning.app = {
+        themes: {
+          list: {
+            installed: {
+              'site-theme': { type: 'site' },
+            },
+          },
+        },
+      };
+      const fetcher = new ResourceFetcher();
+      fetcher.bundlesAvailable = true;
+      window.fflate = {
+        unzipSync: vi.fn().mockReturnValue({
+          'style.css': new Uint8Array([1]),
+        }),
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => '100' },
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+      });
+
+      await fetcher.fetchTheme('site-theme');
+
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/theme/site-theme?t=12345');
+
+      delete window.fflate;
     });
 
     it('handles IndexedDB cache read error gracefully', async () => {

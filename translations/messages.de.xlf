@@ -14225,6 +14225,1258 @@
         <source>Your score will be automatically saved after each change.</source>
         <target>~Ihre Punktzahl wird nach jeder Änderung automatisch gespeichert.</target>
       </trans-unit>
+      <trans-unit id="3tm7mg5" resname="Back to editor">
+        <source>Back to editor</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nccqq56" resname="Design">
+        <source>Design</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0863l38" resname="Package">
+        <source>Package</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kvwvqhx" resname="Project">
+        <source>Project</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cqfgjtf" resname="Open a project in eXeLearning to see it here.">
+        <source>Open a project in eXeLearning to see it here.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zz836ga" resname="Delete theme">
+        <source>Delete theme</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dkzzhql" resname="Open in new window">
+        <source>Open in new window</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="24lcof3" resname="Apply / export theme...">
+        <source>Apply / export theme...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5felegw" resname="Use this button to save changes and install them in the project. If you have modified a base theme you will need to give it a new name.">
+        <source>Use this button to save changes and install them in the project. If you have modified a base theme you will need to give it a new name.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="oi5g1bf" resname="Back to editor (discard changes)">
+        <source>Back to editor (discard changes)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ajhdaya" resname="Reload theme from disk">
+        <source>Reload theme from disk</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ejbeukd" resname="Load a project and theme first.">
+        <source>Load a project and theme first.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5262lg7" resname="Load a project and theme to edit CSS...">
+        <source>Load a project and theme to edit CSS...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="71u10wf" resname="Wrap scope">
+        <source>Wrap scope</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ls8fcg4" resname="General appearance">
+        <source>General appearance</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8c7jb9q" resname="Typography">
+        <source>Typography</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j66bdja" resname="Headings">
+        <source>Headings</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qpsykpl" resname="Navigation menu">
+        <source>Navigation menu</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2ybmxpy" resname="iDevices and buttons">
+        <source>iDevices and buttons</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qs4v30b" resname="Link color">
+        <source>Link color</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0njlfnx" resname="Page title color">
+        <source>Page title color</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6borttm" resname="Content background">
+        <source>Content background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="y7bucis" resname="Page background">
+        <source>Page background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="q3caqu4" resname="Outer background">
+        <source>Outer background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="e5nsswi" resname="Body font">
+        <source>Body font</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3prjcvw" resname="Headings font">
+        <source>Headings font</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="szcb8ii" resname="Base size (px)">
+        <source>Base size (px)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v2mm02j" resname="Line height">
+        <source>Line height</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tvr52u4" resname="Page title size (rem)">
+        <source>Page title size (rem)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="i003ixc" resname="Page title weight">
+        <source>Page title weight</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ky11050" resname="Uppercase title">
+        <source>Uppercase title</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bobgpvy" resname="Project title color">
+        <source>Project title color</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0u7z3av" resname="Menu background">
+        <source>Menu background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="19efbgt" resname="Menu text">
+        <source>Menu text</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mrnrzhf" resname="Hover background">
+        <source>Hover background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tkl1ht4" resname="Hover text">
+        <source>Hover text</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qtuz3wx" resname="Active background">
+        <source>Active background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4ab24cb" resname="Active text">
+        <source>Active text</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x91sycs" resname="iDevice background">
+        <source>iDevice background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pfqxg42" resname="iDevice border">
+        <source>iDevice border</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rgz5gcs" resname="iDevice title color">
+        <source>iDevice title color</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="oi1zrz0" resname="Button background">
+        <source>Button background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dm85osn" resname="Select a project and theme, then click Preview">
+        <source>Select a project and theme, then click Preview</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xqr50nr" resname="Font size (px)">
+        <source>Font size (px)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4l31zo9" resname="Apply to CSS">
+        <source>Apply to CSS</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jxr8ss0" resname="Export / install theme">
+        <source>Export / install theme</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9u3fn4k" resname="⚠ Predefined theme">
+        <source>⚠ Predefined theme</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="w2gz1qi" resname="You cannot save changes to a base theme with the same name. Enter a new name and identifier.">
+        <source>You cannot save changes to a base theme with the same name. Enter a new name and identifier.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="djw78hx" resname="Theme name">
+        <source>Theme name</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vnc32bg" resname="Identifier (ID)">
+        <source>Identifier (ID)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5znjhq1" resname="Compatibility">
+        <source>Compatibility</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="me8fig0" resname="Importable">
+        <source>Importable</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4iwzkzg" resname="My custom theme">
+        <source>My custom theme</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="eyyf1bz" resname="my-theme">
+        <source>my-theme</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8pfv5wa" resname="Lowercase, numbers, hyphens and underscores only.">
+        <source>Lowercase, numbers, hyphens and underscores only.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6ks8jkg" resname="Download ZIP">
+        <source>Download ZIP</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tyq52qe" resname="Install and apply to project">
+        <source>Install and apply to project</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="s9sugcm" resname="Install the theme and apply it to the project open in the editor">
+        <source>Install the theme and apply it to the project open in the editor</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9z977bz" resname="Open a project in the editor to apply the theme directly">
+        <source>Open a project in the editor to apply the theme directly</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="183c36h" resname="Undone.">
+        <source>Undone.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ncpdlpy" resname="Redone.">
+        <source>Redone.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="oc3bps8" resname="Project open in editor">
+        <source>Project open in editor</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="n8dy6k8" resname="Test fixtures">
+        <source>Test fixtures</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pela285" resname="Error loading">
+        <source>Error loading</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4mn18zy" resname="— select theme —">
+        <source>— select theme —</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="shohjqy" resname="CSS applied.">
+        <source>CSS applied.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0pzpkd6" resname="CSS reset.">
+        <source>CSS reset.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tr8zzg3" resname="Scope is &quot;all formats&quot; — no wrapper needed.">
+        <source>Scope is "all formats" — no wrapper needed.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uotdfps" resname="Select CSS text to wrap first.">
+        <source>Select CSS text to wrap first.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jvhr7p2" resname="Selection wrapped with scope.">
+        <source>Selection wrapped with scope.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="lxeenp1" resname="Rule added to CSS editor.">
+        <source>Rule added to CSS editor.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9lo5c8j" resname="⊕ Click an element in the preview...">
+        <source>⊕ Click an element in the preview...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qmhvevz" resname="Load a preview first.">
+        <source>Load a preview first.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="62q2p47" resname="Select a theme first.">
+        <source>Select a theme first.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bb1hxnt" resname="Fill in the name and identifier.">
+        <source>Fill in the name and identifier.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3kah36m" resname="The identifier can only contain lowercase letters, numbers, - and _.">
+        <source>The identifier can only contain lowercase letters, numbers, - and _.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l191b9s" resname="Capturing thumbnail...">
+        <source>Capturing thumbnail...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="aozivhn" resname="Installing theme...">
+        <source>Installing theme...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kijx2oh" resname="Theme applied to project. Returning to editor...">
+        <source>Theme applied to project. Returning to editor...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hjr352e" resname="Theme installed but could not be applied to project. Check the server console.">
+        <source>Theme installed but could not be applied to project. Check the server console.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="csz03vs" resname="Theme installed: ">
+        <source>Theme installed: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dtc75ex" resname="Exporting theme...">
+        <source>Exporting theme...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gxj94vw" resname="Downloaded: ">
+        <source>Downloaded: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7dqfvps" resname="Error deleting: ">
+        <source>Error deleting: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hvshwl2" resname="Error deleting theme.">
+        <source>Error deleting theme.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1m6hhao" resname="Theme deleted: ">
+        <source>Theme deleted: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4ne9j24" resname="Fetching export...">
+        <source>Fetching export...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wn3rubk" resname="Decompressing...">
+        <source>Decompressing...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2epnxfx" resname="Sending to Service Worker...">
+        <source>Sending to Service Worker...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="92lmlq2" resname="Select project and theme first.">
+        <source>Select project and theme first.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="b1jzydh" resname="You have unapplied style changes.\n\nIf you go back to the editor now the changes will be lost.\n\nTo keep them use the &quot;✓ Apply / export theme...&quot; button in the left panel.\n\nDiscard changes and go back to the editor?">
+        <source>You have unapplied style changes.\n\nIf you go back to the editor now the changes will be lost.\n\nTo keep them use the "✓ Apply / export theme..." button in the left panel.\n\nDiscard changes and go back to the editor?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xv6dkhh" resname="Discard changes and go back to the editor?">
+        <source>Discard changes and go back to the editor?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bsegoe0" resname="Delete theme &quot;{name}&quot;?\nThis action cannot be undone.">
+        <source>Delete theme "{name}"?\nThis action cannot be undone.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="txxrsij" resname="Import theme ZIP">
+        <source>Import theme ZIP</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l1qmrlh" resname="Select ZIP...">
+        <source>Select ZIP...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bdxovn9" resname="Install uploaded theme">
+        <source>Install uploaded theme</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="y391zdb" resname="Export / install">
+        <source>Export / install</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="57cpozx" resname="Manage">
+        <source>Manage</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bobsuap" resname="Open preview in new window">
+        <source>Open preview in new window</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7uia538" resname="Export / install theme...">
+        <source>Export / install theme...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nltmi89" resname="Reading ZIP...">
+        <source>Reading ZIP...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="476t9s9" resname="Uploading theme...">
+        <source>Uploading theme...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qxssemg" resname="Inspect">
+        <source>Inspect</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r2xb2yc" resname="Click-to-edit: click an element in the preview">
+        <source>Click-to-edit: click an element in the preview</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v3nlxmz" resname="Text transparency (%)">
+        <source>Text transparency (%)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2f0jz1r" resname="Background transparency (%)">
+        <source>Background transparency (%)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ppb2lh5" resname="Margin left">
+        <source>Margin left</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="60womyz" resname="Margin right">
+        <source>Margin right</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="or13pw0" resname="Max width">
+        <source>Max width</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="njdbcsa" resname="Margin bottom">
+        <source>Margin bottom</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bdqre0j" resname="Padding">
+        <source>Padding</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jaq29gj" resname="Hover/focus/active too">
+        <source>Hover/focus/active too</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ylaukal" resname="Justify">
+        <source>Justify</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="m35rrmj" resname="Custom fonts">
+        <source>Custom fonts</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="290fhqj" resname="Add...">
+        <source>Add...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5ux5q9b" resname="No custom fonts">
+        <source>No custom fonts</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="h7elw2x" resname="No valid font files (.woff, .woff2, .ttf, .otf).">
+        <source>No valid font files (.woff, .woff2, .ttf, .otf).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="64ol8lq" resname="Fonts added: {n}. Available in Typography selectors.">
+        <source>Fonts added: {n}. Available in Typography selectors.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="doww3xn" resname="Developer">
+        <source>Developer</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f3s6o29" resname="Style Lab">
+        <source>Style Lab</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ybopt16" resname="Theme files">
+        <source>Theme files</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mnex9oh" resname="Fonts">
+        <source>Fonts</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l16wlex" resname="Add file to theme">
+        <source>Add file to theme</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zo5tm5l" resname="Open in full editor">
+        <source>Open in full editor</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gteh8cp" resname="JavaScript runs after export — changes are saved to the ZIP but not reflected in the preview.">
+        <source>JavaScript runs after export — changes are saved to the ZIP but not reflected in the preview.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xg1w6j2" resname="Layout">
+        <source>Layout</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ykmdg5i" resname="Content width">
+        <source>Content width</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="y4lmq4k" resname="Default (theme)">
+        <source>Default (theme)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qo3429v" resname="px + %">
+        <source>px + %</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2ztawnm" resname="Max width (px)">
+        <source>Max width (px)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pe3iqxf" resname="Max width (%)">
+        <source>Max width (%)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xt8jh9p" resname="Center content">
+        <source>Center content</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="66l9djk" resname="Letter spacing (px)">
+        <source>Letter spacing (px)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7d4kk0u" resname="Margin bottom (rem)">
+        <source>Margin bottom (rem)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="20vw1x5" resname="Project title size (rem)">
+        <source>Project title size (rem)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nkc132g" resname="Project title weight">
+        <source>Project title weight</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rxkqk9r" resname="Menu font">
+        <source>Menu font</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dbl57vl" resname="iDevice title size (rem)">
+        <source>iDevice title size (rem)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ex7ea14" resname="Icon / title gap (px)">
+        <source>Icon / title gap (px)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9m5en07" resname="Content font size">
+        <source>Content font size</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ozaycmb" resname="Inherit">
+        <source>Inherit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qoldz6t" resname="Content text align">
+        <source>Content text align</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zy0rm8c" resname="Reduce top padding in iDevices that have no title">
+        <source>Reduce top padding in iDevices that have no title</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0gf4qic" resname="Compact untitled iDevices">
+        <source>Compact untitled iDevices</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="h1ugz87" resname="Assets">
+        <source>Assets</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uv69ril" resname="Branding">
+        <source>Branding</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wrh9a8a" resname="Show logo">
+        <source>Show logo</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="79ip45h" resname="Size (px)">
+        <source>Size (px)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9iry8ii" resname="Top right">
+        <source>Top right</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cfdrrze" resname="Top left">
+        <source>Top left</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6puc20z" resname="Top center">
+        <source>Top center</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="z36owpo" resname="Bottom right">
+        <source>Bottom right</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hjuluji" resname="Bottom left">
+        <source>Bottom left</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4tuzjx6" resname="Bottom center">
+        <source>Bottom center</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xm26cim" resname="Margin X (px)">
+        <source>Margin X (px)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l9k8sny" resname="Margin Y (px)">
+        <source>Margin Y (px)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ftex1xv" resname="Favicon">
+        <source>Favicon</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3xz41ix" resname="No repeat">
+        <source>No repeat</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="sg3bbei" resname="Horizontal">
+        <source>Horizontal</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hl3i5sa" resname="Vertical">
+        <source>Vertical</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tbpy6h8" resname="Softness (%)">
+        <source>Softness (%)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="39496hn" resname="Header image">
+        <source>Header image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="btehaz3" resname="Show header image">
+        <source>Show header image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5or3eik" resname="Hide title in header">
+        <source>Hide title in header</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hk32m5u" resname="Fit">
+        <source>Fit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="t5ri90r" resname="Footer image">
+        <source>Footer image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f9fa34m" resname="Show footer image">
+        <source>Show footer image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="370xlds" resname="Icons">
+        <source>Icons</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tya4d28" resname="Nav prev">
+        <source>Nav prev</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="33k0lkr" resname="Nav next">
+        <source>Nav next</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d2p52am" resname="Nav toggle">
+        <source>Nav toggle</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pc1o2mo" resname="iDevice icons">
+        <source>iDevice icons</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="heppn4h" resname="Preview as">
+        <source>Preview as</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bik9pmn" resname="Apply in">
+        <source>Apply in</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jvuztu6" resname="Apply theme styles in the saved iDevice view in the workarea">
+        <source>Apply theme styles in the saved iDevice view in the workarea</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tkb55b9" resname="Workarea">
+        <source>Workarea</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ffekk2j" resname="Apply theme styles inside the TinyMCE editor (while editing iDevices)">
+        <source>Apply theme styles inside the TinyMCE editor (while editing iDevices)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="njexi2q" resname="Click-to-edit">
+        <source>Click-to-edit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vxru7i2" resname="save / apply">
+        <source>save / apply</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="exim8ys" resname="close">
+        <source>close</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9oio07n" resname="spaces">
+        <source>spaces</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="lf8s2dh" resname="JS saved — will be included on export.">
+        <source>JS saved — will be included on export.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="60hduch" resname="No files match.">
+        <source>No files match.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xbajs9r" resname="TikZ code">
+        <source>TikZ code</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rlzt6hm" resname="One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.">
+        <source>One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="m3pshat" resname="Simple resistor circuit">
+        <source>Simple resistor circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="g9m9pzn" resname="What is the resistance value?">
+        <source>What is the resistance value?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4ojlahr" resname="1 kΩ">
+        <source>1 kΩ</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="57tobzz" resname="2 kΩ">
+        <source>2 kΩ</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="n63651j" resname="500 Ω">
+        <source>500 Ω</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d2rg9yx" resname="10 kΩ">
+        <source>10 kΩ</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="viv668f" resname="Battery and lamp circuit">
+        <source>Battery and lamp circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rj6pqcz" resname="What happens when the switch is closed?">
+        <source>What happens when the switch is closed?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fb0zi31" resname="Nothing">
+        <source>Nothing</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3elwo76" resname="The lamp turns on">
+        <source>The lamp turns on</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fcgm3tq" resname="The battery drains">
+        <source>The battery drains</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="37egidp" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hz4ytev" resname="An error occurred while exporting the project: ">
+        <source>An error occurred while exporting the project: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ahjon9k" resname="Sending to the platform...">
+        <source>Sending to the platform...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xu5ysex" resname="Could not send the project to the platform: ">
+        <source>Could not send the project to the platform: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0e8kkiv" resname="3D Model">
+        <source>3D Model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9gez24j" resname="3D Models">
+        <source>3D Models</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zkukyn2" resname="Electrical Circuits">
+        <source>Electrical Circuits</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ja30r9p" resname="Please select the correct answer for each option">
+        <source>Please select the correct answer for each option</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2ueprhw" resname="Please write the question">
+        <source>Please write the question</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ia2pty1" resname="Please complete all options">
+        <source>Please complete all options</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5j73q34" resname="Please write the word/phrase">
+        <source>Please write the word/phrase</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4szq2qa" resname="The selected file is not a valid game">
+        <source>The selected file is not a valid game</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="q0bg7pr" resname="Please indicate the time to display the solution">
+        <source>Please indicate the time to display the solution</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="m8xypfn" resname="Please provide the word or phrase">
+        <source>Please provide the word or phrase</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="sfp5na3" resname="Create quiz activities based on electrical circuit diagrams drawn with TikZ.">
+        <source>Create quiz activities based on electrical circuit diagrams drawn with TikZ.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tsbr0fm" resname="&amp;percnt; right to see the feedback">
+        <source>&amp;percnt; right to see the feedback</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wj6ekvc" resname="% Questions">
+        <source>% Questions</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ds5f73u" resname="No circuit">
+        <source>No circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jjrlekj" resname="Circuit code (TikZ)">
+        <source>Circuit code (TikZ)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bxy28yq" resname="Enter TikZ circuit code...">
+        <source>Enter TikZ circuit code...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pw47mvf" resname="Preview circuit">
+        <source>Preview circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="yu6z8cy" resname="You answered all the questions.">
+        <source>You answered all the questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kxnrjkl" resname="You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.">
+        <source>You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8vilssq" resname="The score can not be saved because this page is not part of a SCORM package.">
+        <source>The score can not be saved because this page is not part of a SCORM package.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6o9vpfx" resname="You can only save the score once">
+        <source>You can only save the score once</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="slkyoye" resname="Please start the activity before saving your score.">
+        <source>Please start the activity before saving your score.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2bryhtw" resname="Electrical Circuits Quiz">
+        <source>Electrical Circuits Quiz</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="w8r557d" resname="Observe the electrical circuit and answer the questions.">
+        <source>Observe the electrical circuit and answer the questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="iew36qk" resname="What type of circuit is shown?">
+        <source>What type of circuit is shown?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="b7ucll2" resname="Series circuit">
+        <source>Series circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tu39fyy" resname="Parallel circuit">
+        <source>Parallel circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wfw5a57" resname="Mixed circuit">
+        <source>Mixed circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xju0yte" resname="Open circuit">
+        <source>Open circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7cp55m5" resname="Circuit with a battery connected in series with two resistors">
+        <source>Circuit with a battery connected in series with two resistors</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="firan5y" resname="3Dmol">
+        <source>3Dmol</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xbc8sd0" resname="Please upload a valid 3D model file">
+        <source>Please upload a valid 3D model file</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="y8nheim" resname="Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz">
+        <source>Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="o1qotf4" resname="Could not render the selected 3D model">
+        <source>Could not render the selected 3D model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pwt7cfv" resname="Large model file. This may affect performance.">
+        <source>Large model file. This may affect performance.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8lhsw7u" resname="3D model">
+        <source>3D model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wpx1f7j" resname="No 3D model">
+        <source>No 3D model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="drkpw8w" resname="Camera enabled">
+        <source>Camera enabled</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="krsbfxa" resname="Click to disable">
+        <source>Click to disable</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="p5ahsuu" resname="Camera disabled">
+        <source>Camera disabled</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="18nbk43" resname="Click to enable">
+        <source>Click to enable</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rzzu1zl" resname="Dark background">
+        <source>Dark background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="81xo10h" resname="Click to switch to light">
+        <source>Click to switch to light</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="t9i95t1" resname="Light background">
+        <source>Light background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qkoygml" resname="Click to switch to dark">
+        <source>Click to switch to dark</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9dziglt" resname="Atom legend visible">
+        <source>Atom legend visible</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vnvd9tf" resname="Click to hide">
+        <source>Click to hide</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kr6ezxj" resname="Atom legend hidden">
+        <source>Atom legend hidden</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ndz80fj" resname="Click to show">
+        <source>Click to show</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7gixtpk" resname="Create quiz activities based on interactive 3D models.">
+        <source>Create quiz activities based on interactive 3D models.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="clw0fqt" resname="3D model preview">
+        <source>3D model preview</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u15juhw" resname="Molecule style">
+        <source>Molecule style</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cw10e3c" resname="Smaller">
+        <source>Smaller</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="taurm7j" resname="Bigger">
+        <source>Bigger</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wiy6j7t" resname="Reset camera view">
+        <source>Reset camera view</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mi8qo4j" resname="Save initial view">
+        <source>Save initial view</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ctwabdc" resname="Download image">
+        <source>Download image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="17wy14h" resname="3D model file">
+        <source>3D model file</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1iimvng" resname="Preview model">
+        <source>Preview model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ts0n8sp" resname="Line">
+        <source>Line</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="q4ddfra" resname="Cross">
+        <source>Cross</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9bw0b4u" resname="Stick">
+        <source>Stick</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="p4sgyj9" resname="Sphere">
+        <source>Sphere</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="13bae00" resname="Cartoon">
+        <source>Cartoon</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="c5t4tjk" resname="Surface">
+        <source>Surface</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wzrit43" resname="Toggle background">
+        <source>Toggle background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="edj4m86" resname="3D Model Quiz">
+        <source>3D Model Quiz</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="eb54lbd" resname="Chemical composition">
+        <source>Chemical composition</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4jmtb87" resname="Observe the 3D model and answer the questions.">
+        <source>Observe the 3D model and answer the questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rlfr2wp" resname="You can rotate the 3D model by clicking on it and dragging.">
+        <source>You can rotate the 3D model by clicking on it and dragging.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0r5hvsk" resname="What is the central atom in the model?">
+        <source>What is the central atom in the model?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="lh414xr" resname="How many hydroxyl groups (–OH) does a glucose molecule have?">
+        <source>How many hydroxyl groups (–OH) does a glucose molecule have?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hzyyix0" resname="5">
+        <source>5</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mov5ex2" resname="4">
+        <source>4</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1b2bez9" resname="3">
+        <source>3</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fozphhh" resname="6">
+        <source>6</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="atcvfy5" resname="Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.">
+        <source>Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="yurn2pd" resname="Marco legal:">
+        <source>Marco legal:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="46m9bws" resname="Concreción:">
+        <source>Concreción:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f7m7p4a" resname="Este conjunto de datos no está disponible todavía. Se añadirá en una próxima versión.">
+        <source>Este conjunto de datos no está disponible todavía. Se añadirá en una próxima versión.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="57onu0k" resname="Selector de elementos curriculares">
+        <source>Selector de elementos curriculares</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tfunbsd" resname="Cargando datos curriculares…">
+        <source>Cargando datos curriculares…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8au0j4d" resname="Filtrar materias…">
+        <source>Filtrar materias…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="88w91zk" resname="Criterios de evaluación">
+        <source>Criterios de evaluación</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="svoj7d5" resname="Saberes Básicos">
+        <source>Saberes Básicos</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="08i2s92" resname="Selecciona una materia">
+        <source>Selecciona una materia</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ulxe8bs" resname="Seleccionados">
+        <source>Seleccionados</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vr0h7ke" resname="Aún no hay elementos seleccionados.">
+        <source>Aún no hay elementos seleccionados.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qcppo5u" resname="Vista previa del resumen">
+        <source>Vista previa del resumen</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="605ya1k" resname="Restablecer selección">
+        <source>Restablecer selección</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0oo9vjx" resname="Resumen de la fundamentación curricular">
+        <source>Resumen de la fundamentación curricular</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bif66cf" resname="Cerrar">
+        <source>Cerrar</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dz50f1h" resname="¿Restablecer toda la selección? Se perderán los cambios.">
+        <source>¿Restablecer toda la selección? Se perderán los cambios.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="13f6tf2" resname="Selecciona etapa y nivel">
+        <source>Selecciona etapa y nivel</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tmb82yb" resname="Sin resultados">
+        <source>Sin resultados</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9w9x28k" resname="No hay saberes básicos para esta materia.">
+        <source>No hay saberes básicos para esta materia.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bj7u3f8" resname="No hay competencias específicas para esta materia.">
+        <source>No hay competencias específicas para esta materia.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="i7qekit" resname="Parcial">
+        <source>Parcial</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="egz7x7j" resname="Eliminar">
+        <source>Eliminar</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cebcxeq" resname="Comp. Clave">
+        <source>Comp. Clave</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x3vd2d2" resname="Descriptores operativos">
+        <source>Descriptores operativos</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wa42n75" resname="No hay elementos curriculares seleccionados.">
+        <source>No hay elementos curriculares seleccionados.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cb0oi9y" resname="Fundamentación Curricular LOMLOE">
+        <source>Fundamentación Curricular LOMLOE</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ow4rvxa" resname="Fundamentación">
+        <source>Fundamentación</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5lk8dez" resname="Elementos seleccionados">
+        <source>Elementos seleccionados</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cte3wsf" resname="criterios">
+        <source>criterios</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wuublec" resname="saberes">
+        <source>saberes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7nh36bh" resname="Competencias Específicas">
+        <source>Competencias Específicas</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="aw2ie4c" resname="Comp. Específica">
+        <source>Comp. Específica</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="k9slqmh" resname="Competencias Clave">
+        <source>Competencias Clave</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x19ulc4" resname="Criterios de Eval.">
+        <source>Criterios de Eval.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="a0w57q6" resname="parcial">
+        <source>parcial</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cl8d2n3" resname="Error al cargar los datos: ">
+        <source>Error al cargar los datos: </source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

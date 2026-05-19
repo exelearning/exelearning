@@ -26,6 +26,7 @@ import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
 import { uploadSessionRoutes } from './routes/upload-session';
+import { developerRoutes } from './routes/developer';
 import {
     createWebSocketRoutes,
     initialize as initWebSocket,
@@ -406,7 +407,7 @@ const app = new Elysia()
                 return new Response(content, {
                     headers: {
                         'Content-Type': contentType,
-                        'Cache-Control': 'public, max-age=31536000',
+                        'Cache-Control': 'no-cache, must-revalidate',
                     },
                 });
             }
@@ -487,7 +488,7 @@ const app = new Elysia()
 
             set.headers['Content-Type'] = contentType;
             set.headers['Content-Length'] = content.length.toString();
-            set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
+            set.headers['Cache-Control'] = 'no-cache, must-revalidate';
             return content;
         }
 
@@ -611,6 +612,7 @@ if (registerRootRoutes) {
         .use(yjsRoutes)
         .use(apiV1Routes)
         .use(uploadSessionRoutes)
+        .use(developerRoutes)
         .use(createWebSocketRoutes())
         .get('/api', () => ({
             name: 'eXeLearning API',
@@ -649,6 +651,7 @@ if (routePrefix) {
             .use(yjsRoutes)
             .use(apiV1Routes)
             .use(uploadSessionRoutes)
+            .use(developerRoutes)
             .use(createWebSocketRoutes())
             .get('/api', () => ({
                 name: 'eXeLearning API',

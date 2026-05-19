@@ -818,8 +818,8 @@ describe('Resources Routes', () => {
                 );
 
                 expect(res.status).toBe(200);
+                expect(res.headers.get('cache-control')).toBe('no-cache, must-revalidate');
                 expect(res.headers.get('content-type')).toBe('application/zip');
-                expect(res.headers.get('cache-control')).toContain('private');
             });
 
             it('should skip files that cannot be read for site themes', async () => {
@@ -907,7 +907,7 @@ describe('Resources Routes', () => {
 
                 expect(res.status).toBe(200);
                 expect(res.headers.get('content-type')).toBe('application/zip');
-                expect(res.headers.get('cache-control')).toContain('private');
+                expect(res.headers.get('cache-control')).toBe('no-cache, must-revalidate');
             });
 
             it('should return 404 if admin/site theme is empty', async () => {

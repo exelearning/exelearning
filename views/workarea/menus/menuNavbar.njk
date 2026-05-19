@@ -98,6 +98,16 @@
                     <li><a class="dropdown-item" id="navbar-button-preview" href="#" data-shortcut="Mod+P" aria-keyshortcuts="Control+P Meta+P"><span class="small-icon preview-icon-green"></span> {{ t.preview or 'Preview' }}</a></li>
                 </ul>
             </li>
+            {% if config.appEnv === 'dev' %}
+            <li class="nav-item btn button-tertiary button-dropdown dropdown" id="dropdownDeveloperItem">
+                <a class="nav-link dropdown-toggle" href="#" id="dropdownDeveloper" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    {{ t.developer or 'Developer' }}
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="dropdownDeveloper">
+                    <li><a class="dropdown-item" id="navbar-button-style-lab" href="{{ basePath }}/developer/style-lab" data-testid="developer-style-lab">{{ t.style_lab or 'Style Lab' }}</a></li>
+                </ul>
+            </li>
+            {% endif %}
             <li class="nav-item btn button-tertiary button-dropdown dropdown" id="dropdownHelpItem" >
                 <a class="nav-link dropdown-toggle" href="#" id="dropdownHelp" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     {{ t.help or 'Help' }}
@@ -105,7 +115,6 @@
                 <ul class="dropdown-menu" aria-labelledby="dropdownHelp">
                     <li><a class="dropdown-item" id="navbar-button-assistant" href="#">{{ t.assistant or 'Assistant' }}</a></li>
                     <li><a class="dropdown-item" id="navbar-button-exe-tutorial" href="#">{{ t.user_manual or 'User manual' }}</a></li>
-                    <li class="d-none"><a class="dropdown-item" id="navbar-button-api-docs" href="#">{{ t.api_reference or 'API Reference (Swagger)' }}</a></li>
                     <li class="dropdown-divider"></li>
                     <li><a class="dropdown-item" id="navbar-button-about-exe" href="#">{{ t.about_exelearning or 'About eXeLearning' }}</a></li>
                     <li><a class="dropdown-item" id="navbar-button-release-notes" href="#">{{ t.release_notes or 'Release notes' }}</a></li>

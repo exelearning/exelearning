@@ -1190,7 +1190,7 @@ describe('IdeviceRenderer', () => {
             expect(html).not.toMatch(/theme\/icons\/activity["']/);
         });
 
-        it('should fall back to iconName when theme does not contain the icon', () => {
+        it('should fall back to an existing theme icon when theme does not contain the icon', () => {
             const block: ExportBlock = {
                 id: 'block-1',
                 name: 'Test Block',
@@ -1209,8 +1209,8 @@ describe('IdeviceRenderer', () => {
                 includeDataAttributes: true,
             });
 
-            // Should use iconName as-is since it's not in the theme
-            expect(html).toContain('theme/icons/unknown-icon');
+            expect(html).toContain('theme/icons/activity.svg');
+            expect(html).not.toContain('theme/icons/unknown-icon');
         });
 
         it('should use iconName as-is when setThemeIconFiles is not called', () => {
@@ -1571,8 +1571,9 @@ describe('IdeviceRenderer', () => {
             };
 
             const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
-            // Should use iconName with .png fallback (not from img/ folder)
-            expect(html).toContain('theme/icons/logo.png');
+            // Should ignore img/ files and fall back to an existing icon from icons/
+            expect(html).toContain('theme/icons/activity.svg');
+            expect(html).not.toContain('theme/icons/logo.png');
         });
     });
 

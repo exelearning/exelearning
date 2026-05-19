@@ -367,9 +367,10 @@ class ResourceFetcher {
    */
   async fetchTheme(themeName) {
     const cacheKey = `theme:${themeName}`;
+    const isSiteTheme = this.isSiteTheme(themeName);
 
     // 1. Check in-memory cache (includes user themes registered via setUserThemeFiles)
-    if (this.cache.has(cacheKey)) {
+    if (!isSiteTheme && this.cache.has(cacheKey)) {
       const isUserTheme = this.userThemeFiles.has(themeName);
       Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded from memory cache${isUserTheme ? ' (user theme)' : ''}`);
       return this.cache.get(cacheKey);
@@ -402,7 +403,7 @@ class ResourceFetcher {
     }
 
     // 4. Check IndexedDB cache for server themes (version-based)
-    if (this.resourceCache) {
+    if (!isSiteTheme && this.resourceCache) {
       try {
         const cached = await this.resourceCache.get('theme', themeName, this.version);
         if (cached) {
@@ -426,7 +427,7 @@ class ResourceFetcher {
     }
     // 6. Try ZIP bundle (faster, single request)
     else if (this.bundlesAvailable) {
-      const bundleUrl = `${this.apiBase}/bundle/theme/${themeName}`;
+      const bundleUrl = `${this.apiBase}/bundle/theme/${themeName}${isSiteTheme ? `?t=${Date.now()}` : ''}`;
       console.log(`[ResourceFetcher] 📦 Fetching theme '${themeName}' via bundle:`, bundleUrl);
       themeFiles = await this.fetchBundle(bundleUrl);
       if (themeFiles && themeFiles.size > 0) {
@@ -441,10 +442,12 @@ class ResourceFetcher {
     }
 
     // 7. Cache the result (cache even if empty to avoid repeated fetches)
-    this.cache.set(cacheKey, themeFiles);
+    if (!isSiteTheme) {
+      this.cache.set(cacheKey, themeFiles);
+    }
 
     // Store in IndexedDB for persistence (only if non-empty, only for server themes)
-    if (themeFiles.size > 0 && this.resourceCache) {
+    if (!isSiteTheme && themeFiles.size > 0 && this.resourceCache) {
       try {
         await this.resourceCache.set('theme', themeName, this.version, themeFiles);
       } catch (e) {
@@ -454,6 +457,18 @@ class ResourceFetcher {
 
     Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded (${themeFiles.size} files)`);
     return themeFiles;
+  }
+
+  /**
+   * Site themes live in FILES_DIR and can be overwritten without changing the
+   * app version, so ResourceFetcher must not reuse the normal server-theme
+   * caches for them.
+   * @param {string} themeName
+   * @returns {boolean}
+   */
+  isSiteTheme(themeName) {
+    const theme = window.eXeLearning?.app?.themes?.list?.installed?.[themeName];
+    return theme?.type === 'site' || theme?.path?.includes('/site-files/');
   }
 
   /**

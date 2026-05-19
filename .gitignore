@@ -120,3 +120,6 @@ public/app/dist/
 # Electron app generated content
 /app/dist/
 /app/node_modules/
+
+# Style editor (external repo, not versioned here)
+/public/developer/
