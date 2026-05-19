@@ -1178,6 +1178,12 @@ export default class ApiCallManager {
                     description: metadata?.get('description') || '',
                     license: metadata?.get('license') || '',
                     theme: metadata?.get('theme') || 'base',
+                    // Stable identifiers (#1786) -- forward so the server-side
+                    // YjsDocumentAdapter can derive a stable SCORM/IMS manifest
+                    // identifier instead of generating a fresh random one.
+                    odeIdentifier: metadata?.get('odeIdentifier') || undefined,
+                    odeVersionId: metadata?.get('odeVersionId') || undefined,
+                    scormIdentifier: metadata?.get('scormIdentifier') || undefined,
                 },
                 pages: [],
                 navigation: [],

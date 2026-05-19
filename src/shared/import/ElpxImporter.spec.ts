@@ -1898,7 +1898,7 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
         }
     });
 
-    it('should remap exe-node: cross-page anchor links when importing anchors.zip', async () => {
+    it('should keep exe-node: cross-page anchor links pointing at the imported pages when importing anchors.zip', async () => {
         const elpPath = path.join(process.cwd(), 'test/fixtures/anchors.zip');
         const elpBuffer = await fs.readFile(elpPath);
 
@@ -1911,13 +1911,13 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
         const navigation = ydoc.getArray('navigation');
         expect(navigation.length).toBe(3); // aaa, bbb, ccc
 
-        // Collect new page IDs and the HTML content of components
-        const newPageIds: string[] = [];
+        // Collect imported page IDs and the HTML content of components
+        const importedPageIds: string[] = [];
         const allHtmlContent: string[] = [];
 
         for (let i = 0; i < navigation.length; i++) {
             const page = navigation.get(i) as Y.Map<unknown>;
-            newPageIds.push((page.get('id') as string) || (page.get('pageId') as string));
+            importedPageIds.push((page.get('id') as string) || (page.get('pageId') as string));
 
             const blocks = page.get('blocks') as Y.Array<unknown>;
             for (let j = 0; j < (blocks?.length ?? 0); j++) {
@@ -1931,22 +1931,28 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
             }
         }
 
-        // The original IDs from anchors.zip should NOT appear in any content
-        const originalIds = [
-            '4576a60f-11d1-4414-88f7-6df2d6aaece0',
-            'page-1771919082417-f0hpww2cx',
-            'page-1771919084984-kxe6oqn9a',
-        ];
-
         const combinedHtml = allHtmlContent.join('\n');
 
-        for (const origId of originalIds) {
-            expect(combinedHtml).not.toContain(`exe-node:${origId}`);
-        }
+        // After the v4 ID preservation fix, internal exe-node: links should
+        // continue to point at the (preserved) imported page IDs. At least one
+        // of the imported page IDs must appear as the target of an exe-node link.
+        const hasResolvedLink = importedPageIds.some(id => combinedHtml.includes(`exe-node:${id}`));
+        expect(hasResolvedLink).toBe(true);
 
-        // At least one of the new page IDs should be referenced in the HTML
-        const hasRemappedLink = newPageIds.some(id => combinedHtml.includes(`exe-node:${id}`));
-        expect(hasRemappedLink).toBe(true);
+        // No dangling exe-node: link should reference an ID that is not in
+        // the imported navigation (collision-only remap still applies in
+        // merge-mode imports, but this fixture is a fresh import).
+        // Match every char the importer's boundary considers part of an id
+        // (mirrors the (?![A-Za-z0-9_-]) lookahead in remapInternalPageLinks).
+        const linkPattern = /exe-node:([a-zA-Z0-9_-]+)/g;
+        const referencedIds = new Set<string>();
+        let m: RegExpExecArray | null;
+        while ((m = linkPattern.exec(combinedHtml)) !== null) {
+            referencedIds.add(m[1]);
+        }
+        for (const refId of referencedIds) {
+            expect(importedPageIds).toContain(refId);
+        }
 
         ydoc.destroy();
     });
@@ -2007,7 +2013,9 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
 
         const pageB = navigation.get(1) as Y.Map<unknown>;
         const newPageBId = (pageB.get('id') ?? pageB.get('pageId')) as string;
-        expect(newPageBId).not.toBe('original-page-bbb');
+        // After the v4 ID preservation fix, a fresh import keeps the original
+        // <odePageId> verbatim, so the imported Page B id equals the XML id.
+        expect(newPageBId).toBe('original-page-bbb');
 
         // Get the component HTML from page A
         const pageA = navigation.get(0) as Y.Map<unknown>;
@@ -2017,9 +2025,8 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
         const comp = components.get(0) as Y.Map<unknown>;
         const html = comp.get('htmlView') as string;
 
-        // Link must use new page ID and preserve the fragment
+        // Link must reference the imported page id and preserve the fragment.
         expect(html).toContain(`exe-node:${newPageBId}#my-anchor`);
-        expect(html).not.toContain('exe-node:original-page-bbb');
 
         ydoc.destroy();
     });
@@ -2251,5 +2258,835 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
 
             ydoc.destroy();
         });
+    });
+
+    describe('odeResources preservation', () => {
+        it('should populate metadata.odeIdentifier and metadata.odeVersionId from <odeResources> on v4 import', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>20251201123456FEDCBA</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>OdeResources Preservation</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+            expect(metadata.get('odeVersionId')).toBe('20251201123456FEDCBA');
+
+            ydoc.destroy();
+        });
+
+        it('should tolerate missing <odeResources> block on v4 import', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            // v4-style content.xml WITHOUT odeResources
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>No OdeResources</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const odeId = metadata.get('odeIdentifier');
+            const odeVersionId = metadata.get('odeVersionId');
+            // Either undefined or empty string — export-side fallback will fill them in.
+            expect(odeId === undefined || odeId === '').toBe(true);
+            expect(odeVersionId === undefined || odeVersionId === '').toBe(true);
+
+            ydoc.destroy();
+        });
+
+        it('should still populate metadata.odeIdentifier when <odeProperties> is absent (DTD edge case)', async () => {
+            // The DTD makes <odeProperties> optional. A valid v4 content.xml
+            // may carry <odeResources> alone. Stable identifiers must reach the
+            // Y.Doc metadata regardless of whether <odeProperties> exists.
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>20251201123456FEDCBA</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+            expect(metadata.get('odeVersionId')).toBe('20251201123456FEDCBA');
+
+            ydoc.destroy();
+        });
+
+        it('should round-trip scormIdentifier through <odeResources> (#1786)', async () => {
+            // The user-set SCORM override survives ELPX download-and-reopen so
+            // re-exports keep using the same manifest@identifier the LMS expects.
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>20251201123456FEDCBA</value></odeResource>
+  <odeResource><key>scormIdentifier</key><value>LMS-COURSE-XYZ</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>SCORM ID round-trip</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({ 'content.xml': encoder.encode(contentXml) });
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('scormIdentifier')).toBe('LMS-COURSE-XYZ');
+
+            ydoc.destroy();
+        });
+
+        it('should populate odeIdentifier even when odeVersionId is missing (partial odeResources)', async () => {
+            // Partial resources -- importer keeps odeId, leaves odeVersionId
+            // unset so the exporter's fallback generates a fresh value.
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Partial</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({ 'content.xml': encoder.encode(contentXml) });
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+            const versionId = metadata.get('odeVersionId');
+            expect(versionId === undefined || versionId === '').toBe(true);
+
+            ydoc.destroy();
+        });
+
+        it('should tolerate empty <odeResources> block on v4 import', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources></odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Empty OdeResources</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const odeId = metadata.get('odeIdentifier');
+            const odeVersionId = metadata.get('odeVersionId');
+            expect(odeId === undefined || odeId === '').toBe(true);
+            expect(odeVersionId === undefined || odeVersionId === '').toBe(true);
+
+            ydoc.destroy();
+        });
+
+        it('should generate odeIdentifier and odeVersionId once on legacy v3 import', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_tema-10-ejemplo.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            const metadata = ydoc.getMap('metadata');
+            const odeId = metadata.get('odeIdentifier') as string;
+            const odeVersionId = metadata.get('odeVersionId') as string;
+            expect(typeof odeId).toBe('string');
+            expect(typeof odeVersionId).toBe('string');
+            expect(odeId).toMatch(/^\d{14}[A-Z0-9]{6}$/);
+            expect(odeVersionId).toMatch(/^\d{14}[A-Z0-9]{6}$/);
+
+            ydoc.destroy();
+        });
+
+        it('should round-trip odeId and odeVersionId through import -> generateOdeXml -> re-parse', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+            const { generateOdeXml } = await import('../export/generators/OdeXmlGenerator');
+
+            const inputOdeId = '20251201123456ABCDEF';
+            const inputOdeVersionId = '20251201123456FEDCBA';
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>${inputOdeId}</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>${inputOdeVersionId}</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Round Trip</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const exportedXml = generateOdeXml(
+                {
+                    title: 'Round Trip',
+                    author: '',
+                    language: 'en',
+                    theme: 'base',
+                    odeIdentifier: metadata.get('odeIdentifier') as string,
+                    odeVersionId: metadata.get('odeVersionId') as string,
+                },
+                [],
+            );
+
+            const odeIdMatch = exportedXml.match(/<key>odeId<\/key>\s*<value>([^<]+)<\/value>/);
+            const odeVersionIdMatch = exportedXml.match(/<key>odeVersionId<\/key>\s*<value>([^<]+)<\/value>/);
+            expect(odeIdMatch).not.toBeNull();
+            expect(odeVersionIdMatch).not.toBeNull();
+            expect(odeIdMatch![1]).toBe(inputOdeId);
+            expect(odeVersionIdMatch![1]).toBe(inputOdeVersionId);
+
+            ydoc.destroy();
+        });
+    });
+});
+
+describe('ElpxImporter - id preservation across v4 import', () => {
+    // Minimal v4 content.xml with two sibling root pages, each with one block + one iDevice.
+    // IDs use the canonical "Format A" shape produced by the workarea.
+    const PAGE_A = 'page-mp0fppwf-71v64kl4r';
+    const PAGE_B = 'page-mp0fppwf-71v64kl4s';
+    const BLOCK_A = 'block-mp0fppwf-blkaaaaaa';
+    const BLOCK_B = 'block-mp0fppwf-blkbbbbbb';
+    const IDEVICE_A = 'idevice-mp0fppwf-idvaaaaaa';
+    const IDEVICE_B = 'idevice-mp0fppwf-idvbbbbbb';
+
+    const buildV4ContentXml = (pageAId = PAGE_A, pageBId = PAGE_B): string => `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>ID Preservation Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>${pageAId}</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page A</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>${pageAId}</odePageId>
+        <odeBlockId>${BLOCK_A}</odeBlockId>
+        <blockName>BlockA</blockName>
+        <iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>${pageAId}</odePageId>
+            <odeBlockId>${BLOCK_A}</odeBlockId>
+            <odeIdeviceId>${IDEVICE_A}</odeIdeviceId>
+            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+            <htmlView><![CDATA[<p>Hello A with <a href="exe-node:${pageBId}">link</a></p>]]></htmlView>
+            <jsonProperties><![CDATA[{"ideviceId":"${IDEVICE_A}","textTextarea":"<p>Hello A</p>"}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+  <odeNavStructure>
+    <odePageId>${pageBId}</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page B</pageName>
+    <odeNavStructureOrder>1</odeNavStructureOrder>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>${pageBId}</odePageId>
+        <odeBlockId>${BLOCK_B}</odeBlockId>
+        <blockName>BlockB</blockName>
+        <iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>${pageBId}</odePageId>
+            <odeBlockId>${BLOCK_B}</odeBlockId>
+            <odeIdeviceId>${IDEVICE_B}</odeIdeviceId>
+            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+            <htmlView><![CDATA[<p>Hello B</p>]]></htmlView>
+            <jsonProperties><![CDATA[{"ideviceId":"${IDEVICE_B}","textTextarea":"<p>Hello B</p>"}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+    it('fresh-import preserves <odePageId> values verbatim', async () => {
+        const zipContents: Record<string, Uint8Array> = {
+            'content.xml': new TextEncoder().encode(buildV4ContentXml()),
+        };
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        await importer.importFromZipContents(zipContents, { clearExisting: true });
+
+        const navigation = ydoc.getArray('navigation');
+        expect(navigation.length).toBe(2);
+
+        const importedIds = new Set<string>();
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            importedIds.add(page.get('id') as string);
+            // pageId mirror field must also match
+            expect(page.get('pageId')).toBe(page.get('id'));
+        }
+        expect(importedIds.has(PAGE_A)).toBe(true);
+        expect(importedIds.has(PAGE_B)).toBe(true);
+
+        ydoc.destroy();
+    });
+
+    it('fresh-import preserves <odeBlockId> and <odeIdeviceId> values verbatim', async () => {
+        const zipContents: Record<string, Uint8Array> = {
+            'content.xml': new TextEncoder().encode(buildV4ContentXml()),
+        };
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        await importer.importFromZipContents(zipContents, { clearExisting: true });
+
+        const navigation = ydoc.getArray('navigation');
+        // Locate Page A by its preserved id
+        let pageA: Y.Map<unknown> | null = null;
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            if (page.get('id') === PAGE_A) {
+                pageA = page;
+                break;
+            }
+        }
+        expect(pageA).not.toBeNull();
+
+        const blocks = pageA!.get('blocks') as Y.Array<unknown>;
+        expect(blocks.length).toBe(1);
+        const block = blocks.get(0) as Y.Map<unknown>;
+        expect(block.get('id')).toBe(BLOCK_A);
+        expect(block.get('blockId')).toBe(BLOCK_A);
+
+        const components = block.get('components') as Y.Array<unknown>;
+        expect(components.length).toBe(1);
+        const component = components.get(0) as Y.Map<unknown>;
+        expect(component.get('id')).toBe(IDEVICE_A);
+        expect(component.get('ideviceId')).toBe(IDEVICE_A);
+
+        ydoc.destroy();
+    });
+
+    it('merge-mode collision remaps the page id and updates exe-node: links', async () => {
+        const ydoc = new Y.Doc();
+        const navigation = ydoc.getArray('navigation');
+
+        // Pre-populate the navigation with a page that collides with PAGE_B
+        ydoc.transact(() => {
+            const existing = new Y.Map();
+            existing.set('id', PAGE_B);
+            existing.set('pageId', PAGE_B);
+            existing.set('pageName', 'Pre-existing');
+            existing.set('title', 'Pre-existing');
+            existing.set('parentId', null);
+            existing.set('order', 0);
+            existing.set('blocks', new Y.Array());
+            navigation.push([existing]);
+        });
+
+        const zipContents: Record<string, Uint8Array> = {
+            'content.xml': new TextEncoder().encode(buildV4ContentXml()),
+        };
+
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromZipContents(zipContents, { clearExisting: false });
+
+        // navigation now has: pre-existing page + 2 imported pages
+        expect(navigation.length).toBe(3);
+
+        // Find the imported pages (skip the pre-existing one at index 0)
+        const importedAId = (navigation.get(1) as Y.Map<unknown>).get('id') as string;
+        const importedBId = (navigation.get(2) as Y.Map<unknown>).get('id') as string;
+
+        // Page A had no collision -> preserved verbatim
+        expect(importedAId).toBe(PAGE_A);
+
+        // Page B collided -> must have been regenerated
+        expect(importedBId).not.toBe(PAGE_B);
+        expect(importedBId.startsWith('page-')).toBe(true);
+
+        // The internal link inside Page A's iDevice that pointed at PAGE_B must
+        // have been rewritten to the new imported B id (not the pre-existing one).
+        const importedA = navigation.get(1) as Y.Map<unknown>;
+        const blocks = importedA.get('blocks') as Y.Array<unknown>;
+        const block = blocks.get(0) as Y.Map<unknown>;
+        const components = block.get('components') as Y.Array<unknown>;
+        const component = components.get(0) as Y.Map<unknown>;
+        const htmlView = component.get('htmlView') as string;
+
+        expect(htmlView).toContain(`exe-node:${importedBId}`);
+        expect(htmlView).not.toContain(`exe-node:${PAGE_B}"`);
+
+        ydoc.destroy();
+    });
+
+    it('legacy v3 contentv3.xml path still regenerates page IDs', async () => {
+        // Legacy IDs are short non-namespaced strings; they collide trivially across
+        // documents, so the v3 path must keep regenerating. This pins the v3/v4 boundary.
+        const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Legacy"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+        const zipContents: Record<string, Uint8Array> = {
+            'contentv3.xml': new TextEncoder().encode(legacyXml),
+        };
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromZipContents(zipContents, { clearExisting: true });
+
+        const navigation = ydoc.getArray('navigation');
+        expect(navigation.length).toBeGreaterThan(0);
+        const page = navigation.get(0) as Y.Map<unknown>;
+        const id = page.get('id') as string;
+
+        // The legacy parser uses ids like "page-1" / "node-..." internally;
+        // the importer must replace them with freshly generated namespaced ids.
+        expect(id.startsWith('page-')).toBe(true);
+        // Generated ids include the timestamp segment, so the id is longer than "page-1".
+        expect(id.length).toBeGreaterThan('page-1'.length + 4);
+
+        ydoc.destroy();
+    });
+});
+
+describe('ElpxImporter - remapInternalPageLinks prefix-collision safety', () => {
+    it('does not partially remap when one page id is a prefix of another (page-1 vs page-10)', async () => {
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        // Two pages with prefix-colliding short ids; page-1 carries a link to page-10.
+        // After a merge-mode collision both ids get remapped via idRemap. The link
+        // must remap to the new <page-10> id verbatim -- not to the new <page-1> id
+        // plus a trailing "0", which is what a naive alternation regex produces.
+        const buildContent = () => `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Prefix collision</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-1</odePageId>
+  <pageName>Page 1</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>idevice-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <htmlView>&lt;p&gt;&lt;a href="exe-node:page-10"&gt;Go to page 10&lt;/a&gt;&lt;/p&gt;</htmlView>
+          <odeComponentOrder>0</odeComponentOrder>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+<odeNavStructure>
+  <odePageId>page-10</odePageId>
+  <pageName>Page 10</pageName>
+  <odeNavStructureOrder>1</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zipData = fflate.zipSync({ 'content.xml': encoder.encode(buildContent()) });
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        // First import preserves page-1 and page-10 verbatim (fresh doc, no collision).
+        await importer.importFromBuffer(zipData, { clearExisting: true });
+        // Second import collides on both ids -> both get remapped, link must follow.
+        await importer.importFromBuffer(zipData, { clearExisting: false });
+
+        const navigation = ydoc.getArray('navigation');
+        const idsByName = new Map<string, string>();
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            idsByName.set((page.get('pageName') ?? page.get('title')) as string, page.get('id') as string);
+        }
+        // Sanity: first import kept the originals, second created two new ids -> 4 pages.
+        expect(navigation.length).toBe(4);
+
+        // Find the htmlView that originated from the SECOND import (its links must
+        // have been remapped). It's on the remapped "Page 1" -- not on the original.
+        let remappedLink: string | null = null;
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            const pageId = page.get('id') as string;
+            if (pageId === 'page-1') continue; // skip the originals from first import
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            for (let j = 0; j < (blocks?.length ?? 0); j++) {
+                const block = blocks.get(j) as Y.Map<unknown>;
+                const components = block.get('components') as Y.Array<unknown>;
+                for (let k = 0; k < (components?.length ?? 0); k++) {
+                    const comp = components.get(k) as Y.Map<unknown>;
+                    const html = comp.get('htmlView') as string | undefined;
+                    if (html?.includes('exe-node:')) {
+                        remappedLink = html;
+                    }
+                }
+            }
+        }
+        expect(remappedLink).not.toBeNull();
+
+        // Find the second-import id for page-10 (not equal to the original "page-10").
+        const newPage10Ids: string[] = [];
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            const id = page.get('id') as string;
+            const name = page.get('pageName') as string;
+            if (name === 'Page 10' && id !== 'page-10') newPage10Ids.push(id);
+        }
+        expect(newPage10Ids.length).toBe(1);
+        const newPage10 = newPage10Ids[0];
+
+        // Bug pinned: the link must point at the new page-10 id, exactly.
+        expect(remappedLink).toContain(`exe-node:${newPage10}`);
+        // ...and must NOT contain a partial remap leaving a stray "0" tail.
+        // A naive alternation regex would produce e.g. exe-node:<new-page-1>0.
+        const stray = /exe-node:[a-z0-9-]+0(?![a-z0-9-])/i;
+        const matches = remappedLink!.match(stray);
+        if (matches) {
+            const m = matches[0];
+            // Acceptable only if it equals the legitimate newPage10 link itself.
+            expect(m).toBe(`exe-node:${newPage10}`);
+        }
+
+        ydoc.destroy();
+    });
+
+    it('rewrites embedded ideviceId in jsonProperties when the component is regenerated on collision', async () => {
+        // Many iDevices serialise their own id inside jsonProperties (text/quiz
+        // self-reference). When merge-mode forces the component to regenerate
+        // its id, the JSON payload must follow -- otherwise the workarea would
+        // try to resolve the old id and silently fail.
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>JSON remap</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-jp-1</odePageId>
+  <pageName>Page</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-jp-1</odeBlockId>
+      <blockName>Block</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>idevice-jp-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <htmlView>&lt;p&gt;hi&lt;/p&gt;</htmlView>
+          <jsonProperties>{"ideviceId":"idevice-jp-1","textTextarea":"&lt;p&gt;hi&lt;/p&gt;"}</jsonProperties>
+          <odeComponentOrder>0</odeComponentOrder>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zip = fflate.zipSync({ 'content.xml': encoder.encode(xml) });
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        // First import keeps idevice-jp-1 verbatim (fresh doc, no collision).
+        await importer.importFromBuffer(zip, { clearExisting: true });
+        // Second import collides on idevice-jp-1 -> regenerate.
+        await importer.importFromBuffer(zip, { clearExisting: false });
+
+        const nav = ydoc.getArray('navigation');
+        // Locate the second-import copy of the component (its outer id is NOT
+        // 'idevice-jp-1' because it was regenerated).
+        let newCompId: string | null = null;
+        let jsonProps: string | null = null;
+        for (let i = 0; i < nav.length; i++) {
+            const page = nav.get(i) as Y.Map<unknown>;
+            if (page.get('id') === 'page-jp-1') continue; // skip first-import originals
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            if (!blocks?.length) continue;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const comps = block.get('components') as Y.Array<unknown>;
+            const comp = comps.get(0) as Y.Map<unknown>;
+            const compId = comp.get('id') as string;
+            if (compId !== 'idevice-jp-1') {
+                newCompId = compId;
+                jsonProps = comp.get('jsonProperties') as string;
+            }
+        }
+        expect(newCompId).not.toBeNull();
+        expect(jsonProps).not.toBeNull();
+        const parsed = JSON.parse(jsonProps as string);
+        // Embedded ideviceId now points at the FRESH id, not the stale XML one.
+        expect(parsed.ideviceId).toBe(newCompId);
+        expect(parsed.ideviceId).not.toBe('idevice-jp-1');
+
+        ydoc.destroy();
+    });
+
+    it('handles multi-level prefix nesting (page-1, page-10, page-100) without stray remaps', async () => {
+        // Three ids where each is a prefix of the next. Belt-and-suspenders:
+        // descending-length sort puts page-100 before page-10 before page-1 in
+        // the alternation; the (?![A-Za-z0-9_-]) lookahead would still reject a
+        // shorter match inside a longer id even if the sort regressed.
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Triple prefix</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-1</odePageId>
+  <pageName>Page 1</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-multi-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>idevice-multi-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <htmlView>&lt;p&gt;&lt;a href="exe-node:page-100"&gt;to 100&lt;/a&gt; &lt;a href="exe-node:page-10"&gt;to 10&lt;/a&gt;&lt;/p&gt;</htmlView>
+          <odeComponentOrder>0</odeComponentOrder>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+<odeNavStructure>
+  <odePageId>page-10</odePageId>
+  <pageName>Page 10</pageName>
+  <odeNavStructureOrder>1</odeNavStructureOrder>
+</odeNavStructure>
+<odeNavStructure>
+  <odePageId>page-100</odePageId>
+  <pageName>Page 100</pageName>
+  <odeNavStructureOrder>2</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zip = fflate.zipSync({ 'content.xml': encoder.encode(xml) });
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromBuffer(zip, { clearExisting: true });
+        // Second import forces full remap of all three ids.
+        await importer.importFromBuffer(zip, { clearExisting: false });
+
+        const nav = ydoc.getArray('navigation');
+        // Map "Page N" -> the FRESH id (the one that's not equal to the original).
+        const fresh = new Map<string, string>();
+        for (let i = 0; i < nav.length; i++) {
+            const page = nav.get(i) as Y.Map<unknown>;
+            const id = page.get('id') as string;
+            const name = page.get('pageName') as string;
+            if (id !== `page-${name.replace('Page ', '')}`) fresh.set(name, id);
+        }
+        expect(fresh.size).toBe(3);
+
+        // Find the remapped htmlView on the second-import copy of page-1.
+        let remapped: string | null = null;
+        for (let i = 0; i < nav.length; i++) {
+            const page = nav.get(i) as Y.Map<unknown>;
+            if (page.get('pageName') !== 'Page 1') continue;
+            if (page.get('id') === 'page-1') continue; // skip the original (first import)
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const comps = block.get('components') as Y.Array<unknown>;
+            const html = (comps.get(0) as Y.Map<unknown>).get('htmlView') as string;
+            remapped = html;
+        }
+        expect(remapped).not.toBeNull();
+
+        // Each link must point at the EXACT fresh id of its target page --
+        // no stray "0" or "00" tail from a shorter-prefix partial match.
+        expect(remapped).toContain(`exe-node:${fresh.get('Page 100')}`);
+        expect(remapped).toContain(`exe-node:${fresh.get('Page 10')}`);
+        expect(remapped).not.toContain(`exe-node:${fresh.get('Page 1')}0`);
+        expect(remapped).not.toContain(`exe-node:${fresh.get('Page 10')}0`);
+
+        ydoc.destroy();
     });
 });
