@@ -122,10 +122,12 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 
     // Code highlighting
+    // Matches the legacy TinyMCE class (`highlighted-code`) and the
+    // `language-<lang>` classes produced by Showdown for fenced code blocks.
     {
         name: 'exe_highlighter',
-        type: 'class',
-        pattern: 'highlighted-code',
+        type: 'regex',
+        pattern: /class\s*=\s*["'][^"']*\b(?:highlighted-code|language-[a-z0-9_+-]+)\b/i,
         files: ['exe_highlighter/exe_highlighter.js', 'exe_highlighter/exe_highlighter.css'],
     },
 

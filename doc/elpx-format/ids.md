@@ -69,7 +69,7 @@ All three forms are accepted by the importer. The modern generator always produc
 | Identifier | Set when | Changes when | Notes |
 |---|---|---|---|
 | `odeId` | Project is created for the first time | Never (stable for the project's lifetime) | Stored in `odeResources`. Retrieved from `meta.odeIdentifier` if already set, otherwise `generateOdeId()` is called once (`OdeXmlGenerator.ts:44`). |
-| `odeVersionId` | Every export / save | Every export / save | Always a freshly generated `generateOdeId()` call (`OdeXmlGenerator.ts:45`). Acts as a change cursor. |
+| `odeVersionId` | Project is created for the first time | Preserved across round-trips | Read from `meta.odeVersionId` when present, otherwise a freshly generated `generateOdeId()` (`OdeXmlGenerator.ts:45`). Imported from `<odeResources>` so an open/save round-trip is byte-stable. |
 | `odePageId` | Page is created | On import (reassigned — see below) | Stable within a project; changes only when the file is re-imported. |
 | `odeBlockId` | Block is created | On import (reassigned) | Stable within a project; changes only when the file is re-imported. |
 | `odeIdeviceId` | iDevice is added | On import (reassigned) | Stable within a project; changes only when the file is re-imported. |

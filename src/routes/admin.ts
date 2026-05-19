@@ -607,7 +607,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
         type: 'number',
     },
     AUTOSAVE_ODE_FILES_FUNCTION: { value: process.env.AUTOSAVE_ODE_FILES_FUNCTION ?? 'true', type: 'boolean' },
-    CAS_URL: { value: process.env.CAS_URL || 'https://casserverpac4j.herokuapp.com', type: 'string' },
+    CAS_URL: { value: process.env.CAS_URL || 'https://www.casserverpac4j.dev', type: 'string' },
     CAS_VALIDATE_PATH: { value: process.env.CAS_VALIDATE_PATH || '/p3/serviceValidate', type: 'string' },
     CAS_LOGIN_PATH: { value: process.env.CAS_LOGIN_PATH || '/login', type: 'string' },
     CAS_LOGOUT_PATH: { value: process.env.CAS_LOGOUT_PATH || '/logout', type: 'string' },
