@@ -25,8 +25,9 @@ lomloe/
 │   ├── lomloe.css          # Export styles
 │   └── lomloe.html         # Export template wrapper
 └── data/
-    ├── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion (~7 MB)
-    └── lomloe-ES.json      # National concretion (ISO ES) — placeholder, not yet available
+    ├── lomloe-ES.json      # State minimums (ISO ES) — RD 95/2022, 157/2022, 217/2022, 243/2022
+    ├── lomloe-ES-EFP.json  # Ministry-managed territory (Ceuta, Melilla) — Órdenes EFP
+    └── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion
 ```
 
 ## Dataset format
@@ -108,12 +109,49 @@ File names follow the pattern `lomloe-{ISO-code}.json`.
 | ES-CT | Catalunya                     | ES-IB | Illes Balears           |
 | ES-EX | Extremadura                   | ES-GA | Galicia                 |
 
-## Adding the national (state) concretion
+## National (state) datasets
 
-When the national JSON is available:
+Two state-level datasets ship alongside the Canary Islands concretion:
 
-1. Replace `data/lomloe-ES.json` with the real data (same schema).
-2. Set `available: true` on the `ES` entry in `DATASETS` in `edition/lomloe.js`.
+### `lomloe-ES.json` — State minimum teachings (Reales Decretos)
+
+Built from the four Royal Decrees that set the Spanish LOMLOE *enseñanzas mínimas*:
+
+| BOE ID | Norma | Etapa |
+|---|---|---|
+| `BOE-A-2022-1654` | RD 95/2022, de 1 de febrero | Educación Infantil |
+| `BOE-A-2022-3296` | RD 157/2022, de 1 de marzo | Educación Primaria |
+| `BOE-A-2022-4975` | RD 217/2022, de 29 de marzo | Educación Secundaria Obligatoria |
+| `BOE-A-2022-5521` | RD 243/2022, de 5 de abril | Bachillerato |
+
+These RDs apply across Spain as the state floor; each autonomous community adds its own concretion on top.
+
+### `lomloe-ES-EFP.json` — Ministry-managed territory (Ceuta and Melilla)
+
+Built from the three Órdenes that set the operative curricula for the *ámbito de gestión del Ministerio de Educación y Formación Profesional* (Ceuta and Melilla). Use this dataset when the destination is a school inside that territory.
+
+| BOE ID | Norma | Etapa |
+|---|---|---|
+| `BOE-A-2022-12066` | Orden EFP/678/2022, de 15 de julio | Educación Primaria |
+| `BOE-A-2022-13172` | Orden EFP/754/2022, de 28 de julio | Educación Secundaria Obligatoria |
+| `BOE-A-2022-13173` | Orden EFP/755/2022, de 28 de julio | Bachillerato |
+
+The Ministry has not published an Orden for Educación Infantil, so this dataset has no Infantil etapa.
+
+### Cycle-to-year mapping
+
+The BOE Royal Decrees define curriculum at cycle (ciclo) or course-group granularity, not per individual year. The iDevice UI browses by individual year, so cycle content is **duplicated** into each year of that cycle — matching the Canary Islands precedent. Generated codes embed the year/cycle tag (e.g. `ES-PRI1-MAT-CE01` for 1.º Primaria, `ES-PRI2-MAT-CE01` for 2.º Primaria) so each year keeps unique selection IDs even when the content is the same.
+
+| Etapa | Niveles in dataset | BOE source granularity | Mapping |
+|---|---|---|---|
+| Infantil | `Primer ciclo (0-3 años)`, `Segundo ciclo (3-6 años)` | 2 ciclos | One-to-one; no per-year duplication (BOE does not split Infantil by year). |
+| Primaria | `1º Primaria` … `6º Primaria` | 3 ciclos | Each ciclo is duplicated into both its years. |
+| ESO | `1º ESO` … `4º ESO` | Mostly "1.º–3.º" plus "4.º" | "1.º–3.º" duplicated into 1.º, 2.º, 3.º. |
+| Bachillerato | `1º Bachillerato`, `2º Bachillerato` | Per-curso | One-to-one (subjects named "I" / "II"). |
+
+### Generator script
+
+The JSONs are produced by a Python script (`generate_lomloe_es.py`) that fetches each BOE XML, parses the ANEXO sections, and emits the dataset deterministically. The script is **not committed to this repo**; it is attached to the PR that introduced these datasets so the extraction is reproducible and auditable. Re-running it against the same BOE inputs produces byte-identical JSON.
 
 ## Data source (Canary Islands)
 
@@ -192,8 +230,9 @@ The iDevice stores a JSON object in the Yjs document:
 ### Dataset switch
 
 1. Open the iDevice with existing selections.
-2. Change the concrecion selector to **Estado** — verify the "coming soon" notice appears and selections are preserved.
-3. Change back to **Canarias** — verify the browser reloads correctly.
+2. Change the concretion selector to **Estado (España)** — verify the state dataset loads and the curriculum tree is browsable. Tag one criterio and one saber.
+3. Change to **Ámbito de gestión MEFP** — verify the Ceuta/Melilla dataset loads (no Infantil etapa) and previous ES selections persist.
+4. Change back to **Canarias** — verify it still loads correctly.
 
 ### Empty state
 

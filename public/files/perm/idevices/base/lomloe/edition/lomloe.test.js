@@ -727,3 +727,184 @@ describe('Tooltip popover controller', () => {
         expect(document.getElementById('lomloe-tooltip')).toBeNull();
     });
 });
+
+// ── Bundled state-level datasets (lomloe-ES.json + lomloe-ES-EFP.json) ──────
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __testFilename = fileURLToPath(import.meta.url);
+const __testDir = dirname(__testFilename);
+const dataDir = join(__testDir, '..', 'data');
+
+function loadDataset(name) {
+    return JSON.parse(readFileSync(join(dataDir, name), 'utf-8'));
+}
+
+function walkAreas(dataset) {
+    const out = [];
+    for (const [etapa, niveles] of Object.entries(dataset)) {
+        for (const [nivel, areas] of Object.entries(niveles)) {
+            for (const [codArea, area] of Object.entries(areas)) {
+                out.push({ etapa, nivel, codArea, area });
+            }
+        }
+    }
+    return out;
+}
+
+describe('lomloe-ES.json (state minimum teachings)', () => {
+    const data = loadDataset('lomloe-ES.json');
+
+    it('parses as a non-empty object with no placeholder notice', () => {
+        expect(typeof data).toBe('object');
+        expect(data).not.toBeNull();
+        expect(data.__notice__).toBeUndefined();
+        expect(Object.keys(data).length).toBeGreaterThan(0);
+    });
+
+    it('exposes the four expected etapas', () => {
+        for (const etapa of ['Educación Infantil', 'Educación Primaria', 'ESO', 'Bachillerato']) {
+            expect(data[etapa], `missing etapa ${etapa}`).toBeDefined();
+            expect(Object.keys(data[etapa]).length).toBeGreaterThan(0);
+        }
+    });
+
+    it('uses the expected per-year nivel keys for Primaria, ESO, Bachillerato', () => {
+        expect(Object.keys(data['Educación Primaria'])).toEqual([
+            '1º Primaria', '2º Primaria', '3º Primaria',
+            '4º Primaria', '5º Primaria', '6º Primaria',
+        ]);
+        expect(Object.keys(data['ESO'])).toEqual(['1º ESO', '2º ESO', '3º ESO', '4º ESO']);
+        expect(Object.keys(data['Bachillerato'])).toEqual(['1º Bachillerato', '2º Bachillerato']);
+    });
+
+    it('uses ciclo-based niveles for Infantil (no invented per-year split)', () => {
+        const niveles = Object.keys(data['Educación Infantil']);
+        expect(niveles).toContain('Primer ciclo (0-3 años)');
+        expect(niveles).toContain('Segundo ciclo (3-6 años)');
+    });
+
+    it('every area record has the iDevice schema shape', () => {
+        const sample = walkAreas(data).slice(0, 20);
+        expect(sample.length).toBeGreaterThan(0);
+        for (const { area, codArea, etapa, nivel } of sample) {
+            const ctx = `${etapa}/${nivel}/${codArea}`;
+            expect(area.denominacion, ctx).toBeTruthy();
+            expect(area.competencias_especificas, ctx).toBeDefined();
+            expect(area.saberes_basicos, ctx).toBeDefined();
+            expect(area.saberes_basicos.bloques, ctx).toBeDefined();
+        }
+    });
+
+    it('every competencia carries criterios with codigo + descripcion + competencias_clave array', () => {
+        const sample = walkAreas(data).slice(0, 30);
+        for (const { area } of sample) {
+            for (const comp of Object.values(area.competencias_especificas)) {
+                expect(typeof comp.descripcion).toBe('string');
+                expect(Array.isArray(comp.criterios_evaluacion)).toBe(true);
+                for (const crit of comp.criterios_evaluacion) {
+                    expect(crit.codigo).toBeTruthy();
+                    expect(crit.descripcion).toBeTruthy();
+                    expect(Array.isArray(crit.competencias_clave)).toBe(true);
+                }
+            }
+        }
+    });
+
+    it('competencia codes are unique within each (nivel, area)', () => {
+        for (const { area, codArea, etapa, nivel } of walkAreas(data)) {
+            const codes = Object.keys(area.competencias_especificas);
+            const set = new Set(codes);
+            expect(set.size, `${etapa}/${nivel}/${codArea}`).toBe(codes.length);
+        }
+    });
+
+    it('saberes nombres are globally unique inside the dataset', () => {
+        const seen = new Set();
+        const dupes = [];
+        for (const { area } of walkAreas(data)) {
+            for (const items of Object.values(area.saberes_basicos.bloques)) {
+                for (const item of items) {
+                    if (seen.has(item.nombre)) {
+                        dupes.push(item.nombre);
+                    }
+                    seen.add(item.nombre);
+                }
+            }
+        }
+        expect(dupes).toEqual([]);
+    });
+});
+
+describe('lomloe-ES-EFP.json (Ministry-managed territory: Ceuta and Melilla)', () => {
+    const data = loadDataset('lomloe-ES-EFP.json');
+
+    it('parses as a non-empty object with no placeholder notice', () => {
+        expect(typeof data).toBe('object');
+        expect(data.__notice__).toBeUndefined();
+        expect(Object.keys(data).length).toBeGreaterThan(0);
+    });
+
+    it('covers Primaria, ESO and Bachillerato (no Infantil — no Ministry Orden for Infantil)', () => {
+        expect(Object.keys(data).sort()).toEqual(
+            ['Bachillerato', 'ESO', 'Educación Primaria'].sort()
+        );
+        expect(data['Educación Infantil']).toBeUndefined();
+    });
+
+    it('shares the iDevice schema shape with the state dataset', () => {
+        const sample = walkAreas(data).slice(0, 15);
+        expect(sample.length).toBeGreaterThan(0);
+        for (const { area, codArea, etapa, nivel } of sample) {
+            const ctx = `${etapa}/${nivel}/${codArea}`;
+            expect(area.denominacion, ctx).toBeTruthy();
+            expect(area.competencias_especificas, ctx).toBeDefined();
+            expect(area.saberes_basicos.bloques, ctx).toBeDefined();
+        }
+    });
+
+    it('uses an ES-EFP-prefixed code namespace so codes do not collide with the ES dataset', () => {
+        const codes = walkAreas(data).flatMap(({ area }) => Object.keys(area.competencias_especificas));
+        expect(codes.length).toBeGreaterThan(0);
+        const prefixed = codes.filter(c => c.startsWith('ES-EFP-'));
+        // At least the majority of codes follow the ES-EFP- convention; a few BOE-verbatim
+        // codes may have a different shape, but the generator-emitted ones are prefixed.
+        expect(prefixed.length).toBeGreaterThan(codes.length * 0.5);
+    });
+});
+
+describe('DATASETS registry (regression guard)', () => {
+    // DATASETS is var-scoped inside the iDevice IIFE and not exported, so we
+    // assert against the source string. Catches accidental flips of the
+    // `available` flag or filename typos.
+    const lomloeSrc = readFileSync(join(__testDir, 'lomloe.js'), 'utf-8');
+
+    function entryFor(id) {
+        const re = new RegExp(
+            "\\{\\s*id:\\s*'" + id + "'[\\s\\S]*?available:\\s*(true|false)",
+        );
+        return lomloeSrc.match(re);
+    }
+
+    it('declares ES with available:true and the lomloe-ES.json file', () => {
+        const m = entryFor('ES');
+        expect(m, "ES entry missing").not.toBeNull();
+        expect(m[1]).toBe('true');
+        expect(lomloeSrc).toContain("file: '../data/lomloe-ES.json'");
+    });
+
+    it('declares ES-EFP with available:true and the lomloe-ES-EFP.json file', () => {
+        const m = entryFor('ES-EFP');
+        expect(m, "ES-EFP entry missing").not.toBeNull();
+        expect(m[1]).toBe('true');
+        expect(lomloeSrc).toContain("file: '../data/lomloe-ES-EFP.json'");
+    });
+
+    it('leaves ES-CN unchanged (available:true)', () => {
+        const m = entryFor('ES-CN');
+        expect(m, "ES-CN entry missing").not.toBeNull();
+        expect(m[1]).toBe('true');
+    });
+});

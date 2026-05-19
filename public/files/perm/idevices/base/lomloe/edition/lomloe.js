@@ -55,7 +55,17 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: null,
             file: '../data/lomloe-ES.json',
-            available: false  // National concretion JSON not yet available
+            available: true
+        },
+        {
+            id: 'ES-EFP',
+            isoCode: 'ES-EFP',
+            label: 'LOMLOE — Ámbito de gestión MEFP (Ceuta y Melilla)',
+            labelEn: 'LOMLOE — Ministry-managed territory (Ceuta and Melilla)',
+            framework: 'LOMLOE',
+            community: 'Ámbito de gestión del Ministerio de Educación',
+            file: '../data/lomloe-ES-EFP.json',
+            available: true
         },
         {
             id: 'ES-CN',
