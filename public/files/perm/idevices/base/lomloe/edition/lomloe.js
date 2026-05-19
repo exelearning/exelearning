@@ -68,6 +68,16 @@ var $exeDevice = (function () {
             available: true
         },
         {
+            id: 'ES-EX',
+            isoCode: 'ES-EX',
+            label: 'LOMLOE — Extremadura',
+            labelEn: 'LOMLOE — Extremadura',
+            framework: 'LOMLOE',
+            community: 'Extremadura',
+            file: '../data/lomloe-ES-EX.json',
+            available: true
+        },
+        {
             id: 'ES-CN',
             isoCode: 'ES-CN',
             label: 'LOMLOE — Islas Canarias',

@@ -838,6 +838,82 @@ describe('lomloe-ES.json (state minimum teachings)', () => {
     });
 });
 
+describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
+    const data = loadDataset('lomloe-ES-EX.json');
+
+    it('parses as a non-empty object with no placeholder notice', () => {
+        expect(typeof data).toBe('object');
+        expect(data).not.toBeNull();
+        expect(data.__notice__).toBeUndefined();
+        expect(Object.keys(data).length).toBeGreaterThan(0);
+    });
+
+    it('exposes the four expected etapas', () => {
+        for (const etapa of ['Educación Infantil', 'Educación Primaria', 'ESO', 'Bachillerato']) {
+            expect(data[etapa], `missing etapa ${etapa}`).toBeDefined();
+            expect(Object.keys(data[etapa]).length).toBeGreaterThan(0);
+        }
+    });
+
+    it('uses the same per-year nivel keys as the state dataset', () => {
+        expect(Object.keys(data['Educación Primaria'])).toEqual([
+            '1º Primaria', '2º Primaria', '3º Primaria',
+            '4º Primaria', '5º Primaria', '6º Primaria',
+        ]);
+        expect(Object.keys(data['ESO'])).toEqual(['1º ESO', '2º ESO', '3º ESO', '4º ESO']);
+        expect(Object.keys(data['Bachillerato'])).toEqual(['1º Bachillerato', '2º Bachillerato']);
+        expect(Object.keys(data['Educación Infantil'])).toContain('Primer ciclo (0-3 años)');
+        expect(Object.keys(data['Educación Infantil'])).toContain('Segundo ciclo (3-6 años)');
+    });
+
+    it('every area record has the iDevice schema shape', () => {
+        const sample = walkAreas(data).slice(0, 20);
+        expect(sample.length).toBeGreaterThan(0);
+        for (const { area, codArea, etapa, nivel } of sample) {
+            const ctx = `${etapa}/${nivel}/${codArea}`;
+            expect(area.denominacion, ctx).toBeTruthy();
+            expect(area.competencias_especificas, ctx).toBeDefined();
+            expect(area.saberes_basicos, ctx).toBeDefined();
+            expect(area.saberes_basicos.bloques, ctx).toBeDefined();
+        }
+    });
+
+    it('every code uses the ES-EX namespace (inheritance + regional concretion)', () => {
+        const sample = walkAreas(data).slice(0, 25);
+        let anyCompChecked = false;
+        for (const { area } of sample) {
+            for (const code of Object.keys(area.competencias_especificas)) {
+                expect(code.startsWith('ES-EX-')).toBe(true);
+                anyCompChecked = true;
+            }
+        }
+        expect(anyCompChecked).toBe(true);
+    });
+
+    it('competencia codes are unique within each (nivel, area)', () => {
+        for (const { area, codArea, etapa, nivel } of walkAreas(data)) {
+            const codes = Object.keys(area.competencias_especificas);
+            expect(new Set(codes).size, `${etapa}/${nivel}/${codArea}`).toBe(codes.length);
+        }
+    });
+
+    it('saberes nombres are globally unique inside the dataset', () => {
+        const seen = new Set();
+        const dupes = [];
+        for (const { area } of walkAreas(data)) {
+            for (const items of Object.values(area.saberes_basicos.bloques)) {
+                for (const item of items) {
+                    if (seen.has(item.nombre)) {
+                        dupes.push(item.nombre);
+                    }
+                    seen.add(item.nombre);
+                }
+            }
+        }
+        expect(dupes).toEqual([]);
+    });
+});
+
 describe('lomloe-ES-EFP.json (Ministry-managed territory: Ceuta and Melilla)', () => {
     const data = loadDataset('lomloe-ES-EFP.json');
 
@@ -900,6 +976,13 @@ describe('DATASETS registry (regression guard)', () => {
         expect(m, "ES-EFP entry missing").not.toBeNull();
         expect(m[1]).toBe('true');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-EFP.json'");
+    });
+
+    it('declares ES-EX with available:true and the lomloe-ES-EX.json file', () => {
+        const m = entryFor('ES-EX');
+        expect(m, "ES-EX entry missing").not.toBeNull();
+        expect(m[1]).toBe('true');
+        expect(lomloeSrc).toContain("file: '../data/lomloe-ES-EX.json'");
     });
 
     it('leaves ES-CN unchanged (available:true)', () => {

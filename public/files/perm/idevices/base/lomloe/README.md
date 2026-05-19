@@ -27,6 +27,7 @@ lomloe/
 └── data/
     ├── lomloe-ES.json      # State minimums (ISO ES) — RD 95/2022, 157/2022, 217/2022, 243/2022
     ├── lomloe-ES-EFP.json  # Ministry-managed territory (Ceuta, Melilla) — Órdenes EFP
+    ├── lomloe-ES-EX.json   # Extremadura (ISO ES-EX) — Decretos 98/2022, 107/2022, 110/2022, 109/2022
     └── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion
 ```
 
@@ -153,6 +154,42 @@ The BOE Royal Decrees define curriculum at cycle (ciclo) or course-group granula
 
 The JSONs are produced by a Python script (`generate_lomloe_es.py`) that fetches each BOE XML, parses the ANEXO sections, and emits the dataset deterministically. The script is **not committed to this repo**; it is attached to the PR that introduced these datasets so the extraction is reproducible and auditable. Re-running it against the same BOE inputs produces byte-identical JSON.
 
+## `lomloe-ES-EX.json` — Extremadura concretion
+
+Hybrid dataset built from the Junta de Extremadura's curriculum decrees plus inheritance from the state RDs (LOMLOE framework mandates that the state minimums apply where the autonomous concretion does not explicitly override them).
+
+### Base curriculum decrees (DOE)
+
+| DOE PDF | Norma | Etapa |
+|---|---|---|
+| `2022040148` | Decreto 98/2022, de 20 de julio | Educación Infantil |
+| `2022040159` | Decreto 107/2022, de 28 de julio | Educación Primaria |
+| `2022040165C` | Decreto 110/2022, de 22 de agosto | Educación Secundaria Obligatoria |
+| `2022040164` | Decreto 109/2022, de 22 de agosto | Bachillerato |
+
+### Modification decrees reviewed
+
+- `Decreto 240/2023` (Infantil)
+- `Decreto 241/2023` (Primaria)
+- `Decreto 242/2023` (ESO)
+- `Decreto 243/2023` (Bachillerato)
+- `Decreto 73/2025` (Bachillerato)
+
+These modifications touch organisational provisions (timetable, optionality, modality lists) more than the curriculum elements consumed by the iDevice. Where a modification updates a regional saber básico or area name, the change is incorporated into the JSON; pure organisational changes are documented here but do not alter the dataset.
+
+### Build strategy (hybrid)
+
+The `ES-EX` dataset combines two sources:
+
+1. **Competencias específicas and criterios de evaluación**: inherited verbatim from `lomloe-ES.json` with the code prefix swapped to `ES-EX-…`. LOMLOE mandates that autonomous concretions adopt the state-level competencias and criterios; Extremadura's decrees state this explicitly.
+2. **Saberes básicos**: extracted from the DOE PDF tables with `pdfplumber` where the regional concretion is available (Decreto 107/2022 uses an explicit `A.1.1.1.` saber-code scheme — block letter, subblock, ciclo, item — that maps cleanly to the schema). Where the DOE table extraction does not yield content for an (etapa, area), the state saberes are used as the fallback per the LOMLOE inheritance rule.
+
+The dataset follows the same per-year duplication and code conventions used for `ES` and `ES-CN`: a `nivel_tag` is embedded into every generated code so duplicated cycle content keeps unique selection identifiers across years.
+
+### Generator script
+
+A separate Python script (`generate_lomloe_es_ex.py`) implements the hybrid build: load `lomloe-ES.json`, inherit + reprefix, then overlay DOE-extracted regional saberes. The script is **attached to the PR** that introduced this dataset rather than committed to the repo.
+
 ## Data source (Canary Islands)
 
 The Canary Islands dataset (`lomloe-canarias.json`) is derived from the official LOMLOE concretion published by the Canary Islands Department of Education. It contains:
@@ -232,7 +269,8 @@ The iDevice stores a JSON object in the Yjs document:
 1. Open the iDevice with existing selections.
 2. Change the concretion selector to **Estado (España)** — verify the state dataset loads and the curriculum tree is browsable. Tag one criterio and one saber.
 3. Change to **Ámbito de gestión MEFP** — verify the Ceuta/Melilla dataset loads (no Infantil etapa) and previous ES selections persist.
-4. Change back to **Canarias** — verify it still loads correctly.
+4. Change to **Extremadura** — verify the regional dataset loads and that competencias mirror the state RD (inherited) while saberes show Extremadura-specific concretion where the DOE provides it.
+5. Change back to **Canarias** — verify it still loads correctly.
 
 ### Empty state
 
