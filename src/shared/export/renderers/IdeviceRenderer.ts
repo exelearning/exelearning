@@ -17,7 +17,7 @@ import type {
     ExportBlockProperties,
     ExportComponentProperties,
 } from '../interfaces';
-import { getIdeviceConfig, getIdeviceExportFiles } from '../../../services/idevice-config';
+import { getIdeviceConfig, getIdeviceExportFiles, isIdeviceJsModule } from '../../../services/idevice-config';
 
 /**
  * CSS link for an iDevice
@@ -561,7 +561,13 @@ ${contentHtml}
                 // Get ALL JS files from export folder (main file first, then dependencies)
                 const jsFiles = getIdeviceExportFiles(typeName, '.js');
                 for (const jsFile of jsFiles) {
-                    scripts.push(`<script src="${basePath}idevices/${typeName}/${jsFile}"></script>`);
+                    // Plugins like the 3D Viewer iDevice (issue #1810) ship ES module
+                    // scripts (three.module.min.js, STLLoader.js, OrbitControls.js).
+                    // Without type="module" the browser throws a SyntaxError on
+                    // `import`/`export`, which cascades into the failure to load STL
+                    // assets at runtime.
+                    const typeAttr = isIdeviceJsModule(typeName, jsFile) ? ' type="module"' : '';
+                    scripts.push(`<script${typeAttr} src="${basePath}idevices/${typeName}/${jsFile}"></script>`);
                 }
             }
         }
@@ -622,9 +628,10 @@ ${contentHtml}
                 const jsFiles = getIdeviceExportFiles(typeName, '.js');
                 for (const jsFile of jsFiles) {
                     const src = `${basePath}idevices/${typeName}/${jsFile}`;
+                    const typeAttr = isIdeviceJsModule(typeName, jsFile) ? ' type="module"' : '';
                     scripts.push({
                         src,
-                        tag: `<script src="${src}"></script>`,
+                        tag: `<script${typeAttr} src="${src}"></script>`,
                     });
                 }
             }
