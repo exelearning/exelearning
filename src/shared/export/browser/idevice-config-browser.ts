@@ -68,6 +68,7 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'true-or-false',
         'scrambled-list',
         'magnifier',
+        'three-d-viewer',
         'markdown-text',
     ];
     const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
@@ -129,6 +130,7 @@ const IDEVICE_JS_DEPENDENCIES: Record<string, string[]> = {
     'progress-report': ['html2canvas.js'],
     'select-media-files': ['mansory-jq.js'],
     'image-gallery': ['simple-lightbox.min.js'],
+    'three-d-viewer': ['model-viewer.min.js', 'three.module.min.js', 'STLLoader.js', 'OrbitControls.js'],
 };
 
 /**
@@ -151,11 +153,43 @@ export function getIdeviceExportFiles(typeName: string, extension: '.js' | '.css
     const mainFile = `${typeName}${extension}`;
 
     if (extension === '.js') {
+        // Dependencies first, main file LAST
+        // This ensures libraries like model-viewer load before the main iDevice script
         const dependencies = IDEVICE_JS_DEPENDENCIES[typeName] || [];
-        return [mainFile, ...dependencies];
+        return [...dependencies, mainFile];
     }
 
-    // For CSS, check for known dependencies (e.g., SimpleLightbox for image-gallery)
+    // For CSS, dependencies first, main file last
     const cssDependencies = IDEVICE_CSS_DEPENDENCIES[typeName] || [];
-    return [mainFile, ...cssDependencies];
+    return [...cssDependencies, mainFile];
+}
+
+/**
+ * Static registry of iDevice JS files that must be loaded as ES modules but
+ * cannot be detected by filename convention alone. The browser bundle cannot
+ * content-sniff `import`/`export` (no FS access), so plugins that ship ES
+ * modules under classic-looking names (`STLLoader.js`, `OrbitControls.js`)
+ * must be listed here. See issue #1810.
+ */
+const IDEVICE_JS_MODULES: Record<string, string[]> = {
+    'three-d-viewer': ['three.module.min.js', 'STLLoader.js', 'OrbitControls.js'],
+};
+
+/**
+ * Detect whether a JS file shipped by an iDevice must be loaded as an ES module.
+ *
+ * Detection rules, in order:
+ *   1. `.mjs` extension — the standard MIME-registered ES module extension.
+ *   2. `*.module.js` filename convention.
+ *   3. Static registry above — plugins that ship modules without the convention.
+ *
+ * The Node-side helper (src/services/idevice-config.ts) also content-sniffs
+ * `import`/`export` so authors don't need to rename existing files; that pass
+ * happens server-side before HTML is produced.
+ */
+export function isIdeviceJsModule(typeName: string, filename: string): boolean {
+    if (filename.endsWith('.mjs')) return true;
+    if (/\.module(\.[^.]+)*\.js$/i.test(filename)) return true;
+    if (IDEVICE_JS_MODULES[typeName]?.includes(filename)) return true;
+    return false;
 }
