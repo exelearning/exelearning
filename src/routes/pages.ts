@@ -1153,7 +1153,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         autosave_ode_files_function: parseBoolean(process.env.AUTOSAVE_ODE_FILES_FUNCTION, true),
                     },
                     cas: {
-                        url: process.env.CAS_URL || 'https://casserverpac4j.herokuapp.com',
+                        url: process.env.CAS_URL || 'https://www.casserverpac4j.dev',
                         validate_path: process.env.CAS_VALIDATE_PATH || '/p3/serviceValidate',
                         login_path: process.env.CAS_LOGIN_PATH || '/login',
                         logout_path: process.env.CAS_LOGOUT_PATH || '/logout',

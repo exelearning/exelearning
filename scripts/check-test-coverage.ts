@@ -7,7 +7,6 @@ const IGNORE_PATTERNS = [
     /\.spec\.ts$/,
     /\.test\.ts$/,
     /index\.ts$/,
-    /index-node\.ts$/, // Legacy Node.js entry point
     /\.d\.ts$/,
     /types\.ts$/,
     /src\/db\/migrations\//, // Migrations are declarative and tested implicitly

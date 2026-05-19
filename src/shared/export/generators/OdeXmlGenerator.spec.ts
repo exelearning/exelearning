@@ -331,6 +331,45 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('<value>CUSTOM-VERSION-ID</value>');
         });
 
+        it('should use meta.odeVersionId when options.versionId is not set', () => {
+            const meta: ExportMetadata = {
+                title: 'Test',
+                odeVersionId: '20251201123456FEDCBA',
+            };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toMatch(/<key>odeVersionId<\/key>\s*<value>20251201123456FEDCBA<\/value>/);
+        });
+
+        it('should generate a fresh versionId when neither options.versionId nor meta.odeVersionId is set', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages);
+
+            // Extract the odeVersionId value
+            const match = xml.match(/<key>odeVersionId<\/key>\s*<value>([^<]+)<\/value>/);
+            expect(match).not.toBeNull();
+            expect(match![1]).toMatch(/^\d{14}[A-Z0-9]{6}$/);
+        });
+
+        it('should prefer options.versionId over meta.odeVersionId', () => {
+            const meta: ExportMetadata = {
+                title: 'Test',
+                odeVersionId: '20251201123456FEDCBA',
+            };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages, {
+                versionId: '20251231235959AAAAAA',
+            });
+
+            expect(xml).toMatch(/<key>odeVersionId<\/key>\s*<value>20251231235959AAAAAA<\/value>/);
+            expect(xml).not.toContain('20251201123456FEDCBA');
+        });
+
         it('should include DOCTYPE by default', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [];
@@ -782,6 +821,47 @@ describe('OdeXmlGenerator', () => {
 
             // Unresolved assets use UUID as filename
             expect(xml).toContain('{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012.jpg');
+        });
+    });
+
+    describe('scormIdentifier round-trip via <odeResources> (#1786)', () => {
+        it('emits scormIdentifier as an odeResource when present in metadata', () => {
+            const meta = {
+                title: 'Stable SCORM ID',
+                author: '',
+                language: 'en',
+                theme: 'base',
+                odeIdentifier: '20251201123456ABCDEF',
+                scormIdentifier: 'LMS-COURSE-XYZ',
+            };
+            const xml = generateOdeXml(meta, []);
+            expect(xml).toContain('<key>scormIdentifier</key>');
+            expect(xml).toContain('<value>LMS-COURSE-XYZ</value>');
+        });
+
+        it('does NOT emit scormIdentifier when the metadata field is absent', () => {
+            const meta = {
+                title: 'No SCORM override',
+                author: '',
+                language: 'en',
+                theme: 'base',
+                odeIdentifier: '20251201123456ABCDEF',
+            };
+            const xml = generateOdeXml(meta, []);
+            expect(xml).not.toContain('<key>scormIdentifier</key>');
+        });
+
+        it('does NOT emit scormIdentifier when the metadata field is empty', () => {
+            const meta = {
+                title: 'Empty SCORM override',
+                author: '',
+                language: 'en',
+                theme: 'base',
+                odeIdentifier: '20251201123456ABCDEF',
+                scormIdentifier: '',
+            };
+            const xml = generateOdeXml(meta, []);
+            expect(xml).not.toContain('<key>scormIdentifier</key>');
         });
     });
 });

@@ -566,10 +566,9 @@ describe('YjsStructureBinding', () => {
       expect(id1).toContain('page');
     });
 
-    it('generates IDs without prefix', () => {
-      const id = binding.generateId();
-      expect(typeof id).toBe('string');
-      expect(id.length).toBeGreaterThan(0);
+    it('throws on missing/empty prefix (mirrors src/shared/ids.ts contract)', () => {
+      expect(() => binding.generateId()).toThrow('generateId: prefix is required');
+      expect(() => binding.generateId('')).toThrow('generateId: prefix is required');
     });
   });
 
