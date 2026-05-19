@@ -142,6 +142,9 @@ describe('idevice-config-browser', () => {
             expect(getIdeviceConfig('text').componentType).toBe('json');
             expect(getIdeviceConfig('freetext').componentType).toBe('json');
             expect(getIdeviceConfig('reflection').componentType).toBe('json');
+            // markdown-text shares the text feedback toggle wiring; without
+            // componentType="json" exe_export.js never binds the toggle.
+            expect(getIdeviceConfig('markdown-text').componentType).toBe('json');
 
             // HTML idevices (no JS initialization needed)
             expect(getIdeviceConfig('multi-choice').componentType).toBe('html');
