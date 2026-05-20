@@ -786,7 +786,10 @@ export async function addIdevice(page: Page, ideviceType: string): Promise<void>
  * @param ideviceId - iDevice element ID
  */
 export async function editIdevice(page: Page, ideviceId: string): Promise<void> {
-    const idevice = page.locator(`#${ideviceId}`);
+    // The engine sets the same `id` on both the wrapper (.idevice_node) and
+    // the body (.idevice_body), so scope to the wrapper to avoid Playwright's
+    // strict-mode "resolved to 2 elements" failure.
+    const idevice = page.locator(`.idevice_node[id="${ideviceId}"]`);
     const editBtn = idevice.locator('.btn-edit-idevice');
     await idevice.waitFor({ state: 'visible', timeout: 10000 });
 
@@ -838,7 +841,7 @@ export async function editIdevice(page: Page, ideviceId: string): Promise<void> 
  * @param ideviceId - iDevice element ID
  */
 export async function saveIdevice(page: Page, ideviceId: string): Promise<void> {
-    const idevice = page.locator(`#${ideviceId}`);
+    const idevice = page.locator(`.idevice_node[id="${ideviceId}"]`);
     const saveBtn = idevice.locator('.btn-save-idevice');
     await saveBtn.click();
 
@@ -853,7 +856,7 @@ export async function saveIdevice(page: Page, ideviceId: string): Promise<void> 
  * @param ideviceId - iDevice element ID
  */
 export async function deleteIdevice(page: Page, ideviceId: string): Promise<void> {
-    const idevice = page.locator(`#${ideviceId}`);
+    const idevice = page.locator(`.idevice_node[id="${ideviceId}"]`);
     const deleteBtn = idevice.locator('.btn-delete-idevice');
     await deleteBtn.click();
 

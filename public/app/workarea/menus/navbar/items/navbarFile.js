@@ -2,6 +2,11 @@
 const Logger = window.AppLogger || console;
 
 import ImportProgress from '../../../interface/importProgress.js';
+import {
+    supportsFileSystemAccess,
+    openProjectFolderInBrowser,
+    saveProjectFolderInBrowser,
+} from '../../../../core/ProjectFolderStorage.js';
 
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
@@ -44,6 +49,17 @@ export default class NavbarFile {
         );
         this.recentProjectsButton = this.menu.navbar.querySelector(
             '#navbar-button-dropdown-recent-projects'
+        );
+        // Advanced (Alt-revealed) folder-project entries — only present in the
+        // offline navbar markup, so these may be null in online mode.
+        this.openFolderOfflineButton = this.menu.navbar.querySelector(
+            '#navbar-button-open-folder-offline'
+        );
+        this.saveFolderOfflineButton = this.menu.navbar.querySelector(
+            '#navbar-button-save-folder-offline'
+        );
+        this.folderProjectActionItems = Array.from(
+            this.menu.navbar.querySelectorAll('.exe-folder-project-action')
         );
         this.downloadProjectButton = this.menu.navbar.querySelector(
             '#navbar-button-download-project'
@@ -150,9 +166,223 @@ export default class NavbarFile {
         this.setImportXmlPropertiesEvent();
         this.setImportElpEvent();
         this.setLeftPanelsTogglerEvents();
+        this.setFolderProjectActionsEvents();
 
         // Check for available templates and show button if any exist
         this.checkAndShowNewFromTemplateButton();
+    }
+
+    /**
+     * Wire the advanced "Open from folder" / "Save to folder" entries.
+     *
+     * These entries are hidden by default. They reveal themselves when
+     * the user holds Alt while the File menu is open, or unconditionally
+     * when the EXE_ENABLE_FOLDER_PROJECTS feature flag is set on the
+     * runtime config (`window.eXeLearning.config.enableFolderProjects`).
+     */
+    setFolderProjectActionsEvents() {
+        if (!this.folderProjectActionItems || this.folderProjectActionItems.length === 0) {
+            return;
+        }
+
+        const flagEnabled = Boolean(
+            window.eXeLearning?.config?.enableFolderProjects
+        );
+        const hasNativeBridge = Boolean(
+            window.electronAPI && typeof window.electronAPI.openProjectFolder === 'function'
+        );
+        const hasBrowserBridge = supportsFileSystemAccess();
+        if (!hasNativeBridge && !hasBrowserBridge && !flagEnabled) {
+            // Neither runtime can fulfil the action — leave entries hidden.
+            return;
+        }
+
+        const setVisible = (visible) => {
+            for (const item of this.folderProjectActionItems) {
+                item.classList.toggle('d-none', !visible);
+            }
+        };
+
+        if (flagEnabled) {
+            setVisible(true);
+        } else {
+            // Reveal while Alt is held. Detect by key name only — `event.altKey`
+            // is not reliably true on the keydown of Alt itself in some Linux
+            // builds of Chromium/Firefox, which left the entries permanently
+            // hidden on that platform.
+            const onKey = (event) => {
+                if (event.key === 'Alt') {
+                    setVisible(event.type === 'keydown');
+                }
+            };
+            document.addEventListener('keydown', onKey);
+            document.addEventListener('keyup', onKey);
+            // Hide again when the File dropdown closes. We previously hid on
+            // window blur, but on Linux a bare Alt tap can briefly transfer
+            // focus to the WM/menu mnemonics and fire blur, which immediately
+            // re-hid the entries we had just revealed.
+            if (this.button) {
+                this.button.addEventListener('hide.bs.dropdown', () => setVisible(false));
+            }
+        }
+
+        if (this.openFolderOfflineButton) {
+            this.openFolderOfflineButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.openProjectFromFolderEvent();
+            });
+        }
+        if (this.saveFolderOfflineButton) {
+            this.saveFolderOfflineButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.saveProjectToFolderEvent();
+            });
+        }
+    }
+
+    /**
+     * Open an unpacked project folder. In Electron we ask the main
+     * process to walk the folder; in static-browser we use the File
+     * System Access API. Either way we end up with a synthetic File
+     * that flows through the existing largeFilesUpload entry point.
+     */
+    async openProjectFromFolderEvent() {
+        try {
+            if (window.electronAPI?.openProjectFolder) {
+                const result = await window.electronAPI.openProjectFolder();
+                if (!result || !result.ok) {
+                    if (result?.canceled) return;
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Error opening'),
+                        body:
+                            result?.error === 'not-a-project-folder'
+                                ? _('The selected folder is not a valid eXeLearning project.')
+                                : (result?.error || _('Unknown error.')),
+                        contentId: 'error',
+                    });
+                    return;
+                }
+                const binStr = atob(result.base64);
+                const bytes = new Uint8Array(binStr.length);
+                for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+                const blob = new Blob([bytes], { type: 'application/zip' });
+                const file = new File([blob], result.suggestedName || 'project.elpx', {
+                    type: 'application/zip',
+                    lastModified: Date.now(),
+                });
+                await eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
+                return;
+            }
+
+            if (supportsFileSystemAccess()) {
+                const { file } = await openProjectFolderInBrowser();
+                await eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
+                return;
+            }
+
+            eXeLearning.app.modals.alert.show({
+                title: _('Not supported'),
+                body: _('Opening a project from a folder is not available in this browser.'),
+                contentId: 'error',
+            });
+        } catch (error) {
+            // Treat AbortError (user cancelled the picker) as silent.
+            if (error && error.name === 'AbortError') return;
+            console.error('[NavbarFile] Open from folder failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Error opening'),
+                body: error?.message || _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+    }
+
+    /**
+     * Save the current project as an unpacked folder. We reuse
+     * SharedExporters.quickExport('ELPX') to build the project zip and
+     * then ask the runtime (Electron or browser) to unpack it into the
+     * user-chosen directory. The .elpx flow is left untouched.
+     */
+    async saveProjectToFolderEvent() {
+        const SharedExporters = window.SharedExporters;
+        const yjsBridge = eXeLearning.app.project?._yjsBridge;
+        if (!SharedExporters?.quickExport || !yjsBridge?.documentManager) {
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: _('Folder save requires the Yjs export pipeline.'),
+                contentId: 'error',
+            });
+            return;
+        }
+
+        const toast = eXeLearning.app.toasts.createToast({
+            title: _('Save'),
+            body: _('Generating folder project...'),
+            icon: 'downloading',
+        });
+
+        try {
+            const result = await SharedExporters.quickExport(
+                'ELPX',
+                yjsBridge.documentManager,
+                yjsBridge.assetCache || null,
+                yjsBridge.resourceFetcher || null,
+                {},
+                yjsBridge.assetManager || null
+            );
+            if (!result?.success || !result?.data) {
+                throw new Error(result?.error || 'Export failed');
+            }
+
+            const uint8Array = new Uint8Array(result.data);
+            const suggestedDirName =
+                (result.filename || 'project.elpx').replace(/\.(elpx|zip)$/i, '');
+
+            if (window.electronAPI?.saveProjectFolder) {
+                let binary = '';
+                for (let i = 0; i < uint8Array.length; i++) {
+                    binary += String.fromCharCode(uint8Array[i]);
+                }
+                const base64 = btoa(binary);
+                const saved = await window.electronAPI.saveProjectFolder(base64, suggestedDirName);
+                if (!saved?.ok) {
+                    if (saved?.canceled) {
+                        toast.remove();
+                        return;
+                    }
+                    throw new Error(saved?.error || 'Folder save failed');
+                }
+            } else if (supportsFileSystemAccess()) {
+                await saveProjectFolderInBrowser(uint8Array);
+            } else {
+                throw new Error(
+                    _('Saving to a folder is not available in this browser.')
+                );
+            }
+
+            toast.toastBody.innerHTML = _('Folder saved.');
+            const docManager = yjsBridge.documentManager;
+            if (docManager?.markClean) docManager.markClean();
+        } catch (error) {
+            if (error && error.name === 'AbortError') {
+                toast.remove();
+                return;
+            }
+            console.error('[NavbarFile] Save to folder failed:', error);
+            toast.toastBody.innerHTML = _(
+                'An error occurred while saving the file.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: error?.message || _('Unknown error.'),
+                contentId: 'error',
+            });
+        } finally {
+            setTimeout(() => toast.remove(), 1000);
+        }
     }
 
     /**************************************************************************************
