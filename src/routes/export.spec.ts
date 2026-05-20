@@ -1118,3 +1118,44 @@ describe('Export Routes', () => {
         });
     });
 });
+
+describe('populateYDocFromStructure - stable identifiers (#1786)', () => {
+    it('forwards odeIdentifier / odeVersionId / scormIdentifier from the client payload', async () => {
+        const Y = await import('yjs');
+        const { populateYDocFromStructure } = await import('./export');
+        const ydoc = new Y.Doc();
+        populateYDocFromStructure(ydoc, {
+            meta: {
+                title: 'Stable identifiers',
+                language: 'en',
+                theme: 'base',
+                odeIdentifier: '20251201123456ABCDEF',
+                odeVersionId: '20251201123456FEDCBA',
+                scormIdentifier: 'CUSTOM-SCORM-ID',
+            },
+            pages: [],
+            navigation: [],
+        });
+        const meta = ydoc.getMap('metadata');
+        expect(meta.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+        expect(meta.get('odeVersionId')).toBe('20251201123456FEDCBA');
+        expect(meta.get('scormIdentifier')).toBe('CUSTOM-SCORM-ID');
+        ydoc.destroy();
+    });
+
+    it('leaves stable identifiers unset when the client omits them (export-side fallback path)', async () => {
+        const Y = await import('yjs');
+        const { populateYDocFromStructure } = await import('./export');
+        const ydoc = new Y.Doc();
+        populateYDocFromStructure(ydoc, {
+            meta: { title: 'No stable ids', language: 'en', theme: 'base' },
+            pages: [],
+            navigation: [],
+        });
+        const meta = ydoc.getMap('metadata');
+        expect(meta.get('odeIdentifier')).toBeUndefined();
+        expect(meta.get('odeVersionId')).toBeUndefined();
+        expect(meta.get('scormIdentifier')).toBeUndefined();
+        ydoc.destroy();
+    });
+});

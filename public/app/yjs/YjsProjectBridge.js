@@ -2915,6 +2915,44 @@ class YjsProjectBridge {
   }
 
   /**
+   * Ensure metadata has a screenshot before an .elpx export runs.
+   *
+   * Without this, exporting an imported project that lacks `screenshot.png`
+   * at the archive root (or a brand-new project that hasn't been saved yet)
+   * produces an .elpx with no screenshot — Omeka and other consumers then
+   * fall back to a generic placeholder. Wrapped in a Promise.race timeout so
+   * a slow html2canvas render never blocks an export.
+   *
+   * `generateScreenshotFromFirstPage` already short-circuits when a
+   * screenshot exists, so subsequent exports are free.
+   *
+   * @param {number} [timeoutMs=8000]
+   */
+  async ensureScreenshotForExport(timeoutMs = 8000) {
+    if (typeof this.generateScreenshotFromFirstPage !== 'function') return;
+    // Skip the timeout/race allocation when a screenshot is already present.
+    const metadata = this.documentManager?.getMetadata?.();
+    if (metadata?.get('screenshot')) return;
+    let timer;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => {
+        Logger.log('[YjsProjectBridge] Pre-export screenshot generation timed out');
+        resolve();
+      }, timeoutMs);
+    });
+    try {
+      await Promise.race([
+        Promise.resolve(this.generateScreenshotFromFirstPage()).catch((err) => {
+          console.warn('[YjsProjectBridge] Pre-export screenshot generation failed:', err);
+        }),
+        timeout,
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
    * Auto-generate screenshot from the first page HTML and store in Yjs metadata.
    * Uses SharedExporters to generate a full preview (HTML + CSS + theme),
    * inlines all CSS into the HTML for self-contained rendering, then captures
@@ -3141,6 +3179,13 @@ class YjsProjectBridge {
       await this.documentManager._updateVersionMetadata();
       this.logElpxExportPhase('bridge:version-metadata:end', {}, trace);
     }
+
+    // Ensure metadata has a screenshot so the export embeds screenshot.png at
+    // the archive root. Required for projects imported from .elpx files that
+    // lacked screenshot.png, and for first-export-before-first-save flows.
+    this.logElpxExportPhase('bridge:ensure-screenshot:start', {}, trace);
+    await this.ensureScreenshotForExport();
+    this.logElpxExportPhase('bridge:ensure-screenshot:end', {}, trace);
 
     // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
     if (window.SharedExporters?.createExporter) {

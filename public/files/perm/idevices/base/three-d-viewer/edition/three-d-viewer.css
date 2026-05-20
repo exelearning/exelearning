@@ -1,0 +1,219 @@
+/* 3D Viewer iDevice - Edition Styles */
+
+.three-d-viewer-editor {
+    max-width: 100%;
+}
+
+.three-d-viewer-editor .container {
+    padding: 0;
+}
+
+/* Preview container */
+.three-d-viewer-editor .viewer-preview-container {
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--viewer-preview-bg, #f5f5f5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.three-d-viewer-editor .viewer-preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.three-d-viewer-editor .viewer-preview model-viewer {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+}
+
+.three-d-viewer-editor .viewer-preview model-viewer::part(poster) {
+    background: transparent;
+}
+
+/* Three.js canvas for STL rendering */
+.three-d-viewer-editor .viewer-preview .three-js-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Empty state */
+.three-d-viewer-editor .viewer-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    color: rgba(15, 23, 42, 0.5);
+    background: linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(226, 232, 240, 0.85));
+    padding: 1.5rem;
+}
+
+.three-d-viewer-editor .viewer-empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.three-d-viewer-editor .viewer-empty-icon {
+    width: 48px;
+    height: 48px;
+    opacity: 0.6;
+}
+
+.three-d-viewer-editor .viewer-empty span {
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Form improvements */
+.three-d-viewer-editor fieldset {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    background: #fafbfc;
+}
+
+.three-d-viewer-editor fieldset legend {
+    padding: 0 0.5rem;
+    margin-bottom: 0;
+    font-weight: 600;
+    color: #374151;
+}
+
+.three-d-viewer-editor .form-label {
+    font-weight: 500;
+    color: #374151;
+}
+
+.three-d-viewer-editor .form-text {
+    font-size: 0.85rem;
+}
+
+.three-d-viewer-editor .form-check-label small {
+    font-weight: 400;
+}
+
+/* Color input styling */
+.three-d-viewer-editor .form-control-color {
+    width: 3rem;
+    height: 2.25rem;
+    padding: 0.25rem;
+    cursor: pointer;
+}
+
+/* File picker styling */
+.three-d-viewer-editor .exe-file-picker {
+    background-color: #f8fafc;
+    cursor: pointer;
+}
+
+.three-d-viewer-editor .exe-file-picker:hover {
+    background-color: #f1f5f9;
+}
+
+/* Animation section */
+.three-d-viewer-editor [data-animation-row] {
+    border-color: #c7d2fe;
+    background: #f5f7ff;
+}
+
+/* Fullscreen + nav controls */
+.three-d-viewer-editor .viewer-preview-container:fullscreen,
+.three-d-viewer-editor .viewer-preview-container:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto;
+    border-radius: 0;
+    max-width: none;
+}
+
+.three-d-viewer-editor .three-d-viewer-fullscreen-button {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    padding: 0.35em 0.7em;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    z-index: 3;
+}
+
+.three-d-viewer-editor .three-d-viewer-fullscreen-button:hover,
+.three-d-viewer-editor .three-d-viewer-fullscreen-button:focus {
+    background: rgba(0, 0, 0, 0.8);
+    outline: none;
+}
+
+.three-d-viewer-editor .three-d-viewer-nav {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 2em);
+    grid-template-rows: 2em 2em;
+    gap: 0.2em;
+    z-index: 3;
+}
+
+.three-d-viewer-editor .three-d-viewer-nav-btn {
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 4px;
+    padding: 0;
+    cursor: pointer;
+    font-size: 0.95em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.three-d-viewer-editor .three-d-viewer-nav-btn:hover,
+.three-d-viewer-editor .three-d-viewer-nav-btn:focus {
+    background: rgba(0, 0, 0, 0.85);
+    outline: none;
+}
+
+.three-d-viewer-editor .three-d-viewer-nav-left { grid-column: 1; grid-row: 2; }
+.three-d-viewer-editor .three-d-viewer-nav-up { grid-column: 2; grid-row: 1; }
+.three-d-viewer-editor .three-d-viewer-nav-down { grid-column: 2; grid-row: 2; }
+.three-d-viewer-editor .three-d-viewer-nav-right { grid-column: 3; grid-row: 2; }
+
+/* Screen reader only */
+.three-d-viewer-editor .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .three-d-viewer-editor fieldset {
+        padding: 0.75rem 1rem;
+    }
+
+    .three-d-viewer-editor .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .three-d-viewer-editor .col-auto {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+}

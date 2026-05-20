@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<idevice>
+	<name>three-d-viewer</name>
+	<title>3D Viewer</title>
+	<css-class>three-d-viewer</css-class>
+	<category>Information and presentation</category>
+	<icon>
+		<name>three-d-viewer-icon</name>
+		<url>three-d-viewer-icon.svg</url>
+		<type>img</type>
+	</icon>
+	<version>1.0</version>
+	<api-version>3.0</api-version>
+	<component-type>json</component-type>
+	<location>three-d-viewer</location>
+	<location-type>default</location-type>
+	<edition-js>
+		<filename>three-d-viewer.js</filename>
+	</edition-js>
+	<edition-css>
+		<filename>three-d-viewer.css</filename>
+	</edition-css>
+	<export-js>
+		<filename>three-d-viewer.js</filename>
+	</export-js>
+	<export-css>
+		<filename>three-d-viewer.css</filename>
+	</export-css>
+	<export-template-filename>three-d-viewer.html</export-template-filename>
+	<author>INTEF</author>
+	<author-url>https://exelearning.net</author-url>
+	<license>AGPL-3.0-or-later</license>
+	<license-url>https://www.gnu.org/licenses/agpl-3.0.en.html</license-url>
+	<description>Embed interactive 3D models using the model-viewer web component.</description>
+	<downloadable>1</downloadable>
+	<default-visibility>1</default-visibility>
+</idevice>

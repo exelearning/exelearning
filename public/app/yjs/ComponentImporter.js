@@ -100,11 +100,19 @@ class ComponentImporter {
       blockData.id = newBlockId;
       blockData.blockId = newBlockId;
 
-      // Generate new IDs for components
+      // Generate new IDs for components. When jsonProperties carries an
+      // embedded ideviceId (text/quiz iDevices store it for self-reference),
+      // rewrite it to the fresh id so the Y.Map field and the JSON payload
+      // stay in sync. See #1786.
       for (const comp of blockData.components) {
+        const originalCompId = comp.id;
         const newCompId = this.generateId('idevice');
         comp.id = newCompId;
         comp.ideviceId = newCompId;
+        if (originalCompId && comp.properties && typeof comp.properties === 'object'
+            && comp.properties.ideviceId === originalCompId) {
+          comp.properties.ideviceId = newCompId;
+        }
       }
 
       // Insert block into target page
@@ -466,13 +474,19 @@ class ComponentImporter {
   }
 
   /**
-   * Generate a unique ID
+   * Generate a unique ID.
+   *
+   * Mirrors src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+   *
    * @param {string} prefix - ID prefix
    * @returns {string}
    */
   generateId(prefix) {
+    if (!prefix) {
+      throw new Error('generateId: prefix is required');
+    }
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substr(2, 9);
+    const random = Math.random().toString(36).substring(2, 11);
     return `${prefix}-${timestamp}-${random}`;
   }
 }
