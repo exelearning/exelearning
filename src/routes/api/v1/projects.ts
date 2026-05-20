@@ -268,29 +268,26 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
                 return errorResponse('FORBIDDEN', 'You do not have access to this project');
             }
 
-            // Generate new UUID
-            const newUuid = crypto.randomUUID();
             const newTitle = body?.title || `${sourceProject.title} (copy)`;
 
-            // Create new project
+            // Create new project (createProject generates its own UUID internally)
             const newProject = await createProject(db, {
-                uuid: newUuid,
                 title: newTitle,
                 owner_id: auth.userId,
             });
 
             // TODO: Copy Yjs document state from source to new project
             // For now, just create empty document
-            await ensureDocument(newUuid);
+            await ensureDocument(newProject.uuid);
 
             set.status = 201;
             return successResponse({
-                id: Number(newProject.insertId),
-                uuid: newUuid,
+                id: newProject.id,
+                uuid: newProject.uuid,
                 title: newTitle,
                 owner_id: auth.userId,
-                created_at: Date.now(),
-                updated_at: null,
+                created_at: newProject.created_at,
+                updated_at: newProject.updated_at,
                 saved_once: false,
                 sourceUuid: params.uuid,
             });
