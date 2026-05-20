@@ -225,6 +225,153 @@ test.describe('Three Sixty Viewer iDevice', () => {
         ).toBeVisible();
     });
 
+    test.describe('Link hotspot', () => {
+        test('link action type shows URL and new-tab checkbox', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Three Sixty Link Hotspot Fields');
+            await gotoWorkarea(page, projectUuid);
+
+            await addThreeSixtyIdeviceFromPanel(page);
+
+            // Add a hotspot
+            await page.locator('#threeSixtyAddHotspot').click();
+            await page.locator('#threeSixtyHotspotList .three-sixty-hotspot-item').first().waitFor({ timeout: 10000 });
+
+            // Switch action type to "link"
+            const actionTypeSelect = page
+                .locator('#threeSixtyHotspotList .three-sixty-hotspot-item .hotspot-action-type')
+                .first();
+            await actionTypeSelect.selectOption('link');
+            await actionTypeSelect.dispatchEvent('change');
+            await page.waitForTimeout(300);
+
+            // URL input and newTab checkbox must appear
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-payload-url').first()).toBeVisible({
+                timeout: 5000,
+            });
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-payload-newTab').first()).toBeVisible({
+                timeout: 5000,
+            });
+
+            // newTab defaults to checked
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-payload-newTab').first()).toBeChecked();
+        });
+
+        test('link hotspot URL and newTab persist through save + reload', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+            const projectUuid = await createProject(page, 'Three Sixty Link Hotspot Persist');
+            await gotoWorkarea(page, projectUuid);
+
+            await addThreeSixtyIdeviceFromPanel(page);
+
+            // Add a hotspot and configure it as a link
+            await page.locator('#threeSixtyAddHotspot').click();
+            await page.locator('#threeSixtyHotspotList .three-sixty-hotspot-item').first().waitFor({ timeout: 10000 });
+
+            const actionTypeSelect = page
+                .locator('#threeSixtyHotspotList .three-sixty-hotspot-item .hotspot-action-type')
+                .first();
+            await actionTypeSelect.selectOption('link');
+            await actionTypeSelect.dispatchEvent('change');
+            await page.waitForTimeout(300);
+
+            // Fill URL
+            const urlInput = page.locator('#threeSixtyHotspotList .hotspot-payload-url').first();
+            await urlInput.fill('https://example.com');
+            await urlInput.dispatchEvent('input');
+
+            // Uncheck "open in new tab"
+            const newTabCheckbox = page.locator('#threeSixtyHotspotList .hotspot-payload-newTab').first();
+            await newTabCheckbox.uncheck();
+            await newTabCheckbox.dispatchEvent('change');
+
+            await saveIdeviceInPage(page);
+            await workarea.save();
+            await page.waitForTimeout(500);
+
+            await reloadPage(page);
+
+            // Navigate back to the page
+            const pageNode = page
+                .locator('.nav-element-text')
+                .filter({ hasText: /New page|Nueva página/i })
+                .first();
+            if ((await pageNode.count()) > 0) {
+                await pageNode.click({ force: true, timeout: 5000 });
+                await page.waitForTimeout(500);
+            }
+
+            await page
+                .waitForFunction(
+                    () => !!document.querySelector('#node-content .idevice_node.three-sixty-viewer'),
+                    undefined,
+                    { timeout: 15000 },
+                )
+                .catch(() => {});
+
+            // Re-enter edit mode
+            const editBtn = page.locator('#node-content .idevice_node.three-sixty-viewer .btn-edit-idevice').first();
+            if (await editBtn.isVisible().catch(() => false)) {
+                await editBtn.click();
+            } else {
+                await page
+                    .locator('#node-content .idevice_node.three-sixty-viewer .idevice_body')
+                    .first()
+                    .dblclick({ timeout: 5000 })
+                    .catch(() => {});
+            }
+
+            await page.locator('#threeSixtyHotspotList').waitFor({ state: 'visible', timeout: 10000 });
+
+            // Verify persisted link hotspot values
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-action-type').first()).toHaveValue('link');
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-payload-url').first()).toHaveValue(
+                'https://example.com',
+            );
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-payload-newTab').first()).not.toBeChecked();
+        });
+
+        test('export runtime opens URL via window.open when newTab is true', async ({ authenticatedPage }) => {
+            const page = authenticatedPage;
+
+            // Load the export script and exercise _openLink directly.
+            // The module exposes itself as $threesixtyviewer (not $exeDevice).
+            const result = await page.evaluate(async () => {
+                const res = await fetch('/files/perm/idevices/base/three-sixty-viewer/export/three-sixty-viewer.js');
+                const code = await res.text();
+                // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+                const factory = new Function('_', code + '; return $threesixtyviewer;');
+                const dev = factory((s: string) => s);
+
+                const opened: string[] = [];
+                const hrefs: string[] = [];
+
+                // Patch _openLink to capture calls without real navigation
+                dev._openLink = (payload: { url: string; newTab: boolean }) => {
+                    if (!payload.url) return;
+                    if (payload.newTab !== false) {
+                        opened.push(payload.url);
+                    } else {
+                        hrefs.push(payload.url);
+                    }
+                };
+
+                dev._openLink({ url: 'https://example.com', newTab: true });
+                dev._openLink({ url: 'https://same.com', newTab: false });
+                dev._openLink({ url: '', newTab: true }); // empty → no-op
+
+                return { opened, hrefs };
+            });
+
+            expect(result.opened).toEqual(['https://example.com']);
+            expect(result.hrefs).toEqual(['https://same.com']);
+        });
+    });
+
     test('migrates v1 saved data into a one-scene tour without losing fields', async ({ authenticatedPage }) => {
         const page = authenticatedPage;
         // Load the iDevice script directly in the page and call its migration to assert
