@@ -448,6 +448,18 @@ describe('ResourceFetcher', () => {
       expect(result.has('exists.js')).toBe(true);
       expect(result.has('missing.js')).toBe(false);
     });
+
+    it('filters deprecated material-icons base library entries from library maps', async () => {
+      const fetcher = new ResourceFetcher();
+      const result = fetcher.filterDeprecatedBootstrapIconBaseLibs(new Map([
+        ['material-icons/material-icons.svg', new Blob(['sprite'])],
+        ['material-icons/icons/alarm.svg', new Blob(['alarm'])],
+        ['jquery/jquery.min.js', new Blob(['jquery'])],
+      ]));
+
+      expect(result.has('jquery/jquery.min.js')).toBe(true);
+      expect(result.size).toBe(1);
+    });
   });
 
   describe('fetchLibraryDirectory', () => {

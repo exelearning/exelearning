@@ -106,6 +106,10 @@ export interface ExportBlock {
 
     // Block icon name (for themed icons)
     iconName?: string;
+    icon?: {
+        source: 'material' | 'asset' | 'theme' | 'none';
+        value: string;
+    };
 
     // Block-level properties
     properties?: ExportBlockProperties;
@@ -676,6 +680,9 @@ export interface PageRenderOptions {
      * Used to convert asset:// URLs to content/resources/ paths in export output.
      */
     assetExportPathMap?: Map<string, string>;
+
+    /** Optional inline SVG data URIs for Material Icons keyed by icon name. */
+    materialIconDataUris?: Map<string, string>;
 }
 
 /**
@@ -694,6 +701,8 @@ export interface ComponentRenderOptions {
 export interface BlockRenderOptions extends ComponentRenderOptions {
     /** Base path for theme icons (e.g., '/files/perm/themes/base/base/icons/' for preview) */
     themeIconBasePath?: string;
+    /** Optional inline SVG data URIs for Material Icons keyed by icon name. */
+    materialIconDataUris?: Map<string, string>;
 }
 
 // =============================================================================

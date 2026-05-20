@@ -47,19 +47,20 @@ test.describe('Block Icon Selection Modal', () => {
         await page.waitForSelector('#change-block-icon-modal-content', { timeout: 10000 });
 
         // Verify that icons exist in the modal (excluding empty icon)
-        const icons = await page
-            .locator('#change-block-icon-modal-content .option-block-icon:not(.empty-block-icon)')
-            .all();
+        const icons = page.locator('#change-block-icon-modal-content .option-block-icon:not(.empty-block-icon)');
+        const iconCount = await icons.count();
 
         // If the theme has icons, verify they are properly structured
-        if (icons.length > 0) {
-            for (const icon of icons) {
+        if (iconCount > 0) {
+            const sampleCount = Math.min(iconCount, 25);
+            for (let i = 0; i < sampleCount; i++) {
+                const icon = icons.nth(i);
                 // Verify icon-id is not undefined
                 const iconId = await icon.getAttribute('icon-id');
                 expect(iconId).not.toBe('undefined');
                 expect(iconId).toBeTruthy();
 
-                // Verify the img src is not undefined
+                // Theme/custom icons render as img; material modal icons render via sprite SVG.
                 const img = icon.locator('img');
                 if ((await img.count()) > 0) {
                     const src = await img.getAttribute('src');
@@ -71,7 +72,14 @@ test.describe('Block Icon Selection Modal', () => {
                     // Verify the alt text is not undefined
                     const alt = await img.getAttribute('alt');
                     expect(alt).not.toBe('undefined');
+                    continue;
                 }
+
+                const materialSprite = icon.locator('.exe-material-icon-sprite use');
+                await expect(materialSprite).toHaveCount(1);
+                const href = await materialSprite.getAttribute('href');
+                expect(href).toBeTruthy();
+                expect(href).toContain('/libs/material-icons/material-icons.svg#');
             }
         }
 

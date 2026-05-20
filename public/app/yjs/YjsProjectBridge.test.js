@@ -3114,6 +3114,7 @@ describe('YjsProjectBridge', () => {
       const mockBlockNode = {
         blockName: 'Old Name',
         iconName: 'edit',
+        icon: { source: 'theme', value: 'edit' },
         blockNameElementText: { innerHTML: '' },
         renderBlockTitle: mock(() => {}),
         makeIconNameElement: mock(() => {}),
@@ -3139,7 +3140,39 @@ describe('YjsProjectBridge', () => {
 
       expect(mockBlockNode.blockName).toBe('New Name');
       expect(mockBlockNode.iconName).toBe('star');
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'star' });
       expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
+    });
+
+    it('updates block icon from structured icon data for remote collaborators', async () => {
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+          structure: {
+            nodeSelected: { getAttribute: () => 'page-1' },
+          },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'mi-alarm', icon: { source: 'material', value: 'alarm' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'material', value: 'alarm' });
+      expect(mockBlockNode.iconName).toBe('mi-alarm');
+      expect(mockBlockNode.makeIconNameElement).toHaveBeenCalled();
     });
 
     it('updates block with properties object', async () => {
@@ -6210,6 +6243,60 @@ describe('YjsProjectBridge', () => {
 
       // Should not change since src already matches and no exe-no-icon class
       expect(mockIconEl.innerHTML).toBe(originalHtml);
+    });
+
+    it('renders material icons with the shared mask runtime', () => {
+      const mockIconEl = {
+        innerHTML: '',
+        style: {
+          removeProperty: mock(() => {}),
+        },
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      bridge._syncBlockIcon(mockIconEl, { source: 'material', value: 'alarm' }, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('class="exe-material-icon"');
+      expect(mockIconEl.innerHTML).toContain('alarm.svg');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+      expect(mockIconEl.style.removeProperty).toHaveBeenCalledWith('color');
+    });
+
+    it('renders asset icons using resolved asset URLs', () => {
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                resolveAssetURLSync: () => 'blob:asset-icon',
+              },
+            },
+          },
+          themes: {
+            getThemeIcons: () => ({}),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      bridge._syncBlockIcon(mockIconEl, { source: 'asset', value: 'asset://uuid-123/icon.jpg' }, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('blob:asset-icon');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
     });
 
     it('does not clear icon when already showing empty SVG', () => {
