@@ -68,6 +68,36 @@ var $exeDevice = (function () {
             available: true
         },
         {
+            id: 'ES-EX',
+            isoCode: 'ES-EX',
+            label: 'LOMLOE — Extremadura',
+            labelEn: 'LOMLOE — Extremadura',
+            framework: 'LOMLOE',
+            community: 'Extremadura',
+            file: '../data/lomloe-ES-EX.json',
+            available: true
+        },
+        {
+            id: 'ES-MD',
+            isoCode: 'ES-MD',
+            label: 'LOMLOE — Comunidad de Madrid',
+            labelEn: 'LOMLOE — Community of Madrid',
+            framework: 'LOMLOE',
+            community: 'Comunidad de Madrid',
+            file: '../data/lomloe-ES-MD.json',
+            available: true
+        },
+        {
+            id: 'ES-GA',
+            isoCode: 'ES-GA',
+            label: 'LOMLOE — Galicia',
+            labelEn: 'LOMLOE — Galicia',
+            framework: 'LOMLOE',
+            community: 'Galicia',
+            file: '../data/lomloe-ES-GA.json',
+            available: true
+        },
+        {
             id: 'ES-CN',
             isoCode: 'ES-CN',
             label: 'LOMLOE — Islas Canarias',
