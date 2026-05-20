@@ -88,6 +88,16 @@ var $exeDevice = (function () {
             available: true
         },
         {
+            id: 'ES-GA',
+            isoCode: 'ES-GA',
+            label: 'LOMLOE — Galicia',
+            labelEn: 'LOMLOE — Galicia',
+            framework: 'LOMLOE',
+            community: 'Galicia',
+            file: '../data/lomloe-ES-GA.json',
+            available: true
+        },
+        {
             id: 'ES-CN',
             isoCode: 'ES-CN',
             label: 'LOMLOE — Islas Canarias',
