@@ -98,6 +98,12 @@ export async function exportPageAndDownload(nodeId, structureEngine) {
     // Get resource fetcher from yjsBridge (already initialized with bundle manifest)
     const resourceFetcher = yjsBridge.resourceFetcher || null;
 
+    // Ensure metadata has a screenshot so the exported subtree embeds
+    // screenshot.png at the archive root.
+    if (typeof yjsBridge.ensureScreenshotForExport === 'function') {
+        await yjsBridge.ensureScreenshotForExport();
+    }
+
     // Create page ELPX exporter (client-side, has access to IndexedDB assets)
     const exporter = createExporter(
         'pageelpx',

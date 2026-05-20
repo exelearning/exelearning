@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<idevice>
+    <name>slide</name>
+    <title>Slide</title>
+    <css-class>slide</css-class>
+    <category>Information and presentation</category>
+    <icon>
+        <name>slide-icon</name>
+        <url>slide-icon.svg</url>
+        <type>img</type>
+    </icon>
+    <version>3.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <location>location</location>
+    <location-type>location type</location-type>
+    <edition-js>
+        <filename>slide.js</filename>
+    </edition-js>
+    <edition-css>
+        <filename>slide.css</filename>
+    </edition-css>
+    <export-js>
+        <filename>slide.js</filename>
+    </export-js>
+    <export-css>
+        <filename>slide.css</filename>
+    </export-css>
+    <export-template-filename>slide.html</export-template-filename>
+    <author>Área de Tecnología Educativa (ATE)</author>
+    <author-url>https://exelearning.net</author-url>
+    <license>CC-BY-SA 4.0</license>
+    <license-url>https://creativecommons.org/licenses/by-sa/4.0/</license-url>
+    <description>Visual slide editor (canvas-based). Saves an editable Fabric.js scene plus a sanitized SVG snapshot for static preview/export.</description>
+    <downloadable>0</downloadable>
+</idevice>

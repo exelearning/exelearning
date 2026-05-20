@@ -1154,3 +1154,89 @@ describe('YjsDocumentAdapter', () => {
         });
     });
 });
+
+describe('YjsDocumentAdapter.getMetadata - stable identifiers (#1784)', () => {
+    it('forwards odeIdentifier, odeVersionId and scormIdentifier from the Y.Map (mocked)', () => {
+        const manager = new MockYjsDocumentManager({
+            title: 'Stable IDs',
+            odeIdentifier: '20251201123456ABCDEF',
+            odeVersionId: '20251201123456FEDCBA',
+            scormIdentifier: 'CUSTOM-SCORM-XYZ',
+        });
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+        const meta = adapter.getMetadata();
+        expect(meta.odeIdentifier).toBe('20251201123456ABCDEF');
+        expect(meta.odeVersionId).toBe('20251201123456FEDCBA');
+        expect(meta.scormIdentifier).toBe('CUSTOM-SCORM-XYZ');
+    });
+
+    it('returns undefined for unset stable identifiers (legacy projects)', () => {
+        const manager = new MockYjsDocumentManager({ title: 'Legacy' });
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+        const meta = adapter.getMetadata();
+        expect(meta.odeIdentifier).toBeUndefined();
+        expect(meta.odeVersionId).toBeUndefined();
+        expect(meta.scormIdentifier).toBeUndefined();
+    });
+
+    it('returns undefined for stable identifiers on a completely empty real Y.Map', async () => {
+        // Defensive: brand-new project Y.Doc has no metadata at all. The adapter
+        // must not throw and must leave odeIdentifier / odeVersionId / scormIdentifier
+        // unset so the export-side fallback (`BaseExporter.getManifestIdentifier`)
+        // runs instead of inheriting garbage from a partially-initialized map.
+        const Y = await import('yjs');
+        const doc = new Y.Doc();
+        doc.getMap('metadata'); // touch but don't write anything
+        doc.getArray('navigation');
+
+        const manager = {
+            getMetadata: () => doc.getMap('metadata'),
+            getNavigation: () => doc.getArray('navigation'),
+            getDoc: () => doc,
+            projectId: 'empty-yjs-project',
+        };
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+        const exportMeta = adapter.getMetadata();
+        expect(exportMeta.odeIdentifier).toBeUndefined();
+        expect(exportMeta.odeVersionId).toBeUndefined();
+        expect(exportMeta.scormIdentifier).toBeUndefined();
+        // Sanity: defaults for required fields still apply.
+        expect(exportMeta.title).toBe('eXeLearning');
+        expect(exportMeta.theme).toBe('base');
+
+        doc.destroy();
+    });
+
+    it('reads stable identifiers from a real Y.Doc through YjsDocumentAdapter (no mocks)', async () => {
+        const Y = await import('yjs');
+        const doc = new Y.Doc();
+        const meta = doc.getMap('metadata');
+        meta.set('title', 'Real Y.Doc');
+        meta.set('odeIdentifier', '20251201123456ABCDEF');
+        meta.set('odeVersionId', '20251201123456FEDCBA');
+        // Minimal navigation so the adapter is happy.
+        doc.getArray('navigation');
+
+        const manager = {
+            getMetadata: () => meta,
+            getNavigation: () => doc.getArray('navigation'),
+            getDoc: () => doc,
+            projectId: 'real-yjs-project',
+        };
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+
+        const exportMeta = adapter.getMetadata();
+        expect(exportMeta.odeIdentifier).toBe('20251201123456ABCDEF');
+        expect(exportMeta.odeVersionId).toBe('20251201123456FEDCBA');
+
+        doc.destroy();
+    });
+});

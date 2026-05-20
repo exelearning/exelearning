@@ -2,12 +2,12 @@
  * Tests for IdeviceRenderer
  */
 
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { IdeviceRenderer } from './IdeviceRenderer';
 import type { ExportComponent, ExportBlock } from '../interfaces';
-import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
+import { loadIdeviceConfigs, resetIdeviceConfigCache, setIdevicesBasePath } from '../../../services/idevice-config';
 
 // Path to real iDevices for integration testing
 const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
@@ -1590,6 +1590,213 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('&lt;script src=&quot;test.js&quot;&gt;&lt;/script&gt;');
             expect(html).not.toContain('<script src="test.js">');
+        });
+    });
+
+    // Regression coverage for issue #1810 (3D Viewer iDevice does not render after export):
+    // Custom iDevices ship ES module scripts (e.g. three.module.min.js, STLLoader.js,
+    // OrbitControls.js). The exporter must mark them as <script type="module"> so the
+    // browser parses `import`/`export` instead of throwing a SyntaxError. Detection must
+    // work via filename convention (.module.js / .mjs) AND content sniffing (top-level
+    // `import`/`export`) so plugin authors don't have to rename existing files. The same
+    // detection must apply for index pages (basePath = '') and subpages (basePath = '../')
+    // and is exercised by every Html5Exporter subclass (SCORM 1.2/2004, EPUB, IMS).
+    describe('getJsScripts / getJsScriptInfo (ES module detection — issue #1810)', () => {
+        const fixtureRoot = path.join(process.cwd(), 'test/temp/idevice-renderer-module-detection');
+        const ideviceName = 'three-d-viewer';
+        const exportDir = path.join(fixtureRoot, ideviceName, 'export');
+
+        beforeEach(async () => {
+            // Fresh fixture per test so file edits don't leak between cases.
+            await fs.remove(fixtureRoot);
+            await fs.ensureDir(exportDir);
+
+            // Mirror the plugin layout reported in issue #1810:
+            //   - three-d-viewer.js          → classic bootstrap script
+            //   - three.module.min.js        → ES module (named convention)
+            //   - STLLoader.js               → ES module (no convention; sniffed)
+            //   - OrbitControls.mjs          → ES module (.mjs extension)
+            //   - model-viewer.min.js        → UMD bundle that *uses* the word `export`
+            //                                  inside a string but is NOT a module.
+            await fs.writeFile(
+                path.join(exportDir, `${ideviceName}.js`),
+                '/* eslint-disable */\n(function () { window.ThreeDViewerRuntime = {}; })();\n',
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'three.module.min.js'),
+                'export const REVISION="160";export class Vector3{}\n',
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'STLLoader.js'),
+                "import { BufferGeometry } from './three.module.min.js';\nexport class STLLoader {}\n",
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'OrbitControls.mjs'),
+                "import { EventDispatcher } from './three.module.min.js';\nexport class OrbitControls {}\n",
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'model-viewer.min.js'),
+                '/*! @license model-viewer */\n(function(g,f){typeof exports==="object"?f(exports):g.modelViewer=f({})})(this,function(e){e.foo=1});\n',
+            );
+
+            // Minimal config.xml so loadIdeviceConfigs() recognises the fixture iDevice.
+            await fs.writeFile(
+                path.join(fixtureRoot, ideviceName, 'config.xml'),
+                `<?xml version="1.0" encoding="UTF-8"?>
+<idevice>
+    <name>${ideviceName}</name>
+    <css-class>${ideviceName}</css-class>
+    <component-type>json</component-type>
+    <export-template-filename>${ideviceName}.html</export-template-filename>
+</idevice>`,
+            );
+
+            setIdevicesBasePath(fixtureRoot);
+            loadIdeviceConfigs(fixtureRoot);
+            renderer = new IdeviceRenderer();
+        });
+
+        afterEach(async () => {
+            await fs.remove(fixtureRoot);
+            // Restore real iDevice configs so the rest of the suite keeps working.
+            resetIdeviceConfigCache();
+            const real = path.join(process.cwd(), 'public/files/perm/idevices/base');
+            setIdevicesBasePath(real);
+            loadIdeviceConfigs(real);
+        });
+
+        it('emits <script type="module"> for .module.js files', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBeDefined();
+            expect(moduleTag).toContain('type="module"');
+        });
+
+        it('emits <script type="module"> for .mjs files', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const mjsTag = scripts.find(s => s.includes('OrbitControls.mjs'));
+            expect(mjsTag).toBeDefined();
+            expect(mjsTag).toContain('type="module"');
+        });
+
+        it('detects ES modules by top-level import/export content (no rename required)', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const stlTag = scripts.find(s => s.includes('STLLoader.js'));
+            expect(stlTag).toBeDefined();
+            // Author shipped a file with top-level `import`; exporter must treat it as a module
+            // even though its name does not follow the .module.js / .mjs convention.
+            expect(stlTag).toContain('type="module"');
+        });
+
+        it('does NOT add type="module" to classic / UMD scripts', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const bootstrapTag = scripts.find(s => s.includes(`${ideviceName}.js`) && !s.includes('module'));
+            const umdTag = scripts.find(s => s.includes('model-viewer.min.js'));
+            expect(bootstrapTag).toBeDefined();
+            expect(bootstrapTag).not.toContain('type="module"');
+            expect(umdTag).toBeDefined();
+            expect(umdTag).not.toContain('type="module"');
+        });
+
+        it('applies basePath to module scripts on index page (basePath="")', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBe(`<script type="module" src="idevices/${ideviceName}/three.module.min.js"></script>`);
+        });
+
+        it('applies basePath to module scripts on subpages (basePath="../")', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '../');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBe(
+                `<script type="module" src="../idevices/${ideviceName}/three.module.min.js"></script>`,
+            );
+        });
+
+        it('applies BASE_PATH-style absolute prefix to module scripts (e.g. /myapp/)', () => {
+            // Mirrors deploy with BASE_PATH=/myapp where PageRenderer is invoked with the
+            // configured prefix; the same module-detection must still apply.
+            const scripts = renderer.getJsScripts([ideviceName], '/myapp/');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBe(
+                `<script type="module" src="/myapp/idevices/${ideviceName}/three.module.min.js"></script>`,
+            );
+        });
+
+        it('getJsScriptInfo returns identical tags (used by Html5Exporter/SCORM/EPUB)', () => {
+            const info = renderer.getJsScriptInfo([ideviceName], '../');
+            const moduleEntry = info.find(s => s.src.endsWith('three.module.min.js'));
+            const classicEntry = info.find(s => s.src.endsWith(`${ideviceName}.js`));
+            expect(moduleEntry?.tag).toBe(
+                `<script type="module" src="../idevices/${ideviceName}/three.module.min.js"></script>`,
+            );
+            expect(classicEntry?.tag).toBe(`<script src="../idevices/${ideviceName}/${ideviceName}.js"></script>`);
+        });
+
+        it('module scripts appear AFTER the classic bootstrap to preserve load order', () => {
+            // getIdeviceExportFiles puts the main `${typeName}.js` first; module siblings
+            // come after it (alphabetical). The fix must not reorder scripts.
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const mainIdx = scripts.findIndex(s => s.endsWith(`${ideviceName}.js"></script>`));
+            const moduleIdx = scripts.findIndex(s => s.includes('three.module.min.js'));
+            expect(mainIdx).toBeGreaterThanOrEqual(0);
+            expect(moduleIdx).toBeGreaterThan(mainIdx);
+        });
+    });
+
+    // End-to-end check against the real plugin that triggered issue #1810. Skipped
+    // automatically if the iDevice is not installed on the current branch.
+    describe('three-d-viewer real iDevice integration (issue #1810)', () => {
+        const realIdevicesPath = path.join(process.cwd(), 'public/files/perm/idevices/base');
+        const threeDViewerPath = path.join(realIdevicesPath, 'three-d-viewer', 'export');
+
+        beforeEach(() => {
+            resetIdeviceConfigCache();
+            setIdevicesBasePath(realIdevicesPath);
+            loadIdeviceConfigs(realIdevicesPath);
+            renderer = new IdeviceRenderer();
+        });
+
+        it('emits type="module" for three.module.min.js (filename convention)', () => {
+            if (!fs.existsSync(threeDViewerPath)) {
+                console.log('[Test] three-d-viewer iDevice not installed; skipping');
+                return;
+            }
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBeDefined();
+            expect(moduleTag).toContain('type="module"');
+        });
+
+        it('emits type="module" for STLLoader.js (content-sniffed; no rename)', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const stlTag = scripts.find(s => s.includes('STLLoader.js'));
+            expect(stlTag).toBeDefined();
+            expect(stlTag).toContain('type="module"');
+        });
+
+        it('emits type="module" for OrbitControls.js (content-sniffed; no rename)', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const ctrlTag = scripts.find(s => s.includes('OrbitControls.js'));
+            expect(ctrlTag).toBeDefined();
+            expect(ctrlTag).toContain('type="module"');
+        });
+
+        it('does NOT mark the UMD model-viewer.min.js as a module', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const umdTag = scripts.find(s => s.includes('model-viewer.min.js'));
+            expect(umdTag).toBeDefined();
+            expect(umdTag).not.toContain('type="module"');
+        });
+
+        it('does NOT mark the classic three-d-viewer.js bootstrap as a module', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const mainTag = scripts.find(s => /three-d-viewer\.js"><\/script>$/.test(s));
+            expect(mainTag).toBeDefined();
+            expect(mainTag).not.toContain('type="module"');
         });
     });
 });
