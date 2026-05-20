@@ -96,6 +96,18 @@
                     <li><a class="dropdown-item" id="navbar-button-styles" href="#" data-shortcut="Mod+Alt+T" aria-keyshortcuts="Control+Alt+T Meta+Alt+T"><span class="small-icon styles-icon"></span> {{ t.styles or 'Styles' }}</a></li>
                     <li class="dropdown-divider"></li>
                     <li><a class="dropdown-item" id="navbar-button-preview" href="#" data-shortcut="Mod+P" aria-keyshortcuts="Control+P Meta+P"><span class="small-icon preview-icon-green"></span> {{ t.preview or 'Preview' }}</a></li>
+                    {% if config.isDev %}
+                    <li class="dropdown-divider"></li>
+                    <li class="dropdown dropend" id="dropdownDevelopmentItem" data-testid="developer-menu">
+                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownDevelopment" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ 'Development' | trans }}</a>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownDevelopment">
+                            <li><a class="dropdown-item" id="navbar-button-style-lab" data-testid="developer-menu-style-lab" href="{{ basePath }}/developer/style-lab" target="_blank">{{ 'Style Lab' | trans }}</a></li>
+                            <li><a class="dropdown-item" id="navbar-button-idevice-lab" data-testid="developer-menu-idevice-lab" href="{{ basePath }}/developer/idevice-lab" target="_blank">{{ 'iDevice Lab' | trans }}</a></li>
+                            <li class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" id="navbar-button-rest-api" data-testid="developer-menu-rest-api" href="{{ basePath }}/api/v1/docs" target="_blank">{{ 'REST API' | trans }}</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
                 </ul>
             </li>
             <li class="nav-item btn button-tertiary button-dropdown dropdown" id="dropdownHelpItem" >

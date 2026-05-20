@@ -1,0 +1,187 @@
+/* Canvas / preview area */
+.canvas {
+  background-color: var(--bg);
+  background-image: radial-gradient(circle at 1px 1px, rgba(15,18,32,.08) 1px, transparent 0);
+  background-size: 18px 18px;
+  overflow: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.canvas-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  background: rgba(245,246,250,.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.canvas-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+}
+.canvas-title .muted {
+  font-weight: 400;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+.canvas-title .sep {
+  width: 1px;
+  height: 14px;
+  background: var(--line-strong);
+  margin: 0 3px;
+}
+.canvas-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.canvas-body {
+  flex: 1;
+  padding: 28px;
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+}
+
+/* layout modes */
+.canvas-body[data-layout="desktop"] .frame-mobile-wrap { display: none; }
+.canvas-body[data-layout="mobile"]  .frame-desktop-wrap { display: none; }
+.canvas-body[data-layout="mobile"]  { justify-content: center; }
+/* In split mode, lay out from the left and allow horizontal scroll
+   when the combined width exceeds the canvas. */
+.canvas-body[data-layout="split"]   { justify-content: flex-start; min-width: max-content; }
+
+/* desktop frame */
+.frame-desktop-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.frame-desktop {
+  width: 1024px;
+  background: var(--frame);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: var(--shadow);
+}
+.frame-desktop-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 6px 8px;
+}
+.frame-dot { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,.18); }
+.frame-dot.r { background: #ff5f57; }
+.frame-dot.y { background: #febc2e; }
+.frame-dot.g { background: #28c840; }
+.frame-url {
+  flex: 1;
+  margin-left: 8px;
+  height: 22px;
+  background: rgba(255,255,255,.08);
+  border-radius: 5px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  font-variant-numeric: tabular-nums;
+}
+.frame-url svg { width: 10px; height: 10px; opacity: .7; }
+.frame-desktop-screen {
+  background: white;
+  border-radius: 6px;
+  overflow: auto;
+  height: 640px;
+  width: 100%;
+  display: block;
+  border: 0;
+  position: relative;
+}
+
+/* mobile frame */
+.frame-mobile-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.frame-mobile {
+  width: 340px;
+  height: 700px;
+  background: var(--frame);
+  border-radius: 38px;
+  padding: 34px 12px 12px;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+}
+.frame-mobile::before {
+  content: "";
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 100px; height: 18px;
+  background: #000;
+  border-radius: 999px;
+  z-index: 2;
+}
+.frame-mobile-screen {
+  background: white;
+  border-radius: 22px;
+  overflow: auto;
+  height: 654px;
+  width: 100%;
+  display: block;
+  border: 0;
+  position: relative;
+}
+
+/* preview label above frames */
+.preview-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.preview-label svg { width: 13px; height: 13px; }
+.preview-label .res {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 2px 7px;
+  color: var(--ink-soft);
+}
+
+/* iframe placeholder */
+.preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: white;
+}

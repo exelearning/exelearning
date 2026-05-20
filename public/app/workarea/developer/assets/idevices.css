@@ -1,0 +1,91 @@
+/* iDevice list */
+.idevice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 440px;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 2px 4px 6px;
+}
+.idevice-list::-webkit-scrollbar { width: 8px; }
+.idevice-list::-webkit-scrollbar-thumb { background: #d8dbe4; border-radius: 999px; border: 2px solid var(--surface); }
+
+.idevice-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  background: var(--surface);
+  transition: all .15s;
+}
+/* `display: flex` above outranks the UA stylesheet `[hidden] { display: none }`
+   at the same specificity, so the search filter never actually hides anything.
+   Re-establish hiding for items and their group headings. */
+.idevice-item[hidden], .idv-group[hidden] { display: none !important; }
+.idevice-item:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+.idevice-item.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 3px rgba(91,83,255,.08);
+}
+.idevice-icon {
+  width: 44px; height: 44px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.idevice-item.is-active .idevice-icon {
+  background: #fff;
+  border-color: rgba(91,83,255,.25);
+  color: var(--accent);
+}
+.idevice-icon svg { width: 28px; height: 28px; }
+.idevice-icon img {
+  width: 32px; height: 32px;
+  object-fit: contain;
+  display: block;
+}
+.idevice-info { flex: 1; min-width: 0; line-height: 1.25; }
+.idevice-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.idevice-meta {
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-top: 2px;
+}
+.idevice-item.is-active .idevice-meta { color: rgba(58,50,214,.7); }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.tag.tag-q { color: var(--accent-ink); background: var(--accent-soft); border-color: rgba(91,83,255,.18); }
+.tag.tag-i { color: var(--warn); background: #fff5e6; border-color: #fde6c2; }
+.tag.tag-m { color: var(--success); background: #e7f8ee; border-color: #c7ecd5; }

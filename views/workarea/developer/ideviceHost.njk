@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="{{ locale or 'en' }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>{{ ideviceName }} · iDevice host</title>
+    <link rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
+    <link rel="stylesheet" href="{{ '/libs/jquery-ui/jquery-ui.min.css' | asset }}">
+    <link rel="stylesheet" href="{{ '/style/server.css' | asset }}">
+    <link rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
+    <link rel="stylesheet" href="{{ '/style/workarea/custom.css' | asset }}">
+    <link rel="stylesheet" href="{{ basePath }}/v0.0.0-alpha/files/perm/themes/base/base/style.css">
+    <style>
+        /* server.css/custom.css set body{overflow:hidden} for the workarea —
+           override so the lab host can scroll its form. */
+        html, body { overflow-y: auto !important; height: auto !important; }
+        body { margin: 0; padding: 0; background: var(--surface, #fff); font-family: Inter, -apple-system, sans-serif; }
+
+        /* Topbar with tabs + save/reset */
+        .lab-topbar { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #fff; border-bottom: 1px solid #d3d7e0; }
+        .lab-title { flex: 0 1 auto; font-weight: 600; font-size: 14px; color: #1a1d2e; margin-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+        .lab-tabs { display: flex; gap: 1px; background: #f3f4f6; border-radius: 6px; padding: 2px; }
+        .lab-tab { border: 0; background: transparent; padding: 5px 12px; font: 500 12px/1 inherit; color: #5b6478; border-radius: 5px; cursor: pointer; }
+        .lab-tab.is-active { background: #fff; color: #1a1d2e; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+        .lab-tab:disabled { opacity: 0.4; cursor: not-allowed; }
+        .lab-spacer { flex: 1; }
+        .lab-actions { display: flex; gap: 6px; }
+        .lab-actions button { font: 500 13px/1 inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid #d3d7e0; background: #fff; cursor: pointer; }
+        .lab-actions button.is-primary { background: #5b53ff; color: #fff; border-color: #5b53ff; }
+        .lab-actions button.is-primary:hover { background: #4b43ef; }
+
+        .lab-body { padding: 16px; }
+        .lab-pane[hidden] { display: none; }
+        #lab-pane-edit { max-width: 100%; }
+        .exe-form-tabs { width: max-content; display: flex; gap: 1px; list-style: none; padding: 0; margin: 0 0 12px; }
+        .exe-form-tabs li { display: block; }
+        .exe-form-tabs a { text-decoration: none; color: #555; border: 1px solid #d3d7e0; border-bottom: 0; padding: 6px 14px; border-radius: 6px 6px 0 0; background-color: #f3f4f6; display: inline-block; }
+        .exe-form-tabs a.exe-form-active-tab { color: #0BA1A1; background-color: #fff; border-color: #0BA1A1; }
+        .exe-form-tab { border: 1px solid #0BA1A1; border-radius: 0 8px 8px 8px; padding: 14px; margin-top: -1px; }
+
+        .lab-host-error { color: #b91c1c; padding: 12px; background: #fee2e2; border-radius: 8px; font: 13px/1.5 monospace; white-space: pre-wrap; word-break: break-word; margin: 12px 16px; }
+        .lab-host-warning { color: #92400e; padding: 10px 14px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; font: 13px/1.5 inherit; margin: 12px 16px; }
+        .lab-saved-view { padding: 24px; border: 1px dashed #d3d7e0; border-radius: 8px; background: #fafbff; }
+    </style>
+</head>
+<body data-testid="idevice-host-page" data-idevice="{{ ideviceName }}" data-base-path="{{ basePath }}">
+    <header class="lab-topbar">
+        <span class="lab-title" id="lab-title">{{ ideviceName }}</span>
+        <div class="lab-tabs" role="tablist">
+            <button type="button" class="lab-tab is-active" data-state="edition" aria-pressed="true">{{ 'Edit' | trans }}</button>
+            <button type="button" class="lab-tab" data-state="view" disabled aria-pressed="false">{{ 'View' | trans }}</button>
+            <button type="button" class="lab-tab" data-state="export" disabled aria-pressed="false">{{ 'Export' | trans }}</button>
+        </div>
+        <span class="lab-spacer"></span>
+        <div class="lab-actions">
+            <button type="button" id="lab-save" class="is-primary">{{ 'Save' | trans }}</button>
+            <button type="button" id="lab-reset">{{ 'Reset' | trans }}</button>
+        </div>
+    </header>
+    <pre id="lab-error" class="lab-host-error" hidden></pre>
+    <div id="lab-warning" class="lab-host-warning" role="alert" hidden></div>
+    <div class="lab-body">
+        <div id="lab-pane-edit"   class="lab-pane" data-state="edition"></div>
+        <div id="lab-pane-view"   class="lab-pane" data-state="view" hidden></div>
+        <div id="lab-pane-export" class="lab-pane" data-state="export" hidden></div>
+    </div>
+
+    <script>
+        // Globals expected by iDevice modules outside a real workarea.
+        window.eXe = window.eXe || { app: { alert: (msg) => console.warn('[lab-host eXe.app.alert]', msg), isInExe: () => true } };
+        if (window.eXe.app && typeof window.eXe.app.isInExe !== 'function') {
+            window.eXe.app.isInExe = () => true;
+        }
+        window._ = window._ || function (s) { return s; };
+        window.c_ = window.c_ || function (s) { return s; };
+        window.eXeLearning = window.eXeLearning || {};
+        window.eXeLearning.config = window.eXeLearning.config || {
+            fullURL: '{{ basePath }}',
+            basePath: '{{ basePath }}',
+            isOfflineInstallation: false,
+            platformIntegration: false,
+            isDev: true,
+        };
+        const sandboxProject = new Proxy({ uuid: 'lab-host', name: 'lab-host' }, {
+            get: (t, p) => (p in t ? t[p] : ''),
+        });
+        window.eXeLearning.app = window.eXeLearning.app || {
+            project: sandboxProject,
+            structure: { activeNode: null },
+            modals: {},
+            getBasePath: () => '{{ basePath }}',
+        };
+        window.eXeLearning.user = window.eXeLearning.user || { id: 0, email: '' };
+
+        // No-op stubs for workarea editors / managers that iDevice modules reach for.
+        const noopProxy = (label) => new Proxy(function () {}, {
+            get: (_, p) => {
+                if (p === Symbol.toPrimitive || p === 'toString') return () => '[lab-host stub ' + label + ']';
+                return noopProxy(label + '.' + String(p));
+            },
+            apply: () => undefined,
+            construct: () => ({}),
+        });
+        window.$exeTinyMCE   = window.$exeTinyMCE   || noopProxy('$exeTinyMCE');
+        window.$exeFX        = window.$exeFX        || noopProxy('$exeFX');
+        window.$exeGames     = window.$exeGames     || noopProxy('$exeGames');
+        window.$exeHighlighter = window.$exeHighlighter || noopProxy('$exeHighlighter');
+        window.$exeABCmusic  = window.$exeABCmusic  || noopProxy('$exeABCmusic');
+        window.$exeMedia     = window.$exeMedia     || noopProxy('$exeMedia');
+        window.$exeMath      = window.$exeMath      || noopProxy('$exeMath');
+        window.$exeLightbox  = window.$exeLightbox  || noopProxy('$exeLightbox');
+        window.tinymce       = window.tinymce       || noopProxy('tinymce');
+        // $exeDevices is used by some export modules (e.g. text.js for math typesetting).
+        // Pre-define so accessing nested members does not blow up.
+        window.$exeDevices   = window.$exeDevices   || noopProxy('$exeDevices');
+    </script>
+    <script src="{{ '/libs/jquery/jquery.min.js' | asset }}"></script>
+    <script src="{{ '/libs/jquery-ui/jquery-ui.min.js' | asset }}"></script>
+    <script src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}"></script>
+    <script src="{{ '/app/common/common_i18n.js' | asset }}"></script>
+    <script src="{{ '/app/common/common.js' | asset }}"></script>
+    <script src="{{ '/app/common/common_edition.js' | asset }}"></script>
+    {# Do NOT load exe_export.js: its init() runs setExe() which wipes window.eXe,
+       removing our alert/isInExe stubs and breaking iDevice validation flows. No
+       installed iDevice references $exeExport, so dropping it is safe. #}
+    <script type="module" src="{{ '/app/workarea/developer/ideviceHost.js' | asset }}"></script>
+</body>
+</html>

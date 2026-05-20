@@ -28,6 +28,7 @@ import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
+import { isDeveloperToolsEnabled } from '../utils/developer-tools.util';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
 import { buildAdminTranslations } from './admin';
 import {
@@ -930,6 +931,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     userIdevices: 0,
                     debugJs: process.env.APP_ENV === 'dev',
                     appEnv: process.env.APP_ENV || 'prod',
+                    isDev: isDeveloperToolsEnabled(process.env),
                     appDebug: process.env.APP_DEBUG || '0',
                     onlineMode: String(process.env.APP_ONLINE_MODE || '1') === '1',
                     // URL and path settings (formerly in 'symfony' object)

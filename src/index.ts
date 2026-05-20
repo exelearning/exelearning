@@ -26,6 +26,7 @@ import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
 import { uploadSessionRoutes } from './routes/upload-session';
+import { developerRoutes } from './routes/developer';
 import {
     createWebSocketRoutes,
     initialize as initWebSocket,
@@ -611,6 +612,7 @@ if (registerRootRoutes) {
         .use(yjsRoutes)
         .use(apiV1Routes)
         .use(uploadSessionRoutes)
+        .use(developerRoutes)
         .use(createWebSocketRoutes())
         .get('/api', () => ({
             name: 'eXeLearning API',
@@ -649,6 +651,7 @@ if (routePrefix) {
             .use(yjsRoutes)
             .use(apiV1Routes)
             .use(uploadSessionRoutes)
+            .use(developerRoutes)
             .use(createWebSocketRoutes())
             .get('/api', () => ({
                 name: 'eXeLearning API',

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="{{ locale or 'en' }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>{{ 'iDevice Lab' | trans }} · eXeLearning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ '/app/workarea/developer/assets/tokens.css' | asset }}">
+    <link rel="stylesheet" href="{{ '/app/workarea/developer/assets/topbar.css' | asset }}">
+    <link rel="stylesheet" href="{{ '/app/workarea/developer/assets/sidebar.css' | asset }}">
+    <link rel="stylesheet" href="{{ '/app/workarea/developer/assets/idevices.css' | asset }}">
+    <link rel="stylesheet" href="{{ '/app/workarea/developer/assets/canvas.css' | asset }}">
+    <link rel="stylesheet" href="{{ '/app/workarea/developer/assets/misc.css' | asset }}">
+    <style>
+        .canvas-body[data-layout="single"] {
+            padding: 0;
+            gap: 0;
+            min-width: 0;
+            overflow: hidden;
+            align-items: stretch;
+            justify-content: stretch;
+            display: block;
+            height: 100%;
+        }
+        .frame-host {
+            width: 100%;
+            height: 100%;
+            background: var(--surface);
+            border: 0;
+            display: block;
+        }
+        .frame-host iframe {
+            border: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: block;
+        }
+        .empty-state {
+            margin: auto;
+            padding: 32px;
+            text-align: center;
+            color: var(--ink-soft);
+            font-size: 14px;
+        }
+        .empty-state strong { color: var(--ink); display: block; margin-bottom: 6px; font-size: 15px; }
+    </style>
+</head>
+<body data-testid="idevice-lab-page">
+    <div id="icon-sprite-host"></div>
+
+    <header class="topbar">
+        <a href="{{ basePath }}/developer" class="brand">
+            <span class="brand-mark"><svg viewBox="0 0 285 270" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-label="eXeLearning"><path d="m102.249.584028c9.46 0 19.566 3.440102 30.316 10.320372 10.536 6.6652 25.049 18.4907 43.539 35.4763 31.821-26.661 48.795-32.6665 65.135-32.6665 10.536 0 19.566 2.9026 27.091 8.7078 13.863 10.6007 16.175 34.8103 6.463 50.7272-7.74 12.6855-17.846 26.3385-30.316 40.9588 28.381 32.251 44.233 55.457 44.233 71.368 0 11.395-3.548 20.103-10.643 26.123-7.31 6.02-16.448 9.03-27.413 9.03-16.556 0-42.514-12.562-74.55-39.438-18.275 16.125-32.681 27.306-43.216 33.541-10.751 6.235-20.964 9.353-30.639 9.353-12.9004 0-22.8983-4.193-29.9935-12.578-7.3103-8.601-10.9654-18.706-10.9654-30.316 0-7.526 1.075-14.083 3.2251-19.674 2.1501-5.59 6.1277-11.825 11.9329-18.705 5.8052-7.096 15.0506-16.878 27.7359-29.349-12.2553-12.47-21.2856-22.4682-27.0909-29.9934-6.0202-7.7403-10.1053-14.5131-12.2554-20.3183-2.3651-5.8052-3.5476-12.2554-3.5476-19.3507 0-7.5253 1.6125-14.513 4.8376-20.9632 3.2252-6.6653 7.9553-12.0405 14.1906-16.12565 6.2352-4.08515 13.5455-6.127721 21.9307-6.127722z"/></svg></span>
+            iDevice&nbsp;Lab
+            <span class="brand-sub">Beta</span>
+        </a>
+        <div class="topbar-right"></div>
+    </header>
+
+    <main class="workspace" data-base-path="{{ basePath }}" data-testid="idevice-lab-root">
+        <aside class="sidebar">
+            <div class="sb-section">
+                <div class="sb-section-title">{{ 'iDevices' | trans }} <span class="count" id="idv-count" data-testid="idevice-lab-count">—</span></div>
+                <input class="search" type="search" placeholder="{{ 'Search iDevice…' | trans }}" id="idv-search" data-testid="idevice-lab-search">
+                <div class="idevice-list" id="idv-list" data-testid="idevice-lab-list" style="margin-top:10px;max-height:none;"></div>
+            </div>
+        </aside>
+
+        <section class="canvas">
+            <div class="canvas-toolbar">
+                <div class="canvas-title">
+                    <svg style="width:14px;height:14px;color:#0f766e"><use href="#icon-idevice"/></svg>
+                    <span id="ct-idv" data-testid="idevice-lab-active-idevice">{{ 'Pick an iDevice from the list to render it in a sandbox host.' | trans }}</span>
+                    <span class="muted" id="ct-cat"></span>
+                </div>
+                <div class="canvas-actions">
+                    <button class="icon-btn" id="btn-refresh" title="{{ 'Refresh' | trans }}" data-testid="idevice-lab-refresh"><svg><use href="#icon-refresh"/></svg></button>
+                </div>
+            </div>
+
+            <div class="canvas-body" data-layout="single" id="canvas-body">
+                <div class="frame-host">
+                    <div class="empty-state" id="canvas-empty" data-testid="idevice-lab-empty">
+                        <strong>{{ 'No iDevice selected' | trans }}</strong>
+                        {{ 'Click an iDevice in the sidebar. The lab will mount it standalone — no project needed — so you can configure and try it.' | trans }}
+                    </div>
+                    <iframe id="idevice-host" data-testid="idevice-lab-host" src="about:blank" hidden></iframe>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="{{ '/app/workarea/developer/ideviceLab.js' | asset }}"></script>
+</body>
+</html>
