@@ -1,0 +1,126 @@
+/**
+ * Slide iDevice — export/preview styles.
+ * The iDevice exports a sanitized SVG snapshot inside .slide-export-fabric.
+ */
+
+.slide-export-fabric {
+    position: relative;
+    width: 100%;
+    max-width: 1280px;
+    margin: 1.5rem auto;
+    border-radius: 10px;
+    border: 1px solid #d0d7e2;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+    overflow: hidden;
+}
+
+.slide-export-fabric svg {
+    /* The wrapper sets aspect-ratio so the slide renders at the saved
+       canvas ratio even inside hosts (workarea preview, narrow columns)
+       that would otherwise squash its height. The SVG fills the wrapper. */
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* ── Fullscreen button (revealed on hover) ────────────────────────────────── */
+
+.slide-export-fabric .slide-fullscreen-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #1d1d1f;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.slide-export-fabric:hover .slide-fullscreen-btn,
+.slide-export-fabric .slide-fullscreen-btn:focus-visible {
+    opacity: 1;
+}
+
+.slide-export-fabric .slide-fullscreen-btn svg {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+}
+
+/* ── Native Fullscreen API state ──────────────────────────────────────────── */
+
+.slide-export-fabric:fullscreen {
+    max-width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.slide-export-fabric:fullscreen svg {
+    width: auto;
+    max-width: 100vw;
+    max-height: 100vh;
+}
+
+.slide-export-fabric:fullscreen .slide-fullscreen-btn {
+    opacity: 1;
+    position: fixed;
+    top: 12px;
+    right: 12px;
+}
+
+/* ── CSS fullscreen simulation (fallback for iframe without allowfullscreen) */
+
+.slide-export-fabric.slide-fs-active {
+    position: fixed !important;
+    inset: 0 !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
+}
+
+.slide-export-fabric.slide-fs-active svg {
+    width: auto !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+}
+
+.slide-export-fabric.slide-fs-active .slide-fullscreen-btn {
+    opacity: 1;
+    position: fixed;
+    top: 12px;
+    right: 12px;
+}
+
+@media (max-width: 768px) {
+    .slide-export-fabric {
+        max-width: 100%;
+        border-radius: 8px;
+    }
+}
