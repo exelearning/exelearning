@@ -78,6 +78,16 @@ var $exeDevice = (function () {
             available: true
         },
         {
+            id: 'ES-MD',
+            isoCode: 'ES-MD',
+            label: 'LOMLOE — Comunidad de Madrid',
+            labelEn: 'LOMLOE — Community of Madrid',
+            framework: 'LOMLOE',
+            community: 'Comunidad de Madrid',
+            file: '../data/lomloe-ES-MD.json',
+            available: true
+        },
+        {
             id: 'ES-CN',
             isoCode: 'ES-CN',
             label: 'LOMLOE — Islas Canarias',

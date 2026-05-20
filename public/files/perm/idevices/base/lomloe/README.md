@@ -28,6 +28,7 @@ lomloe/
     ├── lomloe-ES.json      # State minimums (ISO ES) — RD 95/2022, 157/2022, 217/2022, 243/2022
     ├── lomloe-ES-EFP.json  # Ministry-managed territory (Ceuta, Melilla) — Órdenes EFP
     ├── lomloe-ES-EX.json   # Extremadura (ISO ES-EX) — Decretos 98/2022, 107/2022, 110/2022, 109/2022
+    ├── lomloe-ES-MD.json   # Comunidad de Madrid (ISO ES-MD) — Decretos 36/2022, 61/2022, 65/2022, 64/2022
     └── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion
 ```
 
@@ -190,6 +191,34 @@ The dataset follows the same per-year duplication and code conventions used for 
 
 A separate Python script (`generate_lomloe_es_ex.py`) implements the hybrid build: load `lomloe-ES.json`, inherit + reprefix, then overlay DOE-extracted regional saberes. The script is **attached to the PR** that introduced this dataset rather than committed to the repo.
 
+## `lomloe-ES-MD.json` — Comunidad de Madrid concretion
+
+Hybrid dataset, built the same way as `ES-EX`. The Comunidad de Madrid decrees adopt the state RDs (their text states the state *enseñanzas mínimas* occupy 60% of the curriculum, the autonomous addition the remaining 40%), so competencias específicas and criterios de evaluación are inherited from the state RDs while the regional *contenidos* (= saberes básicos) are published as BOCM tables.
+
+### Base curriculum decrees (BOCM / Comunidad de Madrid)
+
+| Norma | Etapa |
+|---|---|
+| Decreto 36/2022, de 8 de junio | Educación Infantil |
+| Decreto 61/2022, de 13 de julio | Educación Primaria |
+| Decreto 65/2022, de 20 de julio | Educación Secundaria Obligatoria |
+| Decreto 64/2022, de 20 de julio | Bachillerato |
+
+### Modification decree reviewed
+
+- `Decreto 59/2024, de 12 de junio` — modifies Decreto 61/2022 (Primaria), Decreto 65/2022 (ESO) and Decreto 64/2022 (Bachillerato). Reviewed for impact on the curriculum elements consumed by the iDevice (área/materia names, ESO Geografía e Historia content, Bachillerato subject organisation, criterios, contenidos). Changes that touch those elements are incorporated into the JSON; provisions that only affect organisation, bilingual-programme rules, or timetables are documented here and do not alter the dataset.
+
+### Build strategy (hybrid)
+
+1. **Competencias específicas + criterios de evaluación**: inherited verbatim from `lomloe-ES.json` with codes re-emitted as `ES-MD-…`. Madrid mandates the state minimums as the curriculum floor.
+2. **Saberes básicos**: overlaid from the BOCM `CONTENIDOS` tables (columns `BLOQUES | (subbloque) | CONOCIMIENTOS, DESTREZAS Y ACTITUDES`) extracted with `pdfplumber`, attributed to areas by matching the official area vocabulary present on each page. Where the BOCM extraction does not attribute content to an area, the state saberes are used as the fallback per the LOMLOE inheritance rule. In the current dataset the Primaria *contenidos* are overlaid from the BOCM; Infantil, ESO and Bachillerato inherit the state saberes (their BOCM area attribution is pending refinement).
+
+Granularity, code conventions and cycle-to-year duplication match the `ES`, `ES-EX` and `ES-CN` datasets. Codes use the `ES-MD-` prefix.
+
+### Generator script
+
+A Python script (`generate_lomloe_es_md.py`) implements the hybrid build. It is **attached to the PR** that introduced this dataset rather than committed to the repo.
+
 ## Data source (Canary Islands)
 
 The Canary Islands dataset (`lomloe-canarias.json`) is derived from the official LOMLOE concretion published by the Canary Islands Department of Education. It contains:
@@ -270,7 +299,8 @@ The iDevice stores a JSON object in the Yjs document:
 2. Change the concretion selector to **Estado (España)** — verify the state dataset loads and the curriculum tree is browsable. Tag one criterio and one saber.
 3. Change to **Ámbito de gestión MEFP** — verify the Ceuta/Melilla dataset loads (no Infantil etapa) and previous ES selections persist.
 4. Change to **Extremadura** — verify the regional dataset loads and that competencias mirror the state RD (inherited) while saberes show Extremadura-specific concretion where the DOE provides it.
-5. Change back to **Canarias** — verify it still loads correctly.
+5. Change to **Comunidad de Madrid** — verify the regional dataset loads; Primaria shows BOCM-specific contenidos, other etapas inherit the state saberes.
+6. Change back to **Canarias** — verify it still loads correctly.
 
 ### Empty state
 
