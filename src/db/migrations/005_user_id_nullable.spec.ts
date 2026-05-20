@@ -202,33 +202,57 @@ describe('005_user_id_nullable migration', () => {
         });
     });
 
+    // Verifies the dialect branch by capturing dispatched SQL through a
+    // getExecutor wrapper. The previous approach relied on SQLite rejecting
+    // non-SQLite syntax with a parse error, which broke on Bun 1.3.14 when
+    // SQLite 3.53 added native support for `ALTER COLUMN ... DROP/SET NOT NULL`.
+    // See issue #1794.
+    function spyOnExecutedSql(): { executed: string[]; restore: () => void } {
+        const executed: string[] = [];
+        const originalGetExecutor = db.getExecutor.bind(db);
+        (db as { getExecutor: typeof db.getExecutor }).getExecutor = () => {
+            const executor = originalGetExecutor();
+            const originalExecuteQuery = executor.executeQuery.bind(executor);
+            (executor as { executeQuery: typeof executor.executeQuery }).executeQuery = async (
+                compiled: Parameters<typeof executor.executeQuery>[0],
+                queryId?: Parameters<typeof executor.executeQuery>[1],
+            ) => {
+                executed.push(compiled.sql);
+                return originalExecuteQuery(compiled, queryId as never);
+            };
+            return executor;
+        };
+        return {
+            executed,
+            restore: () => {
+                (db as { getExecutor: typeof db.getExecutor }).getExecutor = originalGetExecutor;
+            },
+        };
+    }
+
     describe('MySQL dialect', () => {
         beforeEach(() => {
             configure({ getDialect: () => 'mysql' });
         });
 
-        it('should attempt to run MySQL ALTER TABLE syntax for up()', async () => {
-            // SQLite will fail to parse MySQL syntax, but we verify the code path is taken
-            let errorThrown = false;
+        it('should dispatch MySQL MODIFY COLUMN syntax for up()', async () => {
+            const spy = spyOnExecutedSql();
             try {
-                await up(db);
-            } catch (err: any) {
-                // Expected: SQLite doesn't understand MySQL MODIFY COLUMN syntax
-                errorThrown = true;
-                expect(err.message).toMatch(/MODIFY|syntax/i);
+                await up(db).catch(() => {}); // engine may reject MySQL syntax — branch verification only
+            } finally {
+                spy.restore();
             }
-            expect(errorThrown).toBe(true);
+            expect(spy.executed.some(s => /ALTER TABLE users MODIFY COLUMN user_id .* NULL/i.test(s))).toBe(true);
         });
 
-        it('should attempt to run MySQL ALTER TABLE syntax for down()', async () => {
-            let errorThrown = false;
+        it('should dispatch MySQL MODIFY COLUMN syntax for down()', async () => {
+            const spy = spyOnExecutedSql();
             try {
-                await down(db);
-            } catch (err: any) {
-                errorThrown = true;
-                expect(err.message).toMatch(/MODIFY|syntax/i);
+                await down(db).catch(() => {});
+            } finally {
+                spy.restore();
             }
-            expect(errorThrown).toBe(true);
+            expect(spy.executed.some(s => /ALTER TABLE users MODIFY COLUMN user_id .* NOT NULL/i.test(s))).toBe(true);
         });
     });
 
@@ -237,28 +261,24 @@ describe('005_user_id_nullable migration', () => {
             configure({ getDialect: () => 'postgres' });
         });
 
-        it('should attempt to run PostgreSQL ALTER TABLE syntax for up()', async () => {
-            // SQLite will fail to parse PostgreSQL syntax, but we verify the code path is taken
-            let errorThrown = false;
+        it('should dispatch PostgreSQL ALTER COLUMN ... DROP NOT NULL for up()', async () => {
+            const spy = spyOnExecutedSql();
             try {
-                await up(db);
-            } catch (err: any) {
-                // Expected: SQLite doesn't understand PostgreSQL DROP NOT NULL syntax
-                errorThrown = true;
-                expect(err.message).toMatch(/DROP|NOT NULL|syntax/i);
+                await up(db).catch(() => {}); // SQLite ≤3.51 rejects, SQLite ≥3.53 accepts — both are fine
+            } finally {
+                spy.restore();
             }
-            expect(errorThrown).toBe(true);
+            expect(spy.executed.some(s => /ALTER TABLE users ALTER COLUMN user_id DROP NOT NULL/i.test(s))).toBe(true);
         });
 
-        it('should attempt to run PostgreSQL ALTER TABLE syntax for down()', async () => {
-            let errorThrown = false;
+        it('should dispatch PostgreSQL ALTER COLUMN ... SET NOT NULL for down()', async () => {
+            const spy = spyOnExecutedSql();
             try {
-                await down(db);
-            } catch (err: any) {
-                errorThrown = true;
-                expect(err.message).toMatch(/SET|NOT NULL|syntax/i);
+                await down(db).catch(() => {});
+            } finally {
+                spy.restore();
             }
-            expect(errorThrown).toBe(true);
+            expect(spy.executed.some(s => /ALTER TABLE users ALTER COLUMN user_id SET NOT NULL/i.test(s))).toBe(true);
         });
     });
 

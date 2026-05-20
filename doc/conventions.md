@@ -486,6 +486,82 @@ This transformation ensures that:
 
 ---
 
+## Legacy .elp (v2.x) Import – Identifier Regeneration on Open
+
+### Background
+
+Legacy `.elp` files store page, block, and iDevice identifiers as small sequential strings (e.g. `page-4`, `idevice-2`) baked in at the time the file was last saved by eXeLearning 2.x. These identifiers were stable inside the original Python implementation but are **not unique** across files and would collide if two legacy `.elp` files were merged into the same Y.Doc.
+
+Modern `.elpx` files carry a stable project identity (`odeId`) and ODE-style page/block/iDevice IDs (`YYYYMMDDHHmmss + 6 chars`). See [elpx-format/ids.md](elpx-format/ids.md).
+
+### Transformation Rule
+
+When a legacy `.elp` is opened or imported, the importer **regenerates every identifier**:
+
+1. A new project `odeId` and `odeVersionId` are minted (legacy `.elp` has no equivalent).
+2. Every `<odePageId>`, `<odeBlockId>`, and `<odeIdeviceId>` is replaced with a freshly generated unique ID.
+3. Parent-child page relationships and internal `exe-node:<id>` links are remapped to the new IDs (`remapInternalPageLinks()` in `ElpxImporter.ts`).
+
+This is unconditional: it happens on every open of a legacy `.elp`, including repeated opens of the same file in different sessions.
+
+### User-Visible Consequence
+
+The same `.elp` opened twice produces **two different sets of identifiers**. In particular:
+
+- Open `lesson.elp` → export to SCORM without saving → SCORM manifest contains IDs `A`.
+- Reopen the same `lesson.elp` → export to SCORM again without saving → SCORM manifest contains IDs `B ≠ A`.
+
+For the typical authoring flow this is harmless: the user saves the project once as `.elpx`, and from that point on the identifiers are stable across opens (modern `.elpx` round-trips preserve `odeId`/`odeVersionId` and the importer remap only fires once at the legacy → modern migration boundary).
+
+However, workflows that **use a legacy `.elp` as a source of truth and re-export from it repeatedly** (without ever saving as `.elpx`) will see SCORM/HTML5/EPUB output whose internal identifiers drift between exports. LMS systems that key tracking on these identifiers may treat each re-export as a brand-new package.
+
+### Recommended Workflow
+
+To get stable identifiers across re-exports from a legacy `.elp`:
+
+1. Open the `.elp` once.
+2. **Save as `.elpx`** — this commits the freshly generated `odeId` and `odeVersionId` to the modern format.
+3. From then on, open and re-export the `.elpx`. Identifiers are preserved across the round-trip.
+
+### When This Applies
+
+Identifier regeneration applies **only** when:
+
+- Opening or importing **legacy `.elp` files** (v2.x / `contentv3.xml`, Python pickle-based format).
+- Opening or importing **modern `.elpx` files** into a Y.Doc that already contains content (collision avoidance — same mechanism).
+
+It does **not** apply to:
+
+- Reopening a modern `.elpx` into an empty workspace — `odeId` and `odeVersionId` are restored from `<odeResources>`, so output is byte-stable across saves (see `OdeXmlGenerator.ts:44–45`).
+
+### Implementation Details
+
+- **Generator:** `generateOdeId()` in `src/shared/export/OdeXmlGenerator.ts`
+- **Importer remap:** `buildFlatPageList()`, `convertLegacyPagesToPageData()`, `generateId()`, and `remapInternalPageLinks()` in `src/services/import/ElpxImporter.ts`
+- **Reference docs:** [elpx-format/ids.md](elpx-format/ids.md), [elpx-format/import-pipeline.md](elpx-format/import-pipeline.md)
+
+### Rationale
+
+Legacy `.elp` identifiers are not globally unique and cannot be reused safely. Regeneration on every open guarantees that:
+
+1. **Two different `.elp` files** can be merged into one Y.Doc without identifier collisions.
+2. **Repeated imports** of the same `.elp` into one Y.Doc do not silently overwrite existing pages.
+3. **Internal links** (`exe-node:<id>`) remain valid because the remap walks every component's HTML and JSON properties.
+
+The cost — non-deterministic IDs across reopens of the same `.elp` — is acceptable because the legacy format is a one-way migration source, not a long-term storage format. Users who need stable IDs are expected to save once as `.elpx`.
+
+### Important Notes
+
+- This behavior is **intentional and by design** – it is not a bug.
+- It is the reason why opening the same legacy `.elp` twice yields different SCORM manifests.
+- Do not change this behavior without updating:
+  - The code comments at `ElpxImporter.ts:653` and around `OdeXmlGenerator.ts:44`
+  - This documentation
+  - [elpx-format/ids.md](elpx-format/ids.md)
+  - The test suite
+
+---
+
 ## Adding New Conventions
 
 When adding new conventions to this document:

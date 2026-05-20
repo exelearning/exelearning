@@ -1189,6 +1189,58 @@ describe('YjsProjectManagerMixin', () => {
       expect(result.components).toBe(1);
     });
 
+    it('generates canonical page, block and iDevice IDs when converted structure has none (#1782)', async () => {
+      const nowSpy = spyOn(Date, 'now').mockReturnValue(1700000000000);
+      window.Y = { Map: global.MockYMap, Array: global.MockYArray };
+      const mockNavigation = new global.MockYArray();
+      mockBridge.getAssetManager = mock(() => null);
+      mockBridge.getDocumentManager = mock(() => ({
+        getNavigation: () => mockNavigation,
+      }));
+
+      await projectManager.enableYjsMode(123, 'token');
+
+      const structure = {
+        pages: [
+          {
+            title: 'Generated IDs',
+            blocks: [
+              {
+                name: 'Generated block',
+                idevices: [
+                  {
+                    type: 'FreeTextIdevice',
+                    htmlView: '<p>Generated component</p>',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      await projectManager.importConvertedStructure(structure, []);
+
+      const page = mockNavigation.get(0);
+      const pageId = page.get('id');
+      const block = page.get('blocks').get(0);
+      const blockId = block.get('id');
+      const component = block.get('components').get(0);
+      const componentId = component.get('id');
+
+      // Canonical Format A: <prefix>-<base36 timestamp>-<9 base36 random chars>
+      expect(pageId).toMatch(/^page-[a-z0-9]{8,}-[a-z0-9]{9}$/);
+      expect(pageId.startsWith(`page-${(1700000000000).toString(36)}-`)).toBe(true);
+      expect(page.get('pageId')).toBe(pageId);
+      expect(blockId).toMatch(/^block-[a-z0-9]{8,}-[a-z0-9]{9}$/);
+      expect(blockId.startsWith(`block-${(1700000000000).toString(36)}-`)).toBe(true);
+      expect(block.get('blockId')).toBe(blockId);
+      expect(componentId).toMatch(/^idevice-[a-z0-9]{8,}-[a-z0-9]{9}$/);
+      expect(componentId.startsWith(`idevice-${(1700000000000).toString(36)}-`)).toBe(true);
+      expect(component.get('ideviceId')).toBe(componentId);
+      nowSpy.mockRestore();
+    });
+
     it('handles empty structure', async () => {
       const mockNavigation = new global.window.Y.Array();
       mockBridge.getAssetManager = mock(() => null);

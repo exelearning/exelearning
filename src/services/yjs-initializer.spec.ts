@@ -28,6 +28,22 @@ describe('yjs-initializer', () => {
             expect(typeof metadata.get('modifiedAt')).toBe('number');
         });
 
+        it('does NOT mint odeIdentifier/odeVersionId at creation time (#1786)', () => {
+            // Stable identifiers are populated at import time (v4 <odeResources>
+            // or legacy mint in setLegacyMetadata). Minting on create would
+            // get overwritten by the first import and create CRDT history
+            // that the binary-integrity e2e check rejects. Brand-new projects
+            // rely on BaseExporter.getManifestIdentifier fallback for SCORM.
+            const data = createBlankYjsDocument();
+            const ydoc = new Y.Doc();
+            Y.applyUpdate(ydoc, data);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('odeIdentifier')).toBeUndefined();
+            expect(metadata.get('odeVersionId')).toBeUndefined();
+            ydoc.destroy();
+        });
+
         it('creates document with custom title', () => {
             const data = createBlankYjsDocument({ title: 'My Custom Project' });
 

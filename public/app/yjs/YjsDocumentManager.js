@@ -656,6 +656,12 @@ class YjsDocumentManager {
       metadata.set('createdAt', Date.now());
       metadata.set('modifiedAt', Date.now());
 
+      // Stable identifiers (odeIdentifier / odeVersionId) are NOT minted on
+      // create -- the first import (v4 <odeResources> or legacy mint at
+      // import time) writes them. Minting here would create CRDT history
+      // that gets superseded by the import and inflate the persisted state.
+      // See #1786.
+
       // Create root page
       const rootPageId = this.generateId();
       const rootPage = new Y.Map();
