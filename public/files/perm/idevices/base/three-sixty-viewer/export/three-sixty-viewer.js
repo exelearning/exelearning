@@ -136,6 +136,7 @@ var $threesixtyviewer = {
         src: '',
         alt: '',
         description: '',
+        projection: 'equirectangular',
         initialView: { yaw: 0, pitch: 0, fov: 75 },
         hotspots: [],
     }),
@@ -159,6 +160,7 @@ var $threesixtyviewer = {
             src: typeof src.src === 'string' ? src.src : '',
             alt: typeof src.alt === 'string' ? src.alt : '',
             description: typeof src.description === 'string' ? src.description : '',
+            projection: src.projection === 'flat' ? 'flat' : 'equirectangular',
             initialView: this._normalizeInitialView(src.initialView),
             hotspots: hotspots,
         };
@@ -175,6 +177,8 @@ var $threesixtyviewer = {
             icon: typeof src.icon === 'string' ? src.icon : 'circle',
             yaw: this.clamp(this.toNumber(src.yaw, 0), -180, 180),
             pitch: this.clamp(this.toNumber(src.pitch, 0), -90, 90),
+            x: this.clamp(this.toNumber(src.x, 50), 0, 100),
+            y: this.clamp(this.toNumber(src.y, 50), 0, 100),
             action: { type: type, payload: this._normalizeHotspotPayload(type, payload) },
         };
     },
@@ -266,6 +270,22 @@ var $threesixtyviewer = {
         if (v < min) return min;
         if (v > max) return max;
         return v;
+    },
+
+    /**
+     * Rectangle a `object-fit: contain` image occupies inside a box (letterbox
+     * aware). Falls back to the full box when natural dimensions are unknown.
+     * Mirrors edition/three-sixty-viewer.js so editor and runtime agree on the
+     * flat-image hotspot coordinate basis.
+     */
+    containedImageRect: (naturalW, naturalH, boxW, boxH) => {
+        if (!naturalW || !naturalH || !boxW || !boxH) {
+            return { left: 0, top: 0, width: boxW || 0, height: boxH || 0 };
+        }
+        var scale = Math.min(boxW / naturalW, boxH / naturalH);
+        var w = naturalW * scale;
+        var h = naturalH * scale;
+        return { left: (boxW - w) / 2, top: (boxH - h) / 2, width: w, height: h };
     },
 
     escapeAttr: s =>
@@ -454,6 +474,15 @@ var $threesixtyviewer = {
         var mesh = new THREE.Mesh(geometry, material);
         threeScene.add(mesh);
 
+        // Flat-scene layer: a plain <img> shown undistorted (object-fit: contain)
+        // for scenes whose projection is 'flat'. Hidden while a 360° scene is active.
+        var flatImg = document.createElement('img');
+        flatImg.className = 'three-sixty-viewer-flat-image';
+        flatImg.setAttribute('draggable', 'false');
+        flatImg.style.display = 'none';
+        flatImg.alt = (startScene && startScene.alt) || '';
+        wrapper.appendChild(flatImg);
+
         // Hotspot overlay container, positioned absolutely on top of the canvas.
         var overlay = document.createElement('div');
         overlay.className = 'three-sixty-viewer-overlay';
@@ -477,6 +506,8 @@ var $threesixtyviewer = {
             wrapper: wrapper,
             node: wrapper.parentNode || wrapper,
             overlay: overlay,
+            flatImg: flatImg,
+            currentMode: 'equirectangular',
             scene: threeScene,
             camera: camera,
             renderer: renderer,
@@ -501,10 +532,8 @@ var $threesixtyviewer = {
             self._goToScene(instance, sceneId);
         })(this);
 
-        // Wire camera to the start scene's initial view
-        this._applyInitialView(instance, startScene);
-        // Load texture for start scene + render its hotspots
-        this._loadSceneTexture(instance, startScene);
+        // Apply the start scene's mode (flat <img> or 360° sphere), then hotspots.
+        this._applySceneMode(instance, startScene);
         this._renderHotspots(instance, startScene);
         instance.currentSceneId = startScene.id;
 
@@ -512,8 +541,11 @@ var $threesixtyviewer = {
         var self = this;
         function tick() {
             if (instance.stopped) return;
-            if (controls && typeof controls.update === 'function') controls.update();
-            renderer.render(threeScene, camera);
+            // Flat scenes use a DOM <img>, so the WebGL canvas stays idle.
+            if (instance.currentMode !== 'flat') {
+                if (controls && typeof controls.update === 'function') controls.update();
+                renderer.render(threeScene, camera);
+            }
             self._positionHotspots(instance);
             instance.rafId =
                 typeof window !== 'undefined' && window.requestAnimationFrame
@@ -749,11 +781,36 @@ var $threesixtyviewer = {
         if (!scene) return;
         if (instance.currentSceneId === sceneId) return;
         instance.currentSceneId = scene.id;
-        this._applyInitialView(instance, scene);
-        this._loadSceneTexture(instance, scene);
+        this._applySceneMode(instance, scene);
         this._renderHotspots(instance, scene);
         // Update wrapper aria-label to reflect the new scene
-        instance.wrapper.setAttribute('aria-label', scene.alt || '360° panorama');
+        instance.wrapper.setAttribute('aria-label', scene.alt || (scene.projection === 'flat' ? 'image' : '360° panorama'));
+    },
+
+    /**
+     * Switch the viewer between a flat (DOM <img>) and a 360° (WebGL sphere)
+     * scene. Tours can mix both, so this runs on the start scene and on every
+     * navigation. Sets instance.currentMode to drive render/positioning.
+     */
+    _applySceneMode: function (instance, scene) {
+        var isFlat = scene.projection === 'flat';
+        instance.currentMode = isFlat ? 'flat' : 'equirectangular';
+        var canvas = instance.renderer && instance.renderer.domElement;
+        if (isFlat) {
+            if (canvas) canvas.style.display = 'none';
+            if (instance.controls) instance.controls.enabled = false;
+            if (instance.flatImg) {
+                instance.flatImg.src = this.resolveSrc(scene.src);
+                instance.flatImg.alt = scene.alt || '';
+                instance.flatImg.style.display = '';
+            }
+        } else {
+            if (instance.flatImg) instance.flatImg.style.display = 'none';
+            if (canvas) canvas.style.display = '';
+            if (instance.controls) instance.controls.enabled = true;
+            this._applyInitialView(instance, scene);
+            this._loadSceneTexture(instance, scene);
+        }
     },
 
     _renderHotspots: function (instance, scene) {
@@ -823,8 +880,9 @@ var $threesixtyviewer = {
      * Project each hotspot's 3D direction into 2D screen coordinates.
      * Hotspots behind the camera (NDC z > 1) are hidden.
      */
-    _positionHotspots: instance => {
+    _positionHotspots: function (instance) {
         if (!instance.hotspotButtons.length) return;
+        if (instance.currentMode === 'flat') return this._positionHotspotsFlat(instance);
         var camera = instance.camera;
         var rect = instance.wrapper.getBoundingClientRect();
         var w = rect.width;
@@ -856,6 +914,29 @@ var $threesixtyviewer = {
             }
             var x = ((v.x + 1) / 2) * w;
             var y = (1 - (v.y + 1) / 2) * h;
+            btn.style.display = '';
+            btn.style.left = x + 'px';
+            btn.style.top = y + 'px';
+        }
+    },
+
+    /**
+     * Position hotspots on a flat scene at their x/y percent within the displayed
+     * (contain-fitted) image rectangle.
+     */
+    _positionHotspotsFlat: function (instance) {
+        var rect = instance.wrapper.getBoundingClientRect();
+        var boxW = rect.width;
+        var boxH = rect.height;
+        if (boxW < 1 || boxH < 1) return;
+        var img = instance.flatImg;
+        var ir = this.containedImageRect(img && img.naturalWidth, img && img.naturalHeight, boxW, boxH);
+        for (var i = 0; i < instance.hotspotButtons.length; i++) {
+            var entry = instance.hotspotButtons[i];
+            var hs = entry.hotspot;
+            var btn = entry.button;
+            var x = ir.left + (this.clamp(this.toNumber(hs.x, 50), 0, 100) / 100) * ir.width;
+            var y = ir.top + (this.clamp(this.toNumber(hs.y, 50), 0, 100) / 100) * ir.height;
             btn.style.display = '';
             btn.style.left = x + 'px';
             btn.style.top = y + 'px';

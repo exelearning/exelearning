@@ -225,6 +225,93 @@ test.describe('Three Sixty Viewer iDevice', () => {
         ).toBeVisible();
     });
 
+    test.describe('Flat (non-360) scenes', () => {
+        test('toggling off the panorama checkbox switches a scene to flat mode', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Three Sixty Flat Toggle');
+            await gotoWorkarea(page, projectUuid);
+
+            await addThreeSixtyIdeviceFromPanel(page);
+
+            // The panorama checkbox is present and checked by default; the
+            // Initial view (yaw/pitch/fov) controls are visible for 360° scenes.
+            const panoramaToggle = page.locator('#threeSixtyIsPanorama');
+            await expect(panoramaToggle).toBeVisible();
+            await expect(panoramaToggle).toBeChecked();
+            await expect(page.locator('#threeSixtyYaw')).toBeVisible();
+
+            // Unchecking it switches the scene to a flat photo: the initial-view
+            // fields disappear (they make no sense for a non-rotating image).
+            await panoramaToggle.uncheck();
+            await panoramaToggle.dispatchEvent('change');
+            await page.waitForTimeout(300);
+
+            await expect(page.locator('#threeSixtyIsPanorama')).not.toBeChecked();
+            await expect(page.locator('#threeSixtyYaw')).toHaveCount(0);
+
+            // Hotspots on a flat scene are positioned by X/Y percent, not yaw/pitch.
+            await page.locator('#threeSixtyAddHotspot').click();
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-x').first()).toBeVisible({ timeout: 5000 });
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-y').first()).toBeVisible();
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-yaw')).toHaveCount(0);
+        });
+
+        test('flat projection persists through save + reload', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+            const projectUuid = await createProject(page, 'Three Sixty Flat Persist');
+            await gotoWorkarea(page, projectUuid);
+
+            await addThreeSixtyIdeviceFromPanel(page);
+
+            const panoramaToggle = page.locator('#threeSixtyIsPanorama');
+            await panoramaToggle.uncheck();
+            await panoramaToggle.dispatchEvent('change');
+            await page.waitForTimeout(300);
+
+            await saveIdeviceInPage(page);
+            await workarea.save();
+            await page.waitForTimeout(500);
+
+            await reloadPage(page);
+
+            const pageNode = page
+                .locator('.nav-element-text')
+                .filter({ hasText: /New page|Nueva página/i })
+                .first();
+            if ((await pageNode.count()) > 0) {
+                await pageNode.click({ force: true, timeout: 5000 });
+                await page.waitForTimeout(500);
+            }
+
+            await page
+                .waitForFunction(
+                    () => !!document.querySelector('#node-content .idevice_node.three-sixty-viewer'),
+                    undefined,
+                    { timeout: 15000 },
+                )
+                .catch(() => {});
+
+            const editBtn = page.locator('#node-content .idevice_node.three-sixty-viewer .btn-edit-idevice').first();
+            if (await editBtn.isVisible().catch(() => false)) {
+                await editBtn.click();
+            } else {
+                await page
+                    .locator('#node-content .idevice_node.three-sixty-viewer .idevice_body')
+                    .first()
+                    .dblclick({ timeout: 5000 })
+                    .catch(() => {});
+            }
+
+            await page.locator('#threeSixtyIsPanorama').waitFor({ state: 'visible', timeout: 10000 });
+            await expect(page.locator('#threeSixtyIsPanorama')).not.toBeChecked();
+            await expect(page.locator('#threeSixtyYaw')).toHaveCount(0);
+        });
+    });
+
     test.describe('Link hotspot', () => {
         test('link action type shows URL and new-tab checkbox', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;

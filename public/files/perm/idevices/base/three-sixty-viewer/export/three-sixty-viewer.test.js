@@ -1070,4 +1070,120 @@ describe('three-sixty-viewer iDevice (export)', () => {
             expect($t._instances.length).toBe(0);
         });
     });
+
+    describe('flat (non-360) scenes', () => {
+        beforeEach(() => {
+            $t.hasWebGL = () => true;
+        });
+
+        it('normalizes scene projection and hotspot x/y', () => {
+            const state = $t.normalize({
+                version: 2,
+                scenes: [{ id: 'a', src: 'asset://a.jpg', projection: 'flat', hotspots: [{ id: 'h', x: 200, y: -3 }] }],
+            });
+            expect(state.scenes[0].projection).toBe('flat');
+            expect(state.scenes[0].hotspots[0].x).toBe(100);
+            expect(state.scenes[0].hotspots[0].y).toBe(0);
+        });
+
+        it('defaults projection to equirectangular and hotspot x/y to 50', () => {
+            const state = $t.normalize({ version: 2, scenes: [{ id: 'a', src: 'asset://a.jpg', hotspots: [{ id: 'h' }] }] });
+            expect(state.scenes[0].projection).toBe('equirectangular');
+            expect(state.scenes[0].hotspots[0].x).toBe(50);
+            expect(state.scenes[0].hotspots[0].y).toBe(50);
+        });
+
+        it('containedImageRect letterboxes and falls back to the full box', () => {
+            expect($t.containedImageRect(0, 0, 200, 100)).toEqual({ left: 0, top: 0, width: 200, height: 100 });
+            const r = $t.containedImageRect(200, 100, 100, 100);
+            expect(r.width).toBe(100);
+            expect(r.height).toBe(50);
+            expect(r.top).toBe(25);
+        });
+
+        it('renders a flat <img>, hides the canvas, and disables controls for a flat start scene', () => {
+            const node = document.createElement('div');
+            document.body.appendChild(node);
+            const state = $t.normalize({
+                version: 2,
+                startSceneId: 'a',
+                scenes: [{ id: 'a', src: 'asset://flat.jpg', projection: 'flat', alt: 'a flat photo' }],
+            });
+            $t.renderOne(node, state, '', false);
+            const inst = $t._instances[0];
+            expect(inst.currentMode).toBe('flat');
+            expect(inst.flatImg.style.display).not.toBe('none');
+            expect(inst.flatImg.alt).toBe('a flat photo');
+            expect(inst.renderer.domElement.style.display).toBe('none');
+            expect(inst.controls.enabled).toBe(false);
+        });
+
+        it('skips WebGL rendering while a flat scene is active', () => {
+            const node = document.createElement('div');
+            document.body.appendChild(node);
+            const state = $t.normalize({
+                version: 2,
+                scenes: [{ id: 'a', src: 'asset://flat.jpg', projection: 'flat' }],
+            });
+            $t.renderOne(node, state, '', false);
+            const inst = $t._instances[0];
+            const before = inst.renderer.render.mock.calls.length;
+            $t._positionHotspots(inst); // safe no-op without hotspots
+            expect(inst.renderer.render.mock.calls.length).toBe(before);
+        });
+
+        it('positions flat hotspots by x/y percent of the wrapper box', () => {
+            const node = document.createElement('div');
+            document.body.appendChild(node);
+            const state = $t.normalize({
+                version: 2,
+                scenes: [
+                    {
+                        id: 'a',
+                        src: 'asset://flat.jpg',
+                        projection: 'flat',
+                        hotspots: [{ id: 'h', label: 'spot', x: 25, y: 75 }],
+                    },
+                ],
+            });
+            $t.renderOne(node, state, '', false);
+            const inst = $t._instances[0];
+            // naturalWidth is 0 in jsdom → contained rect falls back to the full box.
+            inst.wrapper.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 200 });
+            $t._positionHotspotsFlat(inst);
+            const btn = inst.hotspotButtons[0].button;
+            expect(btn.style.left).toBe('100px'); // 25% of 400
+            expect(btn.style.top).toBe('150px'); // 75% of 200
+        });
+
+        it('navigates flat → 360 → flat, switching renderer and image visibility each time', () => {
+            const node = document.createElement('div');
+            document.body.appendChild(node);
+            const state = $t.normalize({
+                version: 2,
+                startSceneId: 'flatA',
+                scenes: [
+                    { id: 'flatA', src: 'asset://a.jpg', projection: 'flat' },
+                    { id: 'pano', src: 'asset://b.jpg' },
+                    { id: 'flatC', src: 'asset://c.jpg', projection: 'flat' },
+                ],
+            });
+            $t.renderOne(node, state, '', false);
+            const inst = $t._instances[0];
+            expect(inst.currentMode).toBe('flat');
+            expect(inst.renderer.domElement.style.display).toBe('none');
+
+            inst.goToScene('pano');
+            expect(inst.currentMode).toBe('equirectangular');
+            expect(inst.flatImg.style.display).toBe('none');
+            expect(inst.renderer.domElement.style.display).toBe('');
+            expect(inst.controls.enabled).toBe(true);
+
+            inst.goToScene('flatC');
+            expect(inst.currentMode).toBe('flat');
+            expect(inst.flatImg.style.display).toBe('');
+            expect(inst.renderer.domElement.style.display).toBe('none');
+            expect(inst.controls.enabled).toBe(false);
+        });
+    });
 });

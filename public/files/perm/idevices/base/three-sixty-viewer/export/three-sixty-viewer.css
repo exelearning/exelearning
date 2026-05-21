@@ -42,6 +42,20 @@
     cursor: grabbing;
 }
 
+/* Flat (non-360) scene image, shown undistorted with letterboxing. */
+.three-sixty-viewer-flat-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background-color: #111;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+}
+
 .three-sixty-viewer-wrapper:focus-within,
 .three-sixty-viewer-wrapper canvas:focus {
     box-shadow: 0 0 0 3px rgba(64, 160, 220, 0.6);

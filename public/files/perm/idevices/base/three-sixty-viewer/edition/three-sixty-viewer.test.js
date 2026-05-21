@@ -825,4 +825,242 @@ describe('three-sixty-viewer iDevice (edition)', () => {
             expect($exeDevice._preview).toBeNull();
         });
     });
+
+    describe('flat (non-360) scenes', () => {
+        it('defaults scene projection to equirectangular', () => {
+            const n = $exeDevice.normalizeData(null);
+            expect(n.scenes[0].projection).toBe('equirectangular');
+        });
+
+        it('keeps a flat projection through normalize and rejects unknown values', () => {
+            expect($exeDevice.normalizeScene({ projection: 'flat' }).projection).toBe('flat');
+            expect($exeDevice.normalizeScene({ projection: 'bogus' }).projection).toBe('equirectangular');
+            expect($exeDevice.normalizeScene({}).projection).toBe('equirectangular');
+        });
+
+        it('migrated v1 data defaults to equirectangular projection', () => {
+            const n = $exeDevice.normalizeData({ src: 'old.jpg', initialView: { yaw: 10 } });
+            expect(n.scenes[0].projection).toBe('equirectangular');
+        });
+
+        it('normalizes and clamps hotspot x/y, defaulting to 50', () => {
+            expect($exeDevice.normalizeHotspot({}).x).toBe(50);
+            expect($exeDevice.normalizeHotspot({}).y).toBe(50);
+            expect($exeDevice.normalizeHotspot({ x: 200, y: -5 }).x).toBe(100);
+            expect($exeDevice.normalizeHotspot({ x: 200, y: -5 }).y).toBe(0);
+            expect($exeDevice.normalizeHotspot({ x: '30' }).x).toBe(30);
+        });
+
+        it('addHotspotFlat clamps x/y and pushes onto the active scene', () => {
+            $exeDevice.init(container, {}, '');
+            $exeDevice.updatePreviewSoon = function () {};
+            const h = $exeDevice.addHotspotFlat(150, -10);
+            expect(h.x).toBe(100);
+            expect(h.y).toBe(0);
+            expect($exeDevice.getActiveScene().hotspots).toContain(h);
+        });
+
+        it('round-trips projection and hotspot x/y through save()', () => {
+            $exeDevice.init(container, {}, '');
+            $exeDevice.updatePreviewSoon = function () {};
+            const scene = $exeDevice.getActiveScene();
+            scene.projection = 'flat';
+            scene.src = 'asset://flat.jpg';
+            $exeDevice.addHotspotFlat(25, 75);
+            const saved = $exeDevice.save();
+            expect(saved.scenes[0].projection).toBe('flat');
+            expect(saved.scenes[0].hotspots[0].x).toBe(25);
+            expect(saved.scenes[0].hotspots[0].y).toBe(75);
+        });
+
+        describe('createForm with a flat scene', () => {
+            beforeEach(() => {
+                $exeDevice.init(container, {}, '');
+                $exeDevice.updatePreviewSoon = function () {};
+                $exeDevice.getActiveScene().projection = 'flat';
+                $exeDevice.createForm();
+                $exeDevice.addFormBehaviour();
+            });
+
+            it('checks the panorama toggle off and hides the Initial view fields', () => {
+                expect(container.querySelector('#threeSixtyIsPanorama').checked).toBe(false);
+                expect(container.querySelector('#threeSixtyYaw')).toBeNull();
+                expect(container.querySelector('#threeSixtyPitch')).toBeNull();
+                expect(container.querySelector('#threeSixtyFov')).toBeNull();
+            });
+
+            it('renders X/Y inputs instead of yaw/pitch in the hotspot list', () => {
+                $exeDevice.addHotspotFlat(40, 60);
+                $exeDevice.renderHotspotList();
+                expect(container.querySelector('#threeSixtyHotspotList .hotspot-x')).not.toBeNull();
+                expect(container.querySelector('#threeSixtyHotspotList .hotspot-y')).not.toBeNull();
+                expect(container.querySelector('#threeSixtyHotspotList .hotspot-yaw')).toBeNull();
+            });
+
+            it('editing the X input updates the hotspot x', () => {
+                $exeDevice.addHotspotFlat(40, 60);
+                $exeDevice.renderHotspotList();
+                const xInput = container.querySelector('#threeSixtyHotspotList .hotspot-x');
+                xInput.value = '90';
+                xInput.dispatchEvent(new Event('input', { bubbles: true }));
+                expect($exeDevice.getActiveScene().hotspots[0].x).toBe(90);
+            });
+
+            it('add-hotspot button places a flat hotspot at the centre', () => {
+                container.querySelector('#threeSixtyAddHotspot').dispatchEvent(new Event('click'));
+                const hs = $exeDevice.getActiveScene().hotspots;
+                expect(hs.length).toBe(1);
+                expect(hs[0].x).toBe(50);
+                expect(hs[0].y).toBe(50);
+            });
+        });
+
+        it('toggling the panorama checkbox off switches the scene to flat', () => {
+            $exeDevice.init(container, {}, '');
+            $exeDevice.updatePreviewSoon = function () {};
+            const cb = container.querySelector('#threeSixtyIsPanorama');
+            expect(cb.checked).toBe(true);
+            cb.checked = false;
+            cb.dispatchEvent(new Event('change'));
+            expect($exeDevice.getActiveScene().projection).toBe('flat');
+            // Form rebuilt: the new checkbox reflects flat state.
+            expect(container.querySelector('#threeSixtyIsPanorama').checked).toBe(false);
+        });
+
+        describe('containedImageRect', () => {
+            it('falls back to the full box when natural dimensions are missing', () => {
+                expect($exeDevice.containedImageRect(0, 0, 200, 100)).toEqual({
+                    left: 0,
+                    top: 0,
+                    width: 200,
+                    height: 100,
+                });
+            });
+
+            it('letterboxes a wide image inside a square box', () => {
+                const r = $exeDevice.containedImageRect(200, 100, 100, 100);
+                expect(r.width).toBe(100);
+                expect(r.height).toBe(50);
+                expect(r.top).toBe(25);
+                expect(r.left).toBe(0);
+            });
+
+            it('pillarboxes a tall image inside a wide box', () => {
+                const r = $exeDevice.containedImageRect(100, 200, 200, 100);
+                expect(r.width).toBe(50);
+                expect(r.height).toBe(100);
+                expect(r.left).toBe(75);
+                expect(r.top).toBe(0);
+            });
+        });
+
+        describe('_clickToXY', () => {
+            it('converts a click to x/y percent within the image rect', () => {
+                const overlay = document.createElement('div');
+                overlay.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 100 });
+                const img = { naturalWidth: 200, naturalHeight: 100 };
+                const preview = { overlay, img };
+                // Centre of a full-box image → 50/50
+                expect($exeDevice._clickToXY(preview, 100, 50)).toEqual({ x: 50, y: 50 });
+                // Top-left corner → clamped to 0/0
+                expect($exeDevice._clickToXY(preview, 0, 0)).toEqual({ x: 0, y: 0 });
+            });
+
+            it('returns null when the overlay has no size', () => {
+                const overlay = document.createElement('div');
+                overlay.getBoundingClientRect = () => ({ left: 0, top: 0, width: 0, height: 0 });
+                expect($exeDevice._clickToXY({ overlay, img: {} }, 10, 10)).toBeNull();
+            });
+        });
+
+        describe('createFlatPreview', () => {
+            it('renders an <img> and overlay without three.js', () => {
+                $exeDevice.init(container, {}, '');
+                $exeDevice.updatePreviewSoon = function () {};
+                const scene = $exeDevice.getActiveScene();
+                scene.projection = 'flat';
+                scene.src = 'asset://flat.jpg';
+                const stage = container.querySelector('#threeSixtyPreview');
+                const preview = $exeDevice.createFlatPreview(stage);
+                expect(preview.mode).toBe('flat');
+                expect(stage.querySelector('img.three-sixty-preview-flat')).not.toBeNull();
+                expect(stage.querySelector('.three-sixty-viewer-overlay--editor')).not.toBeNull();
+                preview.stop();
+                $exeDevice._preview = preview;
+                $exeDevice.destroyPreview();
+                expect(stage.querySelector('img.three-sixty-preview-flat')).toBeNull();
+            });
+        });
+
+        describe('flat preview rendering and interaction', () => {
+            let scene;
+            beforeEach(() => {
+                $exeDevice.init(container, {}, '');
+                scene = $exeDevice.getActiveScene();
+                scene.projection = 'flat';
+                scene.src = 'asset://flat.jpg';
+                // Give the stage a stable size so positioning math is deterministic.
+                const stage = container.querySelector('#threeSixtyPreview');
+                stage.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 200 });
+            });
+
+            it('renderPreview builds a flat preview without three.js', () => {
+                $exeDevice.renderPreview();
+                expect($exeDevice._preview).not.toBeNull();
+                expect($exeDevice._preview.mode).toBe('flat');
+                expect(container.querySelector('#threeSixtyPreview img.three-sixty-preview-flat')).not.toBeNull();
+            });
+
+            it('positions flat hotspots by x/y percent of the displayed image', () => {
+                $exeDevice.addHotspotFlat(25, 75);
+                $exeDevice.renderPreview();
+                const p = $exeDevice._preview;
+                p.overlay.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 200 });
+                $exeDevice._positionEditorHotspots();
+                const btn = p.hotspotButtons[0].button;
+                expect(btn.style.left).toBe('100px'); // 25% of 400
+                expect(btn.style.top).toBe('150px'); // 75% of 200
+            });
+
+            it('dragging a flat hotspot updates its x/y from the pointer position', () => {
+                $exeDevice.addHotspotFlat(10, 10);
+                $exeDevice.renderPreview();
+                const p = $exeDevice._preview;
+                p.overlay.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 200 });
+                const btn = p.hotspotButtons[0].button;
+
+                const down = new Event('pointerdown');
+                down.clientX = 0;
+                down.clientY = 0;
+                btn.dispatchEvent(down);
+
+                const move = new Event('pointermove');
+                move.clientX = 200;
+                move.clientY = 100;
+                window.dispatchEvent(move);
+
+                expect($exeDevice.getActiveScene().hotspots[0].x).toBe(50);
+                expect($exeDevice.getActiveScene().hotspots[0].y).toBe(50);
+
+                window.dispatchEvent(new Event('pointerup'));
+            });
+
+            it('placement click on the flat preview adds a hotspot at the clicked point', () => {
+                $exeDevice.renderPreview();
+                const p = $exeDevice._preview;
+                p.overlay.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 200 });
+                $exeDevice._placingHotspot = true;
+                const img = p.img;
+                const click = new Event('click');
+                click.clientX = 100; // 25%
+                click.clientY = 150; // 75%
+                img.dispatchEvent(click);
+                const hs = $exeDevice.getActiveScene().hotspots;
+                expect(hs.length).toBe(1);
+                expect(hs[0].x).toBe(25);
+                expect(hs[0].y).toBe(75);
+                expect($exeDevice._placingHotspot).toBe(false);
+            });
+        });
+    });
 });

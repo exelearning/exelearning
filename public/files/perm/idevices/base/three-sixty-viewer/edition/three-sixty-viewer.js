@@ -31,6 +31,9 @@ var $exeDevice = {
         src: '',
         alt: '',
         description: '',
+        // 'equirectangular' = 360° panorama (default); 'flat' = regular photo,
+        // shown undistorted (no spherical wrap) with x/y-positioned hotspots.
+        projection: 'equirectangular',
         initialView: { yaw: 0, pitch: 0, fov: 75 },
         hotspots: [],
     }),
@@ -39,11 +42,16 @@ var $exeDevice = {
         id: id || 'hs-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1e6).toString(36),
         label: '',
         icon: 'circle',
+        // yaw/pitch are used on equirectangular scenes; x/y (percent of the
+        // displayed image) are used on flat scenes.
         yaw: 0,
         pitch: 0,
+        x: 50,
+        y: 50,
         action: { type: 'text', payload: { html: '' } },
     }),
 
+    PROJECTION_VALUES: ['equirectangular', 'flat'],
     HOTSPOT_ACTION_TYPES: ['goToScene', 'text', 'image', 'video', 'link'],
     RENDER_QUALITY_VALUES: ['low', 'medium', 'high'],
     LABEL_POSITION_VALUES: ['right', 'left', 'top', 'bottom'],
@@ -151,6 +159,7 @@ var $exeDevice = {
             src: typeof src.src === 'string' ? src.src : '',
             alt: typeof src.alt === 'string' ? src.alt : '',
             description: typeof src.description === 'string' ? src.description : '',
+            projection: src.projection === 'flat' ? 'flat' : 'equirectangular',
             initialView: this.normalizeInitialView(src.initialView),
             hotspots: hotspots,
         };
@@ -167,6 +176,8 @@ var $exeDevice = {
             icon: typeof src.icon === 'string' ? src.icon : 'circle',
             yaw: this.clamp(this.toNumber(src.yaw, 0), -180, 180),
             pitch: this.clamp(this.toNumber(src.pitch, 0), -90, 90),
+            x: this.clamp(this.toNumber(src.x, 50), 0, 100),
+            y: this.clamp(this.toNumber(src.y, 50), 0, 100),
             action: { type: type, payload: this.normalizeHotspotPayload(type, payload) },
         };
     },
@@ -262,6 +273,23 @@ var $exeDevice = {
         if (v < min) return min;
         if (v > max) return max;
         return v;
+    },
+
+    /**
+     * Compute the rectangle a `object-fit: contain` image occupies inside a box,
+     * accounting for letterboxing. Falls back to the full box when the natural
+     * dimensions are unavailable (e.g. image not yet decoded, or jsdom tests).
+     * Shared by editor placement and runtime hotspot positioning so the two
+     * agree on the flat-image coordinate basis.
+     */
+    containedImageRect: (naturalW, naturalH, boxW, boxH) => {
+        if (!naturalW || !naturalH || !boxW || !boxH) {
+            return { left: 0, top: 0, width: boxW || 0, height: boxH || 0 };
+        }
+        var scale = Math.min(boxW / naturalW, boxH / naturalH);
+        var w = naturalW * scale;
+        var h = naturalH * scale;
+        return { left: (boxW - w) / 2, top: (boxH - h) / 2, width: w, height: h };
     },
 
     /**
@@ -367,6 +395,20 @@ var $exeDevice = {
         return h;
     },
 
+    /**
+     * Add a hotspot to a flat scene, positioned by x/y percent of the displayed
+     * image (0–100). Used when the active scene's projection is 'flat'.
+     */
+    addHotspotFlat: function (x, y) {
+        var scene = this.getActiveScene();
+        var h = this.defaultHotspot();
+        h.label = _('Hotspot') + ' ' + (scene.hotspots.length + 1);
+        h.x = this.clamp(this.toNumber(x, 50), 0, 100);
+        h.y = this.clamp(this.toNumber(y, 50), 0, 100);
+        scene.hotspots.push(h);
+        return h;
+    },
+
     removeHotspot: function (hotspotIndex) {
         var scene = this.getActiveScene();
         if (!scene.hotspots[hotspotIndex]) return null;
@@ -397,9 +439,26 @@ var $exeDevice = {
     createForm: function () {
         var scene = this.getActiveScene();
         var b = this.state.behaviour;
+        var isFlat = scene.projection === 'flat';
+        // The "Initial view" controls (yaw/pitch/fov) only make sense on a 360°
+        // panorama; a flat photo is shown undistorted with no camera to aim.
+        var initialViewFieldset = isFlat
+            ? ''
+            : `
+                    <fieldset class="exe-fieldset">
+                        <legend>${_('Initial view')}</legend>
+                        <div class="property-row">
+                            <label for="threeSixtyYaw">${_('Yaw')} (-180…180):</label>
+                            <input type="number" id="threeSixtyYaw" class="form-control" min="-180" max="180" step="1" value="${scene.initialView.yaw}" />
+                            <label for="threeSixtyPitch">${_('Pitch')} (-90…90):</label>
+                            <input type="number" id="threeSixtyPitch" class="form-control" min="-90" max="90" step="1" value="${scene.initialView.pitch}" />
+                            <label for="threeSixtyFov">${_('Field of view')} (30…120):</label>
+                            <input type="number" id="threeSixtyFov" class="form-control" min="30" max="120" step="1" value="${scene.initialView.fov}" />
+                        </div>
+                    </fieldset>`;
         var html = `
             <div class="three-sixty-viewer-form">
-                <p class="exe-block-info">${_('Provide one or more equirectangular 360° images (2:1 aspect). The viewer uses WebGL.')}</p>
+                <p class="exe-block-info">${_('Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.')}</p>
 
                 <fieldset class="exe-fieldset three-sixty-scenes">
                     <legend>${_('Scenes')}</legend>
@@ -425,6 +484,13 @@ var $exeDevice = {
                         <input type="file" id="threeSixtyImageFile" accept="image/*" style="display:none" />
                     </div>
                     <div class="property-row">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="threeSixtyIsPanorama" ${isFlat ? '' : 'checked'} />
+                            ${_('360° panorama image')}
+                        </label>
+                        <span class="small text-muted">${_('Uncheck for a regular flat photo (no 360° effect).')}</span>
+                    </div>
+                    <div class="property-row">
                         <label for="threeSixtyAlt" class="form-label">${_('Alternative text')}:</label>
                         <input type="text" id="threeSixtyAlt" class="form-control" value="${this.escapeAttr(scene.alt)}" />
                     </div>
@@ -432,21 +498,11 @@ var $exeDevice = {
                         <label for="threeSixtySceneDescription" class="form-label">${_('Description')}:</label>
                         <textarea id="threeSixtySceneDescription" class="form-control" rows="2">${this.escapeHtml(scene.description)}</textarea>
                     </div>
-                    <fieldset class="exe-fieldset">
-                        <legend>${_('Initial view')}</legend>
-                        <div class="property-row">
-                            <label for="threeSixtyYaw">${_('Yaw')} (-180…180):</label>
-                            <input type="number" id="threeSixtyYaw" class="form-control" min="-180" max="180" step="1" value="${scene.initialView.yaw}" />
-                            <label for="threeSixtyPitch">${_('Pitch')} (-90…90):</label>
-                            <input type="number" id="threeSixtyPitch" class="form-control" min="-90" max="90" step="1" value="${scene.initialView.pitch}" />
-                            <label for="threeSixtyFov">${_('Field of view')} (30…120):</label>
-                            <input type="number" id="threeSixtyFov" class="form-control" min="30" max="120" step="1" value="${scene.initialView.fov}" />
-                        </div>
-                    </fieldset>
+                    ${initialViewFieldset}
 
                     <fieldset class="exe-fieldset three-sixty-hotspots">
                         <legend>${_('Hotspots')}</legend>
-                        <p class="exe-block-info small">${_('Click on the panorama to place a hotspot, or drag an existing hotspot to move it.')}</p>
+                        <p class="exe-block-info small">${isFlat ? _('Click on the image to place a hotspot, or drag an existing hotspot to move it.') : _('Click on the panorama to place a hotspot, or drag an existing hotspot to move it.')}</p>
                         <div id="threeSixtyHotspotList" class="three-sixty-hotspot-list" role="list"></div>
                         <div class="property-row">
                             <button type="button" id="threeSixtyPlaceHotspot" class="btn btn-primary">${_('Place hotspot by clicking')}</button>
@@ -561,6 +617,7 @@ var $exeDevice = {
         if (!list) return;
 
         var scene = this.getActiveScene();
+        var isFlat = scene.projection === 'flat';
         list.innerHTML = '';
         if (!scene.hotspots.length) {
             var empty = document.createElement('p');
@@ -600,20 +657,35 @@ var $exeDevice = {
                 '">✕</button>' +
                 '</div>' +
                 '<div class="property-row">' +
-                '<label>' +
-                _('Yaw') +
-                ': <input type="number" class="form-control hotspot-yaw" data-index="' +
-                idx +
-                '" min="-180" max="180" step="1" value="' +
-                h.yaw +
-                '" /></label>' +
-                '<label>' +
-                _('Pitch') +
-                ': <input type="number" class="form-control hotspot-pitch" data-index="' +
-                idx +
-                '" min="-90" max="90" step="1" value="' +
-                h.pitch +
-                '" /></label>' +
+                (isFlat
+                    ? '<label>' +
+                      _('X') +
+                      ' (%): <input type="number" class="form-control hotspot-x" data-index="' +
+                      idx +
+                      '" min="0" max="100" step="1" value="' +
+                      h.x +
+                      '" /></label>' +
+                      '<label>' +
+                      _('Y') +
+                      ' (%): <input type="number" class="form-control hotspot-y" data-index="' +
+                      idx +
+                      '" min="0" max="100" step="1" value="' +
+                      h.y +
+                      '" /></label>'
+                    : '<label>' +
+                      _('Yaw') +
+                      ': <input type="number" class="form-control hotspot-yaw" data-index="' +
+                      idx +
+                      '" min="-180" max="180" step="1" value="' +
+                      h.yaw +
+                      '" /></label>' +
+                      '<label>' +
+                      _('Pitch') +
+                      ': <input type="number" class="form-control hotspot-pitch" data-index="' +
+                      idx +
+                      '" min="-90" max="90" step="1" value="' +
+                      h.pitch +
+                      '" /></label>') +
                 '<label>' +
                 _('Action') +
                 ': <select class="form-control hotspot-action-type" data-index="' +
@@ -797,6 +869,19 @@ var $exeDevice = {
             this.getActiveScene().description = String(ev.target.value || '');
         });
 
+        var panoramaToggle = body.querySelector('#threeSixtyIsPanorama');
+        if (panoramaToggle) {
+            panoramaToggle.addEventListener('change', ev => {
+                this.getActiveScene().projection = ev.target.checked ? 'equirectangular' : 'flat';
+                // Mode change swaps the renderer (WebGL sphere ↔ flat <img>) and
+                // the per-scene fields, so rebuild the form and preview wholesale.
+                this.destroyPreview();
+                this.createForm();
+                this.addFormBehaviour();
+                this.updatePreviewSoon();
+            });
+        }
+
         var numericFields = [
             ['#threeSixtyYaw', 'initialView.yaw', -180, 180],
             ['#threeSixtyPitch', 'initialView.pitch', -90, 90],
@@ -869,8 +954,12 @@ var $exeDevice = {
         });
 
         body.querySelector('#threeSixtyAddHotspot').addEventListener('click', () => {
-            var pose = this.getCurrentCameraYawPitch();
-            this.addHotspot(pose.yaw, pose.pitch);
+            if (this.getActiveScene().projection === 'flat') {
+                this.addHotspotFlat(50, 50);
+            } else {
+                var pose = this.getCurrentCameraYawPitch();
+                this.addHotspot(pose.yaw, pose.pitch);
+            }
             this.renderHotspotList();
             this.updatePreviewSoon();
         });
@@ -888,6 +977,8 @@ var $exeDevice = {
             if (t.classList.contains('hotspot-label')) h.label = String(t.value || '');
             else if (t.classList.contains('hotspot-yaw')) h.yaw = this.clamp(this.toNumber(t.value, 0), -180, 180);
             else if (t.classList.contains('hotspot-pitch')) h.pitch = this.clamp(this.toNumber(t.value, 0), -90, 90);
+            else if (t.classList.contains('hotspot-x')) h.x = this.clamp(this.toNumber(t.value, 50), 0, 100);
+            else if (t.classList.contains('hotspot-y')) h.y = this.clamp(this.toNumber(t.value, 50), 0, 100);
             else if (t.classList.contains('hotspot-payload-sceneId')) h.action.payload.sceneId = String(t.value || '');
             else if (t.classList.contains('hotspot-payload-html')) h.action.payload.html = String(t.value || '');
             else if (t.classList.contains('hotspot-payload-src')) h.action.payload.src = String(t.value || '');
@@ -1093,6 +1184,21 @@ var $exeDevice = {
             return;
         }
 
+        // Flat scenes are rendered with a plain <img> — no WebGL/three.js needed.
+        if (scene.projection === 'flat') {
+            if (
+                !this._preview ||
+                this._preview.mode !== 'flat' ||
+                this._preview.currentSrc !== scene.src
+            ) {
+                this.destroyPreview();
+                this._preview = this.createFlatPreview(stage);
+            }
+            this.applyPreviewState();
+            if (message) message.style.display = 'none';
+            return;
+        }
+
         if (typeof THREE === 'undefined') {
             this.ensureThreeLoaded(
                 function () {
@@ -1110,7 +1216,7 @@ var $exeDevice = {
 
         if (!this._preview) {
             this._preview = this.createPreview(stage);
-        } else if (this._preview.currentSrc !== scene.src) {
+        } else if (this._preview.mode === 'flat' || this._preview.currentSrc !== scene.src) {
             this.destroyPreview();
             this._preview = this.createPreview(stage);
         }
@@ -1281,6 +1387,7 @@ var $exeDevice = {
         tick();
 
         var preview = {
+            mode: 'equirectangular',
             scene: threeScene,
             camera: camera,
             renderer: renderer,
@@ -1302,6 +1409,86 @@ var $exeDevice = {
         }
 
         return preview;
+    },
+
+    /**
+     * Live preview for a flat (non-360) scene: a plain <img> shown undistorted
+     * (object-fit: contain) with an overlay of x/y-positioned hotspots. No
+     * three.js/WebGL is involved, so this works even when THREE never loads.
+     */
+    createFlatPreview: function (stage) {
+        var scene = this.getActiveScene();
+        while (stage.firstChild) stage.removeChild(stage.firstChild);
+
+        var img = document.createElement('img');
+        img.className = 'three-sixty-preview-flat';
+        img.alt = scene.alt || '';
+        img.setAttribute('draggable', 'false');
+        img.src = scene.src;
+        stage.appendChild(img);
+
+        var overlay = document.createElement('div');
+        overlay.className = 'three-sixty-viewer-overlay three-sixty-viewer-overlay--editor';
+        stage.appendChild(overlay);
+
+        var self = this;
+        // Click on the image to place a hotspot when placement-mode is active.
+        var onClick = ev => {
+            if (!self._placingHotspot) return;
+            var coords = self._clickToXY(self._preview, ev.clientX, ev.clientY);
+            if (!coords) return;
+            self.addHotspotFlat(coords.x, coords.y);
+            self._placingHotspot = false;
+            self.refreshPlacementMode();
+            self.renderHotspotList();
+            self._renderEditorHotspots();
+        };
+        overlay.addEventListener('click', onClick);
+        img.addEventListener('click', onClick);
+
+        var stopped = false;
+        function tick() {
+            if (stopped) return;
+            self._positionEditorHotspots();
+            self._rafId =
+                typeof window !== 'undefined' && window.requestAnimationFrame
+                    ? window.requestAnimationFrame(tick)
+                    : setTimeout(tick, 16);
+        }
+        tick();
+
+        return {
+            mode: 'flat',
+            img: img,
+            stage: stage,
+            overlay: overlay,
+            currentSrc: scene.src,
+            hotspotButtons: [],
+            stop: () => {
+                stopped = true;
+            },
+        };
+    },
+
+    /**
+     * Convert a click on the flat preview into x/y percent (0–100) within the
+     * displayed (contain-fitted) image rectangle.
+     */
+    _clickToXY: function (preview, clientX, clientY) {
+        if (!preview || !preview.overlay) return null;
+        var rect = preview.overlay.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return null;
+        var img = preview.img;
+        var ir = this.containedImageRect(
+            img && img.naturalWidth,
+            img && img.naturalHeight,
+            rect.width,
+            rect.height,
+        );
+        if (ir.width <= 0 || ir.height <= 0) return null;
+        var px = ((clientX - rect.left - ir.left) / ir.width) * 100;
+        var py = ((clientY - rect.top - ir.top) / ir.height) * 100;
+        return { x: this.clamp(px, 0, 100), y: this.clamp(py, 0, 100) };
     },
 
     /**
@@ -1340,7 +1527,9 @@ var $exeDevice = {
 
     _positionEditorHotspots: function () {
         var p = this._preview;
-        if (!p || !p.hotspotButtons || !p.hotspotButtons.length || typeof THREE === 'undefined' || !THREE.Vector3) return;
+        if (!p || !p.hotspotButtons || !p.hotspotButtons.length) return;
+        if (p.mode === 'flat') return this._positionEditorHotspotsFlat(p);
+        if (typeof THREE === 'undefined' || !THREE.Vector3) return;
         var camera = p.camera;
         var rect = p.overlay.getBoundingClientRect();
         var w = rect.width;
@@ -1372,6 +1561,29 @@ var $exeDevice = {
     },
 
     /**
+     * Position flat-scene hotspots at their x/y percent within the displayed
+     * (contain-fitted) image rectangle.
+     */
+    _positionEditorHotspotsFlat: function (p) {
+        var rect = p.overlay.getBoundingClientRect();
+        var boxW = rect.width;
+        var boxH = rect.height;
+        if (boxW < 1 || boxH < 1) return;
+        var img = p.img;
+        var ir = this.containedImageRect(img && img.naturalWidth, img && img.naturalHeight, boxW, boxH);
+        for (var i = 0; i < p.hotspotButtons.length; i++) {
+            var entry = p.hotspotButtons[i];
+            var hs = entry.hotspot;
+            var btn = entry.button;
+            var x = ir.left + (this.clamp(this.toNumber(hs.x, 50), 0, 100) / 100) * ir.width;
+            var y = ir.top + (this.clamp(this.toNumber(hs.y, 50), 0, 100) / 100) * ir.height;
+            btn.style.display = '';
+            btn.style.left = x + 'px';
+            btn.style.top = y + 'px';
+        }
+    },
+
+    /**
      * Pointerdown on a hotspot starts a drag. Move = recompute yaw/pitch from
      * the cursor position; up = finalize, restore OrbitControls, refresh form.
      */
@@ -1380,11 +1592,19 @@ var $exeDevice = {
         var dragging = false;
         var pointerId = null;
         var preview = this._preview;
+        var isFlat = preview && preview.mode === 'flat';
         var canvas = preview && preview.renderer ? preview.renderer.domElement : null;
-        if (!canvas) return;
+        if (!isFlat && !canvas) return;
 
         function onPointerMove(ev) {
             if (!dragging) return;
+            if (isFlat) {
+                var coords = self._clickToXY(preview, ev.clientX, ev.clientY);
+                if (!coords) return;
+                hotspot.x = coords.x;
+                hotspot.y = coords.y;
+                return;
+            }
             var pose = self._clickToYawPitch(preview.camera, canvas, ev.clientX, ev.clientY);
             if (!pose) return;
             hotspot.yaw = pose.yaw;
@@ -1573,6 +1793,8 @@ var $exeDevice = {
         if (p.overlay && (!p.hotspotButtons || p.hotspotButtons.length !== this.getActiveScene().hotspots.length)) {
             this._renderEditorHotspots();
         }
+        // Flat preview has no camera/controls; the <img> is static.
+        if (p.mode === 'flat') return;
         var scene = this.getActiveScene();
         var iv = scene.initialView;
         p.camera.fov = iv.fov;
@@ -1638,6 +1860,16 @@ var $exeDevice = {
         if (p.renderer && p.renderer.domElement && p.renderer.domElement.parentNode) {
             p.renderer.domElement.parentNode.removeChild(p.renderer.domElement);
         }
+        // Flat preview cleanup: remove the <img> and overlay we appended.
+        [p.img, p.overlay].forEach(el => {
+            if (el && el.parentNode) {
+                try {
+                    el.parentNode.removeChild(el);
+                } catch (_) {
+                    /* ignore */
+                }
+            }
+        });
         this._preview = null;
     },
 };
