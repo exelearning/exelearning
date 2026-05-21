@@ -187,8 +187,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
-                updateComponent(ydoc, {
-                    componentId: params.componentId,
+                updateComponent(ydoc, params.componentId, {
                     htmlContent: body.htmlContent,
                     htmlView: body.htmlView,
                     properties: body.properties,
