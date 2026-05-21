@@ -2,6 +2,11 @@
 const Logger = window.AppLogger || console;
 
 import ImportProgress from '../../../interface/importProgress.js';
+import {
+    supportsFileSystemAccess,
+    openProjectFolderInBrowser,
+    saveProjectFolderInBrowser,
+} from '../../../../core/ProjectFolderStorage.js';
 
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
@@ -18,15 +23,6 @@ export default class NavbarFile {
             '#navbar-button-settings'
         );
         this.shareButton = this.menu.navbar.querySelector('#navbar-button-share');
-        /*
-        Temporally disabled:
-        this.uploadGoogleDriveButton = this.menu.navbar.querySelector(
-            '#navbar-button-uploadtodrive',
-        );
-        this.uploadDropboxButton = this.menu.navbar.querySelector(
-            '#navbar-button-uploadtodropbox',
-        );
-        */
         this.uploadPlatformButton = this.menu.navbar.querySelector(
             '#navbar-button-uploadtoplatform'
         );
@@ -44,6 +40,17 @@ export default class NavbarFile {
         );
         this.recentProjectsButton = this.menu.navbar.querySelector(
             '#navbar-button-dropdown-recent-projects'
+        );
+        // Advanced (Alt-revealed) folder-project entries — only present in the
+        // offline navbar markup, so these may be null in online mode.
+        this.openFolderOfflineButton = this.menu.navbar.querySelector(
+            '#navbar-button-open-folder-offline'
+        );
+        this.saveFolderOfflineButton = this.menu.navbar.querySelector(
+            '#navbar-button-save-folder-offline'
+        );
+        this.folderProjectActionItems = Array.from(
+            this.menu.navbar.querySelectorAll('.exe-folder-project-action')
         );
         this.downloadProjectButton = this.menu.navbar.querySelector(
             '#navbar-button-download-project'
@@ -119,11 +126,6 @@ export default class NavbarFile {
         this.setSaveProjectEvent();
         this.setSettingsEvent();
         this.setShareEvent();
-        /*
-        Temporally disabled:
-        this.setUploadGoogleDriveEvent();
-        this.setUploadDropboxEvent();
-        */
         this.setUploadPlatformEvent();
         this.setOpenUserOdeFilesEvent();
         this.setOpenOfflineEvent();
@@ -150,9 +152,223 @@ export default class NavbarFile {
         this.setImportXmlPropertiesEvent();
         this.setImportElpEvent();
         this.setLeftPanelsTogglerEvents();
+        this.setFolderProjectActionsEvents();
 
         // Check for available templates and show button if any exist
         this.checkAndShowNewFromTemplateButton();
+    }
+
+    /**
+     * Wire the advanced "Open from folder" / "Save to folder" entries.
+     *
+     * These entries are hidden by default. They reveal themselves when
+     * the user holds Alt while the File menu is open, or unconditionally
+     * when the EXE_ENABLE_FOLDER_PROJECTS feature flag is set on the
+     * runtime config (`window.eXeLearning.config.enableFolderProjects`).
+     */
+    setFolderProjectActionsEvents() {
+        if (!this.folderProjectActionItems || this.folderProjectActionItems.length === 0) {
+            return;
+        }
+
+        const flagEnabled = Boolean(
+            window.eXeLearning?.config?.enableFolderProjects
+        );
+        const hasNativeBridge = Boolean(
+            window.electronAPI && typeof window.electronAPI.openProjectFolder === 'function'
+        );
+        const hasBrowserBridge = supportsFileSystemAccess();
+        if (!hasNativeBridge && !hasBrowserBridge && !flagEnabled) {
+            // Neither runtime can fulfil the action — leave entries hidden.
+            return;
+        }
+
+        const setVisible = (visible) => {
+            for (const item of this.folderProjectActionItems) {
+                item.classList.toggle('d-none', !visible);
+            }
+        };
+
+        if (flagEnabled) {
+            setVisible(true);
+        } else {
+            // Reveal while Alt is held. Detect by key name only — `event.altKey`
+            // is not reliably true on the keydown of Alt itself in some Linux
+            // builds of Chromium/Firefox, which left the entries permanently
+            // hidden on that platform.
+            const onKey = (event) => {
+                if (event.key === 'Alt') {
+                    setVisible(event.type === 'keydown');
+                }
+            };
+            document.addEventListener('keydown', onKey);
+            document.addEventListener('keyup', onKey);
+            // Hide again when the File dropdown closes. We previously hid on
+            // window blur, but on Linux a bare Alt tap can briefly transfer
+            // focus to the WM/menu mnemonics and fire blur, which immediately
+            // re-hid the entries we had just revealed.
+            if (this.button) {
+                this.button.addEventListener('hide.bs.dropdown', () => setVisible(false));
+            }
+        }
+
+        if (this.openFolderOfflineButton) {
+            this.openFolderOfflineButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.openProjectFromFolderEvent();
+            });
+        }
+        if (this.saveFolderOfflineButton) {
+            this.saveFolderOfflineButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.saveProjectToFolderEvent();
+            });
+        }
+    }
+
+    /**
+     * Open an unpacked project folder. In Electron we ask the main
+     * process to walk the folder; in static-browser we use the File
+     * System Access API. Either way we end up with a synthetic File
+     * that flows through the existing largeFilesUpload entry point.
+     */
+    async openProjectFromFolderEvent() {
+        try {
+            if (window.electronAPI?.openProjectFolder) {
+                const result = await window.electronAPI.openProjectFolder();
+                if (!result || !result.ok) {
+                    if (result?.canceled) return;
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Error opening'),
+                        body:
+                            result?.error === 'not-a-project-folder'
+                                ? _('The selected folder is not a valid eXeLearning project.')
+                                : (result?.error || _('Unknown error.')),
+                        contentId: 'error',
+                    });
+                    return;
+                }
+                const binStr = atob(result.base64);
+                const bytes = new Uint8Array(binStr.length);
+                for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+                const blob = new Blob([bytes], { type: 'application/zip' });
+                const file = new File([blob], result.suggestedName || 'project.elpx', {
+                    type: 'application/zip',
+                    lastModified: Date.now(),
+                });
+                await eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
+                return;
+            }
+
+            if (supportsFileSystemAccess()) {
+                const { file } = await openProjectFolderInBrowser();
+                await eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
+                return;
+            }
+
+            eXeLearning.app.modals.alert.show({
+                title: _('Not supported'),
+                body: _('Opening a project from a folder is not available in this browser.'),
+                contentId: 'error',
+            });
+        } catch (error) {
+            // Treat AbortError (user cancelled the picker) as silent.
+            if (error && error.name === 'AbortError') return;
+            console.error('[NavbarFile] Open from folder failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Error opening'),
+                body: error?.message || _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+    }
+
+    /**
+     * Save the current project as an unpacked folder. We reuse
+     * SharedExporters.quickExport('ELPX') to build the project zip and
+     * then ask the runtime (Electron or browser) to unpack it into the
+     * user-chosen directory. The .elpx flow is left untouched.
+     */
+    async saveProjectToFolderEvent() {
+        const SharedExporters = window.SharedExporters;
+        const yjsBridge = eXeLearning.app.project?._yjsBridge;
+        if (!SharedExporters?.quickExport || !yjsBridge?.documentManager) {
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: _('Folder save requires the Yjs export pipeline.'),
+                contentId: 'error',
+            });
+            return;
+        }
+
+        const toast = eXeLearning.app.toasts.createToast({
+            title: _('Save'),
+            body: _('Generating folder project...'),
+            icon: 'downloading',
+        });
+
+        try {
+            const result = await SharedExporters.quickExport(
+                'ELPX',
+                yjsBridge.documentManager,
+                yjsBridge.assetCache || null,
+                yjsBridge.resourceFetcher || null,
+                {},
+                yjsBridge.assetManager || null
+            );
+            if (!result?.success || !result?.data) {
+                throw new Error(result?.error || 'Export failed');
+            }
+
+            const uint8Array = new Uint8Array(result.data);
+            const suggestedDirName =
+                (result.filename || 'project.elpx').replace(/\.(elpx|zip)$/i, '');
+
+            if (window.electronAPI?.saveProjectFolder) {
+                let binary = '';
+                for (let i = 0; i < uint8Array.length; i++) {
+                    binary += String.fromCharCode(uint8Array[i]);
+                }
+                const base64 = btoa(binary);
+                const saved = await window.electronAPI.saveProjectFolder(base64, suggestedDirName);
+                if (!saved?.ok) {
+                    if (saved?.canceled) {
+                        toast.remove();
+                        return;
+                    }
+                    throw new Error(saved?.error || 'Folder save failed');
+                }
+            } else if (supportsFileSystemAccess()) {
+                await saveProjectFolderInBrowser(uint8Array);
+            } else {
+                throw new Error(
+                    _('Saving to a folder is not available in this browser.')
+                );
+            }
+
+            toast.toastBody.innerHTML = _('Folder saved.');
+            const docManager = yjsBridge.documentManager;
+            if (docManager?.markClean) docManager.markClean();
+        } catch (error) {
+            if (error && error.name === 'AbortError') {
+                toast.remove();
+                return;
+            }
+            console.error('[NavbarFile] Save to folder failed:', error);
+            toast.toastBody.innerHTML = _(
+                'An error occurred while saving the file.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: error?.message || _('Unknown error.'),
+                contentId: 'error',
+            });
+        } finally {
+            setTimeout(() => toast.remove(), 1000);
+        }
     }
 
     /**************************************************************************************
@@ -432,36 +648,6 @@ export default class NavbarFile {
             this.openShareModalEvent();
         });
     }
-
-    /**
-     * Upload ELP to Google Drive
-     * File -> Upload to -> Google Drive
-     *
-     */
-    /*
-    Temporally disabled:
-    setUploadGoogleDriveEvent() {
-        this.uploadGoogleDriveButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.uploadToGoogleDriveEvent();
-        });
-    }
-    */
-
-    /**
-     * Upload ELP to Google Drive
-     * File -> Upload to -> Google Drive
-     *
-     */
-    /*
-    Temporally disabled:
-    setUploadDropboxEvent() {
-        this.uploadDropboxButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.uploadToDropboxEvent();
-        });
-    }
-    */
 
     /**
      * Upload ELP to platform
@@ -1399,126 +1585,6 @@ export default class NavbarFile {
     }
 
     /**
-     * It connects with the google api to show a modal with the google drive directories
-     *  where the project can be uploaded
-     *
-     */
-    uploadToGoogleDriveEvent() {
-        // Get Google Drive folders
-        this.getFoldersGoogleDrive().then((response) => {
-            if (!response.error) {
-                // Show eXe Google Drive modal
-                eXeLearning.app.modals.uploadtodrive.show(response.files);
-            } else {
-                if (eXeLearning.app.actions.authorizeAddActions) {
-                    // Open window Google Drive login in popup
-                    this.openWindowLoginGoogleDrive();
-                } else {
-                    // Open eXe alert modal
-                    eXeLearning.app.modals.alert.show({
-                        title: _('Google Drive error'),
-                        body: response.error,
-                        contentId: 'error',
-                    });
-                }
-            }
-        });
-    }
-
-    /**
-     * uploadToGoogleDriveEvent
-     * Get the directories that the user has in google drive
-     *
-     * @returns
-     */
-    async getFoldersGoogleDrive() {
-        let foldersInfo = await eXeLearning.app.api.getFoldersGoogleDrive();
-        if (foldersInfo) {
-            if (foldersInfo.folders && foldersInfo.folders.files) {
-                return { error: false, files: foldersInfo.folders };
-            } else {
-                return { error: foldersInfo, files: [] };
-            }
-        } else {
-            return { error: _('Unknown'), files: [] };
-        }
-    }
-
-    /**
-     * uploadToGoogleDriveEvent
-     * Get login url from google drive and open it in a popup
-     *
-     */
-    async openWindowLoginGoogleDrive() {
-        let urlGoogleDrive = await eXeLearning.app.api.getUrlLoginGoogleDrive();
-        let windowLoginGoogleDrive = window.open(
-            urlGoogleDrive.url,
-            'drive',
-            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0'
-        );
-    }
-
-    /**
-     * It connects with the dropbox api to show a modal with the dropbox directories
-     *  where the project can be uploaded
-     *
-     */
-    uploadToDropboxEvent() {
-        // Get Dropbox folders
-        this.getFoldersDropbox().then((response) => {
-            if (!response.error) {
-                // Show eXe Dropbox modal
-                eXeLearning.app.modals.uploadtodropbox.show(response.files);
-            } else {
-                if (eXeLearning.app.actions.authorizeAddActions) {
-                    // Open window Dropbox login in popup
-                    this.openWindowLoginDropbox();
-                } else {
-                    // Open eXe alert modal
-                    eXeLearning.app.modals.alert.show({
-                        title: _('Dropbox error'),
-                        body: response.error,
-                        contentId: 'error',
-                    });
-                }
-            }
-        });
-    }
-
-    /**
-     * uploadToDropboxEvent
-     * Get the directories that the user has in dropbox
-     *
-     * @returns
-     */
-    async getFoldersDropbox() {
-        let foldersInfo = await eXeLearning.app.api.getFoldersDropbox();
-        if (foldersInfo) {
-            if (foldersInfo.folders && foldersInfo.folders.files) {
-                return { error: false, files: foldersInfo.folders };
-            } else {
-                return { error: foldersInfo, files: [] };
-            }
-        } else {
-            return { error: _('Unknown'), files: [] };
-        }
-    }
-
-    /**
-     * uploadToDropboxEvent
-     * Get login url from dropbox and open it in a popup
-     *
-     */
-    async openWindowLoginDropbox() {
-        let urlDropbox = await eXeLearning.app.api.getUrlLoginDropbox();
-        let windowLoginDropbox = window.open(
-            urlDropbox.url,
-            'dropbox',
-            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0'
-        );
-    }
-
-    /**
      * Decode the payload of a JWT without verifying its signature. Verification
      * still happens on the server (it has the secret); we only need a couple of
      * fields up front to decide which export format to generate in the browser.
@@ -1583,8 +1649,16 @@ export default class NavbarFile {
 
         const yjsBridge = eXeLearning.app.project?._yjsBridge;
         const SharedExporters = window.SharedExporters;
+        // We require an asset provider in addition to the document manager and
+        // the exporters bundle. Without one, BrowserAssetProvider falls through
+        // to a null adapter and SharedExporters.quickExport happily produces a
+        // package with no `content/resources/` folder — exactly the
+        // missing-images symptom reported on the cloud build (#1770).
+        const hasAssetProvider = !!(yjsBridge?.assetManager || yjsBridge?.assetCache);
         const canExportClientSide =
-            !!yjsBridge?.documentManager && typeof SharedExporters?.quickExport === 'function';
+            !!yjsBridge?.documentManager &&
+            typeof SharedExporters?.quickExport === 'function' &&
+            hasAssetProvider;
 
         if (canExportClientSide) {
             const handled = await this._uploadPlatformEventClientSide(
@@ -1596,14 +1670,25 @@ export default class NavbarFile {
             if (handled) {
                 return;
             }
+        } else {
+            // Surface the situation in the operator console so the broken
+            // package symptom on `:latest` (#1770) does not look like a silent
+            // success when it really is the legacy server-side path.
+            console.warn(
+                '[NavbarFile] Falling back to legacy server-side platform upload; the resulting package may be missing assets.',
+                {
+                    hasDocumentManager: !!yjsBridge?.documentManager,
+                    hasAssetProvider,
+                    hasSharedExporters: typeof SharedExporters?.quickExport === 'function',
+                },
+            );
         }
 
         // Legacy fallback: server-side generation. Used only when the browser
-        // cannot produce the package itself (e.g., Yjs disabled or shared
-        // exporters bundle missing). When this path is hit and the server's
-        // database does not yet have the latest assets, the generated package
-        // can lack images -- but that is preferable to refusing to publish in
-        // setups that never relied on Yjs.
+        // cannot produce the package itself (e.g., Yjs disabled, shared
+        // exporters bundle missing, or asset providers not yet initialised).
+        // When this path is hit and the server's database does not yet have
+        // the latest assets, the generated package can lack images.
         const response = await eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload({
             projectUuid,
             jwt_token,

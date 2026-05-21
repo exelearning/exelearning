@@ -299,6 +299,49 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('_captureHtmlAsScreenshot html2canvas URL (BASE_PATH)', () => {
+    // Regression: behind a subdirectory reverse proxy a bare-root URL 502s,
+    // so html2canvas must be loaded through composeUrl().
+    const stopOnAppend = (el) => {
+      // Reject the load promise immediately so the method short-circuits to
+      // null after we have captured script.src.
+      if (el && el.onerror) el.onerror(new Error('blocked'));
+    };
+
+    it('loads html2canvas through composeUrl when available', async () => {
+      window.html2canvas = undefined;
+      window.eXeLearning.app.composeUrl = (p) => `/web/exelearning${p}`;
+      let createdScript;
+      global.document.createElement = mock((tag) => {
+        const el = { tagName: tag, onload: null, onerror: null, src: '' };
+        if (tag === 'script') createdScript = el;
+        return el;
+      });
+      global.document.head = { appendChild: mock(stopOnAppend) };
+
+      const result = await bridge._captureHtmlAsScreenshot('<div>x</div>');
+
+      expect(createdScript.src).toBe('/web/exelearning/files/perm/idevices/base/rubric/export/html2canvas.js');
+      expect(result).toBeNull();
+    });
+
+    it('falls back to the bare path when composeUrl is unavailable', async () => {
+      window.html2canvas = undefined;
+      window.eXeLearning.app.composeUrl = undefined;
+      let createdScript;
+      global.document.createElement = mock((tag) => {
+        const el = { tagName: tag, onload: null, onerror: null, src: '' };
+        if (tag === 'script') createdScript = el;
+        return el;
+      });
+      global.document.head = { appendChild: mock(stopOnAppend) };
+
+      await bridge._captureHtmlAsScreenshot('<div>x</div>');
+
+      expect(createdScript.src).toBe('/files/perm/idevices/base/rubric/export/html2canvas.js');
+    });
+  });
+
   describe('initialize', () => {
     it('sets projectId', async () => {
       await bridge.initialize(123, 'test-token');
@@ -1049,7 +1092,7 @@ describe('YjsProjectBridge', () => {
       expect(mockSelectTheme).toHaveBeenCalledWith('test-theme', true);
     });
 
-    it('should fall back to default theme when theme is not installed and package has no theme folder', async () => {
+    it('should delegate fallback to selectTheme (passing the original theme) when theme is not installed and package has no theme folder', async () => {
       const mockSelectTheme = mock(() => Promise.resolve());
 
       global.eXeLearning = {
@@ -1080,8 +1123,39 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('unknown-theme', mockFile);
 
-      // selectTheme should be called with default theme (fallback) and save=true to update Yjs
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+      // selectTheme is called with the ORIGINAL (uninstalled) theme, not config.defaultTheme,
+      // so its fallback chain (user defaultTheme preference -> admin default -> base) can run.
+      // save=true persists the resolved theme to Yjs.
+      expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
+    });
+
+    // Regression for PR #1777: opening an .elpx whose style is not installed must let
+    // selectTheme honor the user's defaultTheme preference (it must NOT short-circuit to
+    // config.defaultTheme, which bypasses the fallback chain).
+    it('should not bypass selectTheme by passing config.defaultTheme when theme is uninstalled', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: { installed: {} }, // No themes installed
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'site-default',
+          userStyles: 1,
+          isOfflineInstallation: false,
+        },
+      };
+
+      global.window.fflate = { unzipSync: mock(() => ({})) };
+      const mockFile = { arrayBuffer: mock(() => Promise.resolve(new ArrayBuffer(10))) };
+
+      await bridge._checkAndImportTheme('removed-theme', mockFile);
+
+      expect(mockSelectTheme).toHaveBeenCalledWith('removed-theme', true);
+      expect(mockSelectTheme).not.toHaveBeenCalledWith('site-default', true);
     });
 
     it('should use cached zip when provided instead of re-unzipping', async () => {
@@ -1123,8 +1197,8 @@ describe('YjsProjectBridge', () => {
       expect(mockUnzipSync).not.toHaveBeenCalled();
       // file.arrayBuffer should NOT be called when cached zip is provided
       expect(mockFile.arrayBuffer).not.toHaveBeenCalled();
-      // selectTheme should be called with default theme (fallback)
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+      // selectTheme should be called with the original (uninstalled) theme so its fallback chain runs
+      expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
     });
 
     it('should skip theme import when theme is marked as non-downloadable', async () => {
@@ -1161,7 +1235,8 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('blocked-theme', mockFile);
 
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+      // Non-downloadable theme: pass the original theme so selectTheme's fallback chain runs
+      expect(mockSelectTheme).toHaveBeenCalledWith('blocked-theme', true);
       expect(mockShowModal).not.toHaveBeenCalled();
     });
 
@@ -1204,8 +1279,9 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('custom-theme', new Blob());
 
-      // Should use default theme immediately without prompting, save=true to update Yjs
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+      // userStyles disabled: no import/prompt, but still pass the original theme so
+      // selectTheme's fallback chain (user default -> admin default -> base) can run.
+      expect(mockSelectTheme).toHaveBeenCalledWith('custom-theme', true);
     });
 
     it('should allow theme import when userStyles is enabled', async () => {
@@ -4704,6 +4780,41 @@ describe('YjsProjectBridge', () => {
       await expect(bridge.exportToElpx()).rejects.toThrow('Export failed');
     });
 
+    it('calls ensureScreenshotForExport before exporter.export so meta.screenshot is populated', async () => {
+      const callOrder = [];
+      const ensureSpy = mock(async () => {
+        callOrder.push('ensureScreenshot');
+      });
+      bridge.ensureScreenshotForExport = ensureSpy;
+
+      const exportSpy = mock(() => {
+        callOrder.push('export');
+        return Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'test.elpx',
+        });
+      });
+      global.window.SharedExporters = {
+        createExporter: mock(() => ({ export: exportSpy })),
+      };
+
+      const mockLink = { href: '', download: '', click: mock(() => {}) };
+      global.URL.createObjectURL = mock(() => 'blob:test');
+      global.URL.revokeObjectURL = mock(() => {});
+      global.document.createElement = mock(() => mockLink);
+      global.document.body = {
+        appendChild: mock(() => {}),
+        removeChild: mock(() => {}),
+      };
+
+      await bridge.exportToElpx();
+
+      expect(ensureSpy).toHaveBeenCalled();
+      expect(exportSpy).toHaveBeenCalled();
+      expect(callOrder).toEqual(['ensureScreenshot', 'export']);
+    });
+
     it('uses electronAPI.saveBuffer() in Electron mode (always prompts)', async () => {
       const mockExporter = {
         export: mock(() => Promise.resolve({
@@ -7176,6 +7287,43 @@ describe('YjsProjectBridge', () => {
       await bridge.generateScreenshotFromFirstPage();
 
       expect(bridge._screenshotGenerating).toBe(false);
+    });
+  });
+
+  describe('ensureScreenshotForExport', () => {
+    it('awaits generateScreenshotFromFirstPage when present', async () => {
+      const generate = mock(async () => {});
+      bridge.generateScreenshotFromFirstPage = generate;
+
+      await bridge.ensureScreenshotForExport();
+
+      expect(generate).toHaveBeenCalled();
+    });
+
+    it('is a no-op when generateScreenshotFromFirstPage is missing', async () => {
+      delete bridge.generateScreenshotFromFirstPage;
+      await expect(bridge.ensureScreenshotForExport()).resolves.toBeUndefined();
+    });
+
+    it('returns within the timeout when generation hangs', async () => {
+      bridge.generateScreenshotFromFirstPage = mock(
+        () => new Promise((r) => setTimeout(r, 60000)),
+      );
+
+      const start = Date.now();
+      await bridge.ensureScreenshotForExport(25);
+      const elapsed = Date.now() - start;
+
+      expect(elapsed).toBeLessThan(2000);
+      expect(elapsed).toBeGreaterThanOrEqual(20);
+    });
+
+    it('swallows generator rejections', async () => {
+      bridge.generateScreenshotFromFirstPage = mock(
+        async () => { throw new Error('render failed'); },
+      );
+
+      await expect(bridge.ensureScreenshotForExport()).resolves.toBeUndefined();
     });
   });
 

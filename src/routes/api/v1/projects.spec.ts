@@ -64,6 +64,9 @@ describe('Projects API v1', () => {
     // Mock Y.Doc for testing
     let mockYDoc: Y.Doc;
 
+    // Captures the UUID passed to ensureDocument (via cache.createEntry)
+    const capturedEnsureDocUuids: string[] = [];
+
     beforeAll(async () => {
         // Save original environment
         originalEnv = {
@@ -94,6 +97,7 @@ describe('Projects API v1', () => {
             db,
             queries: {
                 findProjectByUuid: async (passedDb, uuid) => {
+                    capturedEnsureDocUuids.push(uuid);
                     const project = await passedDb
                         .selectFrom('projects')
                         .where('uuid', '=', uuid)
@@ -223,6 +227,7 @@ describe('Projects API v1', () => {
         // Clean up projects before each test
         await db.deleteFrom('project_collaborators').execute();
         await db.deleteFrom('projects').execute();
+        capturedEnsureDocUuids.length = 0;
     });
 
     // =========================================================================
@@ -345,6 +350,36 @@ describe('Projects API v1', () => {
                 expect(data.success).toBe(true);
                 expect(data.data.title).toBe('New Project');
             }
+        });
+
+        it('should return UUID matching persisted project (regression: uuid mismatch bug)', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/projects', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${userToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title: 'UUID Regression Test' }),
+                }),
+            );
+
+            expect(response.status).toBe(201);
+            const data = (await response.json()) as {
+                success: boolean;
+                data: { id: number; uuid: string; created_at: number; updated_at: number };
+            };
+            expect(data.success).toBe(true);
+
+            const { uuid, id } = data.data;
+
+            // UUID returned in response must exist in DB
+            const project = await db.selectFrom('projects').where('uuid', '=', uuid).selectAll().executeTakeFirst();
+            expect(project).toBeDefined();
+            expect(project!.id).toBe(id);
+
+            // ensureDocument must have been called with the persisted UUID
+            expect(capturedEnsureDocUuids).toContain(uuid);
         });
 
         it('should reject empty title', async () => {
@@ -791,6 +826,46 @@ describe('Projects API v1', () => {
                 const data = (await response.json()) as { success: boolean; data: { title: string } };
                 expect(data.data.title).toBe('Custom Copy Title');
             }
+        });
+
+        it('should return UUID matching persisted duplicate project (regression: uuid mismatch bug)', async () => {
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'source-reg-uuid',
+                    title: 'Source Project',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/projects/source-reg-uuid/duplicate', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(201);
+            const data = (await response.json()) as {
+                success: boolean;
+                data: { id: number; uuid: string; sourceUuid: string; created_at: number; updated_at: number };
+            };
+            expect(data.success).toBe(true);
+
+            const { uuid, id, sourceUuid } = data.data;
+
+            // Duplicate UUID must differ from source
+            expect(uuid).not.toBe('source-reg-uuid');
+            expect(sourceUuid).toBe('source-reg-uuid');
+
+            // UUID returned in response must exist in DB
+            const project = await db.selectFrom('projects').where('uuid', '=', uuid).selectAll().executeTakeFirst();
+            expect(project).toBeDefined();
+            expect(project!.id).toBe(id);
+
+            // ensureDocument must have been called with the persisted UUID
+            expect(capturedEnsureDocUuids).toContain(uuid);
         });
 
         it('should return 403 for non-owner', async () => {

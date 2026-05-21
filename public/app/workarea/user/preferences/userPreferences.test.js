@@ -489,4 +489,66 @@ describe('UserPreferences', () => {
       warnSpy.mockRestore();
     });
   });
+
+  describe('defaultTheme preference', () => {
+    it('round-trips defaultTheme through localStorage in static mode', async () => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+      // Seed userPreferences config with both keys (server-shaped config).
+      userPreferences.preferences = {
+        defaultTheme: { value: '' },
+        locale: { value: 'en' },
+      };
+
+      await userPreferences.apiSaveProperties({ defaultTheme: 'spectrum128k' });
+
+      // setItem must have been called with the new value
+      const savedCall = localStorage.setItem.mock.calls.find(c => c[0] === 'exe_user_preferences');
+      expect(savedCall).toBeDefined();
+      const saved = JSON.parse(savedCall[1]);
+      expect(saved.userPreferences.defaultTheme.value).toBe('spectrum128k');
+      // Local in-memory state is also updated
+      expect(userPreferences.preferences.defaultTheme.value).toBe('spectrum128k');
+      // Server endpoint must NOT have been called in static mode
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('persists defaultTheme via the server in cloud mode', async () => {
+      // server mode is the default in beforeEach
+      userPreferences.preferences = {
+        defaultTheme: { value: '' },
+        advancedMode: { value: 'true' },
+        locale: { value: 'en' },
+      };
+
+      await userPreferences.apiSaveProperties({ defaultTheme: 'spectrum128k' });
+
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith({
+        defaultTheme: 'spectrum128k',
+      });
+      expect(userPreferences.preferences.defaultTheme.value).toBe('spectrum128k');
+    });
+
+    it('reads defaultTheme back from localStorage on the next load', async () => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+      localStorage.setItem('exe_user_preferences', JSON.stringify({
+        userPreferences: {
+          defaultTheme: { value: 'spectrum128k' },
+          locale: { value: 'en' },
+        },
+      }));
+      // Server mode payload returned by getApiParameters must include the
+      // defaultTheme template so setPreferences can populate the value.
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({
+        userPreferencesConfig: {
+          defaultTheme: { value: '', type: 'select', title: 'Default style for the new documents' },
+          locale: { value: 'en' },
+        },
+      });
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences.defaultTheme.value).toBe('spectrum128k');
+    });
+  });
 });

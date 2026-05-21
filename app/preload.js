@@ -17,6 +17,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('app:exportToFolder', { downloadUrl, projectKey, suggestedDirName }),
   exportBufferToFolder: (base64Data, suggestedDirName) =>
     ipcRenderer.invoke('app:exportBufferToFolder', { base64Data, suggestedDirName }),
+  // Advanced: open an unpacked project folder. Returns the folder
+  // contents as a base64-encoded zip so the renderer can hand it to
+  // the existing importFromElpxViaYjs(File) pipeline unchanged.
+  openProjectFolder: () => ipcRenderer.invoke('app:openProjectFolder'),
+  // Advanced: save the current project as an unpacked folder. Reuses
+  // the existing exportBufferToFolder handler — exposed under a
+  // distinct name so the renderer can offer it as a separate menu
+  // entry without touching .elpx behaviour.
+  saveProjectFolder: (base64Data, suggestedDirName) =>
+    ipcRenderer.invoke('app:exportBufferToFolder', { base64Data, suggestedDirName }),
   // Remember / forget the file currently associated with the window so the
   // next Save dialog pre-fills with its name (PR #1670 review). Both names
   // survive the full page reload that follows Open/New because they are

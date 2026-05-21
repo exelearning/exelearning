@@ -1178,6 +1178,12 @@ export default class ApiCallManager {
                     description: metadata?.get('description') || '',
                     license: metadata?.get('license') || '',
                     theme: metadata?.get('theme') || 'base',
+                    // Stable identifiers (#1786) -- forward so the server-side
+                    // YjsDocumentAdapter can derive a stable SCORM/IMS manifest
+                    // identifier instead of generating a fresh random one.
+                    odeIdentifier: metadata?.get('odeIdentifier') || undefined,
+                    odeVersionId: metadata?.get('odeVersionId') || undefined,
+                    scormIdentifier: metadata?.get('scormIdentifier') || undefined,
                 },
                 pages: [],
                 navigation: [],
@@ -1481,68 +1487,6 @@ export default class ApiCallManager {
         let url = this.endpoints.api_translations_list_by_locale.path;
         url = url.replace('{locale}', safeLocale);
         return await this.func.get(url);
-    }
-
-    /**
-     * Get login url of Google Drive
-     *
-     * @returns
-     */
-    async getUrlLoginGoogleDrive() {
-        let url = this.endpoints.api_google_oauth_login_url_get.path;
-        return await this.func.get(url);
-    }
-
-    /**
-     * Get folders of Google Drive account
-     *
-     * @returns
-     */
-    async getFoldersGoogleDrive() {
-        let url = this.endpoints.api_google_drive_folders_list.path;
-        return await this.func.get(url);
-    }
-
-    /**
-     * Upload file to Google Drive
-     *
-     * @param {*} params
-     * @returns
-     */
-    async uploadFileGoogleDrive(params) {
-        let url = this.endpoints.api_google_drive_file_upload.path;
-        return await this.func.post(url, params);
-    }
-
-    /**
-     * Get login url of Dropbox
-     *
-     * @returns
-     */
-    async getUrlLoginDropbox() {
-        let url = this.endpoints.api_dropbox_oauth_login_url_get.path;
-        return await this.func.get(url);
-    }
-
-    /**
-     * Get folders of Dropbox account
-     *
-     * @returns
-     */
-    async getFoldersDropbox() {
-        let url = this.endpoints.api_dropbox_folders_list.path;
-        return await this.func.get(url);
-    }
-
-    /**
-     * Upload file to Dropbox
-     *
-     * @param {*} params
-     * @returns
-     */
-    async uploadFileDropbox(params) {
-        let url = this.endpoints.api_dropbox_file_upload.path;
-        return await this.func.post(url, params);
     }
 
     /**

@@ -264,6 +264,28 @@ describe('Common', () => {
       const result = common.markdownToHTML('test');
       expect(typeof result).toBe('string');
     });
+
+    it('preserves inline LaTeX \\(...\\) intact', () => {
+      const result = common.markdownToHTML('Equation \\(x^2 + y_1\\) here');
+      expect(result).toContain('\\(x^2 + y_1\\)');
+    });
+
+    it('preserves display LaTeX $$...$$ intact', () => {
+      const result = common.markdownToHTML('Block: $$\\int_0^1 dx$$ end');
+      expect(result).toContain('$$\\int_0^1 dx$$');
+    });
+
+    it('preserves \\[...\\] block math intact', () => {
+      const result = common.markdownToHTML('Block: \\[x_1 + x_2\\] end');
+      expect(result).toContain('\\[x_1 + x_2\\]');
+    });
+
+    it('preserves \\begin{...}...\\end{...} environments', () => {
+      const result = common.markdownToHTML(
+        'Aligned: \\begin{align}a_1 &= b_1 \\\\ c &= d\\end{align}'
+      );
+      expect(result).toContain('\\begin{align}a_1 &= b_1 \\\\ c &= d\\end{align}');
+    });
   });
 
   describe('initTooltips', () => {

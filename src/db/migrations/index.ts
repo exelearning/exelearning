@@ -2,7 +2,11 @@
  * Kysely Migrations
  * Programmatic migrations for SQLite, PostgreSQL, and MySQL
  */
-import { Kysely, Migrator, sql, type Migration, type MigrationProvider } from 'kysely';
+import { Kysely, sql } from 'kysely';
+// Kysely 0.29 moved Migrator, Migration and MigrationProvider out of the
+// package root. They must now be imported from the `kysely/migration`
+// subpath export; importing them from `'kysely'` throws at runtime.
+import { Migrator, type Migration, type MigrationProvider } from 'kysely/migration';
 import { tableExists as tableExistsHelper, getDialect } from '../helpers';
 
 // Import all migrations

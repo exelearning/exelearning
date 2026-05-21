@@ -1,0 +1,13 @@
+# Reverse proxy that mimics the production nginx in front of the local
+# eXeLearning backend at host port 8080. See nginx/exelearning.conf.
+services:
+  nginx:
+    build: .
+    container_name: exe-repro-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    extra_hosts:
+      # Make host.docker.internal resolve on Linux too (no-op on macOS/Windows).
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
