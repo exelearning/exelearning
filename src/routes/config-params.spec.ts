@@ -59,4 +59,70 @@ describe('buildConfigParams', () => {
             expect(result.ODE_PROJECT_SYNC_CATALOGUING_CONFIG).toEqual({});
         });
     });
+
+    describe('defaultTheme preference', () => {
+        it('exposes defaultTheme as a select between defaultLicense and defaultAI', () => {
+            const result = buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES });
+
+            expect(result.USER_PREFERENCES_CONFIG.defaultTheme).toBeDefined();
+            expect(result.USER_PREFERENCES_CONFIG.defaultTheme.type).toBe('select');
+            expect(result.USER_PREFERENCES_CONFIG.defaultTheme.title).toBe('Default style for the new documents');
+            // Default value is empty string -> "use the site default"
+            expect(result.USER_PREFERENCES_CONFIG.defaultTheme.value).toBe('');
+
+            const keys = Object.keys(result.USER_PREFERENCES_CONFIG);
+            const licenseIdx = keys.indexOf('defaultLicense');
+            const themeIdx = keys.indexOf('defaultTheme');
+            const aiIdx = keys.indexOf('defaultAI');
+            expect(licenseIdx).toBeGreaterThanOrEqual(0);
+            expect(themeIdx).toBeGreaterThan(licenseIdx);
+            expect(aiIdx).toBeGreaterThan(themeIdx);
+        });
+
+        it('always offers the empty "use the site default" option', () => {
+            const result = buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES });
+            expect(result.USER_PREFERENCES_CONFIG.defaultTheme.options['']).toBe('Use the default style of the site');
+        });
+
+        it('merges THEMES dependency into the dropdown options', () => {
+            const result = buildConfigParams({
+                TRANS_PREFIX: '',
+                LICENSES,
+                PACKAGE_LOCALES,
+                LOCALES,
+                THEMES: { base: 'Base', spectrum128k: 'Spectrum 128k' },
+            });
+
+            const options = result.USER_PREFERENCES_CONFIG.defaultTheme.options;
+            expect(options.base).toBe('Base');
+            expect(options.spectrum128k).toBe('Spectrum 128k');
+            expect(options['']).toBe('Use the default style of the site');
+        });
+
+        it('prefixes the empty option label when TRANS_PREFIX is set', () => {
+            const T = 'TRANSLATABLE_TEXT:';
+            const result = buildConfigParams({
+                TRANS_PREFIX: T,
+                LICENSES,
+                PACKAGE_LOCALES,
+                LOCALES,
+                THEMES: { base: 'Base' },
+            });
+
+            expect(result.USER_PREFERENCES_CONFIG.defaultTheme.options['']).toBe(
+                `${T}Use the default style of the site`,
+            );
+            // Themes coming from the dep are NOT prefixed (they are display names
+            // pulled straight from the themes table / config.xml).
+            expect(result.USER_PREFERENCES_CONFIG.defaultTheme.options.base).toBe('Base');
+        });
+
+        it('keeps the legacy hidden "theme" key for backward compatibility', () => {
+            const result = buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES });
+
+            expect(result.USER_PREFERENCES_CONFIG.theme).toBeDefined();
+            expect(result.USER_PREFERENCES_CONFIG.theme.hide).toBe(true);
+            expect(result.USER_PREFERENCES_CONFIG.theme.type).toBe('text');
+        });
+    });
 });

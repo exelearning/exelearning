@@ -14,12 +14,24 @@ export interface ConfigParamsDeps {
     LICENSES: Record<string, string>;
     PACKAGE_LOCALES: Record<string, string>;
     LOCALES: Record<string, string>;
+    /**
+     * Map of available themes for the user-preference dropdown.
+     * Key = theme dirName (what gets stored in the project metadata),
+     * Value = display label shown in the modal. Optional so that older
+     * callers keep working until they pass the new dependency.
+     */
+    THEMES?: Record<string, string>;
 }
 
 export function buildConfigParams(deps: ConfigParamsDeps) {
     // Named TRANS_PREFIX so the translation extractor can detect strings in this file.
     const TRANS_PREFIX = deps.TRANS_PREFIX;
     const { LICENSES, PACKAGE_LOCALES, LOCALES } = deps;
+    // The first option (empty value) means "use the server/site default theme".
+    const THEMES: Record<string, string> = {
+        '': `${TRANS_PREFIX}Use the default style of the site`,
+        ...(deps.THEMES ?? {}),
+    };
 
     const GROUPS_TITLE = {
         properties_package: `${TRANS_PREFIX}Content metadata`,
@@ -51,17 +63,12 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
             options: LICENSES,
             category: `${TRANS_PREFIX}General settings`,
         },
-        theme: {
-            title: `${TRANS_PREFIX}Style`,
-            value: 'base',
-            type: 'text',
-            hide: true,
-            category: `${TRANS_PREFIX}General settings`,
-        },
-        versionControl: {
-            title: `${TRANS_PREFIX}Version control`,
-            value: 'true',
-            type: 'checkbox',
+        defaultTheme: {
+            title: `${TRANS_PREFIX}Default style for the new documents`,
+            help: `${TRANS_PREFIX}Pick a style that will be preselected when you create a new project. Overrides the site default.`,
+            value: '',
+            type: 'select',
+            options: THEMES,
             category: `${TRANS_PREFIX}General settings`,
         },
         defaultAI: {
@@ -77,6 +84,22 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                 'https://grok.com/?q=': 'Grok',
                 'https://chat.qwen.ai/?text=': 'Qwen',
             },
+            category: `${TRANS_PREFIX}General settings`,
+        },
+        // Legacy 'theme' key is kept hidden for backward compatibility so projects
+        // that still read user.preferences.preferences.theme keep working until
+        // they migrate to the new defaultTheme key.
+        theme: {
+            title: `${TRANS_PREFIX}Style`,
+            value: 'base',
+            type: 'text',
+            hide: true,
+            category: `${TRANS_PREFIX}General settings`,
+        },
+        versionControl: {
+            title: `${TRANS_PREFIX}Version control`,
+            value: 'true',
+            type: 'checkbox',
             category: `${TRANS_PREFIX}General settings`,
         },
     };

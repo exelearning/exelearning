@@ -378,6 +378,32 @@ describe('PageExporter', () => {
 
             expect(html).toContain('exe-single-page');
         });
+
+        it('should render license as a link when licenseUrl is present in metadata', () => {
+            const meta: ExportMetadata = {
+                ...document.getMetadata(),
+                license: 'creative commons: attribution 4.0',
+                licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+            };
+            const html = exporter.generateSinglePageHtml(samplePages, meta, []);
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('href="https://creativecommons.org/licenses/by/4.0/"');
+            expect(html).toContain('class="license"');
+            expect(html).not.toContain('<span class="license">');
+        });
+
+        it('should render license as a span when licenseUrl is absent in metadata', () => {
+            const meta: ExportMetadata = {
+                ...document.getMetadata(),
+                license: 'creative commons: attribution 4.0',
+                licenseUrl: '',
+            };
+            const html = exporter.generateSinglePageHtml(samplePages, meta, []);
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('<span class="license">');
+        });
     });
 
     describe('Single Page CSS', () => {

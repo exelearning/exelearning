@@ -2473,3 +2473,52 @@ if (typeof global !== 'undefined') {
     global.$exe = $exe;
     global.$exeDevices = $exeDevices;
 }
+
+/* Code highlighter */
+var $exeHighlighter = {
+    init: function () {
+        var blocks = $(".highlighted-code");
+        if (blocks.length == 0) return;
+        var OK = true;
+        var t = $exe.isIE();
+        if (t && t < 9) OK = false;
+        if (OK) {
+            blocks.each(
+                function () {
+                    var e = $(this);
+                    var pre = $("PRE", e);
+                    var c = e.attr("class");
+                    if (c.indexOf("line-numbers") != -1) pre.addClass("line-numbers");
+                    if (c.indexOf("hightlight-") != -1) {
+                        var hightlight = c.split("hightlight-");
+                        if (hightlight.length > 1) {
+                            hightlight = hightlight[1];
+                            hightlight = hightlight.replace(/\and/g, ',');
+                            pre.attr('data-line', hightlight);
+                        }
+                    }
+                }
+            );
+            Prism.highlightAll();
+        } else {
+            blocks.attr("class", "pre-code");
+        }
+    },
+    // To review
+    // Line 27 (line numbers plugin):
+    checkClass: function (s, e) {
+        // We replace s.test(e.element.className) with $exeHighlighter.checkClass(s,e)
+        if (document.body.className.indexOf("exe-epub3") == 0) {
+            var wrapper = $(e.element.parentNode).parents(".highlighted-code");
+            var wrapperClass = "";
+            var hasLines = false;
+            if (wrapper.length == 1) wrapperClass = wrapper.attr("class")
+            if (wrapperClass.indexOf("highlighted-code") != -1) hasLines = true;
+            return hasLines;
+        }
+        return s.test(e.element.className);
+    }
+}
+$(function () {
+    if (window.eXeLearning === undefined) $exeHighlighter.init();
+});

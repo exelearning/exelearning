@@ -2,8 +2,6 @@ import ModalsManagement from './modalsManager.js';
 import ModalAlert from './modals/generic/modalAlert.js';
 import ModalConfirm from './modals/generic/modalConfirm.js';
 import ModalInfo from './modals/generic/modalInfo.js';
-import ModalUploadGoogleDrive from './modals/pages/modalUploadGoogleDrive.js';
-import ModalUploadDropbox from './modals/pages/modalUploadDropbox.js';
 import ModalFileManager from './modals/pages/modalFileManager.js';
 import ModalOdeBrokenLinks from './modals/pages/modalOdeBrokenLinks.js';
 import ModalOdeUsedFiles from './modals/pages/modalOdeUsedFiles.js';
@@ -29,8 +27,6 @@ import { GlobalSearchModal } from '../../search/index.js';
 vi.mock('./modals/generic/modalAlert.js');
 vi.mock('./modals/generic/modalConfirm.js');
 vi.mock('./modals/generic/modalInfo.js');
-vi.mock('./modals/pages/modalUploadGoogleDrive.js');
-vi.mock('./modals/pages/modalUploadDropbox.js');
 vi.mock('./modals/pages/modalFileManager.js');
 vi.mock('./modals/pages/modalOdeBrokenLinks.js');
 vi.mock('./modals/pages/modalOdeUsedFiles.js');
@@ -93,8 +89,6 @@ describe('ModalsManagement', () => {
       expect(ModalAlert).toHaveBeenCalledWith(modalsManager);
       expect(ModalInfo).toHaveBeenCalledWith(modalsManager);
       expect(ModalConfirm).toHaveBeenCalledWith(modalsManager);
-      expect(ModalUploadGoogleDrive).toHaveBeenCalledWith(modalsManager);
-      expect(ModalUploadDropbox).toHaveBeenCalledWith(modalsManager);
       expect(ModalFileManager).toHaveBeenCalledWith(modalsManager);
       expect(ModalStyleManager).toHaveBeenCalledWith(modalsManager);
       expect(ModalIdeviceManager).toHaveBeenCalledWith(modalsManager);
@@ -133,7 +127,7 @@ describe('ModalsManagement', () => {
     it('should return an array of all modals', () => {
       modalsManager.init();
       const list = modalsManager.list();
-      expect(list).toHaveLength(24); // GlobalSearch is 24th
+      expect(list).toHaveLength(22); // GlobalSearch is 22nd
       expect(list).toContain(modalsManager.alert);
       expect(list).toContain(modalsManager.share);
       expect(list).toContain(modalsManager.printpreview);

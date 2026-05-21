@@ -1092,7 +1092,7 @@ describe('YjsProjectBridge', () => {
       expect(mockSelectTheme).toHaveBeenCalledWith('test-theme', true);
     });
 
-    it('should fall back to default theme when theme is not installed and package has no theme folder', async () => {
+    it('should delegate fallback to selectTheme (passing the original theme) when theme is not installed and package has no theme folder', async () => {
       const mockSelectTheme = mock(() => Promise.resolve());
 
       global.eXeLearning = {
@@ -1123,8 +1123,39 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('unknown-theme', mockFile);
 
-      // selectTheme should be called with default theme (fallback) and save=true to update Yjs
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+      // selectTheme is called with the ORIGINAL (uninstalled) theme, not config.defaultTheme,
+      // so its fallback chain (user defaultTheme preference -> admin default -> base) can run.
+      // save=true persists the resolved theme to Yjs.
+      expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
+    });
+
+    // Regression for PR #1777: opening an .elpx whose style is not installed must let
+    // selectTheme honor the user's defaultTheme preference (it must NOT short-circuit to
+    // config.defaultTheme, which bypasses the fallback chain).
+    it('should not bypass selectTheme by passing config.defaultTheme when theme is uninstalled', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: { installed: {} }, // No themes installed
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'site-default',
+          userStyles: 1,
+          isOfflineInstallation: false,
+        },
+      };
+
+      global.window.fflate = { unzipSync: mock(() => ({})) };
+      const mockFile = { arrayBuffer: mock(() => Promise.resolve(new ArrayBuffer(10))) };
+
+      await bridge._checkAndImportTheme('removed-theme', mockFile);
+
+      expect(mockSelectTheme).toHaveBeenCalledWith('removed-theme', true);
+      expect(mockSelectTheme).not.toHaveBeenCalledWith('site-default', true);
     });
 
     it('should use cached zip when provided instead of re-unzipping', async () => {
@@ -1166,8 +1197,8 @@ describe('YjsProjectBridge', () => {
       expect(mockUnzipSync).not.toHaveBeenCalled();
       // file.arrayBuffer should NOT be called when cached zip is provided
       expect(mockFile.arrayBuffer).not.toHaveBeenCalled();
-      // selectTheme should be called with default theme (fallback)
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+      // selectTheme should be called with the original (uninstalled) theme so its fallback chain runs
+      expect(mockSelectTheme).toHaveBeenCalledWith('unknown-theme', true);
     });
 
     it('should skip theme import when theme is marked as non-downloadable', async () => {
@@ -1204,7 +1235,8 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('blocked-theme', mockFile);
 
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+      // Non-downloadable theme: pass the original theme so selectTheme's fallback chain runs
+      expect(mockSelectTheme).toHaveBeenCalledWith('blocked-theme', true);
       expect(mockShowModal).not.toHaveBeenCalled();
     });
 
@@ -1247,8 +1279,9 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('custom-theme', new Blob());
 
-      // Should use default theme immediately without prompting, save=true to update Yjs
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+      // userStyles disabled: no import/prompt, but still pass the original theme so
+      // selectTheme's fallback chain (user default -> admin default -> base) can run.
+      expect(mockSelectTheme).toHaveBeenCalledWith('custom-theme', true);
     });
 
     it('should allow theme import when userStyles is enabled', async () => {

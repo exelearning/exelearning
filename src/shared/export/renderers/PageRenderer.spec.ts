@@ -814,6 +814,30 @@ describe('PageRenderer', () => {
             expect(html).toContain('libs/exe_highlighter/exe_highlighter.js');
             expect(html).not.toContain('libs/exe_effects/exe_effects.js');
         });
+
+        it('should render license as a link when licenseUrl is provided', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                license: 'creative commons: attribution 4.0',
+                licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+            });
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('href="https://creativecommons.org/licenses/by/4.0/"');
+            expect(html).toContain('class="license"');
+            expect(html).not.toContain('<span class="license">');
+        });
+
+        it('should render license as a span when licenseUrl is not provided', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                license: 'creative commons: attribution 4.0',
+            });
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('<span class="license">');
+            expect(html).not.toContain('href="https://creativecommons.org/licenses/by/4.0/"');
+        });
     });
 
     describe('renderFavicon', () => {
