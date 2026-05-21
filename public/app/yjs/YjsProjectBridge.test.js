@@ -299,6 +299,49 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('_captureHtmlAsScreenshot html2canvas URL (BASE_PATH)', () => {
+    // Regression: behind a subdirectory reverse proxy a bare-root URL 502s,
+    // so html2canvas must be loaded through composeUrl().
+    const stopOnAppend = (el) => {
+      // Reject the load promise immediately so the method short-circuits to
+      // null after we have captured script.src.
+      if (el && el.onerror) el.onerror(new Error('blocked'));
+    };
+
+    it('loads html2canvas through composeUrl when available', async () => {
+      window.html2canvas = undefined;
+      window.eXeLearning.app.composeUrl = (p) => `/web/exelearning${p}`;
+      let createdScript;
+      global.document.createElement = mock((tag) => {
+        const el = { tagName: tag, onload: null, onerror: null, src: '' };
+        if (tag === 'script') createdScript = el;
+        return el;
+      });
+      global.document.head = { appendChild: mock(stopOnAppend) };
+
+      const result = await bridge._captureHtmlAsScreenshot('<div>x</div>');
+
+      expect(createdScript.src).toBe('/web/exelearning/files/perm/idevices/base/rubric/export/html2canvas.js');
+      expect(result).toBeNull();
+    });
+
+    it('falls back to the bare path when composeUrl is unavailable', async () => {
+      window.html2canvas = undefined;
+      window.eXeLearning.app.composeUrl = undefined;
+      let createdScript;
+      global.document.createElement = mock((tag) => {
+        const el = { tagName: tag, onload: null, onerror: null, src: '' };
+        if (tag === 'script') createdScript = el;
+        return el;
+      });
+      global.document.head = { appendChild: mock(stopOnAppend) };
+
+      await bridge._captureHtmlAsScreenshot('<div>x</div>');
+
+      expect(createdScript.src).toBe('/files/perm/idevices/base/rubric/export/html2canvas.js');
+    });
+  });
+
   describe('initialize', () => {
     it('sets projectId', async () => {
       await bridge.initialize(123, 'test-token');
