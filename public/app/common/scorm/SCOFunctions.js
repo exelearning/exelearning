@@ -217,6 +217,58 @@ function unloadPage(isSCORM) {
   //       string from this function or IE will take the liberty of displaying a confirm message box.
 }
 
+/*******************************************************************************
+** Issue #1831: the SCO used to finalize on the body `onunload`/`onbeforeunload`
+** attribute. Chrome is deprecating the `unload` event and blocks it entirely
+** under a restrictive Permissions Policy (e.g. SCORM packages running inside a
+** Moodle iframe), which prevented LMSFinish from running and lost scores.
+**
+** We instead register modern lifecycle handlers:
+**  - `pagehide`        -> finalize the session once (the recommended unload
+**                         replacement; fires on close, navigation and bfcache).
+**  - `visibilitychange`-> when the tab becomes hidden, commit progress only
+**                         (no quit), so switching tabs does not terminate the
+**                         session prematurely while still persisting data if
+**                         `pagehide` is never delivered.
+** unloadPage() is still called at most once.
+**
+** @param {Window} [win]  - target for pagehide (defaults to window)
+** @param {Document} [doc] - target for visibilitychange (defaults to document)
+*******************************************************************************/
+function registerScormLifecycleHandlers(win, doc) {
+  win = win || (typeof window !== "undefined" ? window : undefined);
+  doc = doc || (typeof document !== "undefined" ? document : undefined);
+  if (!win || typeof win.addEventListener != "function") {
+    return;
+  }
+
+  var finalized = false;
+
+  function finalizeOnce() {
+    if (finalized) {
+      return;
+    }
+    finalized = true;
+    unloadPage();
+  }
+
+  win.addEventListener("pagehide", finalizeOnce, false);
+
+  if (doc && typeof doc.addEventListener == "function") {
+    doc.addEventListener("visibilitychange", function () {
+      if (doc.visibilityState == "hidden" && !finalized) {
+        computeTime();
+        scorm.save();
+      }
+    }, false);
+  }
+}
+
+// Auto-register on real browsers; tests invoke registerScormLifecycleHandlers() directly.
+if (typeof window !== "undefined" && typeof window.addEventListener == "function") {
+  registerScormLifecycleHandlers();
+}
+
 /**
  *
  */
@@ -241,6 +293,7 @@ if (typeof module !== 'undefined' && module.exports) {
         doContinue,
         doQuit,
         unloadPage,
+        registerScormLifecycleHandlers,
         goBack,
         goForward,
         // Test helpers for internal state access
