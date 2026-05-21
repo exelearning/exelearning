@@ -255,6 +255,7 @@ export class PageExporter extends Html5Exporter {
             usedIdevices,
             author: meta.author || '',
             license: meta.license || '',
+            licenseUrl: meta.licenseUrl || '',
             faviconPath: faviconInfo?.path,
             faviconType: faviconInfo?.type,
             // Application version for generator meta tag

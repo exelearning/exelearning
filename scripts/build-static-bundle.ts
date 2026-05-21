@@ -811,8 +811,6 @@ function generateModalsHtml(): string {
         'generic/modalInfo.njk',
         'generic/modalConfirm.njk',
         'generic/modalSessionLogout.njk',
-        'pages/uploadtodrive.njk',
-        'pages/uploadtodropbox.njk',
         'pages/filemanager.njk',
         'pages/stylemanager.njk',
         'pages/idevicemanager.njk',
@@ -848,11 +846,20 @@ function generateModalsHtml(): string {
 export type ApiParameters = ReturnType<typeof buildApiParameters>;
 
 export function buildApiParameters() {
+    // Static mode bundles every base theme found on disk; the user-preference
+    // dropdown shows them so the user can pick a default style without a server.
+    const themesList = buildThemesList().themes;
+    const THEMES: Record<string, string> = {};
+    for (const theme of themesList) {
+        THEMES[theme.dirName] = theme.title || theme.dirName;
+    }
+
     const configParams = buildConfigParams({
         TRANS_PREFIX: '',
         LICENSES,
         PACKAGE_LOCALES,
         LOCALES: LOCALE_NAMES,
+        THEMES,
     });
 
     return buildParameterResponse({
