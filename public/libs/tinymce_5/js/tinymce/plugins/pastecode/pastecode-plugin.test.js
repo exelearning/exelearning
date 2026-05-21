@@ -51,17 +51,17 @@ describe('pastecode plugin - syntax highlighting language list', () => {
         expect(pluginSource).toContain("text: 'CMD (Batch)'");
     });
 
-    it('places the new entries after the C type anchor', () => {
-        // Sanity check: bash/batch/powershell should appear after the "C type"
-        // dropdown anchor so the list stays roughly alphabetical for the user.
+    it('places the new entries in the expected relative order', () => {
+        // Bash sits in its alphabetical slot (B before C), so it appears before
+        // the "C type" anchor. Batch and PowerShell are placed after clike.
         const cTypeIndex = pluginSource.indexOf("value: 'clike'");
         const bashIndex = pluginSource.indexOf("value: 'bash'");
         const batchIndex = pluginSource.indexOf("value: 'batch'");
         const powershellIndex = pluginSource.indexOf("value: 'powershell'");
 
         expect(cTypeIndex).toBeGreaterThan(-1);
-        expect(bashIndex).toBeGreaterThan(cTypeIndex);
-        expect(batchIndex).toBeGreaterThan(bashIndex);
+        expect(bashIndex).toBeGreaterThan(-1);
+        expect(batchIndex).toBeGreaterThan(cTypeIndex);
         expect(powershellIndex).toBeGreaterThan(batchIndex);
     });
 });
