@@ -27,16 +27,18 @@ a {
 .page-title {
     font-weight: bold;
     color: white;
-    margin-top: 40px;
+    margin: 0 0 20px 0;
+    text-shadow: 0 0 4px rgba(21, 32, 61, .8);
 }
 
-.exe-web-site .page-title,
-.exe-single-page .page-title {
-    text-shadow: 0 0 4px rgba(21, 32, 61, .8);
+.exe-web-site .page-content > .page-title,
+.exe-export .page-content > .page-title {
+    padding: 20px 0 0;
 }
 
 .exe-epub .page-title, .exe-scorm .page-title, .exe-ims .page-title {
     color: #282573;
+    text-shadow: none;
 }
 
 .page > header .package-title,
@@ -48,6 +50,15 @@ a {
     text-overflow: ellipsis;
     margin-bottom: .3em;
     line-height: 1.2em;
+}
+
+.exe-scorm .package-header .package-title,
+.exe-scorm .page-header .page-title,
+.exe-ims .package-header .package-title,
+.exe-ims .page-header .page-title,
+.exe-epub .package-header .package-title,
+.exe-epub .page-header .page-title {
+    padding-left: 24px;
 }
 
 .exe-teacher-mode-toggler .page > header .package-title,
@@ -111,6 +122,7 @@ main header:not(#head) {
     max-width: none !important;
 }
 
+.main-header,
 .page > header {
     position: fixed;
     top: 0;
@@ -121,8 +133,49 @@ main header:not(#head) {
     display: flex !important;
     align-items: center;
     background: #fff;
-    /* background:#fff url(img/logo.png) no-repeat 24px 15px/ 132px; */
     border-bottom: 2px solid #282573;
+}
+
+/* Single-page export: only the .package-header at the top of <main> is fixed.
+   Per-section <header class="main-header"> elements must render inline so the
+   white page-title sits on the dark backdrop (instead of stacking multiple
+   fixed white bars over each other at top:0). */
+body.exe-single-page .package-header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 400;
+    height: 100px;
+    display: flex !important;
+    align-items: center;
+    background: #fff;
+    border-bottom: 2px solid #282573;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body.exe-single-page section > .main-header {
+    position: static;
+    height: auto;
+    background: transparent;
+    border-bottom: 0;
+    display: block !important;
+    padding: 0 32px;
+    margin: 0;
+}
+
+body.exe-single-page section > .main-header .page-header {
+    padding: 0;
+    margin: 0;
+}
+
+body.exe-single-page section > .main-header .page-title {
+    padding: 0;
+    margin: 0 0 20px 0;
+    color: #fff;
+    text-shadow: 0 0 4px rgba(21, 32, 61, .8);
 }
 
 .page > header .package-title,
@@ -145,36 +198,72 @@ body.exe-export.exe-epub {
     width: 100%;
 }
 
+/* SCORM/IMS/ePub: stack package-title (small grey) above page-title (purple).
+   The .main-header switches to flex-column so the two rows render one over
+   the other instead of overlapping in the same flex row. */
+body.exe-scorm .main-header,
+body.exe-ims .main-header,
+body.exe-epub .main-header {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8px 32px;
+}
+
+body.exe-scorm .main-header .package-header,
+body.exe-ims .main-header .package-header,
+body.exe-epub .main-header .package-header,
+body.exe-scorm .main-header .page-header,
+body.exe-ims .main-header .page-header,
+body.exe-epub .main-header .page-header {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
 body.exe-scorm .package-title,
 body.exe-ims .package-title,
 body.exe-epub .package-title{
-    position: absolute;
-    top: 24px;
-    left: 0;
+    position: static;
     font-weight: normal;
     font-size: .95em;
     color: #777;
+    margin: 0 0 2px 0;
+    padding: 0;
+    line-height: 1.2;
 }
 
 body.exe-scorm .package-subtitle,
 body.exe-ims .package-subtitle,
-body.exe-epub .package-subtitle {
+body.exe-epub .package-subtitle,
+#exe-client-search-reset span,
+#packageLicense .license-label,
+#packageLicense.propietary,
+#teacher-mode-toggler-wrapper .form-check-label {
     position: absolute;
-    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
-    clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 body.exe-scorm .page-title,
 body.exe-ims .page-title,
 body.exe-epub .page-title {
-    padding: 0 32px;
+    padding: 0;
+    margin: 0;
+    line-height: 1.2;
 }
 
 @media (max-width: 750px) {
-    body.exe-scorm .page-title,
-    body.exe-ims .page-title,
-    body.exe-epub .page-title {
-        padding: 0 24px;
+    body.exe-scorm .main-header,
+    body.exe-ims .main-header,
+    body.exe-epub .main-header {
+        padding: 8px 24px;
     }
 }
 
@@ -189,6 +278,18 @@ body.exe-web-site {
 .exe-content a:focus {
     color: #0a60ab;
     text-decoration: none;
+}
+
+main.page .page-content p,
+main.page .page-content span,
+main.page .page-content div {
+    color: #333;
+    font-weight: 400;
+}
+
+#exe-client-search-results-list a {
+    color: #333;
+    font-weight: 400;
 }
 
 /* Effects */
@@ -316,6 +417,11 @@ body#tinymce {
     margin: 0 auto;
 }
 
+.exe-web-site main.page,
+.exe-export main {
+    padding-top: 100px;
+}
+
 .exe-single-page .exe-content {
     max-width: 100% !important;
 }
@@ -326,7 +432,7 @@ body#tinymce {
     margin: 0 auto;
 }
 .exe-single-page .exe-content main {
-    padding-top: 4em;
+    padding-top: 130px;
 }
 
 .exe-web-site .exe-content {
@@ -349,13 +455,6 @@ body.exe-export.exe-epub .exe-content {
 .exe-content.cover-on .exe-interactive-video,
 .exe-content .exe-interactive-video {
     width: 100%;
-}
-
-.exe-export main {
-    padding-top: 1.5em;
-}
-.exe-web-site main {
-    padding-top: 4.5em;
 }
 
 /* siteNav */
@@ -394,11 +493,7 @@ body.exe-export.exe-epub .exe-content {
 #siteNav .other-section {
     display: none;
 }
-#sidebar-nav.fixed,
-#sidebar-nav {
-    position: fixed;
-}
-body.siteNav-off #siteNav {
+.siteNav-off #siteNav {
     left: -330px;
 }
 .exe-web-site main.page {
@@ -423,8 +518,8 @@ body.exe-web-site.siteNav-off #siteFooter {
 .exe-epub #siteFooter {
     padding-bottom: 40px;
 }
-body.siteNav-off main.page,
-body.siteNav-off #siteFooter {
+.siteNav-off main.page,
+.siteNav-off #siteFooter {
     padding-left: 20px;
 }
 #siteNav ul,
@@ -436,6 +531,10 @@ body.siteNav-off #siteFooter {
 
 #siteNav li {
     margin-bottom: 6px;
+}
+
+#siteNav li > ul {
+    margin-top: 6px;
 }
 
 #siteNav a {
@@ -504,30 +603,56 @@ body.siteNav-off #siteFooter {
 }
 
 .daddy {
-    background: #282573 url(img/arrow_down_menu.svg) no-repeat right 16px center /
-        22px !important;
+    position: relative;
+    padding-right: 48px !important;
+    background-color: #282573;
 }
-.active .active.daddy {
-    background: #ffd940 url(img/arrow.svg) no-repeat right 16px center / 22px !important;
-}
-.active .daddy {
-    background: #ffe580 url(img/arrow_down.svg) no-repeat right 16px center /
-        22px !important;
-}
+.active .active.daddy { background-color: #ffd940; }
+.active .daddy { background-color: #ffe580; }
 #siteNav .current-page-parent > .daddy {
-    background: #ffe580 url(img/arrow.svg) no-repeat right 16px center / 22px !important;
+    background-color: #ffe580;
     margin-bottom: 6px;
 }
-.current-page-parent .daddy {
-    background: #ffe580 url(img/arrow_down.svg) no-repeat right 16px center /
-        22px !important;
+.current-page-parent .daddy { background-color: #ffe580; }
+.daddy:hover,
+.active.daddy:hover { background-color: #ffd940; }
+
+/* Submenu toggle button (chevron) — white by default, dark on highlighted states.
+   Uses background-image (not CSS mask) so the icon also works under file:// without
+   running into CORS restrictions on mask resources. */
+#siteNav a.daddy > button {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    background-image: url(img/arrow_down_white.svg);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 22px;
+    transition: transform 0.2s ease;
+    cursor: pointer;
 }
-.daddy:hover {
-    background: #ffd940 url(img/arrow_down.svg) no-repeat right 16px center /
-        22px !important;
+#siteNav ul ul a.daddy > button {
+    background-image: url(img/arrow_down.svg);
 }
-.active.daddy:hover {
-    background: #ffd940 url(img/arrow.svg) no-repeat right 16px center / 22px !important;
+#siteNav a.active.daddy > button,
+#siteNav .active a.daddy > button,
+#siteNav .current-page-parent > a.daddy > button,
+#siteNav .current-page-parent a.daddy > button,
+#siteNav a.daddy:hover > button,
+#siteNav a.daddy:focus > button {
+    background-image: url(img/arrow_down.svg);
+}
+#siteNav a.daddy > button.closed-ul {
+    transform: translateY(-50%) rotate(0);
+}
+#siteNav a.daddy > button.open-ul {
+    transform: translateY(-50%) rotate(180deg);
 }
 
 /* pagination */
@@ -593,14 +718,14 @@ button#siteNavToggler {
     background-color: #1c1a56;
     z-index: 2;
 }
-body.siteNav-off button#siteNavToggler {
+.siteNav-off button#siteNavToggler {
     left: 0;
     top: 130px;
     padding: 8px 8px 8px 17px;
     border-radius: 0 8px 8px 0;
     background: #ffcc00 url(img/menu_closed.svg) no-repeat 16px / 32px;
 }
-body.siteNav-off button#siteNavToggler:hover {
+.siteNav-off button#siteNavToggler:hover {
     background-color: #ebb800;
 }
 
@@ -614,15 +739,8 @@ body.siteNav-off button#siteNavToggler:hover {
     display: inline;
 }
 
-body.siteNav-off button#siteNavToggler .sr-av {
+.siteNav-off button#siteNavToggler .sr-av {
     color: #282573;
-}
-
-#exe-client-search-reset span,
-#packageLicense .license-label {
-    position: absolute;
-    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
-    clip: rect(1px, 1px, 1px, 1px);
 }
 
 .box-toggle span {
@@ -751,12 +869,6 @@ body.siteNav-off button#siteNavToggler .sr-av {
     text-decoration: none;
     color: #b04721;
 }
-#packageLicense.propietary {
-    position: absolute;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    height: 0;
-}
 #packageLicense.cc {
     padding: 0 20px 0 90px;
     background: url(img/licenses.gif) no-repeat 0 0;
@@ -801,19 +913,17 @@ body.siteNav-off button#siteNavToggler .sr-av {
 
 /* Page counter */
 .page-counter {
-    text-align: right;
-    margin: 0 0 0.5em 0;
-    font-size: 0.9em;
-    color: #777;
-    font-weight: 400;
-    background: #fff;
     position: fixed;
     top: 38px;
     right: 32px;
     margin: 0;
     padding: 0;
+    background: #fff;
     color: #777;
+    font-size: 0.9em;
+    font-weight: 400;
     text-align: right;
+    z-index: 401;
 }
 
 .exe-web-site .page-counter {
@@ -825,8 +935,8 @@ body.exe-teacher-mode-toggler.exe-web-site .page-counter {
 }
 
 /* Search bar */
-body.siteNav-off.exe-search-on button#searchBarTogger,
-body.exe-search-on button#searchBarTogger {
+body.siteNav-off.exe-search-on:has(#exe-client-search) button#searchBarTogger,
+body.exe-search-on:has(#exe-client-search) button#searchBarTogger {
     display: inline-block;
 }
 #exe-client-search-form p {
@@ -849,7 +959,7 @@ button#searchBarTogger {
     height: 48px;
     display: none;
 }
-body.siteNav-off button#searchBarTogger {
+.siteNav-off button#searchBarTogger {
     top: 220px;
     left: 0px;
     padding-left: 50px;
@@ -863,8 +973,10 @@ body.siteNav-off button#searchBarTogger {
 #exe-client-search-text {
     flex: 1 1 auto;
     min-width: 0;
-    display: inline;
     height: 48px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 0 12px;
 }
 #exe-client-search-submit {
     text-indent: -999em;
@@ -933,11 +1045,6 @@ body.siteNav-off button#searchBarTogger {
 .exe-single-page #teacher-mode-toggler-wrapper {
     right: 20px;
 }
-#teacher-mode-toggler-wrapper .form-check-label {
-    position: absolute;
-    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
-    clip: rect(1px, 1px, 1px, 1px);
-}
 #teacher-mode-toggler-wrapper .form-check-input {
     width: 2.6em;
     height: 1.4em;
@@ -950,15 +1057,15 @@ body.siteNav-off button#searchBarTogger {
     border-color: #ffcc00;
     box-shadow: 0 0 0 0.25rem rgba(255, 204, 0, 0.25);
 }
+.mode-teacher #teacher-mode-toggler-wrapper .form-check-input:focus {
+    background-image: url(img/switch_white.svg);
+    background-position: right 1.6px center;
+}
 #teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch.svg);
     background-size: 19px;
     background-repeat: no-repeat;
     background-position: left 1.6px center;
-}
-.mode-teacher #teacher-mode-toggler-wrapper .form-check-input:focus {
-    background-image: url(img/switch_white.svg);
-    background-position: right 1.6px center;
 }
 
 /* Responsive design */
@@ -1043,23 +1150,18 @@ body.siteNav-off button#searchBarTogger {
     #exe-client-search {
         padding: 0 20px;
     }
-    #sidebar-nav {
-        position: static !important;
-        width: 100%;
-        padding: 200px 0 0 0;
-    }
     #siteNav {
         float: none;
         border-right: 0;
         width: 100%;
         background-color: #282573;
         height: auto;
-        padding: 16px 16px 8px 16px;
+        padding: 200px 16px 8px 16px;
         border-radius: 0;
         position: static;
         border: 0;
     }
-    body.siteNav-off #siteNav {
+    .siteNav-off #siteNav {
         display: none;
     }
     #siteNav a {
@@ -1070,25 +1172,26 @@ body.siteNav-off button#searchBarTogger {
         background: #fff url(img/menu_open_color.svg) no-repeat 12px center /
             32px;
     }
-    body.siteNav-off button#siteNavToggler {
-        background: #fff url(img/menu_closed.svg) no-repeat 12px center / 32px;
+    .siteNav-off button#siteNavToggler {
+        background: #fff url(img/menu_closed.svg) no-repeat 12px / 32px;
     }
-    body.siteNav-off button#siteNavToggler,
+    .siteNav-off button#siteNavToggler,
     button#siteNavToggler {
         position: absolute;
-        z-index: 0;
+        z-index: 1;
         font-weight: 600;
         border: 1px solid #282573;
-        right: 16px;
+        right: 92px;
         left: 16px;
         top: 120px;
-        border-radius: 0.75rem;
+        border-radius: 0.75em;
         width: auto;
-        height: 26px;
-        padding: 16px;
+        height: 60px;
+        padding: 0 16px;
+        box-sizing: border-box;
     }
     button#siteNavToggler:hover,
-    body.siteNav-off button#siteNavToggler:hover {
+    .siteNav-off button#siteNavToggler:hover {
         background-color: #ffcc00;
     }
     button#siteNavToggler span,
@@ -1107,7 +1210,7 @@ body.siteNav-off button#searchBarTogger {
         padding-left: 0;
         padding-top: 0;
     }
-    body.siteNav-off button#siteNavToggler .sr-av {
+    .siteNav-off button#siteNavToggler .sr-av {
         color: #000 !important;
         text-align: left;
         padding-left: 40px;
@@ -1116,18 +1219,16 @@ body.siteNav-off button#searchBarTogger {
         display: block;
     }
 
-    body.siteNav-off main.page,
-    body.siteNav-off #siteFooter {
+    .siteNav-off main.page {
+        padding: 200px 0 0 0;
+    }
+    .siteNav-off #siteFooter {
         padding: 0;
     }
 
     .exe-web-site .exe-content .box {
         margin-top: 20px;
     }
-    /* .page > header,
-    .siteNav-off .page > header{
-        background: #fff url(img/logo_responsive.png) no-repeat 32px 15px/ 32px;
-    } */
     .page > header .package-title,
     .siteNav-off .page > header .package-title,
     .exe-single-page .package-header .package-title {
@@ -1139,19 +1240,21 @@ body.siteNav-off button#searchBarTogger {
     }
     .exe-search-on.siteNav-off button#siteNavToggler,
     .exe-search-on button#siteNavToggler {
-        right: 100px;
-        height: 30px;
+        right: 92px;
+        height: 60px;
     }
-    body.siteNav-off button#searchBarTogger,
+    .siteNav-off button#searchBarTogger,
     body button#searchBarTogger {
         left: auto;
-        right: 20px;
+        right: 16px;
         top: 120px;
-        height: 64px;
+        height: 60px;
         border-radius: 0.75em;
-        width: 68px;
+        width: 60px;
+        padding: 0;
         position: absolute;
-        z-index: 0;
+        z-index: 1;
+        box-sizing: border-box;
     }
     #exe-client-search-text {
         height: 54px;
@@ -1184,14 +1287,11 @@ body.siteNav-off button#searchBarTogger {
         margin: 0 0 1em 0;
     }
 }
+
 @media (max-width: 650px) {
     html {
         font-size: 0.75rem !important;
     }
-    /* .page > header,
-    .siteNav-off .page > header{
-        background: #fff url(img/logo_responsive.png) no-repeat 14px 26px/ 20px;
-    } */
     .page > header .package-title,
     .siteNav-off .page > header .package-title {
         padding-left: 24px;
@@ -1220,7 +1320,7 @@ body.siteNav-off button#searchBarTogger {
     }
     #teacher-mode-toggler-wrapper .form-check-input {
         width: 2.5em;
-        height: 1.5em;
+        height: 1.4em;
     }
     #teacher-mode-toggler-wrapper .form-check-input:focus {
         background-size: 16px;
@@ -1231,11 +1331,11 @@ body.siteNav-off button#searchBarTogger {
     }
     button#siteNavToggler span,
     button#siteNavToggler .sr-av,
-    body.siteNav-off button#siteNavToggler .sr-av {
+    .siteNav-off button#siteNavToggler .sr-av {
         padding-left: 24px;
         top: 0;
     }
-    body.siteNav-off button#siteNavToggler {
+    .siteNav-off button#siteNavToggler {
         background: #fff url(img/menu_closed.svg) no-repeat 12px / 24px;
     }
     .box-title {
@@ -1247,18 +1347,10 @@ body.siteNav-off button#searchBarTogger {
         width: 32px;
         height: 32px;
     }
-    body.siteNav-off button#searchBarTogger,
-    body button#searchBarTogger {
-        height: 60px;
-    }
     body.exe-teacher-mode-toggler.exe-web-site .page-counter,
     .exe-web-site .page-counter {
         right: 104px;
         top: 4px;
-    }
-    .exe-search-on.siteNav-off button#siteNavToggler,
-    .exe-search-on button#siteNavToggler {
-        height: 26px;
     }
     .exe-single-page .package-header .package-title {
         padding-left: 20px;
@@ -1273,7 +1365,7 @@ body.siteNav-off button#searchBarTogger {
     }
     .exe-scorm .exe-export main,
     .exe-ims .exe-export main,
-    .exe-pub .exe-export main {
+    .exe-epub .exe-export main {
         padding-top: 7em;
     }
 }
@@ -1305,7 +1397,6 @@ body.siteNav-off button#searchBarTogger {
     .exe-web-site button.toggler {
         display: none;
     }
-    .exe-web-site #siteFooter,
     .exe-web-site main.page {
         padding-left: 0;
         padding-right: 0;

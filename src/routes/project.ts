@@ -42,6 +42,56 @@ import {
 } from '../services/link-validator';
 import { getSettingString } from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
+import { getPreferenceValue } from '../db/queries/preferences';
+
+/**
+ * Resolves the dirName of the theme that should be baked into a brand-new
+ * project, applying the agreed precedence:
+ *
+ *   1. The user's "defaultTheme" preference, when set AND when the referenced
+ *      theme still exists in the themes table and is enabled.
+ *   2. The admin-wide global default theme stored in app_settings.
+ *   3. The hard-coded fallback "base".
+ *
+ * Exported so it can be unit-tested without booting an Elysia app, and so the
+ * create-quick handler is just glue on top of a small, predictable function.
+ *
+ * Failures from query layers (missing tables, etc.) are swallowed so that
+ * callers always get a usable theme name back.
+ */
+export async function resolveDefaultThemeForNewProject(
+    db: Kysely<Database>,
+    userId: number,
+    deps: {
+        getDefaultTheme: typeof getDefaultThemeDefault;
+        findThemeByDirName: typeof findThemeByDirName;
+        getPreferenceValue: typeof getPreferenceValue;
+    } = {
+        getDefaultTheme: getDefaultThemeDefault,
+        findThemeByDirName,
+        getPreferenceValue,
+    },
+): Promise<string> {
+    let themeDirName = 'base';
+    try {
+        const globalDefault = await deps.getDefaultTheme(db);
+        themeDirName = globalDefault.dirName;
+    } catch {
+        // app_settings may not exist yet (pre-migration); ignore
+    }
+    try {
+        const userPref = await deps.getPreferenceValue(db, userId, 'defaultTheme');
+        if (userPref) {
+            const themeRecord = await deps.findThemeByDirName(db, userPref);
+            if (themeRecord && themeRecord.is_enabled === 1) {
+                themeDirName = userPref;
+            }
+        }
+    } catch {
+        // users_preferences/themes may not exist yet (pre-migration); ignore
+    }
+    return themeDirName;
+}
 import { getAppVersion } from '../utils/version';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
@@ -518,14 +568,9 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     saved_once: 0,
                 });
 
-                // Get global default theme early so we can use it for Yjs document initialization
-                let themeDirName = 'base';
-                try {
-                    const globalDefault = await getDefaultThemeDefault(db);
-                    themeDirName = globalDefault.dirName;
-                } catch {
-                    // Silently ignore if tables don't exist yet
-                }
+                // Resolve the theme to bake into the initial Yjs document.
+                // Precedence: user's "defaultTheme" preference > admin global default > 'base'.
+                const themeDirName = await resolveDefaultThemeForNewProject(db, userId);
 
                 // Create initial Yjs document with blank structure (prevents duplicate page race condition)
                 if (upsertSnapshot) {
@@ -552,30 +597,28 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
 
                 console.log(`[Project] Created new project ${projectRecord.uuid} with title "${title}"`);
 
-                // Get global default theme (can be base or site)
+                // Compute the defaultTheme payload returned to the client. Reuses the
+                // already-resolved themeDirName (which already considers the user
+                // preference) so the response stays consistent with what we baked into
+                // the Yjs document.
                 let defaultTheme: { dirName: string; displayName: string; url: string; type: 'base' | 'site' } | null =
                     null;
                 try {
-                    const globalDefault = await getDefaultThemeDefault(db);
                     const version = getAppVersion();
+                    const themeRecord = await findThemeByDirName(db, themeDirName);
 
-                    if (globalDefault.type === 'site') {
-                        // Get site theme details
-                        const siteTheme = await findThemeByDirName(db, globalDefault.dirName);
-                        if (siteTheme?.is_enabled) {
-                            defaultTheme = {
-                                dirName: siteTheme.dir_name,
-                                displayName: siteTheme.display_name,
-                                url: `/${version}/site-files/themes/${siteTheme.dir_name}`,
-                                type: 'site',
-                            };
-                        }
-                    } else {
-                        // Base theme - use base path
+                    if (themeRecord && themeRecord.is_enabled === 1 && themeRecord.is_builtin === 0) {
                         defaultTheme = {
-                            dirName: globalDefault.dirName,
-                            displayName: globalDefault.dirName, // Will be resolved by frontend
-                            url: `/files/perm/themes/base/${globalDefault.dirName}`,
+                            dirName: themeRecord.dir_name,
+                            displayName: themeRecord.display_name,
+                            url: `/${version}/site-files/themes/${themeRecord.dir_name}`,
+                            type: 'site',
+                        };
+                    } else {
+                        defaultTheme = {
+                            dirName: themeDirName,
+                            displayName: themeRecord?.display_name || themeDirName,
+                            url: `/files/perm/themes/base/${themeDirName}`,
                             type: 'base',
                         };
                     }

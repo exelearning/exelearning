@@ -1496,33 +1496,15 @@ describe('ApiCallManager', () => {
       expect(mockFunc.fileSendPost).toHaveBeenCalledWith('http://localhost/file/large', { file: 'b' });
     });
 
-    it('should call translation and cloud endpoints', async () => {
+    it('should call translation endpoints', async () => {
       apiManager.endpoints.api_translations_lists = { path: 'http://localhost/i18n' };
       apiManager.endpoints.api_translations_list_by_locale = { path: 'http://localhost/i18n/{locale}' };
-      apiManager.endpoints.api_google_oauth_login_url_get = { path: 'http://localhost/google/login' };
-      apiManager.endpoints.api_google_drive_folders_list = { path: 'http://localhost/google/folders' };
-      apiManager.endpoints.api_google_drive_file_upload = { path: 'http://localhost/google/upload' };
-      apiManager.endpoints.api_dropbox_oauth_login_url_get = { path: 'http://localhost/dropbox/login' };
-      apiManager.endpoints.api_dropbox_folders_list = { path: 'http://localhost/dropbox/folders' };
-      apiManager.endpoints.api_dropbox_file_upload = { path: 'http://localhost/dropbox/upload' };
 
       await apiManager.getTranslationsAll();
       await apiManager.getTranslations('es');
-      await apiManager.getUrlLoginGoogleDrive();
-      await apiManager.getFoldersGoogleDrive();
-      await apiManager.uploadFileGoogleDrive({ file: 'a' });
-      await apiManager.getUrlLoginDropbox();
-      await apiManager.getFoldersDropbox();
-      await apiManager.uploadFileDropbox({ file: 'b' });
 
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/i18n');
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/i18n/es');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/google/login');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/google/folders');
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/google/upload', { file: 'a' });
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/dropbox/login');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/dropbox/folders');
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/dropbox/upload', { file: 'b' });
     });
 
     it('should call component html endpoints', async () => {

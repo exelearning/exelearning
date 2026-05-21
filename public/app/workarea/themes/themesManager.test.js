@@ -512,6 +512,57 @@ describe('ThemesManager', () => {
       expect(themesManager.selected.id).toBe('default-theme');
     });
 
+    it("prefers the user's defaultTheme preference over the site default when the requested theme is missing", async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      themesManager.list.installed['user-pref-theme'] = {
+        id: 'user-pref-theme',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+      themesManager.app.user = {
+        preferences: {
+          preferences: {
+            defaultTheme: { value: 'user-pref-theme' },
+          },
+        },
+      };
+
+      await themesManager.selectTheme('missing-theme');
+
+      expect(themesManager.selected.id).toBe('user-pref-theme');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("falling back to user default 'user-pref-theme'")
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("falls back to the site default when the user's defaultTheme preference is also missing", async () => {
+      themesManager.app.user = {
+        preferences: {
+          preferences: {
+            defaultTheme: { value: 'unknown-user-pref' },
+          },
+        },
+      };
+
+      await themesManager.selectTheme('missing-theme');
+
+      expect(themesManager.selected.id).toBe('default-theme');
+    });
+
+    it("ignores an empty user defaultTheme preference and uses the site default", async () => {
+      themesManager.app.user = {
+        preferences: {
+          preferences: {
+            defaultTheme: { value: '' },
+          },
+        },
+      };
+
+      await themesManager.selectTheme('missing-theme');
+
+      expect(themesManager.selected.id).toBe('default-theme');
+    });
+
     it('uses fallbackTheme from themeRegistryOverride when default is also missing', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       // Remove the default theme so the normal fallback path fails.

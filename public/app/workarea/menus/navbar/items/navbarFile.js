@@ -23,15 +23,6 @@ export default class NavbarFile {
             '#navbar-button-settings'
         );
         this.shareButton = this.menu.navbar.querySelector('#navbar-button-share');
-        /*
-        Temporally disabled:
-        this.uploadGoogleDriveButton = this.menu.navbar.querySelector(
-            '#navbar-button-uploadtodrive',
-        );
-        this.uploadDropboxButton = this.menu.navbar.querySelector(
-            '#navbar-button-uploadtodropbox',
-        );
-        */
         this.uploadPlatformButton = this.menu.navbar.querySelector(
             '#navbar-button-uploadtoplatform'
         );
@@ -135,11 +126,6 @@ export default class NavbarFile {
         this.setSaveProjectEvent();
         this.setSettingsEvent();
         this.setShareEvent();
-        /*
-        Temporally disabled:
-        this.setUploadGoogleDriveEvent();
-        this.setUploadDropboxEvent();
-        */
         this.setUploadPlatformEvent();
         this.setOpenUserOdeFilesEvent();
         this.setOpenOfflineEvent();
@@ -662,36 +648,6 @@ export default class NavbarFile {
             this.openShareModalEvent();
         });
     }
-
-    /**
-     * Upload ELP to Google Drive
-     * File -> Upload to -> Google Drive
-     *
-     */
-    /*
-    Temporally disabled:
-    setUploadGoogleDriveEvent() {
-        this.uploadGoogleDriveButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.uploadToGoogleDriveEvent();
-        });
-    }
-    */
-
-    /**
-     * Upload ELP to Google Drive
-     * File -> Upload to -> Google Drive
-     *
-     */
-    /*
-    Temporally disabled:
-    setUploadDropboxEvent() {
-        this.uploadDropboxButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.uploadToDropboxEvent();
-        });
-    }
-    */
 
     /**
      * Upload ELP to platform
@@ -1629,126 +1585,6 @@ export default class NavbarFile {
     }
 
     /**
-     * It connects with the google api to show a modal with the google drive directories
-     *  where the project can be uploaded
-     *
-     */
-    uploadToGoogleDriveEvent() {
-        // Get Google Drive folders
-        this.getFoldersGoogleDrive().then((response) => {
-            if (!response.error) {
-                // Show eXe Google Drive modal
-                eXeLearning.app.modals.uploadtodrive.show(response.files);
-            } else {
-                if (eXeLearning.app.actions.authorizeAddActions) {
-                    // Open window Google Drive login in popup
-                    this.openWindowLoginGoogleDrive();
-                } else {
-                    // Open eXe alert modal
-                    eXeLearning.app.modals.alert.show({
-                        title: _('Google Drive error'),
-                        body: response.error,
-                        contentId: 'error',
-                    });
-                }
-            }
-        });
-    }
-
-    /**
-     * uploadToGoogleDriveEvent
-     * Get the directories that the user has in google drive
-     *
-     * @returns
-     */
-    async getFoldersGoogleDrive() {
-        let foldersInfo = await eXeLearning.app.api.getFoldersGoogleDrive();
-        if (foldersInfo) {
-            if (foldersInfo.folders && foldersInfo.folders.files) {
-                return { error: false, files: foldersInfo.folders };
-            } else {
-                return { error: foldersInfo, files: [] };
-            }
-        } else {
-            return { error: _('Unknown'), files: [] };
-        }
-    }
-
-    /**
-     * uploadToGoogleDriveEvent
-     * Get login url from google drive and open it in a popup
-     *
-     */
-    async openWindowLoginGoogleDrive() {
-        let urlGoogleDrive = await eXeLearning.app.api.getUrlLoginGoogleDrive();
-        let windowLoginGoogleDrive = window.open(
-            urlGoogleDrive.url,
-            'drive',
-            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0'
-        );
-    }
-
-    /**
-     * It connects with the dropbox api to show a modal with the dropbox directories
-     *  where the project can be uploaded
-     *
-     */
-    uploadToDropboxEvent() {
-        // Get Dropbox folders
-        this.getFoldersDropbox().then((response) => {
-            if (!response.error) {
-                // Show eXe Dropbox modal
-                eXeLearning.app.modals.uploadtodropbox.show(response.files);
-            } else {
-                if (eXeLearning.app.actions.authorizeAddActions) {
-                    // Open window Dropbox login in popup
-                    this.openWindowLoginDropbox();
-                } else {
-                    // Open eXe alert modal
-                    eXeLearning.app.modals.alert.show({
-                        title: _('Dropbox error'),
-                        body: response.error,
-                        contentId: 'error',
-                    });
-                }
-            }
-        });
-    }
-
-    /**
-     * uploadToDropboxEvent
-     * Get the directories that the user has in dropbox
-     *
-     * @returns
-     */
-    async getFoldersDropbox() {
-        let foldersInfo = await eXeLearning.app.api.getFoldersDropbox();
-        if (foldersInfo) {
-            if (foldersInfo.folders && foldersInfo.folders.files) {
-                return { error: false, files: foldersInfo.folders };
-            } else {
-                return { error: foldersInfo, files: [] };
-            }
-        } else {
-            return { error: _('Unknown'), files: [] };
-        }
-    }
-
-    /**
-     * uploadToDropboxEvent
-     * Get login url from dropbox and open it in a popup
-     *
-     */
-    async openWindowLoginDropbox() {
-        let urlDropbox = await eXeLearning.app.api.getUrlLoginDropbox();
-        let windowLoginDropbox = window.open(
-            urlDropbox.url,
-            'dropbox',
-            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0'
-        );
-    }
-
-    /**
      * Decode the payload of a JWT without verifying its signature. Verification
      * still happens on the server (it has the secret); we only need a couple of
      * fields up front to decide which export format to generate in the browser.
@@ -1813,8 +1649,16 @@ export default class NavbarFile {
 
         const yjsBridge = eXeLearning.app.project?._yjsBridge;
         const SharedExporters = window.SharedExporters;
+        // We require an asset provider in addition to the document manager and
+        // the exporters bundle. Without one, BrowserAssetProvider falls through
+        // to a null adapter and SharedExporters.quickExport happily produces a
+        // package with no `content/resources/` folder — exactly the
+        // missing-images symptom reported on the cloud build (#1770).
+        const hasAssetProvider = !!(yjsBridge?.assetManager || yjsBridge?.assetCache);
         const canExportClientSide =
-            !!yjsBridge?.documentManager && typeof SharedExporters?.quickExport === 'function';
+            !!yjsBridge?.documentManager &&
+            typeof SharedExporters?.quickExport === 'function' &&
+            hasAssetProvider;
 
         if (canExportClientSide) {
             const handled = await this._uploadPlatformEventClientSide(
@@ -1826,14 +1670,25 @@ export default class NavbarFile {
             if (handled) {
                 return;
             }
+        } else {
+            // Surface the situation in the operator console so the broken
+            // package symptom on `:latest` (#1770) does not look like a silent
+            // success when it really is the legacy server-side path.
+            console.warn(
+                '[NavbarFile] Falling back to legacy server-side platform upload; the resulting package may be missing assets.',
+                {
+                    hasDocumentManager: !!yjsBridge?.documentManager,
+                    hasAssetProvider,
+                    hasSharedExporters: typeof SharedExporters?.quickExport === 'function',
+                },
+            );
         }
 
         // Legacy fallback: server-side generation. Used only when the browser
-        // cannot produce the package itself (e.g., Yjs disabled or shared
-        // exporters bundle missing). When this path is hit and the server's
-        // database does not yet have the latest assets, the generated package
-        // can lack images -- but that is preferable to refusing to publish in
-        // setups that never relied on Yjs.
+        // cannot produce the package itself (e.g., Yjs disabled, shared
+        // exporters bundle missing, or asset providers not yet initialised).
+        // When this path is hit and the server's database does not yet have
+        // the latest assets, the generated package can lack images.
         const response = await eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload({
             projectUuid,
             jwt_token,

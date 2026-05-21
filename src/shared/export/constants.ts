@@ -316,6 +316,18 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 ];
 
+/**
+ * Inline handler for download-source-file links.
+ *
+ * In editor preview, delegate to the parent workarea so it exports the complete
+ * Yjs document as ELPX. In standalone exports, fall back to the manifest-based
+ * download helper bundled with the HTML package.
+ */
+export const ELPX_DOWNLOAD_ONCLICK =
+    'try{var p=window.parent;' +
+    "if(p&&p!==window&&p.eXeLearning&&p.eXeLearning.app){p.postMessage({type:'exe-download-elpx'},'*');" +
+    "return false;}}catch(e){}if(typeof downloadElpx==='function')downloadElpx();return false;";
+
 // =============================================================================
 // Base Libraries (always included in exports)
 // =============================================================================

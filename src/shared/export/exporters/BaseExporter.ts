@@ -22,7 +22,7 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
-import { formatLicenseText } from '../constants';
+import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 
 /**
@@ -972,10 +972,7 @@ export abstract class BaseExporter {
 
         // Replace href="exe-package:elp" with onclick handler
         // Uses <a onclick> approach for styling compatibility
-        let result = content.replace(
-            /href="exe-package:elp"/g,
-            'href="#" onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"',
-        );
+        let result = content.replace(/href="exe-package:elp"/g, `href="#" onclick="${ELPX_DOWNLOAD_ONCLICK}"`);
 
         // Replace download="exe-package:elp-name" with actual filename
         const safeTitle = this.escapeXml(projectTitle);
