@@ -801,8 +801,24 @@ export default class IdeviceBlockNode {
     makeIconValueElement(icon) {
         let iconValue = document.createElement('img');
         let iconSrc = icon.value;
-        if (iconSrc.startsWith('/')) {
-            iconSrc = this.resolveAppAssetUrl(iconSrc);
+        // Theme icon URLs are resolved server-side (src/routes/themes.ts) and already
+        // include BASE_PATH. Do NOT re-apply resolveAppAssetUrl here: it would prepend
+        // BASE_PATH a second time and the browser would request
+        // /{base}/{base}/...icon.png and 404 (see #1802/#1804, theme.js notes).
+        // In static/offline mode, convert the absolute path to a relative one so it
+        // works when served from a subdirectory.
+        if (iconSrc.startsWith('/') && window.eXeLearning?.config) {
+            let config = window.eXeLearning.config;
+            if (typeof config === 'string') {
+                try {
+                    config = JSON.parse(config);
+                } catch (e) {
+                    config = null;
+                }
+            }
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                iconSrc = '.' + iconSrc;
+            }
         }
         iconValue.setAttribute('src', iconSrc);
         iconValue.setAttribute('alt', icon.title);

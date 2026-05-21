@@ -681,6 +681,12 @@ describe('IdeviceBlockNode', () => {
     });
 
     describe('makeIconValueElement', () => {
+        const originalConfig = eXeLearning.config;
+
+        afterEach(() => {
+            eXeLearning.config = originalConfig;
+        });
+
         it('creates img element with correct src and alt', () => {
             const icon = { value: '/path/to/icon.svg', title: 'My Icon' };
             const img = block.makeIconValueElement(icon);
@@ -688,6 +694,50 @@ describe('IdeviceBlockNode', () => {
             expect(img.tagName).toBe('IMG');
             expect(img.getAttribute('src')).toBe('/path/to/icon.svg');
             expect(img.getAttribute('alt')).toBe('My Icon');
+        });
+
+        it('does not re-prefix theme icon URLs that already include BASE_PATH', () => {
+            // Theme icon URLs are resolved server-side (src/routes/themes.ts) and
+            // already include BASE_PATH. Re-applying resolveAppAssetUrl would double
+            // the prefix (/web/exelearning/web/exelearning/...) and 404. See #1802/#1804.
+            eXeLearning.config = { basePath: '/web/exelearning' };
+            const value = '/web/exelearning/v0.0.0-alpha/files/perm/themes/base/base/icons/info.png';
+            const img = block.makeIconValueElement({ value, title: 'Info' });
+
+            expect(img.getAttribute('src')).toBe(value);
+        });
+
+        it('leaves absolute theme icon URLs unchanged when no BASE_PATH is configured', () => {
+            eXeLearning.config = { basePath: '' };
+            const value = '/v0.0.0-alpha/files/perm/themes/base/base/icons/info.png';
+            const img = block.makeIconValueElement({ value, title: 'Info' });
+
+            expect(img.getAttribute('src')).toBe(value);
+        });
+
+        it('converts absolute icon URLs to relative in static mode', () => {
+            eXeLearning.config = { isStaticMode: true };
+            const value = '/v0.0.0-alpha/files/perm/themes/base/base/icons/info.png';
+            const img = block.makeIconValueElement({ value, title: 'Info' });
+
+            expect(img.getAttribute('src')).toBe(`.${value}`);
+        });
+
+        it('converts absolute icon URLs to relative in offline installation mode', () => {
+            eXeLearning.config = { isOfflineInstallation: true };
+            const value = '/v0.0.0-alpha/files/perm/themes/base/base/icons/info.png';
+            const img = block.makeIconValueElement({ value, title: 'Info' });
+
+            expect(img.getAttribute('src')).toBe(`.${value}`);
+        });
+
+        it('still prefixes client-built material icon paths with BASE_PATH (contrast)', () => {
+            // Unlike theme icons, material icon paths are built client-side from the app
+            // root (/libs/...) and DO need BASE_PATH prepended.
+            eXeLearning.config = { basePath: '/web/exelearning' };
+            expect(block.resolveAppAssetUrl('/libs/material-icons/icons/alarm.svg')).toBe(
+                '/web/exelearning/libs/material-icons/icons/alarm.svg'
+            );
         });
     });
 
