@@ -15,13 +15,18 @@ import type { Page } from '@playwright/test';
 const FIXTURE = path.resolve(__dirname, '../../../fixtures/basic-example.elp');
 
 /**
- * Simulate a real file drop on the window with the given fixture file.
+ * Simulate a real file drop with the given fixture file.
+ *
+ * The drop is dispatched on a DEEP nested element (not window) so the test
+ * exercises the real propagation path: the handler must catch the drop before
+ * any descendant stopPropagation() and cancel the browser's native file open.
+ * Returns whether the native default was prevented.
  */
-async function dropFileOnWindow(page: Page, fixturePath: string): Promise<void> {
+async function dropFileDeep(page: Page, fixturePath: string): Promise<boolean> {
     const base64 = readFileSync(fixturePath).toString('base64');
     const name = path.basename(fixturePath);
 
-    await page.evaluate(
+    return page.evaluate(
         ({ base64, name }) => {
             const binary = atob(base64);
             const bytes = new Uint8Array(binary.length);
@@ -31,9 +36,13 @@ async function dropFileOnWindow(page: Page, fixturePath: string): Promise<void> 
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(file);
 
+            const target =
+                document.querySelector('#node-content') || document.querySelector('#workarea') || document.body;
+
             const event = new DragEvent('drop', { bubbles: true, cancelable: true });
             Object.defineProperty(event, 'dataTransfer', { value: dataTransfer });
-            window.dispatchEvent(event);
+            target.dispatchEvent(event);
+            return event.defaultPrevented;
         },
         { base64, name },
     );
@@ -47,7 +56,9 @@ test.describe('Drag-and-drop open', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        await dropFileOnWindow(page, FIXTURE);
+        const prevented = await dropFileDeep(page, FIXTURE);
+        // The browser's native file open must be cancelled even for a deep drop.
+        expect(prevented).toBe(true);
 
         // Same convergence point as the File menu: navigation pages get populated.
         await page.waitForFunction(
@@ -97,7 +108,7 @@ test.describe('Drag-and-drop open', () => {
         });
         await page.waitForTimeout(300);
 
-        await dropFileOnWindow(page, FIXTURE);
+        await dropFileDeep(page, FIXTURE);
 
         // The same "save current project?" dialog used by a normal Open appears.
         const sessionModal = page.locator('#modalSessionLogout');

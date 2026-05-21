@@ -57,7 +57,7 @@ describe('isOpenableProjectFile', () => {
 });
 
 describe('FileDropHandler.bind/unbind', () => {
-    it('attaches the four drag listeners', () => {
+    it('attaches the four drag listeners in the capture phase', () => {
         const target = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
         const handler = new FileDropHandler({ app: makeApp(), target });
         handler.bind();
@@ -66,6 +66,11 @@ describe('FileDropHandler.bind/unbind', () => {
         expect(events).toEqual(
             expect.arrayContaining(['dragenter', 'dragover', 'dragleave', 'drop'])
         );
+        // Every listener must use capture (third arg true) so it runs before
+        // descendant handlers that stopPropagation().
+        for (const call of target.addEventListener.mock.calls) {
+            expect(call[2]).toBe(true);
+        }
     });
 
     it('is idempotent', () => {
@@ -148,6 +153,30 @@ describe('FileDropHandler drag events', () => {
         expect(drop.preventDefault).toHaveBeenCalled();
         expect(document.querySelector('.exe-file-drop-overlay')).toBeFalsy();
         expect(app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalledWith(file);
+    });
+
+    it('cancels the native open but defers to an open modal (e.g. File Manager)', () => {
+        const modal = document.createElement('div');
+        modal.className = 'modal show';
+        const inner = document.createElement('div');
+        modal.appendChild(inner);
+        document.body.appendChild(modal);
+
+        const app = makeApp();
+        const handler = new FileDropHandler({ app });
+
+        const enter = makeDragEvent();
+        enter.target = inner;
+        handler._onDragEnter(enter);
+        // No overlay over a modal, but the native open is still prevented.
+        expect(enter.preventDefault).toHaveBeenCalled();
+        expect(document.querySelector('.exe-file-drop-overlay')).toBeFalsy();
+
+        const drop = makeDragEvent({ files: [{ name: 'demo.elpx' }] });
+        drop.target = inner;
+        handler._onDrop(drop);
+        expect(drop.preventDefault).toHaveBeenCalled();
+        expect(app.modals.openuserodefiles.largeFilesUpload).not.toHaveBeenCalled();
     });
 });
 

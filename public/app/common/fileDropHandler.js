@@ -53,15 +53,20 @@ export default class FileDropHandler {
 
     /**
      * Attach drag-and-drop listeners. Idempotent. No-op in embedded mode.
+     *
+     * Listeners run in the CAPTURE phase so they always fire before any
+     * descendant handler that calls stopPropagation() (e.g. the structure tree
+     * or content editors). Otherwise a drop landing on such an element would
+     * never reach us and the browser would open the file itself.
      */
     bind() {
         if (this._bound) return;
         if (this.app?.capabilities?.embedded?.enabled) return;
 
-        this.target.addEventListener('dragenter', this._boundDragEnter);
-        this.target.addEventListener('dragover', this._boundDragOver);
-        this.target.addEventListener('dragleave', this._boundDragLeave);
-        this.target.addEventListener('drop', this._boundDrop);
+        this.target.addEventListener('dragenter', this._boundDragEnter, true);
+        this.target.addEventListener('dragover', this._boundDragOver, true);
+        this.target.addEventListener('dragleave', this._boundDragLeave, true);
+        this.target.addEventListener('drop', this._boundDrop, true);
         this._bound = true;
     }
 
@@ -70,13 +75,27 @@ export default class FileDropHandler {
      */
     unbind() {
         if (!this._bound) return;
-        this.target.removeEventListener('dragenter', this._boundDragEnter);
-        this.target.removeEventListener('dragover', this._boundDragOver);
-        this.target.removeEventListener('dragleave', this._boundDragLeave);
-        this.target.removeEventListener('drop', this._boundDrop);
+        this.target.removeEventListener('dragenter', this._boundDragEnter, true);
+        this.target.removeEventListener('dragover', this._boundDragOver, true);
+        this.target.removeEventListener('dragleave', this._boundDragLeave, true);
+        this.target.removeEventListener('drop', this._boundDrop, true);
         this._hideOverlay();
         this._bound = false;
         this._dragDepth = 0;
+    }
+
+    /**
+     * True when the drop should be left to another component instead of opening
+     * a project — currently any open modal (e.g. the File Manager has its own
+     * file dropzone for uploading assets).
+     * @param {EventTarget} target
+     * @returns {boolean}
+     */
+    _isHandledElsewhere(target) {
+        if (target && typeof target.closest === 'function' && target.closest('.modal.show')) {
+            return true;
+        }
+        return !!document.querySelector('.modal.show');
     }
 
     /**
@@ -95,7 +114,10 @@ export default class FileDropHandler {
      */
     _onDragEnter(event) {
         if (!this._isFileDrag(event)) return;
+        // preventDefault here and on dragover stops the browser/Electron from
+        // navigating to the dropped file.
         event.preventDefault();
+        if (this._isHandledElsewhere(event.target)) return;
         this._dragDepth += 1;
         this._showOverlay();
     }
@@ -105,9 +127,8 @@ export default class FileDropHandler {
      */
     _onDragOver(event) {
         if (!this._isFileDrag(event)) return;
-        // preventDefault is required so the browser/Electron does not navigate
-        // away to the dropped file.
         event.preventDefault();
+        if (this._isHandledElsewhere(event.target)) return;
         if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
     }
 
@@ -125,9 +146,12 @@ export default class FileDropHandler {
      */
     _onDrop(event) {
         if (!this._isFileDrag(event)) return;
+        // Always cancel the native open, even when another component handles
+        // the file, so a near-miss drop never navigates the window away.
         event.preventDefault();
         this._dragDepth = 0;
         this._hideOverlay();
+        if (this._isHandledElsewhere(event.target)) return;
         this.handleFiles(event.dataTransfer?.files);
     }
 
