@@ -8,150 +8,107 @@
 
 describe('codemagic plugin - Path Handling', () => {
     describe('Dialog URL selection', () => {
-        // Extract the logic from plugin.min.js lines 69-102
-        function getCodemagicUrl(config, capabilities, staticModeGlobal) {
-            const basePath = (config && config.basePath) || '';
-
-            // Check if we're in static mode
+        // Mirror plugin.min.js: in server mode, route through composeUrl() so that
+        // BASE_PATH is prepended (issue #1802). Static mode still wins when its
+        // flags are set. Reading basePath directly from config is gone — composeUrl
+        // is the single source of truth, identical to the rest of the client.
+        function getCodemagicUrl(config, capabilities, staticModeGlobal, app) {
             let isStaticMode = config?.isStaticMode || config?.isOfflineInstallation;
             if (!isStaticMode) {
                 isStaticMode = capabilities ? !capabilities.storage.remote : staticModeGlobal;
             }
 
-            // In static mode, use relative file path
-            // In server mode, use API endpoint
             if (isStaticMode) {
                 return './libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html';
-            } else {
-                return basePath + '/api/codemagic-editor/codemagic.html';
             }
+            return app && typeof app.composeUrl === 'function'
+                ? app.composeUrl('/api/codemagic-editor/codemagic.html')
+                : '/api/codemagic-editor/codemagic.html';
         }
 
-        describe('Online mode (server available)', () => {
-            it('should return API URL with no basePath', () => {
-                const result = getCodemagicUrl({ basePath: '' }, null, false);
-                expect(result).toBe('/api/codemagic-editor/codemagic.html');
+        // Mirror window.eXeLearning.app.composeUrl from public/app/app.js:849-858
+        function makeApp(basePath) {
+            return {
+                composeUrl(p) {
+                    const normalized = !basePath || basePath === '/' ? '' : basePath.replace(/\/+$/, '');
+                    const path = p.startsWith('/') ? p : `/${p}`;
+                    return `${normalized}${path}`;
+                },
+            };
+        }
+
+        describe('Server mode', () => {
+            it('returns bare API URL when no host app is available (back-compat)', () => {
+                expect(getCodemagicUrl(null, null, false)).toBe('/api/codemagic-editor/codemagic.html');
+                expect(getCodemagicUrl(undefined, null, false)).toBe('/api/codemagic-editor/codemagic.html');
+                expect(getCodemagicUrl({}, null, false)).toBe('/api/codemagic-editor/codemagic.html');
             });
 
-            it('should return API URL with basePath prefix', () => {
-                const result = getCodemagicUrl({ basePath: '/web/exe' }, null, false);
-                expect(result).toBe('/web/exe/api/codemagic-editor/codemagic.html');
-            });
-
-            it('should return API URL with deep basePath prefix', () => {
-                const result = getCodemagicUrl({ basePath: '/deep/nested/path' }, null, false);
-                expect(result).toBe('/deep/nested/path/api/codemagic-editor/codemagic.html');
-            });
-
-            it('should return API URL when config is null', () => {
-                const result = getCodemagicUrl(null, null, false);
-                expect(result).toBe('/api/codemagic-editor/codemagic.html');
-            });
-
-            it('should return API URL when config is undefined', () => {
-                const result = getCodemagicUrl(undefined, null, false);
-                expect(result).toBe('/api/codemagic-editor/codemagic.html');
-            });
-
-            it('should return API URL when config is empty object', () => {
-                const result = getCodemagicUrl({}, null, false);
-                expect(result).toBe('/api/codemagic-editor/codemagic.html');
-            });
-        });
-
-        describe('Static mode via config flags', () => {
-            it('should return relative URL when isStaticMode is true', () => {
-                const result = getCodemagicUrl({ isStaticMode: true }, null, false);
-                expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html');
-            });
-
-            it('should return relative URL when isOfflineInstallation is true', () => {
-                const result = getCodemagicUrl({ isOfflineInstallation: true }, null, false);
-                expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html');
-            });
-
-            it('should return relative URL when both flags are true', () => {
-                const result = getCodemagicUrl({ isStaticMode: true, isOfflineInstallation: true }, null, false);
-                expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html');
-            });
-
-            it('should ignore basePath in static mode', () => {
-                const result = getCodemagicUrl({ basePath: '/web/exe', isStaticMode: true }, null, false);
-                expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html');
-            });
-        });
-
-        describe('Static mode via capabilities fallback', () => {
-            it('should return relative URL when capabilities.storage.remote is false', () => {
-                const capabilities = { storage: { remote: false } };
-                const result = getCodemagicUrl({}, capabilities, false);
-                expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html');
-            });
-
-            it('should return API URL when capabilities.storage.remote is true', () => {
-                const capabilities = { storage: { remote: true } };
-                const result = getCodemagicUrl({}, capabilities, false);
-                expect(result).toBe('/api/codemagic-editor/codemagic.html');
-            });
-
-            it('should respect basePath when capabilities indicate online mode', () => {
-                const capabilities = { storage: { remote: true } };
-                const result = getCodemagicUrl({ basePath: '/web/exe' }, capabilities, false);
-                expect(result).toBe('/web/exe/api/codemagic-editor/codemagic.html');
-            });
-
-            it('should prioritize config flags over capabilities', () => {
-                const capabilities = { storage: { remote: true } };
-                const result = getCodemagicUrl({ isStaticMode: true }, capabilities, false);
-                expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html');
-            });
-        });
-
-        describe('Static mode via global flag fallback', () => {
-            it('should return relative URL when global static mode flag is true', () => {
-                const result = getCodemagicUrl({}, null, true);
-                expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html');
-            });
-
-            it('should return API URL when global static mode flag is false', () => {
-                const result = getCodemagicUrl({}, null, false);
-                expect(result).toBe('/api/codemagic-editor/codemagic.html');
-            });
-
-            it('should prioritize capabilities over global flag', () => {
-                const capabilities = { storage: { remote: true } };
-                const result = getCodemagicUrl({}, capabilities, true);
-                expect(result).toBe('/api/codemagic-editor/codemagic.html');
-            });
-
-            it('should prioritize config flags over global flag', () => {
-                const result = getCodemagicUrl({ isStaticMode: false }, null, true);
-                // When isStaticMode is explicitly false, fallback to global flag
-                expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html');
-            });
-        });
-
-        describe('Edge cases', () => {
-            it('should handle basePath with trailing slash', () => {
-                // The plugin doesn't normalize trailing slashes, so this would create a double slash
-                // This tests current behavior - consider normalizing in the plugin if this is undesirable
-                const result = getCodemagicUrl({ basePath: '/web/exe/' }, null, false);
-                expect(result).toBe('/web/exe//api/codemagic-editor/codemagic.html');
-            });
-
-            it('should handle basePath without leading slash', () => {
-                const result = getCodemagicUrl({ basePath: 'web/exe' }, null, false);
-                expect(result).toBe('web/exe/api/codemagic-editor/codemagic.html');
-            });
-
-            it('should handle all detection methods at once (config wins)', () => {
-                const capabilities = { storage: { remote: true } };
-                const result = getCodemagicUrl(
-                    { isStaticMode: true, basePath: '/ignored' },
-                    capabilities,
-                    false
+            it('prefixes BASE_PATH via composeUrl when host app is wired (issue #1802)', () => {
+                const app = makeApp('/aplicaciones/medusa/exelearning');
+                expect(getCodemagicUrl({}, null, false, app)).toBe(
+                    '/aplicaciones/medusa/exelearning/api/codemagic-editor/codemagic.html',
                 );
-                expect(result).toBe('./libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html');
+                expect(getCodemagicUrl(null, null, false, app)).toBe(
+                    '/aplicaciones/medusa/exelearning/api/codemagic-editor/codemagic.html',
+                );
+            });
+
+            it('handles deep BASE_PATH', () => {
+                const app = makeApp('/deep/nested/path');
+                expect(getCodemagicUrl({}, null, false, app)).toBe(
+                    '/deep/nested/path/api/codemagic-editor/codemagic.html',
+                );
+            });
+
+            it('falls through to bare URL when BASE_PATH is empty', () => {
+                const app = makeApp('');
+                expect(getCodemagicUrl({}, null, false, app)).toBe('/api/codemagic-editor/codemagic.html');
+            });
+
+            it('respects composeUrl regardless of any (now-ignored) config.basePath', () => {
+                // The plugin no longer reads config.basePath - composeUrl wins.
+                const app = makeApp('/aplicaciones/medusa/exelearning');
+                expect(getCodemagicUrl({ basePath: '/ignored' }, null, false, app)).toBe(
+                    '/aplicaciones/medusa/exelearning/api/codemagic-editor/codemagic.html',
+                );
+            });
+        });
+
+        describe('Static mode (always wins over composeUrl)', () => {
+            const expected = './libs/tinymce_5/js/tinymce/plugins/codemagic/codemagic.html';
+            const app = makeApp('/aplicaciones/medusa/exelearning');
+
+            it('honours config.isStaticMode', () => {
+                expect(getCodemagicUrl({ isStaticMode: true }, null, false)).toBe(expected);
+                expect(getCodemagicUrl({ isStaticMode: true }, null, false, app)).toBe(expected);
+            });
+
+            it('honours config.isOfflineInstallation', () => {
+                expect(getCodemagicUrl({ isOfflineInstallation: true }, null, false, app)).toBe(expected);
+            });
+
+            it('falls back to capabilities.storage.remote === false', () => {
+                const capabilities = { storage: { remote: false } };
+                expect(getCodemagicUrl({}, capabilities, false)).toBe(expected);
+                expect(getCodemagicUrl({}, capabilities, false, app)).toBe(expected);
+            });
+
+            it('falls back to global staticMode flag', () => {
+                expect(getCodemagicUrl({}, null, true)).toBe(expected);
+                expect(getCodemagicUrl({}, null, true, app)).toBe(expected);
+            });
+
+            it('config flag takes priority over capabilities', () => {
+                const capabilities = { storage: { remote: true } };
+                expect(getCodemagicUrl({ isStaticMode: true }, capabilities, false, app)).toBe(expected);
+            });
+
+            it('capabilities take priority over global flag', () => {
+                const capabilities = { storage: { remote: true } };
+                expect(getCodemagicUrl({}, capabilities, true, app)).toBe(
+                    '/aplicaciones/medusa/exelearning/api/codemagic-editor/codemagic.html',
+                );
             });
         });
     });

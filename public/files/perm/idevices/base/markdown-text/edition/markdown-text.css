@@ -1,0 +1,169 @@
+/* Markdown Text iDevice (edition CSS) */
+#markdownTextForm .exe-field {
+    font-weight: bold;
+    padding: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+#markdownTextForm fieldset .exe-text-legend {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: auto;
+}
+
+#markdownTextForm legend a {
+    text-decoration: none;
+    color: var(--dark-exe-color);
+    font-weight: bold;
+    transition: var(--tr-02);
+    width: 100%;
+}
+
+#markdownTextForm .exe-parent {
+    position: relative;
+}
+
+#markdownTextForm .grid-container {
+    display: grid;
+    column-gap: 20px;
+    grid-template-columns: repeat(2, minmax(200px, 1fr));
+}
+
+#markdownTextForm .grid-container input {
+    width: calc(100% - var(--margin-l));
+}
+
+#markdownTextForm .exe-markdown-editor {
+    font-weight: normal;
+    border: 1px solid var(--color-border, #d0d7de);
+    border-radius: 6px;
+    padding: 0;
+    background-color: #fff;
+}
+
+#markdownTextForm .exe-markdown-editor + .exe-markdown-editor {
+    margin-top: 1rem;
+}
+
+#markdownTextForm .exe-markdown-editor__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0.75rem 0;
+}
+
+#markdownTextForm .exe-markdown-editor__header label {
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+#markdownTextForm .exe-markdown-editor__tabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-border, #d0d7de);
+    padding: 0 0.5rem;
+    gap: 0.25rem;
+}
+
+#markdownTextForm .exe-markdown-editor__tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark-exe-color);
+    cursor: pointer;
+}
+
+#markdownTextForm .exe-markdown-editor__tab.is-active {
+    border-color: var(--dark-exe-color);
+    color: var(--dark-exe-color);
+}
+
+#markdownTextForm .exe-markdown-editor__tab:focus {
+    outline: 2px solid var(--dark-exe-color);
+    outline-offset: 2px;
+}
+
+#markdownTextForm .exe-markdown-editor__panels {
+    display: flex;
+    flex-direction: column;
+}
+
+#markdownTextForm .exe-markdown-editor__textarea {
+    min-height: 240px;
+    border: none;
+    border-top: 1px solid var(--color-border, #d0d7de);
+    padding: 0.75rem;
+    font-family: var(--font-family-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace);
+    font-size: 0.95rem;
+    resize: vertical;
+}
+
+#markdownTextForm .exe-markdown-editor__textarea:focus {
+    outline: none;
+}
+
+#markdownTextForm .exe-markdown-preview {
+    border-top: 1px solid var(--color-border, #d0d7de);
+    padding: 0.75rem;
+    min-height: 240px;
+    overflow-y: auto;
+    background-color: #f6f8fa;
+}
+
+#markdownTextForm .exe-markdown-preview p {
+    margin-bottom: 0.75rem;
+}
+
+#markdownTextForm .exe-markdown-preview pre,
+#markdownTextForm .exe-markdown-preview code {
+    font-family: var(--font-family-monospace, ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace);
+    font-size: 0.9em;
+    text-shadow: none;
+}
+
+#markdownTextForm .exe-markdown-preview pre {
+    background-color: #0d1117;
+    color: #e6edf3;
+    padding: 0.75rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.45;
+}
+
+#markdownTextForm .exe-markdown-preview code {
+    background-color: rgba(175, 184, 193, 0.2);
+    border-radius: 4px;
+    padding: 0.2em 0.4em;
+}
+
+#markdownTextForm .exe-markdown-preview pre code {
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+#markdownTextForm .exe-markdown-preview ul.task-list,
+#markdownTextForm .exe-markdown-preview ul li.task-list-item {
+    list-style: none;
+    padding-left: 0;
+}
+
+#markdownTextForm .exe-markdown-preview li.task-list-item input[type="checkbox"] {
+    margin-right: 0.4em;
+}
+
+#markdownTextForm .exe-markdown-preview table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+#markdownTextForm .exe-markdown-preview th,
+#markdownTextForm .exe-markdown-preview td {
+    border: 1px solid #d0d7de;
+    padding: 0.5rem;
+}

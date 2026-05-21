@@ -12,6 +12,7 @@
  * called within a transaction (via doc-manager.withDocument).
  */
 import * as Y from 'yjs';
+import { generateId } from '../shared/ids';
 import type {
     PageData,
     CreatePageInput,
@@ -32,14 +33,12 @@ import type {
 // ============================================================================
 
 /**
- * Generate a unique ID with prefix
- * Same algorithm as client-side for consistency
+ * Generate a unique ID with prefix.
+ *
+ * Re-exported from the canonical module so existing imports across
+ * `src/*` keep working — see issue exelearning/exelearning#1782.
  */
-export function generateId(prefix: string): string {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 11);
-    return `${prefix}-${timestamp}-${random}`;
-}
+export { generateId };
 
 /**
  * Get the navigation array from a Y.Doc
