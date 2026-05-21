@@ -52,6 +52,15 @@ a {
     line-height: 1.2em;
 }
 
+.exe-scorm .package-header .package-title,
+.exe-scorm .page-header .page-title,
+.exe-ims .package-header .package-title,
+.exe-ims .page-header .page-title,
+.exe-epub .package-header .package-title,
+.exe-epub .page-header .page-title {
+    padding-left: 24px;
+}
+
 .exe-teacher-mode-toggler .page > header .package-title,
 .exe-teacher-mode-toggler.siteNav-off .page > header .package-title {
     width: calc(100% - 550px);
@@ -524,6 +533,10 @@ body.exe-web-site.siteNav-off #siteFooter {
     margin-bottom: 6px;
 }
 
+#siteNav li > ul {
+    margin-top: 6px;
+}
+
 #siteNav a {
     color: #fff;
     display: block;
@@ -623,6 +636,9 @@ body.exe-web-site.siteNav-off #siteFooter {
     background-size: 22px;
     transition: transform 0.2s ease;
     cursor: pointer;
+}
+#siteNav ul ul a.daddy > button {
+    background-image: url(img/arrow_down.svg);
 }
 #siteNav a.active.daddy > button,
 #siteNav .active a.daddy > button,
