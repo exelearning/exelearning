@@ -3422,9 +3422,11 @@ class YjsProjectBridge {
     const userStylesEnabled = eXeLearning.config?.userStyles === 1 || eXeLearning.config?.userStyles === true;
 
     if (!isOfflineInstallation && !userStylesEnabled) {
-      Logger.log('[YjsProjectBridge] Theme import disabled (ONLINE_THEMES_INSTALL=0), using default theme');
-      // Save=true to update Yjs metadata with default theme (replacing imported theme)
-      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
+      Logger.log('[YjsProjectBridge] Theme import disabled (ONLINE_THEMES_INSTALL=0), using fallback theme');
+      // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+      // (user defaultTheme preference -> admin default -> base). Save=true persists the
+      // resolved theme to Yjs metadata, replacing the imported theme.
+      eXeLearning.app.themes.selectTheme(themeName, true);
       return;
     }
 
@@ -3473,9 +3475,11 @@ class YjsProjectBridge {
       const themeConfig = zip['theme/config.xml'];
 
       if (!themeConfig) {
-        Logger.log(`[YjsProjectBridge] No theme folder in package, using default`);
-        // Save=true to update Yjs metadata with default theme (replacing imported theme)
-        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
+        Logger.log(`[YjsProjectBridge] No theme folder in package, using fallback theme`);
+        // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+        // (user defaultTheme preference -> admin default -> base). Save=true persists the
+        // resolved theme to Yjs metadata, replacing the imported theme.
+        eXeLearning.app.themes.selectTheme(themeName, true);
         return;
       }
 
@@ -3487,7 +3491,9 @@ class YjsProjectBridge {
       const downloadable = getValue('downloadable');
       if (downloadable === '0') {
         Logger.log(`[YjsProjectBridge] Theme "${themeName}" marked as non-downloadable, skipping import`);
-        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
+        // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+        // (user defaultTheme preference -> admin default -> base).
+        eXeLearning.app.themes.selectTheme(themeName, true);
         return;
       }
 
@@ -3499,8 +3505,10 @@ class YjsProjectBridge {
       this._showThemeImportModal(themeName);
     } catch (error) {
       console.error('[YjsProjectBridge] Error checking theme in package:', error);
-      // Save=true to update Yjs metadata with default theme (replacing imported theme)
-      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
+      // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+      // (user defaultTheme preference -> admin default -> base). Save=true persists the
+      // resolved theme to Yjs metadata, replacing the imported theme.
+      eXeLearning.app.themes.selectTheme(themeName, true);
     }
   }
 

@@ -203,6 +203,25 @@ export default class ThemesManager {
      */
     async selectTheme(id, save, forceReload, isSync = false) {
         let themeSelected = this.getTheme(id);
+        // When the requested theme is missing (e.g. opening a file whose
+        // embedded style isn't installed), honor the user's "Default style
+        // for the new documents" preference before falling back to the
+        // site/admin default. Keeps precedence in sync with the
+        // resolveDefaultThemeForNewProject helper on the server.
+        if (!themeSelected) {
+            const userPref =
+                this.app?.user?.preferences?.preferences?.defaultTheme?.value;
+            if (userPref && userPref !== id) {
+                const userThemeSelected = this.getTheme(userPref);
+                if (userThemeSelected) {
+                    themeSelected = userThemeSelected;
+                    console.warn(
+                        `[ThemesManager] Theme '${id}' unavailable; `
+                        + `falling back to user default '${userPref}'.`
+                    );
+                }
+            }
+        }
         // Try to load the default theme if can't get the selected theme
         if (!themeSelected) {
             themeSelected = this.getTheme(eXeLearning.config.defaultTheme);
