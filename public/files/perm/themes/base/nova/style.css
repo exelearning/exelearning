@@ -414,9 +414,12 @@ body.exe-export.exe-epub .exe-content {
     padding: 0;
     list-style: none;
 }
-
 #siteNav li {
     margin-bottom: 4px;
+}
+
+#siteNav li > ul {
+    margin-top: 4px;
 }
 
 #siteNav a {
