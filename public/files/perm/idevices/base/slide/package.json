@@ -6,6 +6,6 @@
     },
     "dependencies": {
         "dompurify": "^3.2.4",
-        "fabric": "^6.5.4"
+        "fabric": "^7.4.0"
     }
 }
