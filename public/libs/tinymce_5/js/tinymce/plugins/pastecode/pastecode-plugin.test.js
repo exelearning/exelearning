@@ -51,6 +51,25 @@ describe('pastecode plugin - syntax highlighting language list', () => {
         expect(pluginSource).toContain("text: 'CMD (Batch)'");
     });
 
+    it('exposes all other newly added languages', () => {
+        const newLanguages = [
+            { value: 'arduino', text: 'Arduino' },
+            { value: 'csharp', text: 'C#' },
+            { value: 'docker', text: 'Docker' },
+            { value: 'git', text: 'Git' },
+            { value: 'less', text: 'LESS' },
+            { value: 'markdown', text: 'Markdown' },
+            { value: 'markup-templating', text: 'Markup templating' },
+            { value: 'mermaid', text: 'Mermaid' },
+            { value: 'twig', text: 'Twig' },
+            { value: 'typescript', text: 'TypeScript' },
+        ];
+        for (const { value, text } of newLanguages) {
+            expect(hasLanguageEntry(value)).toBe(true);
+            expect(pluginSource).toContain(`text: '${text}'`);
+        }
+    });
+
     it('places the new entries in the expected relative order', () => {
         // Bash sits in its alphabetical slot (B before C), so it appears before
         // the "C type" anchor. Batch and PowerShell are placed after clike.
