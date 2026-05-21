@@ -182,6 +182,50 @@ test.describe('Page Export with Images', () => {
         console.log('Page export with images verified successfully');
     });
 
+    test('should not bundle each asset twice under a UUID-shaped path (issue #1769)', async ({ authenticatedPage }) => {
+        /**
+         * Regression test for exelearning/exelearning#1769:
+         * saving and exporting must not write each asset twice (once under its
+         * friendly filename, once under content/resources/<assetId><ext>).
+         */
+        const page = authenticatedPage;
+
+        if (!fs.existsSync(FIXTURE_ELPX_WITH_IMAGES)) {
+            test.skip();
+            return;
+        }
+
+        await openElpFile(page, FIXTURE_ELPX_WITH_IMAGES, 2);
+        await waitForAppReady(page);
+
+        await navigateToPageByTitle(page, 'Inicio');
+        await page.waitForTimeout(500);
+
+        const nodeId = await page.evaluate(() => {
+            const selected = document.querySelector('.nav-element.selected');
+            return selected?.getAttribute('nav-id') || null;
+        });
+        if (!nodeId) {
+            throw new Error('Could not find node ID for "Inicio" page');
+        }
+
+        const download = await exportPage(page, nodeId);
+        const filePath = path.join(tempDir, download.suggestedFilename());
+        await download.saveAs(filePath);
+
+        const zipFiles = getZipFileNames(filePath);
+        const resourceFiles = zipFiles.filter(f => f.startsWith('content/resources/'));
+        expect(resourceFiles.length).toBeGreaterThan(0);
+
+        // No file under content/resources/ should be a literal <uuid><ext> duplicate
+        // — that was the symptom in #1769 (image attached to the issue showed both
+        // pie_pagina_FEDER_2027.png and 2c161d17-...-bae9.png with identical CRC32).
+        const uuidPattern =
+            /^content\/resources\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.[a-z0-9]+$/i;
+        const uuidDuplicates = resourceFiles.filter(f => uuidPattern.test(f));
+        expect(uuidDuplicates).toEqual([]);
+    });
+
     test('should export page from legacy .elp file with images', async ({ authenticatedPage, createProject }) => {
         /**
          * This test verifies that page export works with legacy Python eXeLearning files

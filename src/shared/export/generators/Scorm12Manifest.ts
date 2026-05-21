@@ -56,16 +56,27 @@ export class Scorm12ManifestGenerator {
     private projectId: string;
     private pages: ExportPage[];
     private metadata: ScormManifestOptions;
+    private manifestIdentifier: string | null;
 
     /**
-     * @param projectId - Unique project identifier
+     * @param projectId - Bare project identifier (used for organization id and resource ids)
      * @param pages - Pages from navigation structure
      * @param metadata - Project metadata
+     * @param manifestIdentifier - Optional pre-built manifest@identifier. When provided
+     *   it is used verbatim (no `eXe-MANIFEST-` prefix is prepended). Pass this from
+     *   BaseExporter.getManifestIdentifier() so re-exports of the same project produce
+     *   a stable identifier the LMS can track (see exelearning/exelearning#1785).
      */
-    constructor(projectId: string, pages: ExportPage[], metadata: ScormManifestOptions = {}) {
+    constructor(
+        projectId: string,
+        pages: ExportPage[],
+        metadata: ScormManifestOptions = {},
+        manifestIdentifier: string | null = null,
+    ) {
         this.projectId = projectId || this.generateId();
         this.pages = pages || [];
         this.metadata = metadata;
+        this.manifestIdentifier = manifestIdentifier;
     }
 
     /**
@@ -138,7 +149,11 @@ export class Scorm12ManifestGenerator {
      * @returns Manifest opening XML
      */
     generateManifestOpen(): string {
-        return `<manifest identifier="eXe-MANIFEST-${this.escapeXml(this.projectId)}"
+        // When a manifest identifier is supplied (BaseExporter.getManifestIdentifier),
+        // use it verbatim so re-uploads share a stable LMS-tracking identifier.
+        // Otherwise fall back to the legacy `eXe-MANIFEST-<bareId>` shape.
+        const identifier = this.manifestIdentifier ?? `eXe-MANIFEST-${this.projectId}`;
+        return `<manifest identifier="${this.escapeXml(identifier)}"
   xmlns="${SCORM_12_NAMESPACES.imscp}"
   xmlns:adlcp="${SCORM_12_NAMESPACES.adlcp}"
   xmlns:imsmd="${SCORM_12_NAMESPACES.imsmd}">

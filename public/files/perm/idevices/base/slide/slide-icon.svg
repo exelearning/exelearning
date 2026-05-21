@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="slide-icon-title" fill="none" stroke="#F9AB00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <title id="slide-icon-title">Slide</title>
+  <!-- Outline of a paper sheet with the corner folded over. -->
+  <path d="M14 6 H42 L54 18 V54 a4 4 0 0 1 -4 4 H14 a4 4 0 0 1 -4 -4 V10 a4 4 0 0 1 4 -4 Z" />
+  <!-- Folded corner. -->
+  <path d="M42 6 V14 a4 4 0 0 0 4 4 H54" />
+  <!-- Inner presentation rectangle (the "slide"). -->
+  <rect x="18" y="26" width="28" height="16" rx="1" />
+</svg>

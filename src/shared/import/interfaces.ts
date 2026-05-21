@@ -286,4 +286,10 @@ export interface OdeMetadata {
     globalFont: string;
     /** Project screenshot/thumbnail as base64 data URL (optional) */
     screenshot?: string;
+    /** Stable ODE identifier preserved from <odeResources><odeId> (optional) */
+    odeIdentifier?: string;
+    /** Stable ODE version identifier preserved from <odeResources><odeVersionId> (optional) */
+    odeVersionId?: string;
+    /** SCORM manifest identifier override preserved from <odeResources><scormIdentifier> (optional) */
+    scormIdentifier?: string;
 }
