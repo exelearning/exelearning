@@ -367,6 +367,31 @@ describe('ModalFilemanager', () => {
       expect(renderSpy).toHaveBeenCalled();
     });
 
+it('should filter by accept=3d for 3D models', () => {
+      modal.acceptFilter = '3d';
+      modal.assets = [
+        { id: '1', filename: 'model.glb', mime: 'model/gltf-binary' },
+        { id: '2', filename: 'model.stl', mime: 'application/octet-stream' },
+        { id: '3', filename: 'model.gltf', mime: 'model/gltf+json' },
+        { id: '4', filename: 'pic.png', mime: 'image/png' },
+        { id: '5', filename: 'song.mp3', mime: 'audio/mpeg' },
+      ];
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.length).toBe(3);
+      expect(modal.filteredAssets.map((a) => a.filename)).toEqual(['model.glb', 'model.stl', 'model.gltf']);
+    });
+
+    it('should filter by accept=3d using file extension when mime is generic', () => {
+      modal.acceptFilter = '3d';
+      modal.assets = [
+        { id: '1', filename: 'model.glb', mime: 'application/octet-stream' },
+        { id: '2', filename: 'other.bin', mime: 'application/octet-stream' },
+      ];
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.length).toBe(1);
+      expect(modal.filteredAssets[0].filename).toBe('model.glb');
+    });
+
     it('should search recursively across all folders when search term is entered', () => {
       modal.currentPath = '';
       modal.searchInput.value = 'test';
@@ -1145,10 +1170,25 @@ describe('ModalFilemanager', () => {
       expect(modal.getAssetTypeCategory('application/pdf')).toBe('pdf');
     });
 
-    it('should return model for molecular and model mime types', () => {
+    it('should return model for model and molecular mime types', () => {
       expect(modal.getAssetTypeCategory('model/stl')).toBe('model');
+      expect(modal.getAssetTypeCategory('model/gltf-binary')).toBe('model');
+      expect(modal.getAssetTypeCategory('model/gltf+json')).toBe('model');
       expect(modal.getAssetTypeCategory('chemical/x-pdb')).toBe('model');
       expect(modal.getAssetTypeCategory('application/vnd.mmtf')).toBe('model');
+    });
+
+    it('should return model for 3D file extensions when mime is generic', () => {
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'model.glb')).toBe('model');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'model.gltf')).toBe('model');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'model.stl')).toBe('model');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'model.obj')).toBe('model');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'model.fbx')).toBe('model');
+    });
+
+    it('should return model for uppercase extensions', () => {
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'MODEL.GLB')).toBe('model');
+      expect(modal.getAssetTypeCategory('application/octet-stream', 'Model.STL')).toBe('model');
     });
 
     it('should return other for unknown types', () => {
@@ -1631,6 +1671,41 @@ describe('ModalFilemanager', () => {
     });
   });
 
+describe('getMimeTypeFromFilename', () => {
+    it('should return correct mime for image extensions', () => {
+      expect(modal.getMimeTypeFromFilename('test.png')).toBe('image/png');
+      expect(modal.getMimeTypeFromFilename('test.jpg')).toBe('image/jpeg');
+      expect(modal.getMimeTypeFromFilename('test.jpeg')).toBe('image/jpeg');
+      expect(modal.getMimeTypeFromFilename('test.gif')).toBe('image/gif');
+      expect(modal.getMimeTypeFromFilename('test.svg')).toBe('image/svg+xml');
+      expect(modal.getMimeTypeFromFilename('test.webp')).toBe('image/webp');
+    });
+
+    it('should return correct mime for video extensions', () => {
+      expect(modal.getMimeTypeFromFilename('video.mp4')).toBe('video/mp4');
+      expect(modal.getMimeTypeFromFilename('video.webm')).toBe('video/webm');
+      // ogg is audio/ogg in the implementation, not video/ogg
+      expect(modal.getMimeTypeFromFilename('video.ogv')).toBe('video/ogg');
+    });
+
+    it('should return correct mime for audio extensions', () => {
+      expect(modal.getMimeTypeFromFilename('audio.mp3')).toBe('audio/mpeg');
+      expect(modal.getMimeTypeFromFilename('audio.wav')).toBe('audio/wav');
+    });
+
+    it('should return correct mime for 3D model extensions', () => {
+      expect(modal.getMimeTypeFromFilename('model.stl')).toBe('model/stl');
+      expect(modal.getMimeTypeFromFilename('model.glb')).toBe('model/gltf-binary');
+      expect(modal.getMimeTypeFromFilename('model.gltf')).toBe('model/gltf+json');
+      expect(modal.getMimeTypeFromFilename('model.obj')).toBe('model/obj');
+      expect(modal.getMimeTypeFromFilename('model.fbx')).toBe('model/fbx');
+    });
+
+    it('should return application/octet-stream for unknown extensions', () => {
+      expect(modal.getMimeTypeFromFilename('file.unknown')).toBe('application/octet-stream');
+      expect(modal.getMimeTypeFromFilename('file.qqq')).toBe('application/octet-stream');
+    });
+  });
   describe('triggerAssetFetch', () => {
     it('should request asset via WebSocket handler when available', async () => {
       const mockWsHandler = {

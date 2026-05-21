@@ -299,6 +299,49 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('_captureHtmlAsScreenshot html2canvas URL (BASE_PATH)', () => {
+    // Regression: behind a subdirectory reverse proxy a bare-root URL 502s,
+    // so html2canvas must be loaded through composeUrl().
+    const stopOnAppend = (el) => {
+      // Reject the load promise immediately so the method short-circuits to
+      // null after we have captured script.src.
+      if (el && el.onerror) el.onerror(new Error('blocked'));
+    };
+
+    it('loads html2canvas through composeUrl when available', async () => {
+      window.html2canvas = undefined;
+      window.eXeLearning.app.composeUrl = (p) => `/web/exelearning${p}`;
+      let createdScript;
+      global.document.createElement = mock((tag) => {
+        const el = { tagName: tag, onload: null, onerror: null, src: '' };
+        if (tag === 'script') createdScript = el;
+        return el;
+      });
+      global.document.head = { appendChild: mock(stopOnAppend) };
+
+      const result = await bridge._captureHtmlAsScreenshot('<div>x</div>');
+
+      expect(createdScript.src).toBe('/web/exelearning/files/perm/idevices/base/rubric/export/html2canvas.js');
+      expect(result).toBeNull();
+    });
+
+    it('falls back to the bare path when composeUrl is unavailable', async () => {
+      window.html2canvas = undefined;
+      window.eXeLearning.app.composeUrl = undefined;
+      let createdScript;
+      global.document.createElement = mock((tag) => {
+        const el = { tagName: tag, onload: null, onerror: null, src: '' };
+        if (tag === 'script') createdScript = el;
+        return el;
+      });
+      global.document.head = { appendChild: mock(stopOnAppend) };
+
+      await bridge._captureHtmlAsScreenshot('<div>x</div>');
+
+      expect(createdScript.src).toBe('/files/perm/idevices/base/rubric/export/html2canvas.js');
+    });
+  });
+
   describe('initialize', () => {
     it('sets projectId', async () => {
       await bridge.initialize(123, 'test-token');
@@ -4704,6 +4747,41 @@ describe('YjsProjectBridge', () => {
       await expect(bridge.exportToElpx()).rejects.toThrow('Export failed');
     });
 
+    it('calls ensureScreenshotForExport before exporter.export so meta.screenshot is populated', async () => {
+      const callOrder = [];
+      const ensureSpy = mock(async () => {
+        callOrder.push('ensureScreenshot');
+      });
+      bridge.ensureScreenshotForExport = ensureSpy;
+
+      const exportSpy = mock(() => {
+        callOrder.push('export');
+        return Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'test.elpx',
+        });
+      });
+      global.window.SharedExporters = {
+        createExporter: mock(() => ({ export: exportSpy })),
+      };
+
+      const mockLink = { href: '', download: '', click: mock(() => {}) };
+      global.URL.createObjectURL = mock(() => 'blob:test');
+      global.URL.revokeObjectURL = mock(() => {});
+      global.document.createElement = mock(() => mockLink);
+      global.document.body = {
+        appendChild: mock(() => {}),
+        removeChild: mock(() => {}),
+      };
+
+      await bridge.exportToElpx();
+
+      expect(ensureSpy).toHaveBeenCalled();
+      expect(exportSpy).toHaveBeenCalled();
+      expect(callOrder).toEqual(['ensureScreenshot', 'export']);
+    });
+
     it('uses electronAPI.saveBuffer() in Electron mode (always prompts)', async () => {
       const mockExporter = {
         export: mock(() => Promise.resolve({
@@ -7176,6 +7254,43 @@ describe('YjsProjectBridge', () => {
       await bridge.generateScreenshotFromFirstPage();
 
       expect(bridge._screenshotGenerating).toBe(false);
+    });
+  });
+
+  describe('ensureScreenshotForExport', () => {
+    it('awaits generateScreenshotFromFirstPage when present', async () => {
+      const generate = mock(async () => {});
+      bridge.generateScreenshotFromFirstPage = generate;
+
+      await bridge.ensureScreenshotForExport();
+
+      expect(generate).toHaveBeenCalled();
+    });
+
+    it('is a no-op when generateScreenshotFromFirstPage is missing', async () => {
+      delete bridge.generateScreenshotFromFirstPage;
+      await expect(bridge.ensureScreenshotForExport()).resolves.toBeUndefined();
+    });
+
+    it('returns within the timeout when generation hangs', async () => {
+      bridge.generateScreenshotFromFirstPage = mock(
+        () => new Promise((r) => setTimeout(r, 60000)),
+      );
+
+      const start = Date.now();
+      await bridge.ensureScreenshotForExport(25);
+      const elapsed = Date.now() - start;
+
+      expect(elapsed).toBeLessThan(2000);
+      expect(elapsed).toBeGreaterThanOrEqual(20);
+    });
+
+    it('swallows generator rejections', async () => {
+      bridge.generateScreenshotFromFirstPage = mock(
+        async () => { throw new Error('render failed'); },
+      );
+
+      await expect(bridge.ensureScreenshotForExport()).resolves.toBeUndefined();
     });
   });
 

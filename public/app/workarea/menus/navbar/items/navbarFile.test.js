@@ -2402,6 +2402,126 @@ describe('NavbarFile', () => {
             expect(global.eXe.app.alert).toHaveBeenCalled();
             expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
         });
+
+        // -----------------------------------------------------------------
+        // Regression / TDD coverage for exelearning/exelearning#1770
+        // "Export to Moodle does not package the assets".
+        //
+        // The reporter sees a Docker `:latest` build that ships HTML
+        // referencing `content/resources/<file>` URLs but no matching
+        // entries in the ZIP — the same symptom PR #1740 was meant to
+        // fix. Building from `main` works for them, so the difference
+        // must be in some runtime branch where the package leaves the
+        // browser empty. The two reachable code paths that can produce
+        // an asset-less package are pinned below.
+        // -----------------------------------------------------------------
+
+        it('client-side branch must not silently produce an empty-asset package when yjsBridge.assetManager is null (#1770)', async () => {
+            // Hypothesis A: documentManager is wired up so the
+            // canExportClientSide gate passes, but `assetManager` and the
+            // legacy `assetCache` are both null (e.g. AssetManager init
+            // was racing the click on "Finish to Moodle"). Today,
+            // SharedExporters.quickExport is invoked with `null, null` for
+            // both providers and BrowserAssetProvider falls through to
+            // `createNullAssetProvider()` — so the resulting ZIP has no
+            // `content/resources/` folder at all. That is the exact
+            // symptom #1770 describes.
+            window.location.search = '?jwt_token=ignored';
+            const recordedArgs = [];
+            const quickExport = vi.fn(async (...args) => {
+                recordedArgs.push(args);
+                return {
+                    success: true,
+                    data: new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
+                    filename: 'project.zip',
+                };
+            });
+            window.SharedExporters = { quickExport };
+
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: () => ({ saveToServer: vi.fn().mockResolvedValue() }),
+                documentManager: { id: 'doc' },
+                assetManager: null,
+                assetCache: null,
+                resourceFetcher: null,
+            };
+
+            // The fallback may run if the gate refuses the client-side path;
+            // mock the legacy API so we can observe whether it was used.
+            eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mockResolvedValue({
+                responseMessage: 'OK',
+                returnUrl: 'http://platform/return',
+            });
+
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: async () => ({ responseMessage: 'OK', returnUrl: 'http://platform/return' }),
+            });
+            const originalFetch = global.fetch;
+            global.fetch = fetchMock;
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            // Either the flow refused to run quickExport (preferred —
+            // surface the situation to the user instead of shipping a
+            // broken package), or, if it did run, at least one asset
+            // provider must have been non-null. Both `null` means we
+            // produced a `content/resources/`-less ZIP and forwarded it.
+            if (recordedArgs.length > 0) {
+                const [, , assetCacheArg, , , assetManagerArg] = recordedArgs[0];
+                expect(assetCacheArg !== null || assetManagerArg !== null).toBe(true);
+            } else {
+                const tookFallback =
+                    eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mock.calls.length > 0;
+                const wasAlerted = global.eXe.app.alert.mock.calls.length > 0;
+                expect(tookFallback || wasAlerted).toBe(true);
+            }
+        });
+
+        it('legacy fallback (no SharedExporters) must surface a warning that the asset-less server path is being used (#1770)', async () => {
+            // Hypothesis B: `exporters.bundle.js` did not expose
+            // `SharedExporters` (or it was loaded after the user clicked),
+            // so canExportClientSide evaluates to false and we silently
+            // call the legacy `postFirstTypePlatformIntegrationElpUpload`
+            // server-side route. That route happily replies "OK" while
+            // shipping HTML with no matching files in
+            // `content/resources/` — the original #1740 symptom. The user
+            // (or the operator looking at the console) must get a clear
+            // signal that the broken path was taken, rather than a silent
+            // success redirect.
+            window.location.search = '?jwt_token=ignored';
+            delete window.SharedExporters;
+            eXeLearning.app.project._yjsBridge = null;
+
+            const warnCalls = [];
+            const originalWarn = console.warn;
+            console.warn = (...args) => {
+                warnCalls.push(args);
+            };
+
+            eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mockResolvedValue({
+                responseMessage: 'OK',
+                returnUrl: 'http://platform/return',
+            });
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                console.warn = originalWarn;
+            }
+
+            const wasAlerted = global.eXe.app.alert.mock.calls.length > 0;
+            const wasWarned = warnCalls.some(args =>
+                args.some(a => typeof a === 'string' && /platform|legacy|fallback|asset/i.test(a)),
+            );
+            expect(wasAlerted || wasWarned).toBe(true);
+        });
     });
 
     describe('importXmlPropertiesEvent', () => {

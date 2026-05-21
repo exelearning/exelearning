@@ -61,12 +61,40 @@ export default class Common {
   }
 
   /**
-   * Markdown to HTML converter
+   * Markdown to HTML converter.
+   *
+   * LaTeX delimiters (\(...\), \[...\], $$...$$, \begin{...}\end{...}) are
+   * stashed before Showdown runs so that markdown processing does not eat
+   * underscores, asterisks or backslashes inside formulas. They are restored
+   * verbatim afterwards so MathJax can pick them up at render time.
    */
   markdownToHTML(content) {
-    var converter = new showdown.Converter();
-    converter.setOption('noHeaderId', true);
-    return converter.makeHtml(content);
+    var src = String(content == null ? '' : content);
+    var store = [];
+    [
+      /\\\[[\s\S]*?\\\]/g,
+      /\$\$[\s\S]*?\$\$/g,
+      /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g,
+      /\\\([\s\S]*?\\\)/g,
+    ].forEach(function (re) {
+      src = src.replace(re, function (match) {
+        store.push(match);
+        return 'EXELATEXBEGIN' + (store.length - 1) + 'EXELATEXEND';
+      });
+    });
+
+    var converter = new showdown.Converter({
+      noHeaderId: true,
+      tables: true,
+      tasklists: true,
+      strikethrough: true,
+      disableForced4SpacesIndentedSublists: true,
+    });
+    var html = converter.makeHtml(src);
+
+    return html.replace(/EXELATEXBEGIN(\d+)EXELATEXEND/g, function (_, i) {
+      return store[Number(i)] !== undefined ? store[Number(i)] : _;
+    });
   }
 
   /**

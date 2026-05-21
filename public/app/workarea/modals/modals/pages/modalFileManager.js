@@ -911,10 +911,15 @@ export default class ModalFilemanager extends Modal {
                 if (this.acceptFilter === 'image' && !mime.startsWith('image/')) return false;
                 if (this.acceptFilter === 'audio' && !mime.startsWith('audio/')) return false;
                 if (this.acceptFilter === 'video' && !mime.startsWith('video/')) return false;
+                if (this.acceptFilter === '3d') {
+                    const filename = asset.filename || '';
+                    const is3D = mime.startsWith('model/') || /\.(glb|gltf|stl)$/i.test(filename);
+                    if (!is3D) return false;
+                }
             }
             // Filter by type (user-selected filter)
             if (this.typeFilter) {
-                const category = this.getAssetTypeCategory(asset.mime);
+                const category = this.getAssetTypeCategory(asset.mime, asset.filename);
                 if (category !== this.typeFilter) return false;
             }
             // Filter by search term
@@ -1552,12 +1557,13 @@ export default class ModalFilemanager extends Modal {
     /**
      * Get asset type category for filtering
      */
-    getAssetTypeCategory(mime) {
+    getAssetTypeCategory(mime, filename) {
         if (!mime) return 'other';
         if (mime.startsWith('image/')) return 'image';
         if (mime.startsWith('video/')) return 'video';
         if (mime.startsWith('audio/')) return 'audio';
         if (mime.startsWith('model/') || mime.startsWith('chemical/') || mime === 'application/vnd.mmtf') return 'model';
+        if (filename && /\.(glb|gltf|stl|obj|fbx)$/i.test(filename)) return 'model';
         if (mime === 'application/pdf') return 'pdf';
         return 'other';
     }
@@ -1571,7 +1577,7 @@ export default class ModalFilemanager extends Modal {
         // Get unique type categories from assets
         const typeCategories = new Set();
         for (const asset of this.assets) {
-            const category = this.getAssetTypeCategory(asset.mime);
+            const category = this.getAssetTypeCategory(asset.mime, asset.filename);
             typeCategories.add(category);
         }
 
@@ -3368,7 +3374,12 @@ export default class ModalFilemanager extends Modal {
             'txt': 'text/plain',
             'md': 'text/markdown',
             'csv': 'text/csv',
+            // 3D Models
             'stl': 'model/stl',
+            'glb': 'model/gltf-binary',
+            'gltf': 'model/gltf+json',
+            'obj': 'model/obj',
+            'fbx': 'model/fbx',
             // Molecular / structural formats
             'pdb': 'chemical/x-pdb',
             'sdf': 'chemical/x-mdl-sdfile',

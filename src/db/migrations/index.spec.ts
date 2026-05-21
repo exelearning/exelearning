@@ -3,7 +3,9 @@
  * Tests the migration system with a real in-memory SQLite database
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { Kysely, Migrator } from 'kysely';
+import { Kysely } from 'kysely';
+// Kysely 0.29 split: Migrator now lives under `kysely/migration`.
+import { Migrator } from 'kysely/migration';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import { sql } from 'kysely';
 import {

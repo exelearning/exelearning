@@ -75,7 +75,7 @@ function generateOdeResourcesXml(odeId: string, versionId: string): string {
 | Key | Description |
 |---|---|
 | `odeId` | Stable project identifier. Retrieved from `meta.odeIdentifier` on export; generated once via `generateOdeId()` if absent. |
-| `odeVersionId` | Regenerated on every export/save via `generateOdeId()`. Acts as a change cursor. |
+| `odeVersionId` | Stable per-version identifier. Read from `meta.odeVersionId` on export; generated once via `generateOdeId()` only when absent. Imported from `<odeResources>` so a round-trip without content changes preserves the value. |
 | `exe_version` | The ODE format version string, currently `'3.0'` (constant `ODE_VERSION` from `constants.ts:1000`). |
 
 **Legacy keys observed in older fixtures:** the v4 generator writes exactly three resources (`odeId`, `odeVersionId`, `exe_version`). Some older fixtures additionally carry `odeVersionName`, `isDownload`, or the misspelling `eXeVersion`. The importer accepts all of these for backward compatibility, but **`generateOdeResourcesXml()` never emits them in v4** — treat them as informational legacy keys when reading older `.elpx` files.

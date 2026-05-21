@@ -3527,6 +3527,8 @@ export default class IdeviceNode {
                     accept = 'audio';
                 } else if (id.toLowerCase().includes('video')) {
                     accept = 'video';
+                } else if (id.toLowerCase().includes('3d') || id.toLowerCase().includes('model')) {
+                    accept = '3d';
                 }
                 // If generic exe-file-picker, accept = null (show all files)
 

@@ -217,6 +217,14 @@ export const METADATA_PROPERTIES: MetadataPropertyConfig[] = [
         category: 'internal',
     },
     {
+        key: 'odeVersionId',
+        xmlKey: 'odeVersionId',
+        type: 'string',
+        defaultValue: '',
+        excludeFromXml: true,
+        category: 'internal',
+    },
+    {
         key: 'createdAt',
         xmlKey: 'createdAt',
         type: 'string',

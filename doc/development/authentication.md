@@ -32,7 +32,7 @@ APP_AUTH_METHODS=password,cas,openid,guest
 AUTH_CREATE_USERS=true
 
 # CAS
-CAS_URL=https://casserverpac4j.herokuapp.com
+CAS_URL=https://www.casserverpac4j.dev
 CAS_VALIDATE_PATH=/p3/serviceValidate
 CAS_LOGIN_PATH=/login
 CAS_LOGOUT_PATH=/logout
@@ -149,7 +149,7 @@ OIDC_CLIENT_SECRET=secret
 Use these variables (example with a public test server):
 
 ```
-CAS_URL=https://casserverpac4j.herokuapp.com
+CAS_URL=https://www.casserverpac4j.dev
 CAS_VALIDATE_PATH=/p3/serviceValidate
 CAS_LOGIN_PATH=/login
 CAS_LOGOUT_PATH=/logout
