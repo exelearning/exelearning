@@ -340,6 +340,41 @@ describe('Components API v1', () => {
             // Should return 404 or 400 when component not found
             expect([400, 404]).toContain(response.status);
         });
+
+        it('should call updateComponent with correct argument order (regression)', async () => {
+            // Regression test: updateComponent(ydoc, componentId, updates)
+            // Previously the route passed an object as second arg:
+            //   updateComponent(ydoc, { componentId, ... })
+            // which caused "Component [object Object] not found" errors.
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'regression-update-comp',
+                    title: 'Regression Test Project',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/projects/regression-update-comp/components/some-comp-id', {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${userToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title: 'Updated Title' }),
+                }),
+            );
+
+            // If the fix is correct, the endpoint should NOT return an error
+            // about "Component [object Object] not found".
+            // It should return 404 (component doesn't exist in Y.Doc) or 400,
+            // but NOT a 500 or a malformed error.
+            expect(response.status).not.toBe(500);
+            const body = (await response.json()) as { error?: { message?: string } };
+            expect(body.error?.message).not.toContain('[object Object]');
+        });
     });
 
     describe('PUT /projects/:uuid/components/:componentId/html', () => {
