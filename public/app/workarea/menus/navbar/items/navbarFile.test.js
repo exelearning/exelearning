@@ -120,8 +120,6 @@ describe('NavbarFile', () => {
                     confirm: { show: vi.fn() },
                     alert: { show: vi.fn() },
                     share: { show: vi.fn() },
-                    uploadtodrive: { show: vi.fn() },
-                    uploadtodropbox: { show: vi.fn() },
                     openuserodefiles: {
                         show: vi.fn(),
                         largeFilesUpload: vi.fn(),
@@ -157,10 +155,6 @@ describe('NavbarFile', () => {
                     getOdeConcurrentUsers: vi.fn().mockResolvedValue({ currentUsers: [] }),
                     postLocalLargeOdeFile: vi.fn(),
                     postImportElpToRootFromLocal: vi.fn(),
-                    getFoldersGoogleDrive: vi.fn(),
-                    getUrlLoginGoogleDrive: vi.fn(),
-                    getFoldersDropbox: vi.fn(),
-                    getUrlLoginDropbox: vi.fn(),
                 },
                 actions: {
                     authorizeAddActions: false,
@@ -2048,140 +2042,6 @@ describe('NavbarFile', () => {
             await navbarFile.exportEPUB3Event();
 
             expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalled();
-        });
-    });
-
-    describe('cloud upload helpers', () => {
-        beforeEach(() => {
-            navbarFile = new NavbarFile(mockMenu);
-        });
-
-        it('getFoldersGoogleDrive should return files when available', async () => {
-            eXeLearning.app.api.getFoldersGoogleDrive.mockResolvedValue({
-                folders: { files: [] },
-            });
-
-            const result = await navbarFile.getFoldersGoogleDrive();
-
-            expect(result).toEqual({ error: false, files: { files: [] } });
-        });
-
-        it('getFoldersGoogleDrive should return unknown when missing data', async () => {
-            eXeLearning.app.api.getFoldersGoogleDrive.mockResolvedValue(null);
-
-            const result = await navbarFile.getFoldersGoogleDrive();
-
-            expect(result).toEqual({ error: 'Unknown', files: [] });
-        });
-
-        it('uploadToGoogleDriveEvent should open Google Drive modal', async () => {
-            vi.spyOn(navbarFile, 'getFoldersGoogleDrive').mockResolvedValue({
-                error: false,
-                files: { files: [] },
-            });
-
-            navbarFile.uploadToGoogleDriveEvent();
-            await Promise.resolve();
-
-            expect(eXeLearning.app.modals.uploadtodrive.show).toHaveBeenCalledWith({ files: [] });
-        });
-
-        it('uploadToGoogleDriveEvent should show alert when error and no auth', async () => {
-            eXeLearning.app.actions.authorizeAddActions = false;
-            vi.spyOn(navbarFile, 'getFoldersGoogleDrive').mockResolvedValue({
-                error: 'bad',
-                files: [],
-            });
-
-            navbarFile.uploadToGoogleDriveEvent();
-            await Promise.resolve();
-
-            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
-                title: 'Google Drive error',
-                body: 'bad',
-                contentId: 'error',
-            });
-        });
-
-        it('uploadToGoogleDriveEvent should open login when auth is enabled', async () => {
-            eXeLearning.app.actions.authorizeAddActions = true;
-            vi.spyOn(navbarFile, 'getFoldersGoogleDrive').mockResolvedValue({
-                error: 'bad',
-                files: [],
-            });
-            const loginSpy = vi.spyOn(navbarFile, 'openWindowLoginGoogleDrive').mockResolvedValue();
-
-            navbarFile.uploadToGoogleDriveEvent();
-            await Promise.resolve();
-
-            expect(loginSpy).toHaveBeenCalled();
-        });
-
-        it('openWindowLoginGoogleDrive should open login popup', async () => {
-            eXeLearning.app.api.getUrlLoginGoogleDrive.mockResolvedValue({
-                url: 'http://drive-login',
-            });
-
-            await navbarFile.openWindowLoginGoogleDrive();
-
-            expect(window.open).toHaveBeenCalledWith(
-                'http://drive-login',
-                'drive',
-                expect.any(String)
-            );
-        });
-
-        it('getFoldersDropbox should return files when available', async () => {
-            eXeLearning.app.api.getFoldersDropbox.mockResolvedValue({
-                folders: { files: [] },
-            });
-
-            const result = await navbarFile.getFoldersDropbox();
-
-            expect(result).toEqual({ error: false, files: { files: [] } });
-        });
-
-        it('uploadToDropboxEvent should show alert when error and no auth', async () => {
-            eXeLearning.app.actions.authorizeAddActions = false;
-            vi.spyOn(navbarFile, 'getFoldersDropbox').mockResolvedValue({
-                error: 'bad',
-                files: [],
-            });
-
-            navbarFile.uploadToDropboxEvent();
-            await Promise.resolve();
-
-            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
-                title: 'Dropbox error',
-                body: 'bad',
-                contentId: 'error',
-            });
-        });
-
-        it('uploadToDropboxEvent should open Dropbox modal', async () => {
-            vi.spyOn(navbarFile, 'getFoldersDropbox').mockResolvedValue({
-                error: false,
-                files: { files: [] },
-            });
-
-            navbarFile.uploadToDropboxEvent();
-            await Promise.resolve();
-
-            expect(eXeLearning.app.modals.uploadtodropbox.show).toHaveBeenCalledWith({ files: [] });
-        });
-
-        it('openWindowLoginDropbox should open login popup', async () => {
-            eXeLearning.app.api.getUrlLoginDropbox.mockResolvedValue({
-                url: 'http://dropbox-login',
-            });
-
-            await navbarFile.openWindowLoginDropbox();
-
-            expect(window.open).toHaveBeenCalledWith(
-                'http://dropbox-login',
-                'dropbox',
-                expect.any(String)
-            );
         });
     });
 
