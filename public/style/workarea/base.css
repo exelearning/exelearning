@@ -94,6 +94,10 @@
     padding: 20px
 }
 
+.highlighted-code {
+    margin: 2em 1em;
+}
+
 .exe-dl {
     margin-bottom: 2em;
     margin-left: 1.5em

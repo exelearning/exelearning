@@ -3102,7 +3102,13 @@ class YjsProjectBridge {
     if (!window.html2canvas) {
       try {
         const script = document.createElement('script');
-        script.src = '/files/perm/idevices/base/rubric/export/html2canvas.js';
+        // BASE_PATH-aware: behind a subdirectory reverse proxy a bare-root URL
+        // 502s, so route through composeUrl() (the canonical client helper).
+        const html2canvasPath = '/files/perm/idevices/base/rubric/export/html2canvas.js';
+        script.src =
+          window.eXeLearning && window.eXeLearning.app && typeof window.eXeLearning.app.composeUrl === 'function'
+            ? window.eXeLearning.app.composeUrl(html2canvasPath)
+            : html2canvasPath;
         await new Promise((resolve, reject) => {
           script.onload = resolve;
           script.onerror = reject;
