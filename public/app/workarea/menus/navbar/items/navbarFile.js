@@ -1813,8 +1813,16 @@ export default class NavbarFile {
 
         const yjsBridge = eXeLearning.app.project?._yjsBridge;
         const SharedExporters = window.SharedExporters;
+        // We require an asset provider in addition to the document manager and
+        // the exporters bundle. Without one, BrowserAssetProvider falls through
+        // to a null adapter and SharedExporters.quickExport happily produces a
+        // package with no `content/resources/` folder — exactly the
+        // missing-images symptom reported on the cloud build (#1770).
+        const hasAssetProvider = !!(yjsBridge?.assetManager || yjsBridge?.assetCache);
         const canExportClientSide =
-            !!yjsBridge?.documentManager && typeof SharedExporters?.quickExport === 'function';
+            !!yjsBridge?.documentManager &&
+            typeof SharedExporters?.quickExport === 'function' &&
+            hasAssetProvider;
 
         if (canExportClientSide) {
             const handled = await this._uploadPlatformEventClientSide(
@@ -1826,14 +1834,25 @@ export default class NavbarFile {
             if (handled) {
                 return;
             }
+        } else {
+            // Surface the situation in the operator console so the broken
+            // package symptom on `:latest` (#1770) does not look like a silent
+            // success when it really is the legacy server-side path.
+            console.warn(
+                '[NavbarFile] Falling back to legacy server-side platform upload; the resulting package may be missing assets.',
+                {
+                    hasDocumentManager: !!yjsBridge?.documentManager,
+                    hasAssetProvider,
+                    hasSharedExporters: typeof SharedExporters?.quickExport === 'function',
+                },
+            );
         }
 
         // Legacy fallback: server-side generation. Used only when the browser
-        // cannot produce the package itself (e.g., Yjs disabled or shared
-        // exporters bundle missing). When this path is hit and the server's
-        // database does not yet have the latest assets, the generated package
-        // can lack images -- but that is preferable to refusing to publish in
-        // setups that never relied on Yjs.
+        // cannot produce the package itself (e.g., Yjs disabled, shared
+        // exporters bundle missing, or asset providers not yet initialised).
+        // When this path is hit and the server's database does not yet have
+        // the latest assets, the generated package can lack images.
         const response = await eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload({
             projectUuid,
             jwt_token,
