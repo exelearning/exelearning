@@ -23,6 +23,7 @@ globalThis.eXeLearning = {
     },
     api: {
       apiUrlBase: 'http://localhost',
+      apiUrlBasePath: '/exelearning',
       func: {
         getText: vi.fn().mockResolvedValue('css content'),
       },
@@ -222,6 +223,26 @@ describe('TinyMCE 5 Settings', () => {
       const result = globalThis.$exeTinyMCE.getContentCSS();
       expect(result).toContain('/theme/path/style.css');
       expect(result).toContain('/app/editor/tinymce_5_extra.css');
+    });
+
+    // Regression for #1802 / #1804 — these CSS files were previously emitted
+    // with apiUrlBase only (origin), so on a subdirectory deploy they 404'd
+    // because BASE_PATH was missing.
+    it('getContentCSS prefixes static CSS with apiUrlBasePath (BASE_PATH)', () => {
+      const result = globalThis.$exeTinyMCE.getContentCSS();
+      expect(result).toContain('http://localhost/exelearning/app/editor/tinymce_5_extra.css');
+      expect(result).toContain('http://localhost/exelearning/libs/bootstrap/bootstrap.min.css');
+    });
+
+    it('getContentCSS works when apiUrlBasePath is missing (no BASE_PATH)', () => {
+      const original = globalThis.eXeLearning.app.api.apiUrlBasePath;
+      globalThis.eXeLearning.app.api.apiUrlBasePath = '';
+
+      const result = globalThis.$exeTinyMCE.getContentCSS();
+      expect(result).toContain('http://localhost/app/editor/tinymce_5_extra.css');
+      expect(result).toContain('http://localhost/libs/bootstrap/bootstrap.min.css');
+
+      globalThis.eXeLearning.app.api.apiUrlBasePath = original;
     });
 
     it('getContentCSS falls back to base theme when missing', () => {
