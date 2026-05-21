@@ -133,6 +133,12 @@ export interface YjsExportStructure {
         // Custom content
         extraHeadContent?: string;
         footer?: string;
+        // Stable identifiers (#1786) -- forwarded from the browser Y.Map so the
+        // server-side YjsDocumentAdapter sees the same project identity and
+        // BaseExporter.getManifestIdentifier derives a stable manifest@identifier.
+        odeIdentifier?: string;
+        odeVersionId?: string;
+        scormIdentifier?: string;
     };
     pages: Array<{
         id: string;

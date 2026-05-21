@@ -627,6 +627,19 @@ const YjsProjectManagerMixin = {
         return str;
       };
 
+      // Canonical id generator -- mirrors src/shared/ids.ts (Format A: base36
+      // timestamp + 9 base36 random chars). Kept inline because this mixin runs
+      // in the browser before the TS bundle is available. See issue #1782.
+      // Mirrors src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+      const generateCanonicalId = (prefix) => {
+        if (!prefix) {
+          throw new Error('generateId: prefix is required');
+        }
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).substring(2, 11);
+        return `${prefix}-${timestamp}-${random}`;
+      };
+
       // 2. Import structure into Yjs
       const documentManager = this._yjsBridge.getDocumentManager();
       const navigation = documentManager.getNavigation();
@@ -673,7 +686,7 @@ const YjsProjectManagerMixin = {
       // Import each page as a flat entry in navigation (NO nested children arrays)
       const importPage = (pageData) => {
         const pageMap = new Y.Map();
-        const pageId = pageData.id || `page-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const pageId = pageData.id || generateCanonicalId('page');
 
         pageMap.set('id', pageId);
         pageMap.set('pageId', pageId);
@@ -687,7 +700,7 @@ const YjsProjectManagerMixin = {
         if (pageData.blocks && Array.isArray(pageData.blocks)) {
           for (const blockData of pageData.blocks) {
             const blockMap = new Y.Map();
-            const blockId = blockData.id || `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const blockId = blockData.id || generateCanonicalId('block');
 
             blockMap.set('id', blockId);
             blockMap.set('blockId', blockId);
@@ -698,7 +711,7 @@ const YjsProjectManagerMixin = {
             if (blockData.idevices && Array.isArray(blockData.idevices)) {
               for (const ideviceData of blockData.idevices) {
                 const compMap = new Y.Map();
-                const compId = ideviceData.id || `idevice-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const compId = ideviceData.id || generateCanonicalId('idevice');
 
                 compMap.set('id', compId);
                 compMap.set('ideviceId', compId);

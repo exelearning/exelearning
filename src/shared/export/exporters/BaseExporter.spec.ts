@@ -1151,7 +1151,9 @@ describe('BaseExporter', () => {
             const content = '<a download="exe-package:elp-name" href="exe-package:elp">Download</a>';
             const result = exporter.replaceElpxProtocol(content, 'My Project');
 
-            expect(result).toContain('onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"');
+            expect(result).toContain('var p=window.parent');
+            expect(result).toContain("p.postMessage({type:'exe-download-elpx'},'*')");
+            expect(result).toContain("if(typeof downloadElpx==='function')downloadElpx()");
             expect(result).not.toContain('href="exe-package:elp"');
         });
 
