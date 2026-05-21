@@ -278,6 +278,33 @@ describe('TinyMCE 5 Settings', () => {
       expect(config.images_replace_blob_uris).toBe(false);
     });
 
+    it('init forwards document.baseURI as document_base_url so srcdoc embedders avoid the about:srcdoc URI-parser bug (#1799)', () => {
+      // Under iframe-srcdoc, window.location.href === 'about:srcdoc'. The
+      // TinyMCE 5 URI parser matches /^([\w-]+):([^/]{2})/ against that
+      // value (consuming "about:" + "sr") and short-circuits with
+      // .path / .directory undefined. Every editor instance later built
+      // from tinymce.documentBaseURL inherits the broken URI and crashes
+      // the first toAbsolute() against a relative URL with
+      // "TypeError: can't access property 'split', e is undefined".
+      // document.baseURI reflects the embedder's <base href> in that
+      // scenario and is a valid http(s) URL, so passing it explicitly to
+      // tinymce.init() sidesteps the broken parse entirely.
+      const previousBaseURI = Object.getOwnPropertyDescriptor(document, 'baseURI');
+      Object.defineProperty(document, 'baseURI', {
+        value: 'https://example.test/exelearning/editor/',
+        configurable: true,
+      });
+      try {
+        globalThis.$exeTinyMCE.init('multiple', '#editor', true);
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+        expect(config.document_base_url).toBe('https://example.test/exelearning/editor/');
+      } finally {
+        if (previousBaseURI) {
+          Object.defineProperty(document, 'baseURI', previousBaseURI);
+        }
+      }
+    });
+
     it('init instance callback triggers toggler and editor hook', () => {
       globalThis.$exeTinyMCEToggler.documentWidth = 1000;
       const initSpy = vi.spyOn(globalThis.$exeTinyMCEToggler, 'init').mockImplementation(() => {});

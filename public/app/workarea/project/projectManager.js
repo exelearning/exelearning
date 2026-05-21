@@ -1664,9 +1664,17 @@ export default class projectManager {
         // If Yjs mode is enabled and a theme was already set from Yjs metadata,
         // don't override it with user preferences or default
         if (!this._yjsEnabled || !this.app.themes.selected) {
+            // Precedence: user "defaultTheme" preference > legacy "theme" pref >
+            // server/site default. An empty preference value means "use the default
+            // style of the site", so we fall back to the server default.
             let theme = eXeLearning.config.defaultTheme;
-            if (this.app.user.preferences.preferences.theme) {
-                theme = this.app.user.preferences.preferences.theme.value;
+            const prefs = this.app.user.preferences.preferences;
+            const userDefaultTheme = prefs.defaultTheme && prefs.defaultTheme.value;
+            const legacyTheme = prefs.theme && prefs.theme.value;
+            if (userDefaultTheme) {
+                theme = userDefaultTheme;
+            } else if (legacyTheme) {
+                theme = legacyTheme;
             }
             await this.app.themes.selectTheme(theme, false);
         }
