@@ -124,13 +124,18 @@
                             <button id="preview-unpin-button" class="btn button-square button-tertiary" title="{{ t.unpin_preview or 'Unpin preview' }}" aria-label="{{ t.unpin_preview or 'Unpin preview' }}">
                                 <span class="small-icon unpin-icon"></span>
                             </button>
+                            <button id="preview-pinned-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="{{ 'Toggle mobile preview' | trans }}" aria-label="{{ 'Toggle mobile preview' | trans }}">
+                                <span class="small-icon mobile-icon"></span>
+                            </button>
                             <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="{{ t.refresh_preview or 'Refresh preview' }}" aria-label="{{ t.refresh_preview or 'Refresh preview' }}">
                                 <span class="small-icon refresh-icon"></span>
                             </button>
                         </div>
                     </div>
                     <div class="preview-pinned-body">
-                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                        <div class="preview-device-frame">
+                            <iframe id="preview-pinned-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                        </div>
                     </div>
                 </aside>
             </div>
@@ -185,6 +190,9 @@
                     <button id="preview-pin-button" class="btn button-square button-tertiary" title="{{ t.pin_preview or 'Pin preview' }}" aria-label="{{ t.pin_preview or 'Pin preview to layout' }}">
                         <span class="small-icon pin-icon"></span>
                     </button>
+                    <button id="preview-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="{{ 'Toggle mobile preview' | trans }}" aria-label="{{ 'Toggle mobile preview' | trans }}">
+                        <span class="small-icon mobile-icon"></span>
+                    </button>
                     <button id="preview-refresh-button" class="btn button-square button-tertiary" title="{{ t.refresh_preview or 'Refresh preview' }}" aria-label="{{ t.refresh_preview or 'Refresh preview' }}">
                         <span class="small-icon refresh-icon"></span>
                     </button>
@@ -196,7 +204,9 @@
                 </div>
             </div>
             <div class="preview-panel-body">
-                <iframe id="preview-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                <div class="preview-device-frame">
+                    <iframe id="preview-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                </div>
             </div>
         </aside>
     </div>
