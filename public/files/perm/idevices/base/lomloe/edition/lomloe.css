@@ -674,6 +674,46 @@
     cursor: pointer;
 }
 
+/* ── Operational descriptor picker (non-Canarias datasets) ──── */
+.lomloe-sel-descriptors {
+    margin-top: 0.4rem;
+    width: 100%;
+}
+
+.lomloe-sel-descriptors-caption {
+    display: block;
+    font-size: 0.74em;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 0.2rem;
+}
+
+.lomloe-desc-cb-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.4rem;
+}
+
+.lomloe-desc-cb-label {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.2rem !important;
+    font-size: 0.72em;
+    white-space: nowrap;
+    cursor: pointer;
+    padding: 0.05em 0.3em;
+    border-radius: 3px;
+    background: var(--brand-primary-50, #e3f8f9);
+    color: var(--brand-primary-dark, #107275);
+    border: 1px solid var(--brand-primary-100, #CCFBF7);
+}
+
+.lomloe-desc-cb-label input[type="checkbox"] {
+    accent-color: var(--brand-primary, #0BA1A1);
+    cursor: pointer;
+    margin: 0;
+}
+
 /* ── Action buttons ─────────────────────────────────────────── */
 .lomloe-actions {
     padding: 0.6rem 0.75rem;

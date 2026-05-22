@@ -11,22 +11,34 @@
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE01-CR01",
                 "descripcion": "Adecuar sus acciones y reacciones a cada situación, en una interacción lúdica y espontánea con el entorno, explorando sus posibilidades motoras y perceptivas y progresando en precisión, seguridad, coordinación e intencionalidad.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE01-CR02",
                 "descripcion": "Mostrar aceptación y respeto por el cuerpo propio y por el cuerpo de las demás personas, mejorando progresivamente en su conocimiento.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE01-CR03",
                 "descripcion": "Manifestar aptitud emocional y sentimientos de seguridad y afecto en la realización de cada acción.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE01-CR04",
                 "descripcion": "Adquirir nociones temporales básicas para ubicarse en el tiempo a través de las actividades y rutinas de la vida cotidiana, así como de otros acontecimientos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -37,17 +49,29 @@
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE02-CR01",
                 "descripcion": "Expresar emociones y sentimientos desarrollando de manera progresiva la conciencia emocional y estrategias de regulación emocional.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE02-CR02",
                 "descripcion": "Relacionarse con las otras personas aceptando y mostrando afecto de manera libre, segura, respetuosa y alejada de todo tipo de estereotipos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE02-CR03",
                 "descripcion": "Afrontar pequeñas adversidades manifestando actitudes de superación, así como solicitando y prestando ayuda.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -58,12 +82,20 @@
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE03-CR01",
                 "descripcion": "Incorporar estrategias y hábitos relacionados con el cuidado del entorno y el autocuidado, manifestando satisfacción por los beneficios que le aportan.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE03-CR02",
                 "descripcion": "Reconocer y anticipar la sucesión temporal de actividades, ritmos biológicos y pautas socioculturales que estructuran la dinámica cotidiana, asociándola a elementos, procedimientos y actitudes concretas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -74,17 +106,32 @@
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE04-CR01",
                 "descripcion": "Establecer vínculos y relaciones de apego saludables, demostrando actitudes de afecto y empatía hacia las demás personas y respetando los distintos ritmos individuales.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE04-CR02",
                 "descripcion": "Reproducir conductas y situaciones previamente observadas en su entorno próximo, basadas en el respeto, la empatía, la igualdad de género, el trato no discriminatorio a las personas con discapacidad y el respeto a los derechos humanos, a través del juego de imitación.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCA-CE04-CR03",
                 "descripcion": "Iniciarse en la resolución de conflictos con sus iguales, con la mediación de la persona adulta, experimentando los beneficios de llegar a acuerdos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
               }
             ]
           }
@@ -247,17 +294,32 @@
               {
                 "codigo": "ES-MD-INFPC-ÁDE-CE01-CR01",
                 "descripcion": "Relacionar objetos a partir de sus cualidades o atributos básicos, mostrando curiosidad e interés.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁDE-CE01-CR02",
                 "descripcion": "Emplear los cuantificadores básicos más significativos relacionados con su experiencia diaria, utilizándolos en el contexto del juego y la interacción con los demás.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁDE-CE01-CR03",
                 "descripcion": "Aplicar sus conocimientos acerca de las nociones espaciales básicas para ubicarse en los espacios, tanto en reposo como en movimiento, jugando con el propio cuerpo y con los objetos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               }
             ]
           },
@@ -268,12 +330,24 @@
               {
                 "codigo": "ES-MD-INFPC-ÁDE-CE02-CR01",
                 "descripcion": "Gestionar las dificultades, retos y problemas con interés e iniciativa, mediante su división en secuencias de actividades más sencillas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁDE-CE02-CR02",
                 "descripcion": "Proponer soluciones y alternativas a través de distintas estrategias, escuchando y respetando las de los demás.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               }
             ]
           },
@@ -284,12 +358,20 @@
               {
                 "codigo": "ES-MD-INFPC-ÁDE-CE03-CR01",
                 "descripcion": "Interesarse por las actividades en contacto con la naturaleza y las características de los elementos naturales del entorno, mostrando respeto hacia ellos y hacia los animales que lo habitan.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁDE-CE03-CR02",
                 "descripcion": "Identificar y nombrar los fenómenos atmosféricos habituales en su entorno, explicando sus consecuencias en la vida cotidiana.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
               }
             ]
           }
@@ -390,27 +472,52 @@
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE01-CR01",
                 "descripcion": "Participar con interés en interacciones cotidianas, utilizando diferentes sistemas comunicativos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE01-CR02",
                 "descripcion": "Participar de forma espontánea en situaciones comunicativas, adecuando la postura, los gestos y los movimientos a sus intenciones.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE01-CR03",
                 "descripcion": "Manifestar necesidades, sentimientos y vivencias, utilizando estrategias comunicativas y aprovechando las posibilidades que ofrecen los diferentes lenguajes con curiosidad y disfrute.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE01-CR04",
                 "descripcion": "Tomar la iniciativa en la interacción social, disfrutando de las situaciones comunicativas con una actitud respetuosa.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE01-CR05",
                 "descripcion": "Participar en situaciones de uso de diferentes lenguas, manifestando interés y curiosidad hacia la diversidad de perfiles lingüísticos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -421,12 +528,24 @@
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE02-CR01",
                 "descripcion": "Interpretar los estímulos y mensajes del entorno, reaccionando de manera adecuada.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE02-CR02",
                 "descripcion": "Expresar sensaciones, sentimientos y emociones a partir de distintas representaciones y manifestaciones artísticas y culturales.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -437,17 +556,41 @@
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE03-CR01",
                 "descripcion": "Utilizar el lenguaje oral para expresar y compartir necesidades, sentimientos, deseos, emociones, vivencias, regulando las acciones e interactuando en diferentes situaciones y contextos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE03-CR02",
                 "descripcion": "Explorar las posibilidades expresivas de los diferentes lenguajes, utilizando los medios materiales propios de los mismos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE03-CR03",
                 "descripcion": "Producir mensajes, ampliando y enriqueciendo su repertorio comunicativo con seguridad y confianza.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               }
             ]
           },
@@ -458,12 +601,24 @@
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE04-CR01",
                 "descripcion": "Participar en actividades lúdicas de aproximación al lenguaje escrito, mostrando una actitud activa.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE04-CR02",
                 "descripcion": "Recurrir a escrituras indeterminadas, espontáneas y no convencionales, incorporándolas a sus producciones con intención comunicativa.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               }
             ]
           },
@@ -474,12 +629,26 @@
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE05-CR01",
                 "descripcion": "Relacionarse con naturalidad en la realidad lingüística y cultural del aula.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFPC-ÁCR-CE05-CR02",
                 "descripcion": "Manifestar interés y disfrute hacia actividades individuales o colectivas relacionadas con la literatura infantil, las obras musicales, los audiovisuales, las danzas o las dramatizaciones, avanzando en una actitud participativa.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               }
             ]
           }
@@ -672,22 +841,34 @@
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE01-CR01",
                 "descripcion": "Progresar en el conocimiento de su cuerpo ajustando acciones y reacciones y desarrollando el equilibrio, la percepción sensorial y la coordinación en el movimiento.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE01-CR02",
                 "descripcion": "Manifestar sentimientos de seguridad personal en la participación en juegos y en las diversas situaciones de la vida cotidiana, confiando en las propias posibilidades y mostrando iniciativa.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE01-CR03",
                 "descripcion": "Manejar diferentes objetos, útiles y herramientas en situaciones de juego y en la realización de tareas cotidianas, mostrando un control progresivo y de coordinación de movimientos de carácter fino.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE01-CR04",
                 "descripcion": "Participar en contextos de juego dirigido y espontáneo, ajustándose a sus posibilidades personales.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -698,17 +879,29 @@
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE02-CR01",
                 "descripcion": "Identificar y expresar sus necesidades y sentimientos, ajustando progresivamente el control de sus emociones.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE02-CR02",
                 "descripcion": "Ofrecer y pedir ayuda en situaciones cotidianas, valorando los beneficios de la cooperación y la ayuda entre iguales.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE02-CR03",
                 "descripcion": "Expresar inquietudes, gustos y preferencias, mostrando satisfacción y seguridad sobre los logros conseguidos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -719,12 +912,20 @@
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE03-CR01",
                 "descripcion": "Realizar actividades relacionadas con el autocuidado y el cuidado del entorno con una actitud respetuosa, mostrando autoconfianza e iniciativa.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE03-CR02",
                 "descripcion": "Respetar la secuencia temporal asociada a los acontecimientos y actividades cotidianas, adaptándose a las rutinas establecidas para el grupo y desarrollando comportamientos respetuosos hacia las demás personas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -735,27 +936,52 @@
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE04-CR01",
                 "descripcion": "Participar con iniciativa en juegos y actividades colectivas relacionándose con otras personas con actitudes de afecto y de empatía, respetando los distintos ritmos individuales y evitando todo tipo de discriminación.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE04-CR02",
                 "descripcion": "Reproducir conductas, acciones o situaciones a través del juego simbólico en interacción con sus iguales, identificando y rechazando todo tipo de estereotipos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE04-CR03",
                 "descripcion": "Participar activamente en actividades relacionadas con la reflexión sobre las normas sociales que regulan la convivencia y promueven valores como el respeto a la diversidad, el trato no discriminatorio hacia las personas con discapacidad y la igualdad de género.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE04-CR04",
                 "descripcion": "Desarrollar destrezas y habilidades para la gestión de conflictos de forma positiva, proponiendo alternativas creativas y teniendo en cuenta el criterio de otras personas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCA-CE04-CR05",
                 "descripcion": "Participar, desde una actitud de respeto, en actividades relacionadas con costumbres y tradiciones étnicas y culturales presentes en su entorno, mostrando interés por conocerlas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
               }
             ]
           }
@@ -938,27 +1164,52 @@
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE01-CR01",
                 "descripcion": "Establecer distintas relaciones entre los objetos a partir de sus cualidades o atributos, mostrando curiosidad e interés.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE01-CR02",
                 "descripcion": "Emplear los cuantificadores básicos más significativos en el contexto del juego y en la interacción con los demás.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE01-CR03",
                 "descripcion": "Ubicarse adecuadamente en los espacios habituales, tanto en reposo como en movimiento, aplicando sus conocimientos acerca de las nociones espaciales básicas y jugando con el propio cuerpo y con objetos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE01-CR04",
                 "descripcion": "Identificar las situaciones cotidianas en las que es preciso medir, utilizando el cuerpo u otros materiales y herramientas para efectuar las medidas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE01-CR05",
                 "descripcion": "Organizar su actividad, ordenando las secuencias y utilizando las nociones temporales básicas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               }
             ]
           },
@@ -969,32 +1220,68 @@
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE02-CR01",
                 "descripcion": "Gestionar situaciones, dificultades, retos o problemas mediante la planificación de secuencias de actividades, la manifestación de interés e iniciativa y la cooperación con sus iguales.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE02-CR02",
                 "descripcion": "Canalizar progresivamente la frustración ante las dificultades o problemas mediante la aplicación de diferentes estrategias.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE02-CR03",
                 "descripcion": "Plantear hipótesis acerca del comportamiento de ciertos elementos o materiales, verificándolas a través de la manipulación y la actuación sobre ellos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE02-CR04",
                 "descripcion": "Utilizar diferentes estrategias para la toma de decisiones con progresiva autonomía, afrontando el proceso de creación de soluciones originales en respuesta a los retos que se le planteen.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE02-CR05",
                 "descripcion": "Programar secuencias de acciones o instrucciones para la resolución de tareas analógicas y digitales, desarrollando habilidades básicas de pensamiento computacional.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE02-CR06",
                 "descripcion": "Participar en proyectos utilizando dinámicas cooperativas, compartiendo y valorando opiniones propias y ajenas, y expresando conclusiones personales a partir de ellas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
               }
             ]
           },
@@ -1005,17 +1292,29 @@
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE03-CR01",
                 "descripcion": "Mostrar una actitud de respeto, cuidado y protección hacia el medio natural y los animales, identificando el impacto positivo o negativo que algunas acciones humanas ejercen sobre ellos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE03-CR02",
                 "descripcion": "Identificar rasgos comunes y diferentes entre seres vivos e inertes.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁDE-CE03-CR03",
                 "descripcion": "Establecer relaciones entre el medio natural y el social a partir del conocimiento y la observación de algunos fenómenos naturales y de los elementos patrimoniales presentes en el medio físico.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
               }
             ]
           }
@@ -1136,22 +1435,42 @@
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE01-CR01",
                 "descripcion": "Participar de manera activa, espontánea y respetuosa con las diferencias individuales en situaciones comunicativas de progresiva complejidad, en función de su desarrollo individual.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE01-CR02",
                 "descripcion": "Ajustar su repertorio comunicativo a las propuestas, a los interlocutores y al contexto, indagando en las posibilidades expresivas de los diferentes lenguajes.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE01-CR03",
                 "descripcion": "Participar en situaciones de uso de diferentes lenguas, mostrando interés, curiosidad y respeto por la diversidad de perfiles lingüísticos.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE01-CR04",
                 "descripcion": "Interactuar con distintos recursos digitales, familiarizándose con diferentes medios y herramientas digitales.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -1162,12 +1481,24 @@
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE02-CR01",
                 "descripcion": "Interpretar de forma eficaz los mensajes e intenciones comunicativas de los demás.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE02-CR02",
                 "descripcion": "Interpretar los mensajes transmitidos mediante representaciones o manifestaciones artísticas, también en formato digital, reconociendo la intencionalidad del emisor y mostrando una actitud curiosa y responsable.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
               }
             ]
           },
@@ -1178,37 +1509,93 @@
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE03-CR01",
                 "descripcion": "Hacer un uso funcional del lenguaje oral, aumentando su repertorio lingüístico y construyendo progresivamente un discurso más eficaz, organizado y coherente en contextos formales e informales.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE03-CR02",
                 "descripcion": "Utilizar el lenguaje oral como instrumento regulador de la acción en las interacciones con los demás con seguridad y confianza.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE03-CR03",
                 "descripcion": "Evocar y expresar espontáneamente ideas a través del relato oral.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE03-CR04",
                 "descripcion": "Elaborar creaciones plásticas, explorando y utilizando diferentes materiales y técnicas y participando activamente en el trabajo en grupo cuando se precise.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE03-CR05",
                 "descripcion": "Interpretar propuestas dramáticas y musicales, utilizando y explorando diferentes instrumentos, recursos o técnicas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE03-CR06",
                 "descripcion": "Ajustar armónicamente su movimiento al de los demás y al espacio como forma de expresión corporal libre, manifestando interés e iniciativa.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE03-CR07",
                 "descripcion": "Expresarse de manera creativa, utilizando diversas herramientas o aplicaciones digitales intuitivas y visuales.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
               }
             ]
           },
@@ -1219,17 +1606,35 @@
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE04-CR01",
                 "descripcion": "Mostrar interés por comunicarse a través de códigos escritos, convencionales o no, valorando su función comunicativa.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE04-CR02",
                 "descripcion": "Identificar, de manera acompañada, alguna de las características textuales y paratextuales mediante la indagación en textos de uso social libres de prejuicios y estereotipos sexistas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE04-CR03",
                 "descripcion": "Recurrir a la biblioteca como fuente de información y disfrute, respetando sus normas de uso.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               }
             ]
           },
@@ -1240,27 +1645,62 @@
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE05-CR01",
                 "descripcion": "Relacionarse de forma respetuosa en la pluralidad lingüística y cultural de su entorno, manifestando interés por otras lenguas, etnias y culturas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE05-CR02",
                 "descripcion": "Participar en interacciones comunicativas en lengua extranjera relacionadas con rutinas y situaciones cotidianas.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE05-CR03",
                 "descripcion": "Participar en actividades de aproximación a la literatura infantil, tanto de carácter individual, como en contextos dialógicos y participativos, descubriendo, explorando y apreciando la belleza del lenguaje literario.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE05-CR04",
                 "descripcion": "Expresar emociones, ideas y pensamientos a través de manifestaciones artísticas y culturales, disfrutando del proceso creativo.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               },
               {
                 "codigo": "ES-MD-INFSC-ÁCR-CE05-CR05",
                 "descripcion": "Expresar gustos, preferencias y opiniones sobre distintas manifestaciones artísticas, explicando las emociones que produce su disfrute.",
-                "competencias_clave": []
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
               }
             ]
           }
