@@ -101,7 +101,36 @@ import {
 import { createBlankYjsDocument } from '../services/yjs-initializer';
 import { logActivity } from '../services/activity-logger';
 import type { Kysely } from 'kysely';
-import type { Database, Project, User } from '../db/types';
+import type { Database, Project, User, Theme } from '../db/types';
+
+/**
+ * Build the `defaultTheme` payload returned to the client when a project is
+ * created. A site theme (admin-uploaded, enabled, non-builtin) gets a
+ * cache-busted `/site-files/themes/...` URL (consistent with config.ts /
+ * themes.ts); anything else falls back to the bundled base theme URL.
+ *
+ * Pure helper extracted from the create route so both branches stay testable.
+ */
+export function buildDefaultThemePayload(
+    themeRecord: Theme | undefined,
+    themeDirName: string,
+    version: string,
+): { dirName: string; displayName: string; url: string; type: 'base' | 'site' } {
+    if (themeRecord && themeRecord.is_enabled === 1 && themeRecord.is_builtin === 0) {
+        return {
+            dirName: themeRecord.dir_name,
+            displayName: themeRecord.display_name,
+            url: buildSiteThemeUrl(version, themeRecord.dir_name, themeRecord.updated_at),
+            type: 'site',
+        };
+    }
+    return {
+        dirName: themeDirName,
+        displayName: themeRecord?.display_name || themeDirName,
+        url: `/files/perm/themes/base/${themeDirName}`,
+        type: 'base',
+    };
+}
 import type {
     ProjectUploadChunkRequest,
     ProjectPropertiesRequest,
@@ -607,23 +636,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 try {
                     const version = getAppVersion();
                     const themeRecord = await findThemeByDirName(db, themeDirName);
-
-                    if (themeRecord && themeRecord.is_enabled === 1 && themeRecord.is_builtin === 0) {
-                        defaultTheme = {
-                            dirName: themeRecord.dir_name,
-                            displayName: themeRecord.display_name,
-                            // Cache-busting site theme URL (consistent with config.ts / themes.ts)
-                            url: buildSiteThemeUrl(version, themeRecord.dir_name, themeRecord.updated_at),
-                            type: 'site',
-                        };
-                    } else {
-                        defaultTheme = {
-                            dirName: themeDirName,
-                            displayName: themeRecord?.display_name || themeDirName,
-                            url: `/files/perm/themes/base/${themeDirName}`,
-                            type: 'base',
-                        };
-                    }
+                    defaultTheme = buildDefaultThemePayload(themeRecord, themeDirName, version);
                 } catch {
                     // Silently ignore if tables don't exist yet - defaults to 'base' theme on frontend
                 }
