@@ -36,16 +36,12 @@
         }
 
         .icon-options-grid {
-            max-height: min(60vh, 540px);
-            min-height: min(60vh, 540px);
-            overflow-y: auto;
-            padding-right: 6px;
-        }
-
-        .icon-tab-panel {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
             gap: var(--margin-s);
+            max-height: min(60vh, 540px);
+            overflow-y: auto;
+            padding-right: 6px;
         }
 
         .icon-options-section-title {
@@ -2094,63 +2090,6 @@
     }
 }
 
-.modal-dialog {
-    .modal-body {
-        .modal-actions {
-            display: flex;
-            flex-flow: row wrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 15px;
-
-            /* Project tabs for My Projects / Shared with me */
-            .ode-project-tabs {
-                display: flex;
-                gap: 0;
-                width: 100%;
-                margin-bottom: 8px;
-                border-bottom: 2px solid var(--gray-200, #e5e7eb);
-
-                .ode-project-tab {
-                    padding: 10px 20px;
-                    font-size: 14px;
-                    font-weight: 500;
-                    color: var(--gray-500, #6b7280);
-                    background: transparent;
-                    border: none;
-                    border-bottom: 2px solid transparent;
-                    margin-bottom: -2px;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-
-                    &:hover {
-                        color: var(--gray-700, #374151);
-                        background: var(--gray-50, #f9fafb);
-                    }
-
-                    &.active {
-                        color: var(--brand-primary, #0BA1A1);
-                        border-bottom-color: var(--brand-primary, #0BA1A1);
-                    }
-
-                    .ode-tab-count {
-                        font-weight: 400;
-                        color: var(--gray-400, #9ca3af);
-                    }
-
-                    &.active .ode-tab-count {
-                        color: var(--brand-primary-400, #0BA1A1);
-                    }
-                }
-            }
-        }
-    }
-}
-
 #modalOpenUserOdeFiles {
     .modal-dialog-centered {
         max-width: 60%;
@@ -2158,6 +2097,56 @@
             width: 100%;
             .modal-body {
                 .modal-actions {
+                    display: flex;
+                    flex-flow: row wrap;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 12px;
+                    margin-bottom: 15px;
+
+                    /* Project tabs for My Projects / Shared with me */
+                    .ode-project-tabs {
+                        display: flex;
+                        gap: 0;
+                        width: 100%;
+                        margin-bottom: 8px;
+                        border-bottom: 2px solid var(--gray-200, #e5e7eb);
+
+                        .ode-project-tab {
+                            padding: 10px 20px;
+                            font-size: 14px;
+                            font-weight: 500;
+                            color: var(--gray-500, #6b7280);
+                            background: transparent;
+                            border: none;
+                            border-bottom: 2px solid transparent;
+                            margin-bottom: -2px;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+
+                            &:hover {
+                                color: var(--gray-700, #374151);
+                                background: var(--gray-50, #f9fafb);
+                            }
+
+                            &.active {
+                                color: var(--brand-primary, #0BA1A1);
+                                border-bottom-color: var(--brand-primary, #0BA1A1);
+                            }
+
+                            .ode-tab-count {
+                                font-weight: 400;
+                                color: var(--gray-400, #9ca3af);
+                            }
+
+                            &.active .ode-tab-count {
+                                color: var(--brand-primary-400, #0BA1A1);
+                            }
+                        }
+                    }
                     .ode-filter-wrap {
                         width: 45%;
                         display: flex;
