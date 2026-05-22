@@ -6,11 +6,16 @@ export default class Theme {
         this.setConfigValues(data);
         // Admin-approved uploaded themes may ship with an absolute URL
         // (host integrations serving from a writable uploads directory).
-        // In that case use the URL verbatim; otherwise keep the legacy
-        // behavior and anchor relative paths at the editor's symfonyURL.
+        // In that case use the URL verbatim. Otherwise, if the server already
+        // emitted the URL with BASE_PATH (post #1802 / #1804) we must NOT
+        // prepend manager.symfonyURL again or the browser asks for
+        // "/{base}/{base}/...style.css" and 404s. The legacy symfonyURL prefix
+        // still applies to any URL that does not already start with it.
         this.path = /^(?:data:|blob:|https?:)\/\//i.test(data.url)
             ? `${data.url.replace(/\/$/, '')}/`
-            : `${manager.symfonyURL}${data.url}/`;
+            : manager.symfonyURL && data.url.startsWith(manager.symfonyURL)
+              ? `${data.url.replace(/\/$/, '')}/`
+              : `${manager.symfonyURL}${data.url}/`;
         this.valid = data.valid;
     }
 

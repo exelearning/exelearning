@@ -42,6 +42,7 @@ import { renderTemplate, setRenderLocale } from './services/template';
 import { getSettingNumber } from './services/app-settings';
 import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
 import { getBasePath } from './utils/basepath.util';
+import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
 import { isRedisEnabled, connectRedis, disconnectRedis } from './redis/client';
@@ -134,14 +135,10 @@ const codemagicEditorHandler = ({
         const ext = path.extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-        // For HTML files, rewrite relative paths to absolute paths
+        // For HTML files, rewrite document-relative asset paths to BASE_PATH-aware
+        // absolute paths so they resolve behind a subdirectory reverse proxy (#1806).
         if (ext === '.html' || ext === '.htm') {
-            let html = content.toString('utf-8');
-            // Fix includes/ paths -> /api/codemagic-editor/includes/
-            html = html.replace(/src="includes\//g, 'src="/api/codemagic-editor/includes/');
-            html = html.replace(/href="includes\//g, 'href="/api/codemagic-editor/includes/');
-            // Fix images/icons/ paths -> /api/codemagic-editor/images/
-            html = html.replace(/src="images\//g, 'src="/api/codemagic-editor/images/');
+            const html = rewriteCodemagicAssetPaths(content.toString('utf-8'));
             content = Buffer.from(html, 'utf-8');
         }
 

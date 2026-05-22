@@ -1490,68 +1490,6 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get login url of Google Drive
-     *
-     * @returns
-     */
-    async getUrlLoginGoogleDrive() {
-        let url = this.endpoints.api_google_oauth_login_url_get.path;
-        return await this.func.get(url);
-    }
-
-    /**
-     * Get folders of Google Drive account
-     *
-     * @returns
-     */
-    async getFoldersGoogleDrive() {
-        let url = this.endpoints.api_google_drive_folders_list.path;
-        return await this.func.get(url);
-    }
-
-    /**
-     * Upload file to Google Drive
-     *
-     * @param {*} params
-     * @returns
-     */
-    async uploadFileGoogleDrive(params) {
-        let url = this.endpoints.api_google_drive_file_upload.path;
-        return await this.func.post(url, params);
-    }
-
-    /**
-     * Get login url of Dropbox
-     *
-     * @returns
-     */
-    async getUrlLoginDropbox() {
-        let url = this.endpoints.api_dropbox_oauth_login_url_get.path;
-        return await this.func.get(url);
-    }
-
-    /**
-     * Get folders of Dropbox account
-     *
-     * @returns
-     */
-    async getFoldersDropbox() {
-        let url = this.endpoints.api_dropbox_folders_list.path;
-        return await this.func.get(url);
-    }
-
-    /**
-     * Upload file to Dropbox
-     *
-     * @param {*} params
-     * @returns
-     */
-    async uploadFileDropbox(params) {
-        let url = this.endpoints.api_dropbox_file_upload.path;
-        return await this.func.post(url, params);
-    }
-
-    /**
      * Get page components
      *
      * @param {*} odeNavStructureSyncId

@@ -31,6 +31,8 @@ import UnsavedChangesHelper from './utils/unsavedChangesHelper.js';
 window.UnsavedChangesHelper = UnsavedChangesHelper;
 // Blob paste guard
 import BlobPasteGuard from './common/blobPasteGuard.js';
+// Drag-and-drop to open project files
+import FileDropHandler from './common/fileDropHandler.js';
 
 export default class App {
     constructor(eXeLearning) {
@@ -80,6 +82,7 @@ export default class App {
         this.electronFileOpenHandlerBound = false;
         this.pendingElectronOpenFiles = [];
         this.pendingStaticOpenFiles = [];
+        this.fileDropHandler = new FileDropHandler({ app: this });
 
         if (!this.eXeLearning.config.isOfflineInstallation) {
             this.setupSessionMonitor();
@@ -92,6 +95,8 @@ export default class App {
     async init() {
         // Register file-open listener as early as possible to avoid losing IPC events.
         this.bindElectronFileOpenHandler();
+        // Enable drag-and-drop of .elpx/.elp files onto the editor window.
+        this.fileDropHandler.bind();
         // Pick up pending PWA/static file opens queued before app init.
         if (window.__pendingImportFile instanceof File) {
             this.pendingStaticOpenFiles.push(window.__pendingImportFile);

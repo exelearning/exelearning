@@ -120,8 +120,6 @@ describe('NavbarFile', () => {
                     confirm: { show: vi.fn() },
                     alert: { show: vi.fn() },
                     share: { show: vi.fn() },
-                    uploadtodrive: { show: vi.fn() },
-                    uploadtodropbox: { show: vi.fn() },
                     openuserodefiles: {
                         show: vi.fn(),
                         largeFilesUpload: vi.fn(),
@@ -157,10 +155,6 @@ describe('NavbarFile', () => {
                     getOdeConcurrentUsers: vi.fn().mockResolvedValue({ currentUsers: [] }),
                     postLocalLargeOdeFile: vi.fn(),
                     postImportElpToRootFromLocal: vi.fn(),
-                    getFoldersGoogleDrive: vi.fn(),
-                    getUrlLoginGoogleDrive: vi.fn(),
-                    getFoldersDropbox: vi.fn(),
-                    getUrlLoginDropbox: vi.fn(),
                 },
                 actions: {
                     authorizeAddActions: false,
@@ -2051,140 +2045,6 @@ describe('NavbarFile', () => {
         });
     });
 
-    describe('cloud upload helpers', () => {
-        beforeEach(() => {
-            navbarFile = new NavbarFile(mockMenu);
-        });
-
-        it('getFoldersGoogleDrive should return files when available', async () => {
-            eXeLearning.app.api.getFoldersGoogleDrive.mockResolvedValue({
-                folders: { files: [] },
-            });
-
-            const result = await navbarFile.getFoldersGoogleDrive();
-
-            expect(result).toEqual({ error: false, files: { files: [] } });
-        });
-
-        it('getFoldersGoogleDrive should return unknown when missing data', async () => {
-            eXeLearning.app.api.getFoldersGoogleDrive.mockResolvedValue(null);
-
-            const result = await navbarFile.getFoldersGoogleDrive();
-
-            expect(result).toEqual({ error: 'Unknown', files: [] });
-        });
-
-        it('uploadToGoogleDriveEvent should open Google Drive modal', async () => {
-            vi.spyOn(navbarFile, 'getFoldersGoogleDrive').mockResolvedValue({
-                error: false,
-                files: { files: [] },
-            });
-
-            navbarFile.uploadToGoogleDriveEvent();
-            await Promise.resolve();
-
-            expect(eXeLearning.app.modals.uploadtodrive.show).toHaveBeenCalledWith({ files: [] });
-        });
-
-        it('uploadToGoogleDriveEvent should show alert when error and no auth', async () => {
-            eXeLearning.app.actions.authorizeAddActions = false;
-            vi.spyOn(navbarFile, 'getFoldersGoogleDrive').mockResolvedValue({
-                error: 'bad',
-                files: [],
-            });
-
-            navbarFile.uploadToGoogleDriveEvent();
-            await Promise.resolve();
-
-            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
-                title: 'Google Drive error',
-                body: 'bad',
-                contentId: 'error',
-            });
-        });
-
-        it('uploadToGoogleDriveEvent should open login when auth is enabled', async () => {
-            eXeLearning.app.actions.authorizeAddActions = true;
-            vi.spyOn(navbarFile, 'getFoldersGoogleDrive').mockResolvedValue({
-                error: 'bad',
-                files: [],
-            });
-            const loginSpy = vi.spyOn(navbarFile, 'openWindowLoginGoogleDrive').mockResolvedValue();
-
-            navbarFile.uploadToGoogleDriveEvent();
-            await Promise.resolve();
-
-            expect(loginSpy).toHaveBeenCalled();
-        });
-
-        it('openWindowLoginGoogleDrive should open login popup', async () => {
-            eXeLearning.app.api.getUrlLoginGoogleDrive.mockResolvedValue({
-                url: 'http://drive-login',
-            });
-
-            await navbarFile.openWindowLoginGoogleDrive();
-
-            expect(window.open).toHaveBeenCalledWith(
-                'http://drive-login',
-                'drive',
-                expect.any(String)
-            );
-        });
-
-        it('getFoldersDropbox should return files when available', async () => {
-            eXeLearning.app.api.getFoldersDropbox.mockResolvedValue({
-                folders: { files: [] },
-            });
-
-            const result = await navbarFile.getFoldersDropbox();
-
-            expect(result).toEqual({ error: false, files: { files: [] } });
-        });
-
-        it('uploadToDropboxEvent should show alert when error and no auth', async () => {
-            eXeLearning.app.actions.authorizeAddActions = false;
-            vi.spyOn(navbarFile, 'getFoldersDropbox').mockResolvedValue({
-                error: 'bad',
-                files: [],
-            });
-
-            navbarFile.uploadToDropboxEvent();
-            await Promise.resolve();
-
-            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
-                title: 'Dropbox error',
-                body: 'bad',
-                contentId: 'error',
-            });
-        });
-
-        it('uploadToDropboxEvent should open Dropbox modal', async () => {
-            vi.spyOn(navbarFile, 'getFoldersDropbox').mockResolvedValue({
-                error: false,
-                files: { files: [] },
-            });
-
-            navbarFile.uploadToDropboxEvent();
-            await Promise.resolve();
-
-            expect(eXeLearning.app.modals.uploadtodropbox.show).toHaveBeenCalledWith({ files: [] });
-        });
-
-        it('openWindowLoginDropbox should open login popup', async () => {
-            eXeLearning.app.api.getUrlLoginDropbox.mockResolvedValue({
-                url: 'http://dropbox-login',
-            });
-
-            await navbarFile.openWindowLoginDropbox();
-
-            expect(window.open).toHaveBeenCalledWith(
-                'http://dropbox-login',
-                'dropbox',
-                expect.any(String)
-            );
-        });
-    });
-
     describe('platform upload', () => {
         beforeEach(() => {
             navbarFile = new NavbarFile(mockMenu);
@@ -2401,6 +2261,126 @@ describe('NavbarFile', () => {
 
             expect(global.eXe.app.alert).toHaveBeenCalled();
             expect(eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload).not.toHaveBeenCalled();
+        });
+
+        // -----------------------------------------------------------------
+        // Regression / TDD coverage for exelearning/exelearning#1770
+        // "Export to Moodle does not package the assets".
+        //
+        // The reporter sees a Docker `:latest` build that ships HTML
+        // referencing `content/resources/<file>` URLs but no matching
+        // entries in the ZIP — the same symptom PR #1740 was meant to
+        // fix. Building from `main` works for them, so the difference
+        // must be in some runtime branch where the package leaves the
+        // browser empty. The two reachable code paths that can produce
+        // an asset-less package are pinned below.
+        // -----------------------------------------------------------------
+
+        it('client-side branch must not silently produce an empty-asset package when yjsBridge.assetManager is null (#1770)', async () => {
+            // Hypothesis A: documentManager is wired up so the
+            // canExportClientSide gate passes, but `assetManager` and the
+            // legacy `assetCache` are both null (e.g. AssetManager init
+            // was racing the click on "Finish to Moodle"). Today,
+            // SharedExporters.quickExport is invoked with `null, null` for
+            // both providers and BrowserAssetProvider falls through to
+            // `createNullAssetProvider()` — so the resulting ZIP has no
+            // `content/resources/` folder at all. That is the exact
+            // symptom #1770 describes.
+            window.location.search = '?jwt_token=ignored';
+            const recordedArgs = [];
+            const quickExport = vi.fn(async (...args) => {
+                recordedArgs.push(args);
+                return {
+                    success: true,
+                    data: new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
+                    filename: 'project.zip',
+                };
+            });
+            window.SharedExporters = { quickExport };
+
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: () => ({ saveToServer: vi.fn().mockResolvedValue() }),
+                documentManager: { id: 'doc' },
+                assetManager: null,
+                assetCache: null,
+                resourceFetcher: null,
+            };
+
+            // The fallback may run if the gate refuses the client-side path;
+            // mock the legacy API so we can observe whether it was used.
+            eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mockResolvedValue({
+                responseMessage: 'OK',
+                returnUrl: 'http://platform/return',
+            });
+
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: async () => ({ responseMessage: 'OK', returnUrl: 'http://platform/return' }),
+            });
+            const originalFetch = global.fetch;
+            global.fetch = fetchMock;
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                global.fetch = originalFetch;
+                delete window.SharedExporters;
+            }
+
+            // Either the flow refused to run quickExport (preferred —
+            // surface the situation to the user instead of shipping a
+            // broken package), or, if it did run, at least one asset
+            // provider must have been non-null. Both `null` means we
+            // produced a `content/resources/`-less ZIP and forwarded it.
+            if (recordedArgs.length > 0) {
+                const [, , assetCacheArg, , , assetManagerArg] = recordedArgs[0];
+                expect(assetCacheArg !== null || assetManagerArg !== null).toBe(true);
+            } else {
+                const tookFallback =
+                    eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mock.calls.length > 0;
+                const wasAlerted = global.eXe.app.alert.mock.calls.length > 0;
+                expect(tookFallback || wasAlerted).toBe(true);
+            }
+        });
+
+        it('legacy fallback (no SharedExporters) must surface a warning that the asset-less server path is being used (#1770)', async () => {
+            // Hypothesis B: `exporters.bundle.js` did not expose
+            // `SharedExporters` (or it was loaded after the user clicked),
+            // so canExportClientSide evaluates to false and we silently
+            // call the legacy `postFirstTypePlatformIntegrationElpUpload`
+            // server-side route. That route happily replies "OK" while
+            // shipping HTML with no matching files in
+            // `content/resources/` — the original #1740 symptom. The user
+            // (or the operator looking at the console) must get a clear
+            // signal that the broken path was taken, rather than a silent
+            // success redirect.
+            window.location.search = '?jwt_token=ignored';
+            delete window.SharedExporters;
+            eXeLearning.app.project._yjsBridge = null;
+
+            const warnCalls = [];
+            const originalWarn = console.warn;
+            console.warn = (...args) => {
+                warnCalls.push(args);
+            };
+
+            eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mockResolvedValue({
+                responseMessage: 'OK',
+                returnUrl: 'http://platform/return',
+            });
+
+            try {
+                await navbarFile.uploadPlatformEvent();
+            } finally {
+                console.warn = originalWarn;
+            }
+
+            const wasAlerted = global.eXe.app.alert.mock.calls.length > 0;
+            const wasWarned = warnCalls.some(args =>
+                args.some(a => typeof a === 'string' && /platform|legacy|fallback|asset/i.test(a)),
+            );
+            expect(wasAlerted || wasWarned).toBe(true);
         });
     });
 
