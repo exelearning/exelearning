@@ -9,6 +9,8 @@ import * as bcrypt from 'bcryptjs';
 import * as Y from 'yjs';
 import { db, resetClientCacheForTesting } from '../../../db/client';
 import { up } from '../../../db/migrations/001_initial';
+import { up as up008 } from '../../../db/migrations/008_project_public_view_id';
+import { up as up009 } from '../../../db/migrations/009_project_public_view_enabled';
 import { now } from '../../../db/types';
 import { exportRoutes } from './export';
 import { createAuthRoutes } from '../../auth';
@@ -105,6 +107,8 @@ describe('Export API v1', () => {
 
         await resetClientCacheForTesting();
         await up(db);
+        await up008(db);
+        await up009(db);
         await db.deleteFrom('projects').execute();
         await db.deleteFrom('users').execute();
 
@@ -186,97 +190,97 @@ describe('Export API v1', () => {
         });
     });
 
-    describe('GET /export/projects/:uuid/export-preview', () => {
-        it('should return 404 for non-existent project', async () => {
+    describe('GET /export/public/:publicViewId/preview', () => {
+        it('should return 404 for unknown public view id', async () => {
+            const response = await app.handle(new Request('http://localhost/export/public/unknown-public-id/preview'));
+            expect(response.status).toBe(404);
+        });
+
+        it('should return 404 when the public read-only link is disabled', async () => {
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'preview-disabled-project',
+                    public_view_id: 'disabled-public-view-id',
+                    public_view_enabled: 0,
+                    title: 'Disabled Preview',
+                    owner_id: userId,
+                    visibility: 'public',
+                    created_at: now(),
+                })
+                .execute();
+
             const response = await app.handle(
-                new Request('http://localhost/export/projects/non-existent/export-preview', {
-                    headers: { Authorization: `Bearer ${userToken}` },
-                }),
+                new Request('http://localhost/export/public/disabled-public-view-id/preview'),
             );
             expect(response.status).toBe(404);
         });
 
-        it('should return 401 for non-public project without auth', async () => {
-            await db
-                .insertInto('projects')
-                .values({
-                    uuid: 'preview-private-project',
-                    title: 'Private Preview',
-                    owner_id: userId,
-                    visibility: 'private',
-                    created_at: now(),
-                })
-                .execute();
-
-            const response = await app.handle(
-                new Request('http://localhost/export/projects/preview-private-project/export-preview'),
-            );
-            expect(response.status).toBe(401);
-        });
-
-        it('should return 403 for non-owner on private project', async () => {
-            await db
-                .insertInto('projects')
-                .values({
-                    uuid: 'preview-admin-owned',
-                    title: 'Admin Owned',
-                    owner_id: adminId,
-                    visibility: 'private',
-                    created_at: now(),
-                })
-                .execute();
-
-            const response = await app.handle(
-                new Request('http://localhost/export/projects/preview-admin-owned/export-preview', {
-                    headers: { Authorization: `Bearer ${userToken}` },
-                }),
-            );
-            expect(response.status).toBe(403);
-        });
-
-        it('should allow access to public project without auth', async () => {
+        it('should return 404 when the internal UUID is used as the public view id', async () => {
             const projectUuid = 'preview-public-project';
-            const projectResult = await db
+            await db
                 .insertInto('projects')
                 .values({
                     uuid: projectUuid,
+                    public_view_id: 'real-public-view-id',
+                    public_view_enabled: 1,
                     title: 'Public Preview',
                     owner_id: adminId,
                     visibility: 'public',
                     created_at: now(),
                 })
+                .execute();
+
+            // The editing UUID must not work as a public view id.
+            const response = await app.handle(new Request(`http://localhost/export/public/${projectUuid}/preview`));
+            expect(response.status).toBe(404);
+        });
+
+        it('should export by public view id without auth, even when edit access is private', async () => {
+            const projectUuid = 'preview-public-success';
+            const publicViewId = 'public-success-view-id';
+            const projectResult = await db
+                .insertInto('projects')
+                .values({
+                    uuid: projectUuid,
+                    public_view_id: publicViewId,
+                    public_view_enabled: 1,
+                    title: 'Public Preview',
+                    owner_id: adminId,
+                    visibility: 'private',
+                    created_at: now(),
+                })
                 .executeTakeFirst();
             const projectId = Number(projectResult.insertId);
 
-            // Create a valid Yjs document
             const ydoc = createMinimalYjsDocument(projectUuid);
             const state = Y.encodeStateAsUpdate(ydoc);
             await saveFullState(db, projectId, state);
 
-            const response = await app.handle(
-                new Request(`http://localhost/export/projects/${projectUuid}/export-preview`),
-            );
+            const response = await app.handle(new Request(`http://localhost/export/public/${publicViewId}/preview`));
 
-            // Should return 200 with ZIP data for public project
             expect(response.status).toBe(200);
             expect(response.headers.get('Content-Type')).toBe('application/zip');
+            const body = await response.arrayBuffer();
+            expect(body.byteLength).toBeGreaterThan(0);
         });
 
-        it('should return 500 when preview export fails (no Yjs document)', async () => {
+        it('should return 500 when export fails (enabled public project without Yjs document)', async () => {
             await db
                 .insertInto('projects')
                 .values({
-                    uuid: 'preview-no-yjs',
-                    title: 'Preview No Yjs',
+                    uuid: 'preview-public-no-yjs',
+                    public_view_id: 'public-no-yjs-view-id',
+                    public_view_enabled: 1,
+                    title: 'Public No Yjs',
                     owner_id: userId,
+                    visibility: 'public',
                     created_at: now(),
                 })
                 .execute();
 
             const response = await app.handle(
-                new Request('http://localhost/export/projects/preview-no-yjs/export-preview', {
-                    headers: { Authorization: `Bearer ${userToken}` },
-                }),
+                new Request('http://localhost/export/public/public-no-yjs-view-id/preview'),
             );
 
             expect([200, 500]).toContain(response.status);
@@ -285,35 +289,6 @@ describe('Export API v1', () => {
                 expect(data.success).toBe(false);
                 expect(['EXPORT_ERROR', 'EXPORT_FAILED']).toContain(data.error.code);
             }
-        });
-
-        it('should successfully generate preview for own project with valid Yjs document', async () => {
-            const projectUuid = 'preview-success-project';
-            const projectResult = await db
-                .insertInto('projects')
-                .values({
-                    uuid: projectUuid,
-                    title: 'Preview Success',
-                    owner_id: userId,
-                    created_at: now(),
-                })
-                .executeTakeFirst();
-            const projectId = Number(projectResult.insertId);
-
-            const ydoc = createMinimalYjsDocument(projectUuid);
-            const state = Y.encodeStateAsUpdate(ydoc);
-            await saveFullState(db, projectId, state);
-
-            const response = await app.handle(
-                new Request(`http://localhost/export/projects/${projectUuid}/export-preview`, {
-                    headers: { Authorization: `Bearer ${userToken}` },
-                }),
-            );
-
-            expect(response.status).toBe(200);
-            expect(response.headers.get('Content-Type')).toBe('application/zip');
-            const body = await response.arrayBuffer();
-            expect(body.byteLength).toBeGreaterThan(0);
         });
     });
 

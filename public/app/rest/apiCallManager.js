@@ -2402,6 +2402,88 @@ export default class ApiCallManager {
     }
 
     /**
+     * Enable or disable the public read-only viewer link for a project.
+     * Independent of edit visibility.
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @param {boolean} enabled - Whether the public read-only link is enabled
+     * @returns {Promise<Object>} Response with publicViewEnabled and publicViewId
+     */
+    async updatePublicViewAccess(projectId, enabled) {
+        const url = this._buildProjectUrl(projectId, '/public-view');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ enabled }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] updatePublicViewAccess error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
+    }
+
+    /**
+     * Regenerate the public read-only viewer link id for a project.
+     * Invalidates the previous public link.
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @returns {Promise<Object>} Response with the new publicViewId
+     */
+    async regeneratePublicViewId(projectId) {
+        const url = this._buildProjectUrl(projectId, '/public-view/regenerate');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] regeneratePublicViewId error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
+    }
+
+    /**
      * Add a collaborator to a project
      * Accepts both numeric ID and UUID
      *

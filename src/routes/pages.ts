@@ -19,6 +19,7 @@ import {
     findPreference as findPreferenceDefault,
     setPreference as setPreferenceDefault,
     findProjectByUuid as findProjectByUuidDefault,
+    findProjectByPublicViewId as findProjectByPublicViewIdDefault,
     findProjectByPlatformId as findProjectByPlatformIdDefault,
     checkProjectAccess as checkProjectAccessDefault,
     createProject as createProjectDefault,
@@ -111,6 +112,7 @@ export interface PagesQueriesDeps {
     findPreference: typeof findPreferenceDefault;
     setPreference: typeof setPreferenceDefault;
     findProjectByUuid: typeof findProjectByUuidDefault;
+    findProjectByPublicViewId: typeof findProjectByPublicViewIdDefault;
     findProjectByPlatformId: typeof findProjectByPlatformIdDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
     createProject: typeof createProjectDefault;
@@ -177,6 +179,7 @@ const defaultQueries: PagesQueriesDeps = {
     findPreference: findPreferenceDefault,
     setPreference: setPreferenceDefault,
     findProjectByUuid: findProjectByUuidDefault,
+    findProjectByPublicViewId: findProjectByPublicViewIdDefault,
     findProjectByPlatformId: findProjectByPlatformIdDefault,
     checkProjectAccess: checkProjectAccessDefault,
     createProject: createProjectDefault,
@@ -250,6 +253,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         findPreference,
         setPreference,
         findProjectByUuid,
+        findProjectByPublicViewId,
         findProjectByPlatformId,
         checkProjectAccess,
         createProject,
@@ -577,44 +581,23 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Workarea Page
             // =====================================================
-            .get('/view/:uuid', async ({ params, currentUser, isGuest, query, set, request, impersonation }) => {
-                const { uuid } = params;
+            .get('/view/:publicViewId', async ({ params, currentUser, request, set, impersonation }) => {
+                const { publicViewId } = params;
 
-                // Load project
-                const project = await findProjectByUuid(db, uuid);
-                if (!project) {
+                // Public viewer: look up strictly by the opaque public view id.
+                // The internal project UUID is never accepted here, and the
+                // project must have the public read-only link enabled (this is
+                // independent of edit visibility). We return 404 (not 403) for
+                // missing or disabled projects so the route does not reveal
+                // whether a private project exists.
+                const project = await findProjectByPublicViewId(db, publicViewId);
+                if (!project || !project.public_view_enabled) {
                     set.status = 404;
                     const html = renderTemplate('workarea/error', {
                         basePath: getBasePath(),
                         locale: 'en',
                         impersonation,
                         error: 'Project not found.',
-                    });
-                    set.headers['Content-Type'] = 'text/html';
-                    return html;
-                }
-
-                // Check access
-                let hasAccess = false;
-                if (project.visibility === 'public') {
-                    hasAccess = true;
-                } else if (currentUser) {
-                    if (project.owner_id === currentUser.id || currentUser.is_admin) {
-                        hasAccess = true;
-                    } else {
-                        const access = await checkProjectAccess(db, currentUser.id, project.id);
-                        if (access?.role) {
-                            hasAccess = true;
-                        }
-                    }
-                }
-
-                if (!hasAccess) {
-                    set.status = 403;
-                    const html = renderTemplate('workarea/access-denied', {
-                        basePath: getBasePath(),
-                        locale: 'en',
-                        impersonation,
                     });
                     set.headers['Content-Type'] = 'text/html';
                     return html;
@@ -636,7 +619,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 const viewModel = {
                     basePath: getBasePath(),
-                    uuid,
+                    publicViewId,
                     title: project.title || 'Untitled Project',
                     lang: locale,
                     impersonation,

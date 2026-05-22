@@ -70,7 +70,7 @@
 
     <script>
         (async function() {
-            const uuid = '{{ uuid }}';
+            const publicViewId = '{{ publicViewId }}';
             // Fallback for basePath if empty so that we don't end up with /viewer/ being parsed as absolute domain root
             const basePath = '{{ basePath }}';
             const loader = document.getElementById('loader');
@@ -88,9 +88,9 @@
 
             try {
                 // 1. Fetch the zip file
-                console.log(`[Viewer] Fetching project data for UUID: ${uuid}`);
+                console.log(`[Viewer] Fetching project data for public view id: ${publicViewId}`);
                 loaderText.textContent = "{{ 'Downloading project...' | trans }}";
-                const response = await fetch(`${basePath}/api/v1/export/projects/${uuid}/export-preview`);
+                const response = await fetch(`${basePath}/api/v1/export/public/${publicViewId}/preview`);
 
                 console.log(`[Viewer] Fetch response status: ${response.status}`);
                 if (!response.ok) {

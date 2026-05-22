@@ -68,7 +68,7 @@ describe('ModalShare', () => {
       <div id="share-people-section">
         <div id="share-people-list"></div>
       </div>
-      <div id="share-general-access-section">
+      <div id="share-edit-access-section">
         <img id="share-visibility-icon" src="/icons/lock.svg" alt="" width="16" height="16">
         <select id="share-visibility-select"
                 data-icon-private="/icons/exe-lock-icon-green.svg"
@@ -77,9 +77,25 @@ describe('ModalShare', () => {
             <option value="public">Public</option>
         </select>
         <div id="share-visibility-help"></div>
+        <input id="share-link-input">
+        <button id="share-copy-button">Copy</button>
       </div>
-      <input id="share-link-input">
-      <button id="share-copy-button">Copy</button>
+      <div id="share-public-view-section">
+        <select id="share-public-view-select">
+            <option value="disabled">Disabled</option>
+            <option value="enabled">Enabled</option>
+        </select>
+        <div id="share-public-view-help"></div>
+        <div id="public-link-section" class="d-none">
+          <input id="public-link-input">
+          <button id="public-copy-button">Copy</button>
+          <button id="public-regenerate-button">Regenerate</button>
+          <div id="public-regenerate-confirm" class="d-none">
+            <button id="public-regenerate-confirm-yes">Yes</button>
+            <button id="public-regenerate-confirm-no">Cancel</button>
+          </div>
+        </div>
+      </div>
       <div id="share-aria-live"></div>
       <div class="modal-header"><h5 class="modal-title"></h5></div>
       <div class="modal-body"></div>
@@ -176,6 +192,15 @@ describe('ModalShare', () => {
       await modal.handleCopyLink(modal.linkInput, modal.copyButton);
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://link.to/project');
       expect(modal.copyButton.classList.contains('copied')).toBe(true);
+      vi.useRealTimers();
+    });
+
+    it('should copy the public viewer link via the public copy button', async () => {
+      vi.useFakeTimers();
+      modal.publicLinkInput.value = 'http://host/view/pub-xyz';
+      await modal.handleCopyLink(modal.publicLinkInput, modal.publicCopyButton);
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://host/view/pub-xyz');
+      expect(modal.publicCopyButton.classList.contains('copied')).toBe(true);
       vi.useRealTimers();
     });
 
@@ -323,6 +348,175 @@ describe('ModalShare', () => {
       expect(url).not.toContain('odeSessionId=');
 
       Object.defineProperty(window, 'location', { value: originalLocation, configurable: true });
+    });
+  });
+
+  describe('buildPublicViewerUrl', () => {
+    it('should use publicViewId from project data, not odeId/requestedProjectId', () => {
+      modal.projectData = { visibility: 'public', publicViewId: 'pub-xyz' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.project.requestedProjectId = 'req-456';
+
+      const url = modal.buildPublicViewerUrl();
+
+      expect(url).toContain('/view/pub-xyz');
+      expect(url).not.toContain('proj-123');
+      expect(url).not.toContain('req-456');
+    });
+
+    it('should return empty string when no publicViewId is available', () => {
+      modal.projectData = { visibility: 'public' };
+      window.eXeLearning.app.project.publicViewId = undefined;
+
+      expect(modal.buildPublicViewerUrl()).toBe('');
+    });
+
+    it('should honor runtimeConfig basePath', () => {
+      modal.projectData = { visibility: 'public', publicViewId: 'pub-xyz' };
+      window.eXeLearning.app.runtimeConfig = { basePath: '/sub' };
+
+      expect(modal.buildPublicViewerUrl()).toContain('/sub/view/pub-xyz');
+    });
+  });
+
+  describe('renderPublicViewSection', () => {
+    beforeEach(() => {
+      modal.currentUserIsOwner = true;
+    });
+
+    it('shows link + regenerate controls when enabled with a publicViewId', () => {
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-xyz' };
+
+      modal.renderPublicViewSection();
+
+      expect(modal.publicViewSelect.value).toBe('enabled');
+      expect(modal.publicLinkSection.classList.contains('d-none')).toBe(false);
+      expect(modal.publicLinkInput.value).toContain('/view/pub-xyz');
+      expect(modal.publicRegenerateButton).not.toBeNull();
+    });
+
+    it('hides the public link controls when disabled', () => {
+      modal.projectData = { publicViewEnabled: false, publicViewId: 'pub-xyz' };
+
+      modal.renderPublicViewSection();
+
+      expect(modal.publicViewSelect.value).toBe('disabled');
+      expect(modal.publicLinkSection.classList.contains('d-none')).toBe(true);
+    });
+
+    it('hides the public link controls when enabled but no publicViewId exists', () => {
+      modal.projectData = { publicViewEnabled: true };
+
+      modal.renderPublicViewSection();
+
+      expect(modal.publicLinkSection.classList.contains('d-none')).toBe(true);
+    });
+
+    it('disables the select for non-owners', () => {
+      modal.currentUserIsOwner = false;
+      modal.projectData = { publicViewEnabled: false };
+
+      modal.renderPublicViewSection();
+
+      expect(modal.publicViewSelect.disabled).toBe(true);
+    });
+  });
+
+  describe('handlePublicViewChange', () => {
+    beforeEach(() => {
+      modal.currentUserIsOwner = true;
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.api.updatePublicViewAccess = vi
+        .fn()
+        .mockResolvedValue({ responseMessage: 'OK', publicViewEnabled: true, publicViewId: 'pub-new' });
+    });
+
+    it('enables the public link and stores the returned publicViewId', async () => {
+      modal.projectData = { publicViewEnabled: false };
+
+      await modal.handlePublicViewChange('enabled');
+
+      expect(window.eXeLearning.app.api.updatePublicViewAccess).toHaveBeenCalledWith('proj-123', true);
+      expect(modal.projectData.publicViewEnabled).toBe(true);
+      expect(modal.projectData.publicViewId).toBe('pub-new');
+      expect(modal.publicLinkInput.value).toContain('/view/pub-new');
+      expect(modal.publicLinkSection.classList.contains('d-none')).toBe(false);
+    });
+
+    it('disables the public link', async () => {
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      window.eXeLearning.app.api.updatePublicViewAccess = vi
+        .fn()
+        .mockResolvedValue({ responseMessage: 'OK', publicViewEnabled: false, publicViewId: 'pub-old' });
+
+      await modal.handlePublicViewChange('disabled');
+
+      expect(window.eXeLearning.app.api.updatePublicViewAccess).toHaveBeenCalledWith('proj-123', false);
+      expect(modal.projectData.publicViewEnabled).toBe(false);
+      expect(modal.publicLinkSection.classList.contains('d-none')).toBe(true);
+    });
+
+    it('reverts the select on error', async () => {
+      modal.projectData = { publicViewEnabled: false };
+      window.eXeLearning.app.api.updatePublicViewAccess = vi
+        .fn()
+        .mockResolvedValue({ responseMessage: 'ERROR', detail: 'nope' });
+      vi.spyOn(modal, 'showError').mockImplementation(() => {});
+
+      await modal.handlePublicViewChange('enabled');
+
+      expect(modal.publicViewSelect.value).toBe('disabled');
+    });
+  });
+
+  describe('regenerate public link (inline confirm)', () => {
+    beforeEach(() => {
+      modal.currentUserIsOwner = true;
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.api.regeneratePublicViewId = vi
+        .fn()
+        .mockResolvedValue({ responseMessage: 'OK', publicViewId: 'pub-regenerated' });
+    });
+
+    it('reveals the inline confirmation without calling the API', () => {
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+
+      modal.handleRegeneratePublicLink();
+
+      expect(modal.publicRegenerateConfirm.classList.contains('d-none')).toBe(false);
+      expect(modal.publicRegenerateButton.classList.contains('d-none')).toBe(true);
+      expect(window.eXeLearning.app.api.regeneratePublicViewId).not.toHaveBeenCalled();
+    });
+
+    it('does not open the confirmation for non-owners', () => {
+      modal.currentUserIsOwner = false;
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+
+      modal.handleRegeneratePublicLink();
+
+      expect(modal.publicRegenerateConfirm.classList.contains('d-none')).toBe(true);
+    });
+
+    it('hides the confirmation when cancelled', () => {
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.handleRegeneratePublicLink();
+
+      modal.hideRegenerateConfirm();
+
+      expect(modal.publicRegenerateConfirm.classList.contains('d-none')).toBe(true);
+      expect(modal.publicRegenerateButton.classList.contains('d-none')).toBe(false);
+    });
+
+    it('regenerates the id and updates the public link input on confirm', async () => {
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+
+      await modal.confirmRegeneratePublicLink();
+
+      expect(window.eXeLearning.app.api.regeneratePublicViewId).toHaveBeenCalledWith('proj-123');
+      expect(modal.projectData.publicViewId).toBe('pub-regenerated');
+      expect(modal.publicLinkInput.value).toContain('/view/pub-regenerated');
+      // Confirmation collapses after the action.
+      expect(modal.publicRegenerateConfirm.classList.contains('d-none')).toBe(true);
     });
   });
 
@@ -852,10 +1046,14 @@ describe('ModalShare', () => {
   });
 
   describe('updateVisibilityHelp', () => {
-    it('should add d-none for private visibility', () => {
-      modal.visibilityHelp.classList.remove('d-none');
+    it('should set edit-access help text for private visibility', () => {
       modal.updateVisibilityHelp('private');
-      expect(modal.visibilityHelp.classList.contains('d-none')).toBe(true);
+      expect(modal.visibilityHelp.textContent).toContain('edit this resource');
+    });
+
+    it('should set edit-access help text for public visibility', () => {
+      modal.updateVisibilityHelp('public');
+      expect(modal.visibilityHelp.textContent).toContain('edit in real time');
     });
 
     it('should not throw when visibilityHelp is null', () => {

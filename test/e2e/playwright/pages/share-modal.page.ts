@@ -31,6 +31,13 @@ export class ShareModalPage {
     readonly linkInput: Locator;
     readonly copyButton: Locator;
 
+    // Public read-only link section
+    readonly publicViewSelect: Locator;
+    readonly publicLinkSection: Locator;
+    readonly publicLinkInput: Locator;
+    readonly publicCopyButton: Locator;
+    readonly publicRegenerateButton: Locator;
+
     // Footer
     readonly doneButton: Locator;
 
@@ -60,6 +67,13 @@ export class ShareModalPage {
         this.linkSection = page.locator('#share-link-section');
         this.linkInput = page.locator('#share-link-input');
         this.copyButton = page.locator('#share-copy-button');
+
+        // Public read-only link
+        this.publicViewSelect = page.locator('#share-public-view-select');
+        this.publicLinkSection = page.locator('#public-link-section');
+        this.publicLinkInput = page.locator('#public-link-input');
+        this.publicCopyButton = page.locator('#public-copy-button');
+        this.publicRegenerateButton = page.locator('#public-regenerate-button');
 
         // Footer
         this.doneButton = this.modal.locator('.modal-footer .btn-primary');
@@ -114,6 +128,20 @@ export class ShareModalPage {
      */
     async isCopyButtonInCopiedState(): Promise<boolean> {
         return (await this.copyButton.locator('.auto-icon').textContent()) === 'check';
+    }
+
+    /**
+     * Get the public viewer link URL (empty if not available)
+     */
+    async getPublicViewerLink(): Promise<string> {
+        return await this.publicLinkInput.inputValue();
+    }
+
+    /**
+     * Enable or disable the public read-only link via its select.
+     */
+    async setPublicView(state: 'enabled' | 'disabled'): Promise<void> {
+        await this.publicViewSelect.selectOption(state);
     }
 
     /**

@@ -1308,6 +1308,47 @@ describe('ApiCallManager', () => {
       expect(result.responseMessage).toBe('ERROR');
     });
 
+    it('should enable the public read-only link via PATCH /public-view', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ responseMessage: 'OK', publicViewEnabled: true, publicViewId: 'pv-1' }),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      const [url, options] = global.fetch.mock.calls[0];
+      expect(url).toContain('/api/projects/1/public-view');
+      expect(options.method).toBe('PATCH');
+      expect(JSON.parse(options.body)).toEqual({ enabled: true });
+      expect(result.publicViewId).toBe('pv-1');
+    });
+
+    it('should return error when updatePublicViewAccess fails', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: vi.fn().mockResolvedValue({ message: 'forbidden' }),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, false);
+
+      expect(result.responseMessage).toBe('ERROR');
+    });
+
+    it('should regenerate the public link via POST /public-view/regenerate', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ responseMessage: 'OK', publicViewId: 'pv-new' }),
+      });
+
+      const result = await apiManager.regeneratePublicViewId('uuid-abc-123');
+
+      const [url, options] = global.fetch.mock.calls[0];
+      expect(url).toContain('/api/projects/uuid/uuid-abc-123/public-view/regenerate');
+      expect(options.method).toBe('POST');
+      expect(result.publicViewId).toBe('pv-new');
+    });
+
     it('should map collaborator errors', async () => {
       global.fetch = vi.fn()
         .mockResolvedValueOnce({

@@ -228,14 +228,94 @@
 }
 
 /* ========================================================================
-   General Access Section
+   Access Cards (Edit access / Public read-only link)
    ======================================================================== */
 
-#share-general-access-section {
-    margin-bottom: 24px;
+.share-access-card {
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: var(--bs-body-bg, #fff);
 }
 
-#share-visibility-select {
+.share-access-card-edit {
+    background: rgba(13, 110, 253, 0.03);
+    border-color: rgba(13, 110, 253, 0.2);
+}
+
+.share-access-card-view {
+    background: rgba(25, 135, 84, 0.03);
+    border-color: rgba(25, 135, 84, 0.2);
+}
+
+.share-access-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    h6 {
+        margin-bottom: 0;
+    }
+}
+
+.share-access-card-icon {
+    flex-shrink: 0;
+}
+
+.share-access-link-label {
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--bs-gray-700, #495057);
+}
+
+#public-regenerate-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    .auto-icon {
+        font-size: 18px;
+    }
+}
+
+/* Inline regenerate confirmation (kept inside the share modal so it never
+   closes the parent modal). */
+#public-regenerate-confirm {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 8px;
+    background: rgba(220, 53, 69, 0.05);
+
+    .public-regenerate-confirm-text {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--bs-gray-700, #495057);
+    }
+
+    .public-regenerate-confirm-actions {
+        display: flex;
+        gap: 8px;
+    }
+}
+
+#share-public-view-help {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--bs-secondary, #6c757d);
+}
+
+/* ========================================================================
+   Edit access select
+   ======================================================================== */
+
+#share-visibility-select,
+#share-public-view-select {
     border-radius: 8px;
     padding: 8px 12px;
     font-size: 14px;
@@ -281,7 +361,8 @@
     width: auto!important;
 }
 
-#share-copy-button {
+#share-copy-button,
+#public-copy-button {
     border-radius: 0 8px 8px 0;
     padding: 3px 16px;
     display: flex;
@@ -317,6 +398,18 @@
             color: white;
         }
     }
+}
+
+/* Keep the public link input flush with its copy button, like the edit link. */
+#public-link-input {
+    border-radius: 8px 0 0 8px;
+    background: var(--bs-gray-50, #f8f9fa);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: monospace;
+    color: var(--bs-gray-700, #495057);
+    width: auto !important;
 }
 
 /* ========================================================================

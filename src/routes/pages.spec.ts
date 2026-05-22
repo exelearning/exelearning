@@ -58,6 +58,12 @@ function createMockQueries(): PagesQueriesDeps {
             };
         },
         findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
+        findProjectByPublicViewId: async (_db: any, publicViewId: string) => {
+            for (const project of mockProjects.values()) {
+                if (project.public_view_id === publicViewId) return project;
+            }
+            return undefined;
+        },
         findProjectByPlatformId: async (_db: any, platformId: string) => {
             // Search for project with matching platform_id
             for (const project of mockProjects.values()) {
@@ -2665,124 +2671,116 @@ describe('Pages Routes', () => {
         });
     });
 
-    describe('GET /view/:uuid', () => {
-        it('should return 404 for non-existent project', async () => {
-            const res = await app.handle(new Request('http://localhost/view/nonexistent-uuid'));
+    describe('GET /view/:publicViewId', () => {
+        it('should return 404 for unknown public view id', async () => {
+            const res = await app.handle(new Request('http://localhost/view/nonexistent-public-id'));
 
             expect(res.status).toBe(404);
             const html = await res.text();
             expect(html).toContain('workarea/error');
         });
 
-        it('should render viewer for public project (no auth needed)', async () => {
+        it('should render viewer when the public read-only link is enabled (no auth needed)', async () => {
             mockProjects.set('public-view-project', {
                 id: 50,
-                uuid: 'public-view-project',
+                uuid: 'public-view-project-uuid',
+                public_view_id: 'public-view-id-50',
+                public_view_enabled: 1,
                 owner_id: 999,
                 visibility: 'public',
                 title: 'Public Project',
             });
 
-            const res = await app.handle(new Request('http://localhost/view/public-view-project'));
+            const res = await app.handle(new Request('http://localhost/view/public-view-id-50'));
 
             expect(res.status).toBe(200);
             const html = await res.text();
             expect(html).toContain('viewer/viewer');
         });
 
-        it('should return 403 for private project without auth', async () => {
-            mockProjects.set('private-view-project', {
+        it('should render viewer when enabled even if edit access is private (decoupled)', async () => {
+            mockProjects.set('private-enabled-project', {
+                id: 56,
+                uuid: 'private-enabled-uuid',
+                public_view_id: 'public-view-id-56',
+                public_view_enabled: 1,
+                owner_id: 999,
+                visibility: 'private',
+                title: 'Private but publicly viewable',
+            });
+
+            const res = await app.handle(new Request('http://localhost/view/public-view-id-56'));
+
+            expect(res.status).toBe(200);
+            const html = await res.text();
+            expect(html).toContain('viewer/viewer');
+        });
+
+        it('should not expose the internal project uuid in the rendered viewer', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return `<html><body>${JSON.stringify(data)}</body></html>`;
+                },
+                setRenderLocale: () => {},
+            };
+            const customApp = new Elysia().use(createPagesRoutes({ ...mockDeps, template: customTemplate }));
+
+            mockProjects.set('uuid-leak-project', {
+                id: 55,
+                uuid: 'secret-internal-uuid',
+                public_view_id: 'public-view-id-55',
+                public_view_enabled: 1,
+                owner_id: 999,
+                visibility: 'public',
+                title: 'No Leak',
+            });
+
+            const res = await customApp.handle(new Request('http://localhost/view/public-view-id-55'));
+
+            expect(res.status).toBe(200);
+            const html = await res.text();
+            expect(html).not.toContain('secret-internal-uuid');
+            expect(templateData.uuid).toBeUndefined();
+            expect(templateData.publicViewId).toBe('public-view-id-55');
+        });
+
+        it('should return 404 when the public read-only link is disabled', async () => {
+            mockProjects.set('disabled-view-project', {
                 id: 51,
-                uuid: 'private-view-project',
+                uuid: 'disabled-view-project-uuid',
+                public_view_id: 'public-view-id-51',
+                public_view_enabled: 0,
                 owner_id: 999,
-                visibility: 'private',
-                title: 'Private Project',
+                visibility: 'public',
+                title: 'Disabled Project',
             });
 
-            const res = await app.handle(new Request('http://localhost/view/private-view-project'));
+            const res = await app.handle(new Request('http://localhost/view/public-view-id-51'));
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(404);
             const html = await res.text();
-            expect(html).toContain('access-denied');
+            expect(html).toContain('workarea/error');
         });
 
-        it('should render viewer for owner of private project', async () => {
-            mockProjects.set('owner-view-project', {
+        it('should return 404 when the internal project uuid is used as the public view id', async () => {
+            mockProjects.set('uuid-as-id-project', {
                 id: 52,
-                uuid: 'owner-view-project',
-                owner_id: 1,
-                visibility: 'private',
-                title: 'Owner Project',
-            });
-
-            const jwt = await import('@elysiajs/jwt');
-            const jwtInstance = jwt.jwt({
-                name: 'jwt',
-                secret: 'test-secret-for-testing-only',
-            });
-
-            const tempApp = new Elysia().use(jwtInstance);
-            const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
-                email: 'test@test.com',
-                roles: ['ROLE_USER'],
-                isGuest: false,
-            });
-
-            const res = await app.handle(
-                new Request('http://localhost/view/owner-view-project', {
-                    headers: {
-                        Cookie: `auth=${token}`,
-                    },
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const html = await res.text();
-            expect(html).toContain('viewer/viewer');
-        });
-
-        it('should render viewer for admin on private project', async () => {
-            mockUsers.set(20, {
-                id: 20,
-                email: 'admin-viewer@test.com',
-                roles: '["ROLE_USER", "ROLE_ADMIN"]',
-                is_admin: true,
-            });
-
-            mockProjects.set('admin-view-project', {
-                id: 53,
-                uuid: 'admin-view-project',
+                uuid: 'public-uuid-as-id',
+                public_view_id: 'public-view-id-52',
+                public_view_enabled: 1,
                 owner_id: 999,
-                visibility: 'private',
-                title: 'Admin Viewable',
+                visibility: 'public',
+                title: 'Uuid As Id',
             });
 
-            const jwt = await import('@elysiajs/jwt');
-            const jwtInstance = jwt.jwt({
-                name: 'jwt',
-                secret: 'test-secret-for-testing-only',
-            });
+            // The editing UUID must not work as a public view id.
+            const res = await app.handle(new Request('http://localhost/view/public-uuid-as-id'));
 
-            const tempApp = new Elysia().use(jwtInstance);
-            const token = await tempApp.decorator.jwt.sign({
-                sub: 20,
-                email: 'admin-viewer@test.com',
-                roles: ['ROLE_USER', 'ROLE_ADMIN'],
-                isGuest: false,
-            });
-
-            const res = await app.handle(
-                new Request('http://localhost/view/admin-view-project', {
-                    headers: {
-                        Cookie: `auth=${token}`,
-                    },
-                }),
-            );
-
-            expect(res.status).toBe(200);
+            expect(res.status).toBe(404);
             const html = await res.text();
-            expect(html).toContain('viewer/viewer');
+            expect(html).toContain('workarea/error');
         });
 
         it('should use user locale preference for viewer', async () => {
@@ -2803,9 +2801,11 @@ describe('Pages Routes', () => {
 
             mockProjects.set('locale-view-project', {
                 id: 54,
-                uuid: 'locale-view-project',
+                uuid: 'locale-view-project-uuid',
+                public_view_id: 'public-view-id-54',
+                public_view_enabled: 1,
                 owner_id: 1,
-                visibility: 'private',
+                visibility: 'public',
                 title: 'Locale View',
             });
 
@@ -2826,7 +2826,7 @@ describe('Pages Routes', () => {
             });
 
             const res = await customApp.handle(
-                new Request('http://localhost/view/locale-view-project', {
+                new Request('http://localhost/view/public-view-id-54', {
                     headers: {
                         Cookie: `auth=${token}`,
                         'Accept-Language': 'de-DE',
