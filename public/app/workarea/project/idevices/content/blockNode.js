@@ -1684,6 +1684,7 @@ export default class IdeviceBlockNode {
 
     filterModalMaterialIcons(iconsElements, query) {
         const normalizedQuery = query.trim().toLowerCase();
+
         iconsElements.forEach((icon) => {
             const source = icon.getAttribute('data-icon-source');
             if (source !== 'material' && source !== 'theme') {
@@ -1695,15 +1696,6 @@ export default class IdeviceBlockNode {
             icon.style.display =
                 !normalizedQuery || val.includes(normalizedQuery) || title.includes(normalizedQuery) ? '' : 'none';
         });
-
-        const optionsContainer = iconsElements[0]?.parentElement;
-        if (optionsContainer) {
-            optionsContainer
-                .querySelectorAll('.icon-options-section-title')
-                .forEach((title) => {
-                    title.style.display = normalizedQuery ? 'none' : '';
-                });
-        }
     }
 
     async handleModalCustomIconSelection(modalBody, iconsElements, customButton, assetInfo) {
@@ -1768,51 +1760,93 @@ export default class IdeviceBlockNode {
         const customButton = this.createModalIconCustomButton();
         toolbar.appendChild(customButton);
 
+        // Tabs navigation
+        const modalActions = document.createElement('div');
+        modalActions.className = 'modal-actions';
+        const tabsContainer = document.createElement('div');
+        tabsContainer.className = 'ode-project-tabs';
+        const tabStyle = document.createElement('button');
+        tabStyle.type = 'button';
+        tabStyle.className = 'ode-project-tab active';
+        tabStyle.setAttribute('data-tab', 'style-icons');
+        tabStyle.textContent = _('Style icons');
+        const tabGeneral = document.createElement('button');
+        tabGeneral.type = 'button';
+        tabGeneral.className = 'ode-project-tab';
+        tabGeneral.setAttribute('data-tab', 'general-icons');
+        tabGeneral.textContent = _('Global icons');
+        tabsContainer.appendChild(tabStyle);
+        tabsContainer.appendChild(tabGeneral);
+        modalActions.appendChild(tabsContainer);
+        modalBody.appendChild(modalActions);
+
         const optionsContainer = document.createElement('div');
         optionsContainer.className = 'icon-options-grid';
         optionsContainer.id = 'block-icon-options-grid';
         modalBody.appendChild(optionsContainer);
 
+        // Style icons panel (visible by default)
+        const stylePanel = document.createElement('div');
+        stylePanel.className = 'icon-tab-panel';
+        stylePanel.setAttribute('data-tab-panel', 'style-icons');
+        optionsContainer.appendChild(stylePanel);
+
+        // Global icons panel (hidden by default)
+        const generalPanel = document.createElement('div');
+        generalPanel.className = 'icon-tab-panel';
+        generalPanel.setAttribute('data-tab-panel', 'general-icons');
+        generalPanel.style.display = 'none';
+        optionsContainer.appendChild(generalPanel);
+
         const currentIcon = this.getEffectiveIcon();
-        const appendOption = (iconConfig, title, options) => {
+        const appendOption = (iconConfig, title, options, panel) => {
             const iconElement = this.createModalIconOption(iconConfig, title, currentIcon, options);
-            optionsContainer.appendChild(iconElement);
+            panel.appendChild(iconElement);
             return iconElement;
         };
-        const appendSectionTitle = (text) => {
+        const appendSectionTitle = (text, panel) => {
             const titleElement = document.createElement('div');
-            titleElement.className = 'icon-options-section-title';
+            titleElement.className = 'icon-options-section-title visually-hidden';
             titleElement.textContent = text;
-            optionsContainer.appendChild(titleElement);
+            panel.appendChild(titleElement);
         };
 
+        // Style icons panel content
+        appendSectionTitle(_('Style icons'), stylePanel);
         appendOption(
             { source: 'none', value: '' },
             _('No icon'),
-            { className: 'empty-block-icon', iconId: '0', innerHtml: this.getModalNoIconSvg() }
+            { className: 'empty-block-icon', iconId: '0', innerHtml: this.getModalNoIconSvg() },
+            stylePanel
         );
 
         const themeIcons = eXeLearning.app?.themes?.getThemeIcons?.() || {};
         const themeIconList = Object.values(themeIcons).filter((themeIcon) => themeIcon && themeIcon.value);
-        if (themeIconList.length > 0) {
-            appendSectionTitle(_('Style icons'));
-            for (const themeIcon of themeIconList) {
-                const iconValue = themeIcon.id || themeIcon.value;
-                const title = themeIcon.title || iconValue;
-                const option = appendOption(
-                    { source: 'theme', value: iconValue, name: title },
-                    title,
-                    { className: 'theme-block-icon' }
-                );
-                option.setAttribute('icon-id', iconValue);
-            }
-            appendSectionTitle(_('General icons'));
+        for (const themeIcon of themeIconList) {
+            const iconValue = themeIcon.id || themeIcon.value;
+            const title = themeIcon.title || iconValue;
+            const option = appendOption(
+                { source: 'theme', value: iconValue, name: title },
+                title,
+                { className: 'theme-block-icon' },
+                stylePanel
+            );
+            option.setAttribute('icon-id', iconValue);
         }
 
+        // Global icons panel content
+        appendSectionTitle(_('Global icons'), generalPanel);
+        appendOption(
+            { source: 'none', value: '' },
+            _('No icon'),
+            { className: 'empty-block-icon', iconId: '0', innerHtml: this.getModalNoIconSvg() },
+            generalPanel
+        );
         for (const iconName of MATERIAL_ICON_CATALOG) {
-            const option = appendOption({ source: 'material', value: iconName, name: iconName }, iconName);
+            const option = appendOption({ source: 'material', value: iconName, name: iconName }, iconName, {}, generalPanel);
             option.setAttribute('icon-id', `mi-${iconName}`);
         }
+
         if (currentIcon.source === 'asset' && currentIcon.value) {
             this.setModalCustomSelection(modalBody, customButton, currentIcon);
         }
@@ -1846,6 +1880,23 @@ export default class IdeviceBlockNode {
         let iconsElements = modalBody.querySelectorAll('#change-block-icon-modal-content .option-block-icon');
         const searchInput = modalBody.querySelector('#block-icon-search-input');
         const customButton = modalBody.querySelector('#block-icon-custom-button');
+
+        // Tab switching
+        const tabs = modalBody.querySelectorAll('#change-block-icon-modal-content .ode-project-tab');
+        const panels = modalBody.querySelectorAll('#change-block-icon-modal-content .icon-tab-panel');
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                tabs.forEach((t) => t.classList.remove('active'));
+                tab.classList.add('active');
+                const targetPanel = tab.getAttribute('data-tab');
+                panels.forEach((panel) => {
+                    panel.style.display = panel.getAttribute('data-tab-panel') === targetPanel ? '' : 'none';
+                });
+                if (searchInput?.value) {
+                    this.filterModalMaterialIcons(iconsElements, searchInput.value);
+                }
+            });
+        });
 
         iconsElements.forEach((icon) => {
             icon.addEventListener('click', () => {
