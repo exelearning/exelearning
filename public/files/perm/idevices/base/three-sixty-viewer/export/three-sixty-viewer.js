@@ -1034,6 +1034,23 @@ var $threesixtyviewer = {
         }
     },
 
+    /**
+     * Map a pasted video page URL to an embeddable iframe src for a known
+     * provider, or return null for anything else (direct media files). The
+     * embed URL is rebuilt from the captured id rather than echoing the raw
+     * input, which is also safer than dropping an arbitrary URL into an iframe.
+     */
+    _videoEmbedUrl: url => {
+        if (!url || typeof url !== 'string') return null;
+        var yt = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/.exec(url);
+        if (yt) return 'https://www.youtube.com/embed/' + yt[1];
+        var vimeo = /vimeo\.com\/(?:video\/)?(\d+)(?:\/(\w+))?/.exec(url);
+        if (vimeo) return 'https://player.vimeo.com/video/' + vimeo[1] + (vimeo[2] ? '?h=' + vimeo[2] : '');
+        var em = /mediateca\.educa\.madrid\.org\/(?:video|media)\/([\w-]+)/.exec(url);
+        if (em) return 'https://mediateca.educa.madrid.org/video/' + em[1] + '/fs';
+        return null;
+    },
+
     _populateModalBody: function (body, hotspot) {
         var p = hotspot.action.payload || {};
         switch (hotspot.action.type) {
@@ -1059,10 +1076,10 @@ var $threesixtyviewer = {
             case 'video':
                 if (p.src) {
                     var resolved = this.resolveSrc(p.src);
-                    var ytMatch = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/.exec(resolved);
-                    if (ytMatch) {
+                    var embedUrl = this._videoEmbedUrl(resolved);
+                    if (embedUrl) {
                         var iframe = document.createElement('iframe');
-                        iframe.src = 'https://www.youtube.com/embed/' + ytMatch[1];
+                        iframe.src = embedUrl;
                         iframe.setAttribute('allowfullscreen', '');
                         iframe.setAttribute('frameborder', '0');
                         iframe.setAttribute('title', hotspot.label || 'video');

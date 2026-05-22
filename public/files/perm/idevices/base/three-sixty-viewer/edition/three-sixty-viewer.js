@@ -794,7 +794,12 @@ var $exeDevice = {
                     idx +
                     '">' +
                     _('Choose video…') +
-                    '</button>'
+                    '</button>' +
+                    '<p class="exe-block-info small">' +
+                    this.escapeHtml(
+                        _('Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.'),
+                    ) +
+                    '</p>'
                 );
             case 'link':
                 return (

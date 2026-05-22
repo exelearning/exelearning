@@ -1186,4 +1186,86 @@ describe('three-sixty-viewer iDevice (export)', () => {
             expect(inst.controls.enabled).toBe(false);
         });
     });
+
+    describe('video hotspot embedding', () => {
+        describe('_videoEmbedUrl', () => {
+            it('maps YouTube URLs to an embed src', () => {
+                expect($t._videoEmbedUrl('https://www.youtube.com/watch?v=abc123')).toBe(
+                    'https://www.youtube.com/embed/abc123',
+                );
+                expect($t._videoEmbedUrl('https://youtu.be/abc123')).toBe('https://www.youtube.com/embed/abc123');
+                expect($t._videoEmbedUrl('https://www.youtube.com/embed/abc123')).toBe(
+                    'https://www.youtube.com/embed/abc123',
+                );
+            });
+
+            it('maps Vimeo URLs to the player embed src', () => {
+                expect($t._videoEmbedUrl('https://vimeo.com/123456789')).toBe(
+                    'https://player.vimeo.com/video/123456789',
+                );
+            });
+
+            it('keeps the privacy hash for unlisted Vimeo URLs', () => {
+                expect($t._videoEmbedUrl('https://vimeo.com/123456789/abcdef0123')).toBe(
+                    'https://player.vimeo.com/video/123456789?h=abcdef0123',
+                );
+            });
+
+            it('maps Educamadrid Mediateca URLs to the /fs embed src', () => {
+                expect($t._videoEmbedUrl('https://mediateca.educa.madrid.org/video/j6mdl514dd1t715f')).toBe(
+                    'https://mediateca.educa.madrid.org/video/j6mdl514dd1t715f/fs',
+                );
+            });
+
+            it('returns null for a direct media file and for empty/non-string input', () => {
+                expect($t._videoEmbedUrl('https://example.com/clip.mp4')).toBeNull();
+                expect($t._videoEmbedUrl('')).toBeNull();
+                expect($t._videoEmbedUrl(null)).toBeNull();
+                expect($t._videoEmbedUrl(42)).toBeNull();
+            });
+        });
+
+        function openVideoHotspot(src) {
+            $t.hasWebGL = () => true;
+            const node = document.createElement('div');
+            document.body.appendChild(node);
+            const state = $t.normalize({
+                version: 2,
+                scenes: [
+                    {
+                        id: 'a',
+                        src: 'asset://a.jpg',
+                        hotspots: [{ id: 'v', label: 'Clip', action: { type: 'video', payload: { src } } }],
+                    },
+                ],
+            });
+            $t.renderOne(node, state, '', false);
+            $t._instances[0].hotspotButtons[0].button.click();
+            return node.querySelector('.three-sixty-viewer-modal-body');
+        }
+
+        it('renders an <iframe> for a provider URL (Mediateca)', () => {
+            const body = openVideoHotspot('https://mediateca.educa.madrid.org/video/j6mdl514dd1t715f');
+            const iframe = body.querySelector('iframe');
+            expect(iframe).not.toBeNull();
+            expect(iframe.src).toContain('mediateca.educa.madrid.org/video/j6mdl514dd1t715f/fs');
+            expect(iframe.getAttribute('allowfullscreen')).not.toBeNull();
+            expect(body.querySelector('video')).toBeNull();
+        });
+
+        it('renders an <iframe> for a Vimeo URL', () => {
+            const body = openVideoHotspot('https://vimeo.com/123456789');
+            const iframe = body.querySelector('iframe');
+            expect(iframe).not.toBeNull();
+            expect(iframe.src).toContain('player.vimeo.com/video/123456789');
+        });
+
+        it('falls back to a <video> element for a direct media file', () => {
+            const body = openVideoHotspot('https://example.com/clip.mp4');
+            expect(body.querySelector('iframe')).toBeNull();
+            const video = body.querySelector('video');
+            expect(video).not.toBeNull();
+            expect(video.src).toContain('clip.mp4');
+        });
+    });
 });
