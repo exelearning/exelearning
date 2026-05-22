@@ -39,7 +39,9 @@ import {
     updateProjectVisibility,
     updateProjectVisibilityByUuid,
     setPublicViewEnabled,
+    setPublicViewEnabledByUuid,
     regeneratePublicViewId,
+    regeneratePublicViewIdByUuid,
 } from './projects';
 import { createUser } from './users';
 
@@ -448,6 +450,11 @@ describe('Project Queries', () => {
             expect(reEnabled?.public_view_enabled).toBe(1);
             expect(reEnabled?.public_view_id).toBe(originalId);
         });
+
+        it('should return undefined for a non-existent project id', async () => {
+            const updated = await setPublicViewEnabled(db, 9999999, true);
+            expect(updated).toBeUndefined();
+        });
     });
 
     describe('regeneratePublicViewId', () => {
@@ -461,6 +468,62 @@ describe('Project Queries', () => {
             expect(regenerated?.public_view_id).toBeTruthy();
             expect(regenerated?.public_view_id).not.toBe(originalId);
             expect(regenerated?.public_view_enabled).toBe(1);
+        });
+
+        it('should return undefined for a non-existent project id', async () => {
+            const regenerated = await regeneratePublicViewId(db, 9999999);
+            expect(regenerated).toBeUndefined();
+        });
+    });
+
+    describe('setPublicViewEnabledByUuid', () => {
+        it('should generate a public_view_id on first enable by UUID', async () => {
+            const project = await createProject(db, { title: 'PV Gen Uuid', owner_id: testUser.id });
+            expect(project.public_view_id).toBeFalsy();
+
+            const updated = await setPublicViewEnabledByUuid(db, project.uuid, true);
+
+            expect(updated?.public_view_enabled).toBe(1);
+            expect(updated?.public_view_id).toBeTruthy();
+            expect(updated?.public_view_id).not.toBe(project.uuid);
+        });
+
+        it('should keep the public_view_id when disabled and reuse it when re-enabled by UUID', async () => {
+            const project = await createProject(db, { title: 'PV Keep Uuid', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabledByUuid(db, project.uuid, true);
+            const originalId = enabled?.public_view_id;
+
+            const disabled = await setPublicViewEnabledByUuid(db, project.uuid, false);
+            expect(disabled?.public_view_enabled).toBe(0);
+            expect(disabled?.public_view_id).toBe(originalId);
+
+            const reEnabled = await setPublicViewEnabledByUuid(db, project.uuid, true);
+            expect(reEnabled?.public_view_enabled).toBe(1);
+            expect(reEnabled?.public_view_id).toBe(originalId);
+        });
+
+        it('should return undefined for a non-existent uuid', async () => {
+            const updated = await setPublicViewEnabledByUuid(db, 'no-such-uuid', true);
+            expect(updated).toBeUndefined();
+        });
+    });
+
+    describe('regeneratePublicViewIdByUuid', () => {
+        it('should replace the public_view_id while keeping it enabled by UUID', async () => {
+            const project = await createProject(db, { title: 'PV Regen Uuid', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabledByUuid(db, project.uuid, true);
+            const originalId = enabled?.public_view_id;
+
+            const regenerated = await regeneratePublicViewIdByUuid(db, project.uuid);
+
+            expect(regenerated?.public_view_id).toBeTruthy();
+            expect(regenerated?.public_view_id).not.toBe(originalId);
+            expect(regenerated?.public_view_enabled).toBe(1);
+        });
+
+        it('should return undefined for a non-existent uuid', async () => {
+            const regenerated = await regeneratePublicViewIdByUuid(db, 'no-such-uuid');
+            expect(regenerated).toBeUndefined();
         });
     });
 

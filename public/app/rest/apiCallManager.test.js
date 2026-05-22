@@ -1349,6 +1349,63 @@ describe('ApiCallManager', () => {
       expect(result.publicViewId).toBe('pv-new');
     });
 
+    it('should fall back to HTTP status when updatePublicViewAccess error body is empty', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: vi.fn().mockRejectedValue(new Error('no body')),
+      });
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('HTTP 401');
+    });
+
+    it('should return error when updatePublicViewAccess throws (network error)', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('network down'));
+
+      const result = await apiManager.updatePublicViewAccess(1, true);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('network down');
+    });
+
+    it('should return error when regeneratePublicViewId fails (non-ok response)', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn().mockResolvedValue({ message: 'not found' }),
+      });
+
+      const result = await apiManager.regeneratePublicViewId(1);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('not found');
+    });
+
+    it('should fall back to HTTP status when regeneratePublicViewId error body is empty', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: vi.fn().mockRejectedValue(new Error('no body')),
+      });
+
+      const result = await apiManager.regeneratePublicViewId(1);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('HTTP 500');
+    });
+
+    it('should return error when regeneratePublicViewId throws (network error)', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('offline'));
+
+      const result = await apiManager.regeneratePublicViewId(1);
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.detail).toBe('offline');
+    });
+
     it('should map collaborator errors', async () => {
       global.fetch = vi.fn()
         .mockResolvedValueOnce({

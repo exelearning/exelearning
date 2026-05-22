@@ -467,6 +467,52 @@ describe('ModalShare', () => {
 
       expect(modal.publicViewSelect.value).toBe('disabled');
     });
+
+    it('shows an error and does nothing when the project is not loaded', async () => {
+      window.eXeLearning.app.project.odeId = undefined;
+      modal.projectData = { publicViewEnabled: false };
+      const errorSpy = vi.spyOn(modal, 'showError').mockImplementation(() => {});
+      window.eXeLearning.app.api.updatePublicViewAccess = vi.fn();
+
+      await modal.handlePublicViewChange('enabled');
+
+      expect(errorSpy).toHaveBeenCalled();
+      expect(window.eXeLearning.app.api.updatePublicViewAccess).not.toHaveBeenCalled();
+    });
+
+    it('reverts the select and does not call the API for non-owners', async () => {
+      modal.currentUserIsOwner = false;
+      modal.projectData = { publicViewEnabled: false };
+      window.eXeLearning.app.api.updatePublicViewAccess = vi.fn();
+
+      await modal.handlePublicViewChange('enabled');
+
+      expect(modal.publicViewSelect.value).toBe('disabled');
+      expect(window.eXeLearning.app.api.updatePublicViewAccess).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the value matches the current state', async () => {
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      window.eXeLearning.app.api.updatePublicViewAccess = vi.fn();
+
+      await modal.handlePublicViewChange('enabled');
+
+      expect(window.eXeLearning.app.api.updatePublicViewAccess).not.toHaveBeenCalled();
+    });
+
+    it('reverts the select when the API call throws', async () => {
+      modal.projectData = { publicViewEnabled: false };
+      window.eXeLearning.app.api.updatePublicViewAccess = vi.fn().mockRejectedValue(new Error('boom'));
+      vi.spyOn(modal, 'saveProjectBeforeSharing').mockResolvedValue(undefined);
+      const errorSpy = vi.spyOn(modal, 'showError').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await modal.handlePublicViewChange('enabled');
+
+      expect(errorSpy).toHaveBeenCalled();
+      expect(modal.publicViewSelect.value).toBe('disabled');
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('regenerate public link (inline confirm)', () => {
@@ -517,6 +563,54 @@ describe('ModalShare', () => {
       expect(modal.publicLinkInput.value).toContain('/view/pub-regenerated');
       // Confirmation collapses after the action.
       expect(modal.publicRegenerateConfirm.classList.contains('d-none')).toBe(true);
+    });
+
+    it('hides the confirmation and skips the API when the project is not loaded', async () => {
+      window.eXeLearning.app.project.odeId = undefined;
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      modal.handleRegeneratePublicLink();
+      window.eXeLearning.app.api.regeneratePublicViewId = vi.fn();
+
+      await modal.confirmRegeneratePublicLink();
+
+      expect(window.eXeLearning.app.api.regeneratePublicViewId).not.toHaveBeenCalled();
+      expect(modal.publicRegenerateConfirm.classList.contains('d-none')).toBe(true);
+    });
+
+    it('hides the confirmation and skips the API for non-owners', async () => {
+      modal.currentUserIsOwner = false;
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      window.eXeLearning.app.api.regeneratePublicViewId = vi.fn();
+
+      await modal.confirmRegeneratePublicLink();
+
+      expect(window.eXeLearning.app.api.regeneratePublicViewId).not.toHaveBeenCalled();
+    });
+
+    it('shows an error when the API returns a non-OK response', async () => {
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      window.eXeLearning.app.api.regeneratePublicViewId = vi
+        .fn()
+        .mockResolvedValue({ responseMessage: 'ERROR', detail: 'cannot' });
+      const errorSpy = vi.spyOn(modal, 'showError').mockImplementation(() => {});
+
+      await modal.confirmRegeneratePublicLink();
+
+      expect(errorSpy).toHaveBeenCalled();
+      expect(modal.publicRegenerateConfirm.classList.contains('d-none')).toBe(true);
+    });
+
+    it('shows an error when the API call throws', async () => {
+      modal.projectData = { publicViewEnabled: true, publicViewId: 'pub-old' };
+      window.eXeLearning.app.api.regeneratePublicViewId = vi.fn().mockRejectedValue(new Error('boom'));
+      const errorSpy = vi.spyOn(modal, 'showError').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await modal.confirmRegeneratePublicLink();
+
+      expect(errorSpy).toHaveBeenCalled();
+      expect(modal.publicRegenerateConfirm.classList.contains('d-none')).toBe(true);
+      consoleSpy.mockRestore();
     });
   });
 
@@ -970,6 +1064,11 @@ describe('ModalShare', () => {
     it('should return early when linkInput has no value', async () => {
       modal.linkInput.value = '';
       await modal.handleCopyLink(modal.linkInput, modal.copyButton);
+      expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+    });
+
+    it('should return early when the input or button element is missing', async () => {
+      await modal.handleCopyLink(null, null);
       expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
     });
 
