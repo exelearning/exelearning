@@ -11,22 +11,23 @@ export const healthRoutes = new Elysia({ prefix: '/health' })
     }))
     .get('/db', async () => {
         try {
-            // Test database connection by counting users
-            const result = await db
+            // Probe the database with a minimal query. We intentionally do NOT
+            // return any aggregate counts (e.g. user count) on this public
+            // endpoint — that information is available to admins via
+            // /api/admin/stats.
+            await db
                 .selectFrom('users')
                 .select(({ fn }) => fn.countAll().as('count'))
                 .executeTakeFirst();
             return {
                 status: 'ok',
                 database: 'connected',
-                usersCount: Number(result?.count ?? 0),
                 timestamp: new Date().toISOString(),
             };
-        } catch (error) {
+        } catch {
             return {
                 status: 'error',
                 database: 'disconnected',
-                error: error instanceof Error ? error.message : 'Unknown error',
                 timestamp: new Date().toISOString(),
             };
         }

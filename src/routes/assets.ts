@@ -22,8 +22,11 @@ import {
     updateAsset,
     bulkUpdateAssets,
     findProjectByUuid,
+    findProjectById,
+    checkProjectAccess,
 } from '../db/queries';
 import type { Kysely } from 'kysely';
+import { withJwtAuth, enforceProjectAccess } from '../utils/route-auth';
 
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
@@ -62,6 +65,8 @@ export interface AssetsQueries {
     updateAsset: typeof updateAsset;
     bulkUpdateAssets: typeof bulkUpdateAssets;
     findProjectByUuid: typeof findProjectByUuid;
+    findProjectById: typeof findProjectById;
+    checkProjectAccess: typeof checkProjectAccess;
 }
 
 /**
@@ -151,6 +156,8 @@ const defaultDependencies: AssetsDependencies = {
         updateAsset,
         bulkUpdateAssets,
         findProjectByUuid,
+        findProjectById,
+        checkProjectAccess,
     },
     fileHelper: defaultFileHelper,
     sessionManager: defaultSessionManager,
@@ -215,6 +222,26 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
     return (
         new Elysia({ prefix: '/api/projects/:projectId/assets' })
+            // Auth: every asset endpoint requires an authenticated user with
+            // access to the project (owner / collaborator / admin, or any
+            // authenticated user on public projects — same semantics as the
+            // Yjs WebSocket via checkProjectAccess).
+            .use(withJwtAuth())
+            .onBeforeHandle(async ({ jwtPayload, params, set }) => {
+                const projectIdParam = (params as Record<string, string>).projectId;
+                const result = await enforceProjectAccess(jwtPayload, projectIdParam, {
+                    db: database,
+                    queries: {
+                        findProjectByUuid: queries.findProjectByUuid,
+                        findProjectById: queries.findProjectById,
+                        checkProjectAccess: queries.checkProjectAccess,
+                    },
+                });
+                if ('status' in result) {
+                    set.status = result.status;
+                    return { success: false, error: result.message };
+                }
+            })
 
             // =====================================================
             // Upload Asset (simple)
