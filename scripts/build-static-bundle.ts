@@ -1205,7 +1205,7 @@ async function buildStaticBundle() {
     console.log('  Copied bundles/');
 
     // Copy files/perm (themes, iDevices, favicon)
-    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));
+    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'),['src', 'node_modules','bun.lock','package.json']);
     console.log('  Copied files/perm/');
 
     // Copy images folder (default-avatar.svg, logo.svg, etc.)
