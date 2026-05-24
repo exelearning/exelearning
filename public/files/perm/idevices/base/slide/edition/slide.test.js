@@ -75,8 +75,14 @@ let $exeDevice;
 
 beforeEach(async () => {
     delete global.window.__slideBundlePromise;
+    delete global.window.__slideLoad_fabric;
+    delete global.window.__slideLoad_DOMPurify;
     delete global.window.$exeDevice;
     delete global.window.__slideEditorInit;
+    // Pre-set fabric/DOMPurify so the bridge skips loading them as separate
+    // <script> tags — the bridge only needs to lazy-load the editor bundle.
+    global.window.fabric = global.window.fabric || {};
+    global.window.DOMPurify = global.window.DOMPurify || {};
     global.window._ = k => k;
 
     const code = await import('./slide.js?raw').then(m => m.default);
@@ -180,6 +186,9 @@ describe('loadBundle', () => {
         $exeDevice.init(container, null, '/path/');
         $exeDevice.init(c2, null, '/path/');
 
+        // Wait for the promise chain in loadBundle to reach loadScript()
+        // (loadGlobal early-returns twice, then schedules the bundle script).
+        await new Promise(r => setTimeout(r, 0));
         resolveScript();
         await new Promise(r => setTimeout(r, 0));
 
