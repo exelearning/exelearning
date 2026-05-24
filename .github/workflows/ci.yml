@@ -67,6 +67,9 @@ jobs:
       - name: Lint (Biome)
         run: make lint
 
+      - name: Build vendor libs
+        run: bun run bundle:vendor
+
       - name: Unit Tests + 90% Coverage
         run: make test-unit-ci
 

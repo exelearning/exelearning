@@ -6,6 +6,37 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      # Yjs ecosystem: keep in sync — shim build depends on compatible versions
+      yjs-ecosystem:
+        patterns:
+          - "yjs"
+          - "y-*"
+          - "lib0"
+      # MathJax: pinned separately — exe_math/ is a custom subset requiring manual validation
+      mathjax:
+        patterns:
+          - "mathjax-full"
+      # Elysia framework
+      elysia:
+        patterns:
+          - "elysia"
+          - "@elysiajs/*"
+      # Test tooling
+      test-tools:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "@playwright/test"
+          - "happy-dom"
+      # Build tooling
+      build-tools:
+        patterns:
+          - "esbuild"
+          - "vite"
+          - "sass"
+          - "@biomejs/*"
 
   # Dockerfile dependencies (e.g., base images)
   - package-ecosystem: "docker"
