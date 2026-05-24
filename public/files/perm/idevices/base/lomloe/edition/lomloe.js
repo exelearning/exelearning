@@ -341,24 +341,40 @@ var $exeDevice = (function () {
 
         var url = resolveEditionResource(ds.file);
 
-        var promise = (function () {
-            if (typeof fetch === 'function') {
-                return fetch(url)
-                    .then(function (r) {
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
-                        return r.json();
-                    })
-                    .catch(function () { return loadViaXHR(url); });
-            }
-            return loadViaXHR(url);
-        }()).then(function (data) {
+        var promise = fetchJsonMaybeGzipped(url).then(function (data) {
             dataCache[datasetId] = data;
             delete dataPromises[datasetId];
             return data;
+        }).catch(function (err) {
+            delete dataPromises[datasetId];
+            throw err;
         });
 
         dataPromises[datasetId] = promise;
         return promise;
+    }
+
+    // Tries <url>.gz first (decompressed in-browser via DecompressionStream),
+    // falls back to raw <url> for dev (uncompressed) and browsers that lack the API.
+    function fetchJsonMaybeGzipped(url) {
+        var canDecompress = typeof DecompressionStream !== 'undefined'
+            && typeof fetch === 'function';
+        var gzPromise = canDecompress
+            ? fetch(url + '.gz').then(function (r) {
+                if (!r.ok) throw new Error('gz HTTP ' + r.status);
+                var stream = r.body.pipeThrough(new DecompressionStream('gzip'));
+                return new Response(stream).json();
+            })
+            : Promise.reject(new Error('DecompressionStream unavailable'));
+        return gzPromise.catch(function () {
+            if (typeof fetch === 'function') {
+                return fetch(url).then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                }).catch(function () { return loadViaXHR(url); });
+            }
+            return loadViaXHR(url);
+        });
     }
 
     function loadViaXHR(url) {
