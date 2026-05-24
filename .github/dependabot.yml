@@ -12,6 +12,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 10
     ignore:
       # Playwright 1.62 ships a Firefox build whose driver intermittently
       # never attaches the SW-served preview iframe, hanging frameLocator
@@ -19,6 +20,36 @@ updates:
       # exit criteria and drop this together with the pin once fixed.
       - dependency-name: "@playwright/test"
         versions: [">=1.59"]
+    groups:
+      # Yjs ecosystem: keep in sync — shim build depends on compatible versions
+      yjs-ecosystem:
+        patterns:
+          - "yjs"
+          - "y-*"
+          - "lib0"
+      # MathJax: pinned separately — exe_math/ is a custom subset requiring manual validation
+      mathjax:
+        patterns:
+          - "mathjax-full"
+      # Elysia framework
+      elysia:
+        patterns:
+          - "elysia"
+          - "@elysiajs/*"
+      # Test tooling
+      test-tools:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "@playwright/test"
+          - "happy-dom"
+      # Build tooling
+      build-tools:
+        patterns:
+          - "esbuild"
+          - "vite"
+          - "sass"
+          - "@biomejs/*"
 
   # Electron main-process dependencies. app/ has its own manifest and lockfile,
   # which the "/" entry above does not cover, so electron-updater, electron-log,
