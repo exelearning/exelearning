@@ -51,6 +51,15 @@ export function createBlankYjsDocument(options?: YjsInitOptions): Uint8Array {
         metadata.set('theme', options?.theme || 'base');
         metadata.set('createdAt', Date.now());
         metadata.set('modifiedAt', Date.now());
+        // Stable identifiers (odeIdentifier / odeVersionId) are intentionally
+        // NOT minted at server creation. Minting here would create CRDT history
+        // that gets overwritten by the first import (v4 .elpx carries its own
+        // <odeResources>; legacy v3 .elp generates one at import). The
+        // garbage-collected superseded ops inflate the persisted state and
+        // break the binary-integrity e2e save/load consistency check.
+        // For brand-new projects that are exported without ever being imported
+        // or saved, BaseExporter.getManifestIdentifier falls back to a
+        // memoized fresh id within a single export. See #1786.
 
         // Create root page (matches client-side structure)
         const rootPageId = generateId();

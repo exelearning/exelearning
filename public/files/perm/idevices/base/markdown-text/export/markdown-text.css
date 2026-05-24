@@ -1,0 +1,80 @@
+/* Markdown Text iDevice (export CSS) */
+.exe-markdown-activity .markdown-body {
+    padding: 0.5rem 0;
+}
+
+.exe-markdown-activity .markdown-body pre,
+.exe-markdown-activity .markdown-body code {
+    font-family: var(--font-family-monospace, ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace);
+    font-size: 0.9em;
+    text-shadow: none;
+}
+
+.exe-markdown-activity .markdown-body pre [class*="language-"],
+.exe-markdown-activity .markdown-body code[class*="language-"] {
+    text-shadow: none;
+    background: none;
+}
+
+.exe-markdown-activity .markdown-body pre {
+    background-color: #0d1117;
+    color: #e6edf3;
+    padding: 0.75rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.45;
+}
+
+.exe-markdown-activity .markdown-body code {
+    background-color: rgba(175, 184, 193, 0.2);
+    border-radius: 4px;
+    padding: 0.2em 0.4em;
+}
+
+.exe-markdown-activity .markdown-body pre code {
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+.exe-markdown-activity .markdown-body ul.task-list,
+.exe-markdown-activity .markdown-body ul li.task-list-item {
+    list-style: none;
+    padding-left: 0;
+}
+
+.exe-markdown-activity .markdown-body li.task-list-item {
+    padding-left: 0;
+}
+
+.exe-markdown-activity .markdown-body li.task-list-item input[type="checkbox"] {
+    margin-right: 0.4em;
+}
+
+.exe-markdown-activity .markdown-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.exe-markdown-activity .markdown-body th,
+.exe-markdown-activity .markdown-body td {
+    border: 1px solid #d0d7de;
+    padding: 0.5rem;
+}
+
+.exe-markdown-activity div.inline {
+    display: flex;
+}
+
+.exe-markdown-activity div.inline dt {
+    margin: 0 0 0 auto;
+}
+
+.exe-markdown-activity div.inline dd {
+    margin-left: 10px;
+}
+
+.idevice_node.markdown-text .iDevice_buttons.feedback-button {
+    margin-bottom: 1em;
+}

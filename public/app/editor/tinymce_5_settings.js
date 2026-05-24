@@ -289,6 +289,16 @@ var $exeTinyMCE = {
         tinymce.init({
             language: this.language,
             selector: criteria,
+            // about:srcdoc cannot be parsed by tinymce.util.URI (regex
+            // /^([\w-]+):([^/]{2})/ consumes "about:" + "sr" and leaves
+            // .path / .directory undefined), so the default tinymce.documentBaseURL
+            // pulled from window.location.href makes editor.documentBaseURI
+            // crash on the first toAbsolute() against a relative URL inside
+            // iframe-srcdoc embedders on Firefox. document.baseURI is set to
+            // the embedder's <base href> under iframe-srcdoc and to the
+            // document URL in standalone deployments, so it is a safe anchor
+            // in every embedding mode. See #1799.
+            document_base_url: document.baseURI,
             height: 350,
             convert_urls: false,
             toolbar_mode: 'wrap', // To review. The default toolbar mode, floanting, sometimes causes unexpected errors when editing activities (theme.min.js. line 28818)
@@ -794,10 +804,15 @@ var $exeTinyMCE = {
     getContentCSS: function () {
         // Fallback theme path if theme not yet selected (timing issue during iDevice loading)
         var themePath = eXeLearning.app.themes.selected?.path || '/files/perm/themes/base/INTEF/';
+        // BASE_PATH-aware: apiUrlBase is just the origin (config.baseURL) and the
+        // BASE_PATH lives in apiUrlBasePath (config.basePath). Subdirectory deploys
+        // (see #1802 / #1804) need both, otherwise these CSS files 404 behind the
+        // reverse proxy.
+        var apiBase = eXeLearning.app.api.apiUrlBase + (eXeLearning.app.api.apiUrlBasePath || '');
         return (
-            eXeLearning.app.api.apiUrlBase +
+            apiBase +
             '/app/editor/tinymce_5_extra.css,' +
-            eXeLearning.app.api.apiUrlBase +
+            apiBase +
             '/libs/bootstrap/bootstrap.min.css,' +
             themePath +
             'style.css'

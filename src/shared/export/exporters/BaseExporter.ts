@@ -21,8 +21,8 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
-import { generateOdeXml } from '../generators/OdeXmlGenerator';
-import { formatLicenseText } from '../constants';
+import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
+import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 
 /**
@@ -362,6 +362,65 @@ export abstract class BaseExporter {
         return `${prefix}${timestamp}${random}`.toUpperCase();
     }
 
+    /**
+     * Cached manifest identifier for this exporter instance.
+     * Computed once on the first call and reused so the fallback path
+     * (no scormIdentifier, no odeIdentifier) does not regenerate a new
+     * random id on each subsequent call -- which would desynchronise the
+     * manifest, organization and LOM catalog/entry roots.
+     */
+    private _manifestIdentifier: string | undefined;
+
+    /**
+     * Stable identifier used in SCORM/IMS manifests and LOM catalog/entry.
+     *
+     * Derives from the project's odeIdentifier so the LMS treats updated
+     * re-uploads as the same course (preserving learner tracking). Honours
+     * an explicit `scormIdentifier` override from project metadata.
+     *
+     * Resolution order:
+     * 1. `meta.scormIdentifier` if set (user override -- used verbatim).
+     * 2. `'eXe-MANIFEST-' + meta.odeIdentifier` (default -- shares root with content.xml).
+     * 3. `'eXe-MANIFEST-' + generateOdeId()` (fallback for legacy projects).
+     *
+     * The result is memoized per exporter instance: a single export call must
+     * always observe the same manifest identifier so the manifest, the
+     * organization identifier and the LOM catalog/entry stay consistent.
+     *
+     * The returned string is the FINAL `manifest@identifier` value. Manifest
+     * generators must use it as-is (i.e. they must NOT prepend their own
+     * `eXe-MANIFEST-` prefix).
+     *
+     * Related: exelearning/exelearning#1785.
+     */
+    protected getManifestIdentifier(): string {
+        if (this._manifestIdentifier !== undefined) {
+            return this._manifestIdentifier;
+        }
+        const meta = this.getMetadata();
+        if (meta.scormIdentifier) {
+            this._manifestIdentifier = meta.scormIdentifier;
+        } else if (meta.odeIdentifier) {
+            this._manifestIdentifier = 'eXe-MANIFEST-' + meta.odeIdentifier;
+        } else {
+            this._manifestIdentifier = 'eXe-MANIFEST-' + generateOdeId();
+        }
+        return this._manifestIdentifier;
+    }
+
+    /**
+     * Bare project identifier (without the `eXe-MANIFEST-` prefix).
+     *
+     * Used for the manifest `organization@identifier` (`eXe-<bareId>`) and
+     * for the LOM `catalog/entry` (`ODE-<bareId>`) so a single project
+     * identity flows through every artifact in the export.
+     */
+    protected getBareProjectIdentifier(): string {
+        const fullId = this.getManifestIdentifier();
+        const PREFIX = 'eXe-MANIFEST-';
+        return fullId.startsWith(PREFIX) ? fullId.slice(PREFIX.length) : fullId;
+    }
+
     // =========================================================================
     // Asset Iteration
     // =========================================================================
@@ -425,18 +484,13 @@ export abstract class BaseExporter {
      * Add assets to ZIP with content/resources/ prefix
      * Uses folderPath-based structure for cleaner exports
      *
-     * Each asset is written to the resolved export path (the friendly filename
-     * derived from metadata) AND, when it differs, to a `<assetId><ext>`
-     * fallback path. The fallback covers downstream consumers (e.g. Moodle
-     * mod_exeweb / mod_exescorm activities -- exelearning/mod_exeweb#42 and
-     * exelearning/mod_exescorm#55) that load the package as a static site:
-     * if the HTML carries an unresolved `asset://uuid.ext` reference, the
-     * transformation in {@link addFilenamesToAssetUrls} falls back to a
-     * literal `content/resources/<uuid><ext>` URL. Without the fallback file
-     * in the ZIP that URL would 404 on the platform side. The cost of the
-     * extra entry is minimal (a duplicate file pointer in the same archive)
-     * and avoids broken images on legitimate exports while the upstream
-     * mismatch is being addressed.
+     * Each asset is written exactly once, under its resolved export path
+     * (the friendly filename derived from metadata). HTML and content.xml
+     * always reference the same path because both transformations resolve
+     * `asset://uuid.ext` URLs through {@link buildAssetExportPathMap}, so a
+     * literal `content/resources/<uuid><ext>` URL only appears for genuinely
+     * missing assets — and writing the file under that path would not help,
+     * because the asset is not in the iteration in the first place.
      *
      * @param trackingList - Optional array to track added file paths (for ELPX manifest)
      */
@@ -455,20 +509,12 @@ export abstract class BaseExporter {
                 }
 
                 const zipPath = `content/resources/${exportPath}`;
+                if (this.zip.hasFile(zipPath)) {
+                    return;
+                }
                 this.zip.addFile(zipPath, asset.data);
                 if (trackingList) trackingList.push(zipPath);
                 assetsAdded++;
-
-                // Write the same content under the `<assetId><ext>` fallback
-                // path that addFilenamesToAssetUrls falls back to when an
-                // asset:// URL cannot be resolved. Skip when the resolved path
-                // already matches the fallback to avoid creating a duplicate
-                // entry in the same location.
-                const fallbackPath = this.buildUuidFallbackZipPath(asset);
-                if (fallbackPath && fallbackPath !== zipPath && !this.zip.hasFile(fallbackPath)) {
-                    this.zip.addFile(fallbackPath, asset.data);
-                    if (trackingList) trackingList.push(fallbackPath);
-                }
             };
 
             await this.forEachAsset(processAsset);
@@ -481,28 +527,6 @@ export abstract class BaseExporter {
         }
 
         return assetsAdded;
-    }
-
-    /**
-     * Build the `content/resources/<assetId><ext>` fallback path for an
-     * asset, matching the literal URL produced by addFilenamesToAssetUrls
-     * when an `asset://` reference cannot be resolved against the export
-     * path map. Returns null when the asset metadata is not enough to derive
-     * a stable filename.
-     */
-    private buildUuidFallbackZipPath(asset: ExportAsset): string | null {
-        if (!asset.id) {
-            return null;
-        }
-        const filename = asset.filename ?? '';
-        let ext = '';
-        const dotIndex = filename.lastIndexOf('.');
-        if (dotIndex !== -1 && dotIndex < filename.length - 1) {
-            ext = filename.substring(dotIndex);
-        } else if (asset.mime) {
-            ext = this.getExtensionFromMime(asset.mime);
-        }
-        return `content/resources/${asset.id}${ext}`;
     }
 
     // =========================================================================
@@ -948,10 +972,7 @@ export abstract class BaseExporter {
 
         // Replace href="exe-package:elp" with onclick handler
         // Uses <a onclick> approach for styling compatibility
-        let result = content.replace(
-            /href="exe-package:elp"/g,
-            'href="#" onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"',
-        );
+        let result = content.replace(/href="exe-package:elp"/g, `href="#" onclick="${ELPX_DOWNLOAD_ONCLICK}"`);
 
         // Replace download="exe-package:elp-name" with actual filename
         const safeTitle = this.escapeXml(projectTitle);

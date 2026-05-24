@@ -44,7 +44,12 @@ export class ImsExporter extends Html5Exporter {
             const meta = this.getMetadata();
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
             const themeName = options?.theme || meta.theme || 'base';
-            const projectId = this.generateProjectId();
+            // Stable manifest identifier (see BaseExporter.getManifestIdentifier and #1785).
+            // `manifestIdentifier` is the final `<manifest identifier="...">` value;
+            // `projectId` is the bare id used for organization and resource ids,
+            // so a single project identity flows through manifest and content.xml.
+            const manifestIdentifier = this.getManifestIdentifier();
+            const projectId = this.getBareProjectIdentifier();
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
@@ -66,15 +71,20 @@ export class ImsExporter extends Html5Exporter {
             };
 
             // Initialize manifest generator
-            this.manifestGenerator = new ImsManifestGenerator(projectId, pages, {
-                identifier: projectId,
-                pages: pages,
-                title: meta.title || 'eXeLearning',
-                language: meta.language || 'en',
-                author: meta.author || '',
-                description: meta.description || '',
-                license: meta.license || '',
-            });
+            this.manifestGenerator = new ImsManifestGenerator(
+                projectId,
+                pages,
+                {
+                    identifier: manifestIdentifier,
+                    pages: pages,
+                    title: meta.title || 'eXeLearning',
+                    language: meta.language || 'en',
+                    author: meta.author || '',
+                    description: meta.description || '',
+                    license: meta.license || '',
+                },
+                manifestIdentifier,
+            );
 
             // Track files for manifest
             const commonFiles: string[] = [];
@@ -348,7 +358,12 @@ export class ImsExporter extends Html5Exporter {
     }
 
     /**
-     * Generate project ID for IMS package
+     * Generate a random low-level project ID.
+     *
+     * @deprecated Since #1785, the IMS manifest identifier is derived from
+     * the project's odeIdentifier via {@link BaseExporter.getManifestIdentifier}
+     * so LMS tracking survives re-uploads. This helper is kept only for
+     * external callers/tests and is no longer used by the export pipeline.
      */
     generateProjectId(): string {
         return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);

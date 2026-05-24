@@ -57,22 +57,27 @@ describe('PreviewPanelManager', () => {
       'preview-extract-button': document.createElement('button'),
       'preview-pin-button': document.createElement('button'),
       'preview-refresh-button': document.createElement('button'),
+      'preview-mobile-button': document.createElement('button'),
       'preview-iframe': document.createElement('iframe'),
       'preview-pinned-container': document.createElement('div'),
       'preview-pinned-iframe': document.createElement('iframe'),
       'preview-pinned-extract-button': document.createElement('button'),
       'preview-unpin-button': document.createElement('button'),
       'preview-pinned-refresh-button': document.createElement('button'),
+      'preview-pinned-mobile-button': document.createElement('button'),
       workarea: document.createElement('div'),
     };
 
-    // Add nested elements for loading states
+    // Add nested elements for loading states; place the iframes inside the
+    // bodies so parentElement matches the real DOM (used by viewport toggling).
     const panelBody = document.createElement('div');
     panelBody.className = 'preview-panel-body';
+    panelBody.appendChild(mockElements['preview-iframe']);
     mockElements.previewsidenav.appendChild(panelBody);
 
     const pinnedBody = document.createElement('div');
     pinnedBody.className = 'preview-pinned-body';
+    pinnedBody.appendChild(mockElements['preview-pinned-iframe']);
     mockElements['preview-pinned-container'].appendChild(pinnedBody);
 
     vi.spyOn(document, 'getElementById').mockImplementation(id => mockElements[id] || null);
@@ -139,6 +144,70 @@ describe('PreviewPanelManager', () => {
       expect(manager.isOpen).toBe(false);
       expect(manager.isPinned).toBe(false);
       expect(manager.panel).toBe(mockElements.previewsidenav);
+    });
+  });
+
+  describe('viewport toggle', () => {
+    beforeEach(() => {
+      try {
+        window.sessionStorage.clear();
+      } catch {
+        // ignore
+      }
+    });
+
+    it('should default to desktop viewport', () => {
+      expect(manager.isMobileViewport).toBe(false);
+    });
+
+    it('should toggle to mobile and back on toggleViewport()', () => {
+      const body = mockElements['preview-iframe'].parentElement;
+      const pinnedBody = mockElements['preview-pinned-iframe'].parentElement;
+
+      manager.toggleViewport();
+      expect(manager.isMobileViewport).toBe(true);
+      expect(body.classList.contains('preview-mobile-viewport')).toBe(true);
+      expect(pinnedBody.classList.contains('preview-mobile-viewport')).toBe(true);
+      expect(mockElements['preview-mobile-button'].getAttribute('aria-pressed')).toBe('true');
+      expect(mockElements['preview-pinned-mobile-button'].getAttribute('aria-pressed')).toBe('true');
+
+      manager.toggleViewport();
+      expect(manager.isMobileViewport).toBe(false);
+      expect(body.classList.contains('preview-mobile-viewport')).toBe(false);
+      expect(mockElements['preview-mobile-button'].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('should persist the viewport choice to sessionStorage', () => {
+      manager.toggleViewport();
+      expect(window.sessionStorage.getItem('exe-preview-viewport')).toBe('mobile');
+      manager.toggleViewport();
+      expect(window.sessionStorage.getItem('exe-preview-viewport')).toBe('desktop');
+    });
+
+    it('should restore a persisted mobile choice on construction and apply it', () => {
+      window.sessionStorage.setItem('exe-preview-viewport', 'mobile');
+      const restored = new PreviewPanelManager();
+      expect(restored.isMobileViewport).toBe(true);
+
+      restored.applyViewport();
+      expect(mockElements['preview-iframe'].parentElement.classList.contains('preview-mobile-viewport')).toBe(true);
+    });
+
+    it('should not throw when sessionStorage is unavailable', () => {
+      const original = Object.getOwnPropertyDescriptor(window, 'sessionStorage');
+      Object.defineProperty(window, 'sessionStorage', {
+        configurable: true,
+        get() {
+          throw new Error('blocked');
+        },
+      });
+      try {
+        expect(() => new PreviewPanelManager().toggleViewport()).not.toThrow();
+      } finally {
+        if (original) {
+          Object.defineProperty(window, 'sessionStorage', original);
+        }
+      }
     });
   });
 

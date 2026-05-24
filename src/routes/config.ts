@@ -28,7 +28,7 @@ import {
 import { getEnabledTemplatesByLocale, findTemplateById } from '../db/queries/templates';
 import { getFilesDir } from '../utils/admin-route-helpers';
 import * as path from 'path';
-import { getDefaultTheme, getDefaultThemeRecord } from '../db/queries/themes';
+import { getDefaultTheme, getDefaultThemeRecord, getEnabledThemes } from '../db/queries/themes';
 import { SUPPORTED_LOCALES } from '../services/admin-upload-validator';
 import { LICENSE_REGISTRY } from '../shared/export/constants';
 import { ALLOWED_EXTENSIONS } from '../config';
@@ -48,7 +48,35 @@ const LICENSES: Record<string, string> = Object.fromEntries(
         .map(([key, entry]) => [key, `${TRANS_PREFIX}${key.startsWith('creative commons') ? key : entry.displayName}`]),
 );
 
-const configParams = buildConfigParams({ TRANS_PREFIX, LICENSES, PACKAGE_LOCALES, LOCALES });
+/**
+ * Build the THEMES map (dirName → display label) used to populate the
+ * "Default style" dropdown in the user preferences modal. The list reflects
+ * the themes currently enabled in the admin panel; if the table is missing
+ * (pre-migration) we fall back to the bundled `base` theme so the dropdown
+ * still renders.
+ */
+async function buildThemesMap(): Promise<Record<string, string>> {
+    try {
+        const themes = await getEnabledThemes(defaultDb);
+        const map: Record<string, string> = {};
+        for (const theme of themes) {
+            map[theme.dir_name] = theme.display_name || theme.dir_name;
+        }
+        return map;
+    } catch {
+        return { base: 'Base' };
+    }
+}
+
+/**
+ * Rebuild config params with the latest available themes. Themes can change
+ * (admin uploads/disables), so we resolve them at request time instead of
+ * caching at module load.
+ */
+async function getConfigParams() {
+    const THEMES = await buildThemesMap();
+    return buildConfigParams({ TRANS_PREFIX, LICENSES, PACKAGE_LOCALES, LOCALES, THEMES });
+}
 
 /**
  * Format bytes to human-readable string
@@ -183,7 +211,7 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
         );
 
         // Translate all config params for the requested locale
-        const translatedParams = translateObject(configParams, locale);
+        const translatedParams = translateObject(await getConfigParams(), locale);
 
         return buildParameterResponse({
             configParams: translatedParams,
@@ -251,12 +279,12 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
     })
 
     // GET /api/translations/translated-params/:locale - Get parameters with translations applied
-    .get('/api/translations/translated-params/:locale', ({ params }) => {
+    .get('/api/translations/translated-params/:locale', async ({ params }) => {
         const locale = params.locale;
 
         // Return the parameters with TRANSLATABLE_TEXT: values translated
         // Return translated config params only (no routes or app settings)
-        const translatedParams = translateObject(configParams, locale);
+        const translatedParams = translateObject(await getConfigParams(), locale);
         return buildParameterResponse({
             configParams: translatedParams,
             routes: {},

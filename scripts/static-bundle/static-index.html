@@ -233,14 +233,19 @@
                             <button id="preview-unpin-button" class="btn button-square button-tertiary" title="Unpin preview" data-i18n-title="Unpin preview">
                                 <span class="small-icon unpin-icon"></span>
                             </button>
+                            <button id="preview-pinned-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
+                                <span class="small-icon mobile-icon"></span>
+                            </button>
                             <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
                                 <span class="small-icon refresh-icon"></span>
                             </button>
                         </div>
                     </div>
                     <div class="preview-pinned-body">
-                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="Content preview" data-i18n-title="Content preview"
-                                sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                        <div class="preview-device-frame">
+                            <iframe id="preview-pinned-iframe" class="preview-iframe" title="Content preview" data-i18n-title="Content preview"
+                                    sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                        </div>
                     </div>
                 </aside>
             </div>
@@ -260,6 +265,9 @@
                     <button id="preview-pin-button" class="btn button-square button-tertiary" title="Pin preview" data-i18n-title="Pin preview">
                         <span class="small-icon pin-icon"></span>
                     </button>
+                    <button id="preview-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
+                        <span class="small-icon mobile-icon"></span>
+                    </button>
                     <button id="preview-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
                         <span class="small-icon refresh-icon"></span>
                     </button>
@@ -271,8 +279,10 @@
                 </div>
             </div>
             <div class="preview-panel-body">
-                <iframe id="preview-iframe" class="preview-iframe" title="Content preview" data-i18n-title="Content preview"
-                        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                <div class="preview-device-frame">
+                    <iframe id="preview-iframe" class="preview-iframe" title="Content preview" data-i18n-title="Content preview"
+                            sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                </div>
             </div>
         </aside>
     </div>

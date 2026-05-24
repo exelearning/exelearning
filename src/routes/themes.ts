@@ -12,6 +12,7 @@ import * as path from 'path';
 import { db } from '../db/client';
 import { getEnabledSiteThemes, getDefaultTheme, getBaseThemes } from '../db/queries/themes';
 import type { Theme } from '../db/types';
+import { prefixPath } from '../utils/basepath.util';
 
 // Base path for themes (bundled with the app)
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
@@ -204,16 +205,19 @@ function parseThemeConfig(
 
         const version = getAppVersion();
 
-        // Build URL paths with version for cache busting
+        // Build URL paths with version for cache busting.
+        // prefixPath() ensures BASE_PATH is prepended when configured, so URLs
+        // are correct behind a reverse proxy that only mounts the BASE_PATH
+        // namespace (see issue #1802).
         let themeBasePath: string;
         if (customUrlPrefix) {
-            themeBasePath = `/${version}${customUrlPrefix}/${themeId}`;
+            themeBasePath = prefixPath(`/${version}${customUrlPrefix}/${themeId}`);
         } else {
-            themeBasePath = `/${version}/files/perm/themes/base/${themeId}`;
+            themeBasePath = prefixPath(`/${version}/files/perm/themes/base/${themeId}`);
         }
 
         const previewPath =
-            type === 'base' ? `/${version}/style/${themeId}/preview.png` : `${themeBasePath}/preview.png`;
+            type === 'base' ? prefixPath(`/${version}/style/${themeId}/preview.png`) : `${themeBasePath}/preview.png`;
 
         // Scan for CSS files
         const cssFiles = scanThemeFiles(themePath, '.css');
@@ -296,8 +300,9 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
     const siteThemesPath = getSiteThemesPath();
     const themePath = path.join(siteThemesPath, siteTheme.dir_name);
 
-    // Build URL paths - site themes are served from FILES_DIR
-    const themeUrl = `/${version}/site-files/themes/${siteTheme.dir_name}`;
+    // Build URL paths - site themes are served from FILES_DIR.
+    // prefixPath() prepends BASE_PATH so URLs are valid behind a subdirectory proxy.
+    const themeUrl = prefixPath(`/${version}/site-files/themes/${siteTheme.dir_name}`);
 
     // Scan for CSS, JS, and icons
     const cssFiles = deps.fs.existsSync(themePath) ? scanThemeFiles(themePath, '.css') : ['style.css'];

@@ -2915,6 +2915,44 @@ class YjsProjectBridge {
   }
 
   /**
+   * Ensure metadata has a screenshot before an .elpx export runs.
+   *
+   * Without this, exporting an imported project that lacks `screenshot.png`
+   * at the archive root (or a brand-new project that hasn't been saved yet)
+   * produces an .elpx with no screenshot — Omeka and other consumers then
+   * fall back to a generic placeholder. Wrapped in a Promise.race timeout so
+   * a slow html2canvas render never blocks an export.
+   *
+   * `generateScreenshotFromFirstPage` already short-circuits when a
+   * screenshot exists, so subsequent exports are free.
+   *
+   * @param {number} [timeoutMs=8000]
+   */
+  async ensureScreenshotForExport(timeoutMs = 8000) {
+    if (typeof this.generateScreenshotFromFirstPage !== 'function') return;
+    // Skip the timeout/race allocation when a screenshot is already present.
+    const metadata = this.documentManager?.getMetadata?.();
+    if (metadata?.get('screenshot')) return;
+    let timer;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => {
+        Logger.log('[YjsProjectBridge] Pre-export screenshot generation timed out');
+        resolve();
+      }, timeoutMs);
+    });
+    try {
+      await Promise.race([
+        Promise.resolve(this.generateScreenshotFromFirstPage()).catch((err) => {
+          console.warn('[YjsProjectBridge] Pre-export screenshot generation failed:', err);
+        }),
+        timeout,
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
    * Auto-generate screenshot from the first page HTML and store in Yjs metadata.
    * Uses SharedExporters to generate a full preview (HTML + CSS + theme),
    * inlines all CSS into the HTML for self-contained rendering, then captures
@@ -3064,7 +3102,13 @@ class YjsProjectBridge {
     if (!window.html2canvas) {
       try {
         const script = document.createElement('script');
-        script.src = '/files/perm/idevices/base/rubric/export/html2canvas.js';
+        // BASE_PATH-aware: behind a subdirectory reverse proxy a bare-root URL
+        // 502s, so route through composeUrl() (the canonical client helper).
+        const html2canvasPath = '/files/perm/idevices/base/rubric/export/html2canvas.js';
+        script.src =
+          window.eXeLearning && window.eXeLearning.app && typeof window.eXeLearning.app.composeUrl === 'function'
+            ? window.eXeLearning.app.composeUrl(html2canvasPath)
+            : html2canvasPath;
         await new Promise((resolve, reject) => {
           script.onload = resolve;
           script.onerror = reject;
@@ -3141,6 +3185,13 @@ class YjsProjectBridge {
       await this.documentManager._updateVersionMetadata();
       this.logElpxExportPhase('bridge:version-metadata:end', {}, trace);
     }
+
+    // Ensure metadata has a screenshot so the export embeds screenshot.png at
+    // the archive root. Required for projects imported from .elpx files that
+    // lacked screenshot.png, and for first-export-before-first-save flows.
+    this.logElpxExportPhase('bridge:ensure-screenshot:start', {}, trace);
+    await this.ensureScreenshotForExport();
+    this.logElpxExportPhase('bridge:ensure-screenshot:end', {}, trace);
 
     // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
     if (window.SharedExporters?.createExporter) {
@@ -3371,9 +3422,11 @@ class YjsProjectBridge {
     const userStylesEnabled = eXeLearning.config?.userStyles === 1 || eXeLearning.config?.userStyles === true;
 
     if (!isOfflineInstallation && !userStylesEnabled) {
-      Logger.log('[YjsProjectBridge] Theme import disabled (ONLINE_THEMES_INSTALL=0), using default theme');
-      // Save=true to update Yjs metadata with default theme (replacing imported theme)
-      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
+      Logger.log('[YjsProjectBridge] Theme import disabled (ONLINE_THEMES_INSTALL=0), using fallback theme');
+      // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+      // (user defaultTheme preference -> admin default -> base). Save=true persists the
+      // resolved theme to Yjs metadata, replacing the imported theme.
+      eXeLearning.app.themes.selectTheme(themeName, true);
       return;
     }
 
@@ -3422,9 +3475,11 @@ class YjsProjectBridge {
       const themeConfig = zip['theme/config.xml'];
 
       if (!themeConfig) {
-        Logger.log(`[YjsProjectBridge] No theme folder in package, using default`);
-        // Save=true to update Yjs metadata with default theme (replacing imported theme)
-        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
+        Logger.log(`[YjsProjectBridge] No theme folder in package, using fallback theme`);
+        // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+        // (user defaultTheme preference -> admin default -> base). Save=true persists the
+        // resolved theme to Yjs metadata, replacing the imported theme.
+        eXeLearning.app.themes.selectTheme(themeName, true);
         return;
       }
 
@@ -3436,7 +3491,9 @@ class YjsProjectBridge {
       const downloadable = getValue('downloadable');
       if (downloadable === '0') {
         Logger.log(`[YjsProjectBridge] Theme "${themeName}" marked as non-downloadable, skipping import`);
-        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
+        // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+        // (user defaultTheme preference -> admin default -> base).
+        eXeLearning.app.themes.selectTheme(themeName, true);
         return;
       }
 
@@ -3448,8 +3505,10 @@ class YjsProjectBridge {
       this._showThemeImportModal(themeName);
     } catch (error) {
       console.error('[YjsProjectBridge] Error checking theme in package:', error);
-      // Save=true to update Yjs metadata with default theme (replacing imported theme)
-      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
+      // Pass the requested (uninstalled) theme so selectTheme runs its fallback chain
+      // (user defaultTheme preference -> admin default -> base). Save=true persists the
+      // resolved theme to Yjs metadata, replacing the imported theme.
+      eXeLearning.app.themes.selectTheme(themeName, true);
     }
   }
 

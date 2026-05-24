@@ -1,0 +1,25 @@
+/* Drag-and-drop overlay shown while an .elpx/.elp file is dragged over the window */
+.exe-file-drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(43, 43, 72, 0.45);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+}
+
+.exe-file-drop-overlay__message {
+    border: 2px dashed #ffffff;
+    border-radius: 12px;
+    padding: 32px 48px;
+    background: rgba(11, 161, 161, 0.92);
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
