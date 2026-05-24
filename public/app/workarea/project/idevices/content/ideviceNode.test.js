@@ -255,6 +255,56 @@ describe('IdeviceNode', () => {
             expect(typeof idevice.jsonProperties).toBe('object');
             expect(Object.keys(idevice.jsonProperties).length).toBe(0);
         });
+
+        it('falls back to empty object when jsonProperties is invalid JSON', () => {
+            expect(() => {
+                idevice.setParams({ jsonProperties: '{"broken": true' });
+            }).not.toThrow();
+            expect(idevice.jsonProperties).toEqual({});
+        });
+
+        it('falls back to empty object when jsonProperties is an array', () => {
+            expect(() => {
+                idevice.setParams({ jsonProperties: '["a","b"]' });
+            }).not.toThrow();
+            expect(idevice.jsonProperties).toEqual({});
+        });
+
+        it('falls back to empty object when jsonProperties is a non-string primitive', () => {
+            expect(() => {
+                idevice.setParams({ jsonProperties: 42 });
+            }).not.toThrow();
+            expect(idevice.jsonProperties).toEqual({});
+        });
+
+        it('falls back to empty object when jsonProperties JSON is not an object', () => {
+            expect(() => {
+                idevice.setParams({ jsonProperties: '"hello"' });
+            }).not.toThrow();
+            expect(idevice.jsonProperties).toEqual({});
+        });
+
+        it('accepts jsonProperties when already an object', () => {
+            idevice.setParams({ jsonProperties: { one: 1 } });
+            expect(idevice.jsonProperties).toEqual({ one: 1 });
+        });
+
+        it('parseParamValue returns empty object for null input', () => {
+            const parsed = idevice.parseParamValue('jsonProperties', null, {
+                odeIdeviceId: 'idevice-id-1',
+            });
+            expect(parsed).toEqual({});
+        });
+
+        it('calls setProperties when odeComponentsSyncProperties provided', () => {
+            const spy = vi.spyOn(idevice, 'setProperties');
+            idevice.setParams({
+                odeComponentsSyncProperties: {
+                    identifier: { value: 'my-id' },
+                },
+            });
+            expect(spy).toHaveBeenCalledWith({ identifier: { value: 'my-id' } });
+        });
     });
 
     describe('setProperties', () => {

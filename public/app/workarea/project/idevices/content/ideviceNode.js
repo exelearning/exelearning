@@ -159,9 +159,11 @@ export default class IdeviceNode {
             let defaultValue =
                 this.default[param] != undefined ? this.default[param] : null;
             let value = data[param] ? data[param] : defaultValue;
-            this[param] = this.parseParams.includes(param)
-                ? JSON.parse(value)
-                : value;
+            if (this.parseParams.includes(param)) {
+                this[param] = this.parseParamValue(param, value, data);
+            } else {
+                this[param] = value;
+            }
         }
         // Debug: Log htmlView to verify it's being set
         if (data.htmlView !== undefined) {
@@ -169,6 +171,46 @@ export default class IdeviceNode {
         }
         if (data.odeComponentsSyncProperties) {
             this.setProperties(data.odeComponentsSyncProperties);
+        }
+    }
+
+    parseParamValue(paramName, value, data = {}) {
+        if (value === null || value === undefined || value === '') {
+            return {};
+        }
+
+        if (typeof value === 'object') {
+            if (Array.isArray(value)) {
+                Logger.warn(
+                    `[IdeviceNode] Invalid ${paramName} array in component ${data.odeIdeviceId || data.id || 'unknown'}; using empty object.`,
+                );
+                return {};
+            }
+            return value;
+        }
+
+        if (typeof value !== 'string') {
+            Logger.warn(
+                `[IdeviceNode] Invalid ${paramName} type (${typeof value}) in component ${data.odeIdeviceId || data.id || 'unknown'}; using empty object.`,
+            );
+            return {};
+        }
+
+        try {
+            const parsed = JSON.parse(value);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                Logger.warn(
+                    `[IdeviceNode] Invalid ${paramName} payload in component ${data.odeIdeviceId || data.id || 'unknown'}; using empty object.`,
+                );
+                return {};
+            }
+            return parsed;
+        } catch (error) {
+            Logger.warn(
+                `[IdeviceNode] Failed to parse ${paramName} in component ${data.odeIdeviceId || data.id || 'unknown'}; using empty object.`,
+                error,
+            );
+            return {};
         }
     }
 

@@ -26,6 +26,7 @@ import EmbeddingBridge from './core/EmbeddingBridge.js';
 import { HIDE_UI_ATTR_MAP, applyHideUI } from './core/ui-visibility.js';
 // DOM translation for static mode
 import DOMTranslator from './locate/domTranslator.js';
+import WebMCPService from './integrations/webmcp/WebMCPService.js';
 // Unsaved changes helper
 import UnsavedChangesHelper from './utils/unsavedChangesHelper.js';
 window.UnsavedChangesHelper = UnsavedChangesHelper;
@@ -82,6 +83,7 @@ export default class App {
         this.electronFileOpenHandlerBound = false;
         this.pendingElectronOpenFiles = [];
         this.pendingStaticOpenFiles = [];
+        this.webmcp = new WebMCPService(this);
         this.fileDropHandler = new FileDropHandler({ app: this });
 
         if (!this.eXeLearning.config.isOfflineInstallation) {
@@ -137,6 +139,8 @@ export default class App {
         await this.flushPendingStaticOpenFilesWhenReady();
         // Process any pending Electron file-open events after project init.
         await this.flushPendingElectronOpenFilesWhenReady();
+        // Register WebMCP tools if WebMCP library is present.
+        this.webmcp.init();
         // Show deferred URL import error from static mode (set by ?url= handler)
         if (window.__exeStaticUrlError && this.modals?.alert) {
             this.modals.alert.show({

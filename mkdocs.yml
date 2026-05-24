@@ -24,6 +24,7 @@ nav:
   - Home: index.md
   - Overview: overview.md
   - Install: install.md
+  - WebMCP: webmcp.md
   - Deployment: deployment.md
   - Development:
       - Environment: development/environment.md
@@ -32,6 +33,7 @@ nav:
       - Testing: development/testing.md
       - Internationalization: development/internationalization.md
       - Real Time: development/real-time.md
+      - WebMCP Integration: development/webmcp.md
       - Customization: development/customization.md
       - Styles: development/styles.md
       - Installers: development/installers.md

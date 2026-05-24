@@ -1,0 +1,41 @@
+<div class="modal exe-modal-fade" tabindex="-1" id="modalConnectMcp" role="dialog" aria-hidden="true" data-testid="modal-connect-mcp" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">{{ 'Connect MCP' | trans }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body help-modal">
+                <div class="help-modal-content">
+                    <p>{{ 'Connect your MCP client (for example Claude Desktop) to control eXeLearning from the browser.' | trans }}</p>
+
+                    <h6>{{ '1) Add this MCP server to your client configuration:' | trans }}</h6>
+                    <pre class="p-2 border rounded bg-light"><code id="webmcp-config-snippet"></code></pre>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-3" id="button-copy-webmcp-config">{{ 'Copy config' | trans }}</button>
+
+                    <h6>{{ '2) Start your MCP client and request a WebMCP token.' | trans }}</h6>
+                    <h6>{{ '3) Open the WebMCP widget and paste the token.' | trans }}</h6>
+                    <h6>{{ '4) Recommended workflow: set project title/author/description first, then create text iDevices with block title and optional icon.' | trans }}</h6>
+
+                    <div class="alert alert-info mt-3 mb-3">
+                        <strong>{{ 'Status:' | trans }}</strong>
+                        <span id="webmcp-status-value">-</span>
+                        <br>
+                        <small id="webmcp-status-description"></small>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap mb-3">
+                        <button type="button" class="btn btn-outline-primary" id="button-load-webmcp-script">{{ 'Load WebMCP script' | trans }}</button>
+                        <button type="button" class="btn btn-primary" id="button-open-webmcp-widget">{{ 'Open MCP widget' | trans }}</button>
+                        <button type="button" class="btn btn-outline-secondary" id="button-open-webmcp-docs">{{ 'Open guide' | trans }}</button>
+                    </div>
+
+                    <h6>{{ 'Available tools in this eXe session:' | trans }}</h6>
+                    <ul id="webmcp-tools-list" class="mb-0"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
