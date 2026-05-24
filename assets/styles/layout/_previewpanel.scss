@@ -253,6 +253,75 @@ $preview-transition: 0.3s ease;
     font-family: var(--icons-ff);
 }
 
+.mobile-icon::before {
+    content: "smartphone";
+    font-family: var(--icons-ff);
+}
+
+// Estado activo (modo móvil): el botón se queda claramente "pulsado".
+// Especificidad doble (id + clase + atributo) para superar a `.button-tertiary`.
+#preview-mobile-button.is-active,
+#preview-mobile-button[aria-pressed="true"],
+#preview-pinned-mobile-button.is-active,
+#preview-pinned-mobile-button[aria-pressed="true"] {
+    color: var(--brand-primary);
+    background-color: var(--gray-100);
+    box-shadow: inset 0 0 0 1px var(--brand-primary);
+}
+
+// Marco de dispositivo: en escritorio es transparente y deja el iframe a tamaño
+// completo; en modo móvil simula un teléfono (bisel + notch) centrado.
+.preview-device-frame {
+    width: 100%;
+    height: 100%;
+}
+
+// Vista móvil. Los selectores se anclan a los contenedores con id para superar
+// la especificidad de la regla `.preview-iframe { width: 100% }` existente.
+#previewsidenav-content .preview-sidenav .preview-panel-body.preview-mobile-viewport,
+#preview-pinned-container .preview-pinned-body.preview-mobile-viewport {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    padding: 16px;
+    background-color: var(--gray-100, #f0f1f3);
+
+    .preview-device-frame {
+        position: relative;
+        flex: 0 0 auto;
+        width: 375px;
+        max-width: 100%;
+        height: 760px;
+        max-height: 100%;
+        padding: 30px 12px 14px;
+        background: #1a1a1a;
+        border-radius: 36px;
+        box-shadow: 0 10px 30px rgba(16, 24, 40, 0.25);
+
+        // Notch del teléfono
+        &::before {
+            content: "";
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90px;
+            height: 14px;
+            background: #000;
+            border-radius: 999px;
+            z-index: 2;
+        }
+
+        .preview-iframe {
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            background-color: #fff;
+        }
+    }
+}
+
 // Responsive
 @media (max-width: 1200px) {
     #previewsidenav-content .preview-sidenav {
