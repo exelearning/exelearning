@@ -60,10 +60,10 @@ var $exeDevice = (function () {
         {
             id: 'ES-EFP',
             isoCode: 'ES-EFP',
-            label: 'LOMLOE — Ámbito de gestión MEFP',
-            labelEn: 'LOMLOE — Ministry-managed territory (MEFP)',
+            label: 'LOMLOE — Ámbito de gestión MEFPD',
+            labelEn: 'LOMLOE — Ministry-managed territory (MEFPD)',
             framework: 'LOMLOE',
-            community: 'Ámbito de gestión del Ministerio de Educación',
+            community: 'Ámbito de gestión del Ministerio de Educación, Formación Profesional y Deportes',
             file: '../data/lomloe-ES-EFP.json',
             available: true
         },

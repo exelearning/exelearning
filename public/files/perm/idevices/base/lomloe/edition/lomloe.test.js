@@ -1376,7 +1376,7 @@ describe('lomloe-ES-MD.json (Comunidad de Madrid concretion)', () => {
     });
 });
 
-describe('lomloe-ES-EFP.json (Ministry-managed territory: MEFP)', () => {
+describe('lomloe-ES-EFP.json (Ministry-managed territory: MEFPD)', () => {
     const data = loadDataset('lomloe-ES-EFP.json');
 
     it('parses as a non-empty object with no placeholder notice', () => {

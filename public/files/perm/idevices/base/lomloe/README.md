@@ -142,14 +142,14 @@ The Ministry has not published an Orden for Educación Infantil, so this dataset
 
 **ESO build note.** The Orden EFP/754/2022 curriculum (competencias específicas,
 criterios de evaluación and saberes básicos) reproduces the state *enseñanzas
-mínimas* of RD 217/2022 — the ámbito de gestión MEFP *is* the state floor author.
+mínimas* of RD 217/2022 — the ámbito de gestión MEFPD *is* the state floor author.
 The ESO etapa is therefore built by inheriting `lomloe-ES.json` verbatim with the
 code prefix re-emitted as `ES-EFP-…` (the same inheritance strategy used for
 `ES-EX` and `ES-MD`). The per-course distribution is taken from the order's own
 Anexo II course markers (see the per-course filter table above). This replaced an
 earlier extraction whose ESO etapa mis-parsed section headings (*Evaluación*,
 *Especificaciones…*) as materias. The 4.º-curso optatives that are specific to the
-MEFP order and absent from the state RD (*Cultura Clásica*, *Introducción a la
+MEFPD order and absent from the state RD (*Cultura Clásica*, *Introducción a la
 Filosofía*, *Medios y Recursos Digitales*, *Segunda Lengua Extranjera*) are not
 yet included, matching the scope of the `ES-EX`/`ES-MD` datasets.
 
@@ -423,7 +423,7 @@ The iDevice stores a JSON object in the Yjs document:
 
 1. Open the iDevice with existing selections.
 2. Change the concretion selector to **Estado (España)** — verify the state dataset loads and the curriculum tree is browsable. Tag one criterio and one saber.
-3. Change to **Ámbito de gestión MEFP** — verify the Ceuta/Melilla dataset loads (no Infantil etapa) and previous ES selections persist.
+3. Change to **Ámbito de gestión MEFPD** — verify the Ceuta/Melilla dataset loads (no Infantil etapa) and previous ES selections persist.
 4. Change to **Extremadura** — verify the regional dataset loads and that competencias mirror the state RD (inherited) while saberes show Extremadura-specific concretion where the DOE provides it.
 5. Change to **Comunidad de Madrid** — verify the regional dataset loads; Primaria shows BOCM-specific contenidos, other etapas inherit the state saberes.
 6. Change to **Galicia** — verify the regional dataset loads; all etapa and nivel labels are in Galician (`Educación Secundaria Obrigatoria`, `1º de educación primaria`, `Primeiro ciclo (0-3 anos)`, etc.) and competencia codes start with `ES-GA-`.
