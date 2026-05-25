@@ -642,7 +642,7 @@ var $exeDevice = (function () {
             '      <div class="lomloe-materia-content">',
             '        <div class="lomloe-materia-col">',
             '          <input class="lomloe-materia-search" id="lomloe-mat-search-' + uid + '"',
-            '            type="search" placeholder="' + _('Filtrar materias…') + '" autocomplete="off">',
+            '            type="search" placeholder="' + _('Filtrar…') + '" autocomplete="off">',
             '          <ul class="lomloe-materia-list" id="lomloe-mat-list-' + uid + '"></ul>',
             '        </div>',
             '        <div class="lomloe-content-col">',
