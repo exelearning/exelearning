@@ -1385,11 +1385,34 @@ describe('lomloe-ES-EFP.json (Ministry-managed territory: MEFPD)', () => {
         expect(Object.keys(data).length).toBeGreaterThan(0);
     });
 
-    it('covers Primaria, ESO and Bachillerato (no Infantil — no Ministry Orden for Infantil)', () => {
+    it('covers Infantil, Primaria, ESO and Bachillerato (Orden EFP/608/2022 added Infantil)', () => {
         expect(Object.keys(data).sort()).toEqual(
-            ['Bachillerato', 'ESO', 'Educación Primaria'].sort()
+            ['Bachillerato', 'ESO', 'Educación Infantil', 'Educación Primaria'].sort()
         );
-        expect(data['Educación Infantil']).toBeUndefined();
+        expect(data['Educación Infantil']).toBeDefined();
+    });
+
+    it('Infantil exposes the two ciclos and three áreas, with ES-EFP-INF-prefixed codes', () => {
+        const inf = data['Educación Infantil'];
+        expect(Object.keys(inf)).toEqual([
+            'Primer ciclo (0-3 años)', 'Segundo ciclo (3-6 años)',
+        ]);
+        for (const ciclo of Object.keys(inf)) {
+            // The three LOMLOE Infantil áreas (codes inherited from the state dataset).
+            expect(Object.keys(inf[ciclo]).sort()).toEqual(['ÁCA', 'ÁCR', 'ÁDE']);
+            for (const codArea of Object.keys(inf[ciclo])) {
+                const area = inf[ciclo][codArea];
+                expect(area.denominacion).toBeTruthy();
+                const codes = Object.keys(area.competencias_especificas);
+                expect(codes.length).toBeGreaterThan(0);
+                for (const code of codes) {
+                    expect(
+                        code.startsWith('ES-EFP-INFPC-') || code.startsWith('ES-EFP-INFSC-'),
+                        `Infantil code ${code} should use ES-EFP-INF prefix`,
+                    ).toBe(true);
+                }
+            }
+        }
     });
 
     it('shares the iDevice schema shape with the state dataset', () => {

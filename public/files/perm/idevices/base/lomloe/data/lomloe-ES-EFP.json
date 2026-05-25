@@ -1,4 +1,1915 @@
 {
+  "Educación Infantil": {
+    "Primer ciclo (0-3 años)": {
+      "ÁCA": {
+        "denominacion": "Área 1. Crecimiento en Armonía",
+        "competencias_especificas": {
+          "ES-EFP-INFPC-ÁCA-CE01": {
+            "descripcion": "Progresar en el conocimiento y control de su cuerpo y en la adquisición de distintas estrategias, adecuando sus acciones a la realidad del entorno de una manera segura, para construir una autoimagen ajustada y positiva.",
+            "explicacion_bloque_competencial": "El conocimiento, valoración y control que los niños y las niñas van adquiriendo de sí mismos y del uso de los recursos de su propio cuerpo, junto a la utilización de los sentidos para desenvolverse en el medio de forma cada vez más ajustada e independiente, son aspectos fundamentales que van conformando su autonomía y su autodeterminación. Reconocerse como persona diferenciada de las demás, elaborar la noción del «yo» y formarse una autoimagen positiva son procesos relevantes que requieren la toma de conciencia sobre las posibilidades de uno mismo a partir de la identificación de las cualidades personales y de las diferencias con respecto a las otras personas, siempre desde la aceptación y el respeto. Dichos procesos se producen a partir de las interacciones espontáneas con el medio, de las sensaciones que experimentan y de la exploración de sí mismos, de los objetos y del entorno. A través del juego viven experiencias que contribuyen a su desarrollo armónico e integral, y demuestran un control creciente de su cuerpo, así como mayor autonomía e independencia con respecto a las personas adultas. Experimentar las posibilidades motrices y sensitivas del propio cuerpo servirá para avanzar en el control dinámico en desplazamientos y movimientos, superar retos y elaborar un esquema corporal cada vez más ajustado. También servirá para desarrollar destrezas necesarias en la exploración, manipulación y uso de utensilios comunes.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE01-CR01",
+                "descripcion": "Adecuar sus acciones y reacciones a cada situación, en una interacción lúdica y espontánea con el entorno, explorando sus posibilidades motoras y perceptivas y progresando en precisión, seguridad, coordinación e intencionalidad.",
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE01-CR02",
+                "descripcion": "Mostrar aceptación y respeto por el cuerpo propio y por el cuerpo de las demás personas, mejorando progresivamente en su conocimiento.",
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE01-CR03",
+                "descripcion": "Manifestar aptitud emocional y sentimientos de seguridad y afecto en la realización de cada acción.",
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE01-CR04",
+                "descripcion": "Adquirir nociones temporales básicas para ubicarse en el tiempo a través de las actividades y rutinas de la vida cotidiana, así como de otros acontecimientos.",
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFPC-ÁCA-CE02": {
+            "descripcion": "Reconocer, manifestar y regular progresivamente sus emociones, expresando necesidades y sentimientos para lograr bienestar emocional y seguridad afectiva.",
+            "explicacion_bloque_competencial": "Conocer e iniciarse en el manejo de sus emociones constituye una herramienta fundamental para poder hacer frente, gradualmente, con seguridad y autonomía, a situaciones cambiantes e inciertas presentes en su vida cotidiana. En la satisfacción de sus propias necesidades y en las situaciones de juego es donde las emociones están más vinculadas al desarrollo del yo y al conocimiento de las normas y valores sociales, ya que, a través de las interacciones con las otras personas, se avanza en la identificación, comprensión y regulación de las emociones propias y en la apropiación de información muy valiosa sobre uno mismo. Todo ello irá contribuyendo de manera decisiva a la interiorización de sentimientos de seguridad y confianza personales, dos aspectos fundamentales para la construcción de la autoestima y la formación de una autoimagen positiva y ajustada, alejada de los estereotipos sexistas. También se desarrolla la confianza en los demás, lo que incide en la mejora de las relaciones sociales, de la automotivación con respecto a las actividades y juegos, y de la comprensión y expresión de lo que siente, piensa, prefiere y le interesa. Establecer relaciones armoniosas y de calidad supone potenciar que cada niño y cada niña puedan identificar y superar sus límites, reforzar sus fortalezas, regular sus necesidades personales, valorar el trabajo bien hecho, aprender de los errores de forma constructiva aceptando positivamente las correcciones, tomar iniciativas propias sobre su persona y sobre el entorno, y establecer metas realistas y ambiciosas con creatividad y responsabilidad, sintiéndose reconocidos dentro del grupo.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE02-CR01",
+                "descripcion": "Expresar emociones y sentimientos desarrollando de manera progresiva la conciencia emocional y estrategias de regulación emocional.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE02-CR02",
+                "descripcion": "Relacionarse con las otras personas aceptando y mostrando afecto de manera libre, segura, respetuosa y alejada de todo tipo de estereotipos.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE02-CR03",
+                "descripcion": "Afrontar pequeñas adversidades manifestando actitudes de superación, así como solicitando y prestando ayuda.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFPC-ÁCA-CE03": {
+            "descripcion": "Adoptar modelos, normas y hábitos, desarrollando la confianza en sus posibilidades y sentimientos de logro, para promover un estilo de vida saludable y ecosocialmente responsable.",
+            "explicacion_bloque_competencial": "La adquisición de hábitos saludables y sostenibles, así como su progresiva integración en la vida cotidiana, contribuye al cuidado del propio cuerpo y al logro de una creciente autonomía. En este proceso resulta imprescindible que conozcan y reflexionen sobre las normas que contribuyen a crear tendencias de actuación respetuosas con ellos mismos, con los demás y con el medio, desde una perspectiva interdependiente y ecorresponsable. Se espera también que se produzca un inicio en la reflexión sobre el consumo responsable de bienes y recursos, así como que se promueva la actividad física como conducta saludable. Todo ello se transfiere al aula a través de la realización de rutinas entendidas como prácticas secuenciadas que se repiten de manera estable e intencional para favorecer la regulación de los ritmos biológicos y el ajuste a los tiempos personales. Por ello, es preciso encontrar momentos de atención personal, a través de un trato individualizado a cada niño o niña, especialmente en lo referido a la satisfacción de sus necesidades, a partir de su ritmo biológico y procurando su bienestar y confortabilidad. Todo ello contribuye al desarrollo de una percepción más ajustada de sí mismo y al sentimiento de logro derivado de la percepción de la progresiva competencia adquirida en las actividades relacionadas con la alimentación, la higiene, el vestido o el descanso. Por último, se deben estimular iniciativas relativas a la importancia de prevenir los riesgos y evitar los accidentes.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE03-CR01",
+                "descripcion": "Incorporar estrategias y hábitos relacionados con el cuidado del entorno y el autocuidado, manifestando satisfacción por los beneficios que le aportan.",
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE03-CR02",
+                "descripcion": "Reconocer y anticipar la sucesión temporal de actividades, ritmos biológicos y pautas socioculturales que estructuran la dinámica cotidiana, asociándola a elementos, procedimientos y actitudes concretas.",
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFPC-ÁCA-CE04": {
+            "descripcion": "Establecer interacciones sociales en condiciones de igualdad, valorando la importancia de la amistad, el respeto y la empatía, para construir su propia identidad basada en valores democráticos y de respeto a los derechos humanos.",
+            "explicacion_bloque_competencial": "La construcción de la identidad es una de las resultantes del conjunto de interacciones con el entorno social próximo. En este proceso de reformulación de sus recursos cognitivos y afectivos necesario para establecer nuevas relaciones con los demás y con el mundo, es preciso proporcionarles sentimientos de seguridad y confianza mediante la creación de vínculos de apego sanos y estables que hagan que se sientan respetados, queridos y valorados, y adopten de manera natural los modelos sociales adecuados en un entorno de cooperación, respeto y empatía. En las primeras etapas, el niño o la niña comienza a percibirse como diferente a los demás; es capaz de percibir las expresiones emocionales de las otras personas, pero aún no puede adoptar su punto de vista. Mediante las distintas interacciones y la mediación de las personas adultas, irá asimilando de manera natural y progresiva modelos adecuados de relación social, basados en el respeto, la empatía, la promoción de la igualdad entre hombres y mujeres, la aceptación de la discapacidad y el respeto a los derechos humanos. El reconocimiento y aprecio hacia la pluralidad sociocultural del aula se debe fomentar mediante actividades y juegos que pongan en valor las distintas costumbres y tradiciones y favorezcan la comunicación asertiva de las necesidades propias y la escucha activa de las de los otros en procesos coeducativos y cooperativos. En la misma línea, la interacción con otros niños y niñas con necesidades sensoriales, físicas o cognitivas favorecerá el desarrollo de una perspectiva que les permita entender que la inclusión es enriquecedora De esta manera, el alumnado va integrando herramientas para ofrecer y pedir ayuda y resolver conflictos de manera dialogada, con el fin de alcanzar una meta común. Todo ello refuerza el sentido de pertenencia a un grupo, contribuye a aprender a vivir en armonía con las otras personas y favorece el trabajo en equipo.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE04-CR01",
+                "descripcion": "Establecer vínculos y relaciones de apego saludables, demostrando actitudes de afecto y empatía hacia las demás personas y respetando los distintos ritmos individuales.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE04-CR02",
+                "descripcion": "Reproducir conductas y situaciones previamente observadas en su entorno próximo, basadas en el respeto, la empatía, la igualdad de género, el trato no discriminatorio a las personas con discapacidad y el respeto a los derechos humanos, a través del juego de imitación.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCA-CE04-CR03",
+                "descripcion": "Iniciarse en la resolución de conflictos con sus iguales, con la mediación de la persona adulta, experimentando los beneficios de llegar a acuerdos.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
+              }
+            ]
+          }
+        },
+        "saberes_basicos": {
+          "bloques": {
+            "A. El cuerpo y el control progresivo del mismo": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB01-001",
+                "subtitulo_nivel_1": "Descubrimiento y reconocimiento de la propia imagen y la de las personas de su entorno. Identificación y respeto de las diferencias.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB01-002",
+                "subtitulo_nivel_1": "Curiosidad e interés por la exploración sensomotriz. Integración sensorial del mundo a través de las posibilidades perceptivas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB01-003",
+                "subtitulo_nivel_1": "Exploración y experiencias activas. El movimiento libre como fuente de aprendizaje y desarrollo.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB01-004",
+                "subtitulo_nivel_1": "El contacto con las otras personas y con los objetos. Iniciativa y curiosidad por aprender nuevas habilidades.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB01-005",
+                "subtitulo_nivel_1": "Experimentación manipulativa y dominio progresivo de la coordinación visomotriz en el contacto con objetos y materiales.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB01-006",
+                "subtitulo_nivel_1": "Adaptación y progresivo control del movimiento y de la postura en las diferentes situaciones de la vida cotidiana.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB01-007",
+                "subtitulo_nivel_1": "Estrategias para identificar y evitar situaciones de riesgo o peligro.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB01-008",
+                "subtitulo_nivel_1": "El juego como actividad propia para el bienestar y el disfrute. Juego exploratorio, sensorial y motor.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "B. Desarrollo y equilibrio afectivos": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB02-001",
+                "subtitulo_nivel_1": "Identificación y adecuación de estados emocionales a las diferentes situaciones: tiempos de espera, pequeñas frustraciones asociadas a la satisfacción de necesidades básicas y cuidados.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB02-002",
+                "subtitulo_nivel_1": "Identificación progresiva de las causas y las consecuencias de las emociones básicas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB02-003",
+                "subtitulo_nivel_1": "Aceptación y control progresivo de las emociones y de las manifestaciones propias más llamativas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB02-004",
+                "subtitulo_nivel_1": "Aproximación a algunas estrategias para lograr seguridad afectiva: búsqueda de ayuda y demanda de contacto afectivo.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "C. Hábitos de vida saludable para el autocuidado y el cuidado del entorno": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB03-001",
+                "subtitulo_nivel_1": "Adaptación progresiva de los ritmos biológicos propios a las rutinas del grupo.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB03-002",
+                "subtitulo_nivel_1": "Cuidados y necesidades básicas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB03-003",
+                "subtitulo_nivel_1": "Rutinas relacionadas con el compromiso y la autonomía: anticipación de acciones, normas de comportamiento social en la comida, el descanso, la higiene o los desplazamientos, etc.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB03-004",
+                "subtitulo_nivel_1": "Hábitos sostenibles y ecosocialmente responsables relacionados con la alimentación, la higiene, el aseo personal, el descanso o limpieza del espacio.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB03-005",
+                "subtitulo_nivel_1": "Acciones que favorecen la salud y generan bienestar. Interés por ofrecer un aspecto saludable y aseado. Actividad física estructurada.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "D. Interacción socioemocional en el entorno. La vida junto a los demás": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-001",
+                "subtitulo_nivel_1": "La diversidad familiar.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-002",
+                "subtitulo_nivel_1": "La transición del grupo familiar al grupo social de la escuela.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-003",
+                "subtitulo_nivel_1": "Los primeros vínculos afectivos. Apertura e interés hacia otras personas. Sentimientos de pertenencia y vinculación afectiva con las personas de referencia.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-004",
+                "subtitulo_nivel_1": "El aula y el centro como grupos sociales de pertenencia.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-005",
+                "subtitulo_nivel_1": "Relaciones afectuosas y respetuosas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-006",
+                "subtitulo_nivel_1": "Acercamiento a la diversidad derivada de distintas formas de discapacidad y sus implicaciones en la vida cotidiana.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-007",
+                "subtitulo_nivel_1": "Hábitos y regulación del comportamiento en función de las necesidades de los demás: escucha, paciencia y ayuda.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-008",
+                "subtitulo_nivel_1": "Estrategias elementales para la gestión de conflictos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-009",
+                "subtitulo_nivel_1": "Desarrollo de actitudes de espera y de participación activa. Asunción de pequeñas responsabilidades en actividades y juegos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCA-SB04-010",
+                "subtitulo_nivel_1": "Celebraciones, costumbres y tradiciones étnico-culturales presentes en el entorno.",
+                "subtitulo_nivel_2": ""
+              }
+            ]
+          }
+        }
+      },
+      "ÁDE": {
+        "denominacion": "Área 2. Descubrimiento y Exploración del Entorno",
+        "competencias_especificas": {
+          "ES-EFP-INFPC-ÁDE-CE01": {
+            "descripcion": "Identificar las características de materiales, objetos y colecciones y establecer relaciones entre ellos, mediante la exploración, la manipulación sensorial, el manejo de herramientas sencillas y el desarrollo de destrezas lógico-matemáticas para descubrir y crear una idea cada vez más compleja del mundo.",
+            "explicacion_bloque_competencial": "En esta etapa, la curiosidad de niños y niñas por descubrir el mundo que los rodea hace de la exploración a través de la manipulación sensorial el instrumento perfecto para identificar las características de los materiales y objetos de su entorno más cercano y para establecer relaciones entre ellos. La finalidad de este juego exploratorio en edades muy tempranas es disfrutar de las sensaciones físicas que produce. Sin embargo, a medida que el niño o la niña se desarrolla, la demanda exploratoria se amplía: al propósito de obtener placer por sentir y tocar se añade progresivamente el interés por indagar acerca de las diferentes características de los objetos. Al movimiento amplio y global se suma la capacidad para ejercer acciones más específicas y minuciosas sobre ellos. Todo ello les proporciona cada vez más información acerca de sus cualidades. La persona adulta debe proponer retos que hay que resolver, contextualizados en situaciones de aprendizaje y experiencias significativas, eligiendo el material y el tipo de actividad que responda a la intencionalidad que se pretenda conseguir y teniendo en cuenta que debe partir de los intereses y las inquietudes individuales y grupales, y que la interacción con los demás debe jugar un papel de primer orden. Así, los niños y las niñas continúan estableciendo relaciones entre sus aprendizajes, lo cual les permitirá desarrollar progresivamente sus habilidades lógicas y matemáticas de medida, relación, clasificación, ordenación y cuantificación; primero, ligadas a sus intereses particulares y, progresivamente, formando parte de situaciones de aprendizaje que atienden también a los intereses grupales y colectivos.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁDE-CE01-CR01",
+                "descripcion": "Relacionar objetos a partir de sus cualidades o atributos básicos, mostrando curiosidad e interés.",
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁDE-CE01-CR02",
+                "descripcion": "Emplear los cuantificadores básicos más significativos relacionados con su experiencia diaria, utilizándolos en el contexto del juego y la interacción con los demás.",
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁDE-CE01-CR03",
+                "descripcion": "Aplicar sus conocimientos acerca de las nociones espaciales básicas para ubicarse en los espacios, tanto en reposo como en movimiento, jugando con el propio cuerpo y con los objetos.",
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFPC-ÁDE-CE02": {
+            "descripcion": "Desarrollar, de manera progresiva, los procedimientos del método científico y las destrezas del pensamiento computacional, a través de procesos de observación y manipulación de objetos, para iniciarse en la interpretación del entorno y responder de forma creativa a las situaciones y retos que se plantean.",
+            "explicacion_bloque_competencial": "Sentar las bases del pensamiento científico, la iniciativa investigadora y la curiosidad por el conocimiento es inherente al desarrollo de la etapa Educación Infantil. A lo largo de la etapa, el alumnado deberá encontrar soluciones o alternativas originales y creativas a diferentes cuestiones, retos o situaciones. Y lo hará mediante la aplicación de procesos inicialmente sencillos y manipulativos, que progresivamente ganarán en complejidad y requerirán mayor capacidad de abstracción. Dichos procesos son propios tanto de las destrezas de pensamiento computacional y de diseño como del método científico, y se aplicarán descomponiendo una tarea en otras más simples, formulando y comprobando hipótesis, explorando e investigando, relacionando conocimientos y planteando ideas o soluciones originales.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁDE-CE02-CR01",
+                "descripcion": "Gestionar las dificultades, retos y problemas con interés e iniciativa, mediante su división en secuencias de actividades más sencillas.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁDE-CE02-CR02",
+                "descripcion": "Proponer soluciones y alternativas a través de distintas estrategias, escuchando y respetando las de los demás.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFPC-ÁDE-CE03": {
+            "descripcion": "Reconocer elementos y fenómenos de la naturaleza, mostrando interés por los hábitos que inciden sobre ella, para apreciar la importancia del uso sostenible, el cuidado y la conservación del entorno en la vida de las personas.",
+            "explicacion_bloque_competencial": "El entorno próximo es el primer contexto con el que se relacionan niños y niñas desde su nacimiento. Los diferentes elementos y fenómenos naturales que en él se desarrollan atraerán su atención y supondrán una oportunidad ideal para alentar su curiosidad a medida que los va descubriendo. La actitud con la que se relacionen con el medio físico y natural condicionará en gran medida sus experiencias y aprendizajes. Así, desde el primer momento, debe propiciarse un acercamiento al medio natural y a los seres vivos e inertes que forman parte de él con todo el cuidado y el respeto que su edad y aptitudes les permitan. Este proceso de descubrimiento y conocimiento progresivo del entorno deberá orientarse hacia el desarrollo de una incipiente conciencia de conservación para que, desde estas primeras edades, se comprenda la implicación y la responsabilidad de todos en el respeto y el cuidado del medio. A lo largo de la etapa, irán adoptando e incorporando en sus rutinas diarias hábitos para el desarrollo sostenible, como el consumo responsable o el cuidado y protección de la naturaleza y los animales que la habitan. Ello contribuirá a que, de manera paulatina, aprendan a valorar las oportunidades que ofrece el medioambiente y todo aquello que hace posible la vida en el planeta.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁDE-CE03-CR01",
+                "descripcion": "Interesarse por las actividades en contacto con la naturaleza y las características de los elementos naturales del entorno, mostrando respeto hacia ellos y hacia los animales que lo habitan.",
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁDE-CE03-CR02",
+                "descripcion": "Identificar y nombrar los fenómenos atmosféricos habituales en su entorno, explicando sus consecuencias en la vida cotidiana.",
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
+              }
+            ]
+          }
+        },
+        "saberes_basicos": {
+          "bloques": {
+            "A. Diálogo corporal con el entorno. Exploración creativa de objetos, materiales y espacios": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB01-001",
+                "subtitulo_nivel_1": "Curiosidad e interés por la exploración del entorno y sus elementos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB01-002",
+                "subtitulo_nivel_1": "Exploración de objetos y materiales a través de los sentidos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB01-003",
+                "subtitulo_nivel_1": "Identificación de las cualidades o atributos de los objetos y materiales. Efectos que producen diferentes acciones sobre ellos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB01-004",
+                "subtitulo_nivel_1": "Relaciones de orden, correspondencia, clasificación y comparación.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB01-005",
+                "subtitulo_nivel_1": "Cuantificadores básicos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB01-006",
+                "subtitulo_nivel_1": "Nociones espaciales básicas en relación con el propio cuerpo y los objetos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB01-007",
+                "subtitulo_nivel_1": "Nociones temporales básicas: cambio y permanencia, continuidad; sucesión y simultaneidad; pasado, presente y futuro.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "B. Experimentación en el entorno. Curiosidad, pensamiento científico, razonamiento lógico y creatividad": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB02-001",
+                "subtitulo_nivel_1": "Indagación en el entorno manifestando diversas actitudes: interés, curiosidad, imaginación, creatividad y sorpresa.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB02-002",
+                "subtitulo_nivel_1": "La construcción de nuevos conocimientos: relaciones y conexiones entre lo conocido y lo novedoso; andamiaje e interacciones de calidad con las personas adultas, con iguales y con el entorno.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB02-003",
+                "subtitulo_nivel_1": "Modelo de control de variables. Estrategias y técnicas de investigación: ensayo-error, observación, comprobación y realización de preguntas.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "C. Indagación en el medio físico y natural: cuidado, valoración y respeto": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB03-001",
+                "subtitulo_nivel_1": "Efectos de las propias acciones en el medio físico y en el patrimonio natural y cultural.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB03-002",
+                "subtitulo_nivel_1": "Experimentación con los elementos naturales.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB03-003",
+                "subtitulo_nivel_1": "Fenómenos naturales habituales: repercusión en su vida cotidiana.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB03-004",
+                "subtitulo_nivel_1": "Respeto hacia la naturaleza, los seres vivos y los derechos de los animales.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁDE-SB03-005",
+                "subtitulo_nivel_1": "Respeto por el patrimonio cultural presente en el medio físico.",
+                "subtitulo_nivel_2": ""
+              }
+            ]
+          }
+        }
+      },
+      "ÁCR": {
+        "denominacion": "Área 3. Comunicación y Representación de la Realidad",
+        "competencias_especificas": {
+          "ES-EFP-INFPC-ÁCR-CE01": {
+            "descripcion": "Manifestar interés por interactuar en situaciones cotidianas a través de la exploración y el uso de su repertorio comunicativo, para expresar sus necesidades e intenciones y responder a las exigencias del entorno.",
+            "explicacion_bloque_competencial": "El deseo o la necesidad de interactuar con el entorno es el motor que posibilita la evolución de las destrezas comunicativas. Para ello es imprescindible experimentar el placer de comunicarse mediante las primeras interacciones ligadas a la emoción, que se producen en situaciones globales cuyo contexto (gestos, silencios, prosodia…) facilitan la comprensión, la expresión y la integración de los significados de las palabras antes de que el niño o la niña sea capaz de usarlas. La persona adulta, como principal interlocutor en las fases iniciales, se convierte en el facilitador de la experiencia comunicativa de cada niño o niña a partir de experiencias compartidas. Estimular y promover la intención comunicativa favorece el despliegue de diferentes capacidades que le permitirán interpretar los mensajes de los demás e interactuar con el entorno para expresar sus necesidades, emociones, sentimientos o ideas en un clima de bienestar y seguridad emocional y afectiva. Participar en situaciones de comunicación significativas y funcionales, desde el respeto a las diferencias individuales, permitirá al alumnado conocer e integrar progresivamente a su repertorio comunicativo los diferentes lenguajes (verbal, no verbal, plástico, musical, digital…) y descubrir las posibilidades expresivas de cada uno de ellos, para utilizar de manera ajustada y eficaz el más adecuado en función de su intención comunicativa o de las exigencias del entorno. Estas interacciones comunicativas fomentarán también la adquisición progresiva de las convenciones sociales que rigen los intercambios comunicativos, así como la curiosidad y motivación hacia el aprendizaje de otras lenguas, acercándose progresivamente a los significados de distintos mensajes en contextos de comunicación conocidos.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE01-CR01",
+                "descripcion": "Participar con interés en interacciones cotidianas, utilizando diferentes sistemas comunicativos.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE01-CR02",
+                "descripcion": "Participar de forma espontánea en situaciones comunicativas, adecuando la postura, los gestos y los movimientos a sus intenciones.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE01-CR03",
+                "descripcion": "Manifestar necesidades, sentimientos y vivencias, utilizando estrategias comunicativas y aprovechando las posibilidades que ofrecen los diferentes lenguajes con curiosidad y disfrute.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE01-CR04",
+                "descripcion": "Tomar la iniciativa en la interacción social, disfrutando de las situaciones comunicativas con una actitud respetuosa.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE01-CR05",
+                "descripcion": "Participar en situaciones de uso de diferentes lenguas, manifestando interés y curiosidad hacia la diversidad de perfiles lingüísticos.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFPC-ÁCR-CE02": {
+            "descripcion": "Interpretar y comprender mensajes y representaciones apoyándose en conocimientos y recursos de su propia experiencia para responder a las demandas del entorno y construir nuevos aprendizajes.",
+            "explicacion_bloque_competencial": "La comprensión supone recibir y procesar información en distintos ámbitos y formatos, expresada a través de mensajes variados (orales, escritos, multimodales…), representaciones y manifestaciones personales, sociales, culturales y artísticas próximas al interés o a la necesidad personal. La comprensión implica interpretar mensajes, analizarlos y dar respuesta a los estímulos percibidos. Para ello, el alumnado de esta etapa irá adquiriendo y activando distintas estrategias para desarrollar la capacidad de realizar anticipaciones, aproximaciones e inferencias de una manera cada vez más personal y creativa. De esta forma, podrá comprender los mensajes y las intenciones comunicativas de otras personas e irá construyendo nuevos significados y aprendizajes, progresando desde el acompañamiento y la mediación hacia un determinado grado de autonomía y conocimiento del mundo.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE02-CR01",
+                "descripcion": "Interpretar los estímulos y mensajes del entorno, reaccionando de manera adecuada.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE02-CR02",
+                "descripcion": "Expresar sensaciones, sentimientos y emociones a partir de distintas representaciones y manifestaciones artísticas y culturales.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFPC-ÁCR-CE03": {
+            "descripcion": "Producir mensajes de manera eficaz, personal y creativa, utilizando diferentes lenguajes, descubriendo los códigos de cada uno de ellos y explorando sus posibilidades expresivas, para responder a diferentes necesidades comunicativas.",
+            "explicacion_bloque_competencial": "En las primeras etapas, la producción y emisión de mensajes tienen que ver con la necesidad de contacto y satisfacción de las necesidades más básicas; el lenguaje corporal y gestual es esencial en ese primer acto comunicativo. El lenguaje oral, gracias a la interacción con la persona adulta, se convierte en el vehículo principal de aprendizaje, regulación de la conducta y expresión de necesidades, ideas, emociones, sentimientos y vivencias. La prosodia y todos los aspectos no verbales que acompañan al lenguaje oral cobran ahora una importancia capital. Conforme se avanza en la etapa, la producción de mensajes permite también representar aspectos de la realidad vivida o imaginada de una forma cada vez más personal y mejor ajustada a los distintos contextos y situaciones comunicativas, a través del uso de diferentes lenguajes. El alumnado utilizará diferentes formas de expresión de una manera libre y creativa a partir de su conocimiento e interpretación de la realidad y la conceptualización y el dominio de los sistemas de simbolización y de las técnicas requeridas en cada caso (verbales, no verbales, plásticas, musicales, digitales...). El alumnado irá descubriendo, mediante la experimentación y el uso, las posibilidades expresivas de cada uno de dichos lenguajes, en función del momento concreto de su proceso madurativo y de aprendizaje.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE03-CR01",
+                "descripcion": "Utilizar el lenguaje oral para expresar y compartir necesidades, sentimientos, deseos, emociones, vivencias, regulando las acciones e interactuando en diferentes situaciones y contextos.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE03-CR02",
+                "descripcion": "Explorar las posibilidades expresivas de los diferentes lenguajes, utilizando los medios materiales propios de los mismos.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE03-CR03",
+                "descripcion": "Producir mensajes, ampliando y enriqueciendo su repertorio comunicativo con seguridad y confianza.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFPC-ÁCR-CE04": {
+            "descripcion": "Participar por iniciativa propia en actividades relacionadas con textos escritos, mostrando interés y curiosidad, para comprender su funcionalidad y algunas de sus características.",
+            "explicacion_bloque_competencial": "La etapa de Educación Infantil es el entorno privilegiado para realizar un acercamiento progresivo al lenguaje escrito como forma de comunicación, conocimiento y disfrute. A través del acercamiento a los textos escritos y su exploración mediante anticipaciones e inferencias, así como a través de la observación de modelos lectores y escritores de calidad, se irá despertando en niños y niñas la curiosidad por descubrir sus funcionalidades en tanto que herramienta de representación del lenguaje oral y sus sonidos. En la medida en que avanza en la comprensión de algunas de las características y convenciones del lenguaje escrito, se incrementa la necesidad de descubrir la información que contiene, con una actitud lúdica y de disfrute. Siempre desde el respeto a la evolución de los diferentes ritmos de desarrollo personal y del conocimiento del proceso a través del cual niños y niñas se apropian del sistema de escritura y las hipótesis que utilizan, se promoverá una aproximación al lenguaje escrito como actividad inserta en el quehacer cotidiano del aula, como inicio de un proceso que deberá consolidarse en la Educación Primaria. Las bibliotecas jugarán un papel relevante como espacios donde se pongan en juego las ideas infantiles sobre el porqué y el para qué del lenguaje escrito, así como lugar de acercamiento al disfrute de los primeros contactos con la literatura infantil. Del mismo modo, la presencia de soportes y útiles de escritura variados, en lugares accesibles, serán una invitación a producir mensajes por placer y a sentir la emoción de expresar sus pensamientos, vivencias o sentimientos de manera espontánea.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE04-CR01",
+                "descripcion": "Participar en actividades lúdicas de aproximación al lenguaje escrito, mostrando una actitud activa.",
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE04-CR02",
+                "descripcion": "Recurrir a escrituras indeterminadas, espontáneas y no convencionales, incorporándolas a sus producciones con intención comunicativa.",
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFPC-ÁCR-CE05": {
+            "descripcion": "Valorar la diversidad lingüística presente en su entorno, así como otras manifestaciones culturales, para enriquecer sus estrategias comunicativas y su bagaje cultural.",
+            "explicacion_bloque_competencial": "La riqueza plurilingüe del aula –y, en su caso, el aprendizaje de lenguas extranjeras– se convierte en un elemento de particular importancia, ya que favorece la exposición a lenguas distintas de la familiar de cada niño o niña, así como una aproximación a las mismas a través de interacciones y actividades lúdicas. A partir de ello, surge la necesidad de educar en el respeto y la valoración del bagaje lingüístico y sociocultural propio y ajeno, entendiendo la pluralidad lingüística y dialectal como un elemento enriquecedor que proporciona las claves para una mayor y mejor comprensión del mundo. También las manifestaciones y representaciones socioculturales constituyen un marco privilegiado para la comunicación. La pluralidad de sus lenguajes invita a promover el reconocimiento de las semejanzas y diferencias entre sus códigos y a desarrollar la sensibilidad hacia distintos referentes culturales, prestando una especial atención a la literatura infantil. De todo ello se espera que surja un diálogo lleno de matices entre las diferentes lenguas y manifestaciones culturales que generará un amplio abanico de conocimientos implícitos. En ese proceso, las palabras actuarán como nexo de unión desde el que enriquecer el bagaje cultural y desarrollar la sensibilidad y la creatividad, ofreciendo a la infancia, simultáneamente, la llave de acceso a una ciudadanía crítica, solidaria, igualitaria y comprometida con la sociedad.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE05-CR01",
+                "descripcion": "Relacionarse con naturalidad en la realidad lingüística y cultural del aula.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFPC-ÁCR-CE05-CR02",
+                "descripcion": "Manifestar interés y disfrute hacia actividades individuales o colectivas relacionadas con la literatura infantil, las obras musicales, los audiovisuales, las danzas o las dramatizaciones, avanzando en una actitud participativa.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              }
+            ]
+          }
+        },
+        "saberes_basicos": {
+          "bloques": {
+            "A. Intención y elementos de la interacción comunicativa": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB01-001",
+                "subtitulo_nivel_1": "El deseo de comunicarse. La emoción y la proximidad como base del intercambio comunicativo.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB01-002",
+                "subtitulo_nivel_1": "La expresión facial y corporal: gestos de intención, necesidad y estado de ánimo, así como las sensaciones que los acompañan.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB01-003",
+                "subtitulo_nivel_1": "El contacto e intercambio visuales.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB01-004",
+                "subtitulo_nivel_1": "Las primeras interacciones tónico-emocionales y posturales. Expresiones faciales y gestuales. El diálogo corporal.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB01-005",
+                "subtitulo_nivel_1": "Nanas, canciones de arrullo y juegos de regazo.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB01-006",
+                "subtitulo_nivel_1": "Actitudes comunicativas significativas: atención conjunta, mirada referencial y comprensión de las expresiones emocionales de la persona adulta y reacción ante ellas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB01-007",
+                "subtitulo_nivel_1": "Los objetos de uso compartido como mediadores en los primeros contextos de interacción.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB01-008",
+                "subtitulo_nivel_1": "Estrategias que facilitan los intercambios en situaciones comunicativas que potencian el respeto y la igualdad: el contacto visual con el interlocutor, la escucha atenta, el turno de diálogo y la alternancia.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "B. Las lenguas y sus hablantes": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB02-001",
+                "subtitulo_nivel_1": "Repertorio lingüístico individual.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB02-002",
+                "subtitulo_nivel_1": "Realidad lingüística del aula y el entorno. Palabras o expresiones que responden a sus necesidades o intereses.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "C. Comunicación verbal oral: expresión, comprensión, diálogo": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB03-001",
+                "subtitulo_nivel_1": "El lenguaje oral en situaciones cotidianas: primeras conversaciones con sonidos, vocalizaciones y juegos de interacción.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB03-002",
+                "subtitulo_nivel_1": "Expresión de necesidades, vivencias y emociones.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB03-003",
+                "subtitulo_nivel_1": "Lenguaje oral como regulador de la propia conducta.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB03-004",
+                "subtitulo_nivel_1": "Repertorio lingüístico: situaciones comunicativas, conversaciones colectivas, léxico y discurso.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB03-005",
+                "subtitulo_nivel_1": "La expresión sonora y la articulación de las palabras. Juegos de imitación, lingüísticos y de percepción auditiva.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB03-006",
+                "subtitulo_nivel_1": "Comprensión del mundo y de mensajes a través de la escucha activa.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB03-007",
+                "subtitulo_nivel_1": "Vocabulario. Denominación de la realidad.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "D. Aproximación al lenguaje escrito": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB04-001",
+                "subtitulo_nivel_1": "Formas escritas y otros símbolos presentes en el entorno.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB04-002",
+                "subtitulo_nivel_1": "Acercamiento a los usos del lenguaje escrito.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB04-003",
+                "subtitulo_nivel_1": "Lectura a través de modelos lectores de referencia.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "E. Aproximación a la educación literaria": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB05-001",
+                "subtitulo_nivel_1": "Textos literarios infantiles orales y escritos con contenido adecuado al desarrollo infantil que, preferentemente, desarrollen valores sobre la cultura de paz, los derechos de la infancia, la igualdad de género y la diversidad funcional y étnico-cultural.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB05-002",
+                "subtitulo_nivel_1": "Situaciones de lectura. Vínculos afectivos y lúdicos a través de modelos lectores de referencia.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "F. El lenguaje y la expresión musicales": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB06-001",
+                "subtitulo_nivel_1": "Reconocimiento, evocación y reproducción de canciones y otras manifestaciones musicales. Sentimientos y emociones que transmiten.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB06-002",
+                "subtitulo_nivel_1": "Posibilidades sonoras y expresivas de la voz, el cuerpo, los objetos y los instrumentos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB06-003",
+                "subtitulo_nivel_1": "La escucha como descubrimiento y disfrute del entorno.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB06-004",
+                "subtitulo_nivel_1": "Sonidos, entonación y ritmo.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "G. El lenguaje y la expresión plásticos y visuales": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB07-001",
+                "subtitulo_nivel_1": "Materiales, colores, volúmenes, texturas, técnicas y procedimientos plásticos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB07-002",
+                "subtitulo_nivel_1": "Expresiones plásticas y visuales. Otras expresiones artísticas.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "H. El lenguaje y la expresión corporales": [
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB08-001",
+                "subtitulo_nivel_1": "Expresión libre a través del gesto y el movimiento.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB08-002",
+                "subtitulo_nivel_1": "Desplazamientos por el espacio.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFPC-ÁCR-SB08-003",
+                "subtitulo_nivel_1": "Juegos de imitación a través de marionetas, muñecos u otros objetos de representación espontánea.",
+                "subtitulo_nivel_2": ""
+              }
+            ]
+          }
+        }
+      }
+    },
+    "Segundo ciclo (3-6 años)": {
+      "ÁCA": {
+        "denominacion": "Área 1. Crecimiento en Armonía",
+        "competencias_especificas": {
+          "ES-EFP-INFSC-ÁCA-CE01": {
+            "descripcion": "Progresar en el conocimiento y control de su cuerpo y en la adquisición de distintas estrategias, adecuando sus acciones a la realidad del entorno de una manera segura, para construir una autoimagen ajustada y positiva.",
+            "explicacion_bloque_competencial": "El conocimiento, valoración y control que los niños y las niñas van adquiriendo de sí mismos y del uso de los recursos de su propio cuerpo, junto a la utilización de los sentidos para desenvolverse en el medio de forma cada vez más ajustada e independiente, son aspectos fundamentales que van conformando su autonomía y su autodeterminación. Reconocerse como persona diferenciada de las demás, elaborar la noción del «yo» y formarse una autoimagen positiva son procesos relevantes que requieren la toma de conciencia sobre las posibilidades de uno mismo a partir de la identificación de las cualidades personales y de las diferencias con respecto a las otras personas, siempre desde la aceptación y el respeto. Dichos procesos se producen a partir de las interacciones espontáneas con el medio, de las sensaciones que experimentan y de la exploración de sí mismos, de los objetos y del entorno. A través del juego viven experiencias que contribuyen a su desarrollo armónico e integral, y demuestran un control creciente de su cuerpo, así como mayor autonomía e independencia con respecto a las personas adultas. Experimentar las posibilidades motrices y sensitivas del propio cuerpo servirá para avanzar en el control dinámico en desplazamientos y movimientos, superar retos y elaborar un esquema corporal cada vez más ajustado. También servirá para desarrollar destrezas necesarias en la exploración, manipulación y uso de utensilios comunes.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE01-CR01",
+                "descripcion": "Progresar en el conocimiento de su cuerpo ajustando acciones y reacciones y desarrollando el equilibrio, la percepción sensorial y la coordinación en el movimiento.",
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE01-CR02",
+                "descripcion": "Manifestar sentimientos de seguridad personal en la participación en juegos y en las diversas situaciones de la vida cotidiana, confiando en las propias posibilidades y mostrando iniciativa.",
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE01-CR03",
+                "descripcion": "Manejar diferentes objetos, útiles y herramientas en situaciones de juego y en la realización de tareas cotidianas, mostrando un control progresivo y de coordinación de movimientos de carácter fino.",
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE01-CR04",
+                "descripcion": "Participar en contextos de juego dirigido y espontáneo, ajustándose a sus posibilidades personales.",
+                "competencias_clave": [
+                  "CCL",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFSC-ÁCA-CE02": {
+            "descripcion": "Reconocer, manifestar y regular progresivamente sus emociones, expresando necesidades y sentimientos para lograr bienestar emocional y seguridad afectiva.",
+            "explicacion_bloque_competencial": "Conocer e iniciarse en el manejo de sus emociones constituye una herramienta fundamental para poder hacer frente, gradualmente, con seguridad y autonomía, a situaciones cambiantes e inciertas presentes en su vida cotidiana. En la satisfacción de sus propias necesidades y en las situaciones de juego es donde las emociones están más vinculadas al desarrollo del yo y al conocimiento de las normas y valores sociales, ya que, a través de las interacciones con las otras personas, se avanza en la identificación, comprensión y regulación de las emociones propias y en la apropiación de información muy valiosa sobre uno mismo. Todo ello irá contribuyendo de manera decisiva a la interiorización de sentimientos de seguridad y confianza personales, dos aspectos fundamentales para la construcción de la autoestima y la formación de una autoimagen positiva y ajustada, alejada de los estereotipos sexistas. También se desarrolla la confianza en los demás, lo que incide en la mejora de las relaciones sociales, de la automotivación con respecto a las actividades y juegos, y de la comprensión y expresión de lo que siente, piensa, prefiere y le interesa. Establecer relaciones armoniosas y de calidad supone potenciar que cada niño y cada niña puedan identificar y superar sus límites, reforzar sus fortalezas, regular sus necesidades personales, valorar el trabajo bien hecho, aprender de los errores de forma constructiva aceptando positivamente las correcciones, tomar iniciativas propias sobre su persona y sobre el entorno, y establecer metas realistas y ambiciosas con creatividad y responsabilidad, sintiéndose reconocidos dentro del grupo.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE02-CR01",
+                "descripcion": "Identificar y expresar sus necesidades y sentimientos, ajustando progresivamente el control de sus emociones.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE02-CR02",
+                "descripcion": "Ofrecer y pedir ayuda en situaciones cotidianas, valorando los beneficios de la cooperación y la ayuda entre iguales.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE02-CR03",
+                "descripcion": "Expresar inquietudes, gustos y preferencias, mostrando satisfacción y seguridad sobre los logros conseguidos.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFSC-ÁCA-CE03": {
+            "descripcion": "Adoptar modelos, normas y hábitos, desarrollando la confianza en sus posibilidades y sentimientos de logro, para promover un estilo de vida saludable y ecosocialmente responsable.",
+            "explicacion_bloque_competencial": "La adquisición de hábitos saludables y sostenibles, así como su progresiva integración en la vida cotidiana, contribuye al cuidado del propio cuerpo y al logro de una creciente autonomía. En este proceso resulta imprescindible que conozcan y reflexionen sobre las normas que contribuyen a crear tendencias de actuación respetuosas con ellos mismos, con los demás y con el medio, desde una perspectiva interdependiente y ecorresponsable. Se espera también que se produzca un inicio en la reflexión sobre el consumo responsable de bienes y recursos, así como que se promueva la actividad física como conducta saludable. Todo ello se transfiere al aula a través de la realización de rutinas entendidas como prácticas secuenciadas que se repiten de manera estable e intencional para favorecer la regulación de los ritmos biológicos y el ajuste a los tiempos personales. Por ello, es preciso encontrar momentos de atención personal, a través de un trato individualizado a cada niño o niña, especialmente en lo referido a la satisfacción de sus necesidades, a partir de su ritmo biológico y procurando su bienestar y confortabilidad. Todo ello contribuye al desarrollo de una percepción más ajustada de sí mismo y al sentimiento de logro derivado de la percepción de la progresiva competencia adquirida en las actividades relacionadas con la alimentación, la higiene, el vestido o el descanso. Por último, se deben estimular iniciativas relativas a la importancia de prevenir los riesgos y evitar los accidentes.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE03-CR01",
+                "descripcion": "Realizar actividades relacionadas con el autocuidado y el cuidado del entorno con una actitud respetuosa, mostrando autoconfianza e iniciativa.",
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE03-CR02",
+                "descripcion": "Respetar la secuencia temporal asociada a los acontecimientos y actividades cotidianas, adaptándose a las rutinas establecidas para el grupo y desarrollando comportamientos respetuosos hacia las demás personas.",
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFSC-ÁCA-CE04": {
+            "descripcion": "Establecer interacciones sociales en condiciones de igualdad, valorando la importancia de la amistad, el respeto y la empatía, para construir su propia identidad basada en valores democráticos y de respeto a los derechos humanos.",
+            "explicacion_bloque_competencial": "La construcción de la identidad es una de las resultantes del conjunto de interacciones con el entorno social próximo. En este proceso de reformulación de sus recursos cognitivos y afectivos necesario para establecer nuevas relaciones con los demás y con el mundo, es preciso proporcionarles sentimientos de seguridad y confianza mediante la creación de vínculos de apego sanos y estables que hagan que se sientan respetados, queridos y valorados, y adopten de manera natural los modelos sociales adecuados en un entorno de cooperación, respeto y empatía. En las primeras etapas, el niño o la niña comienza a percibirse como diferente a los demás; es capaz de percibir las expresiones emocionales de las otras personas, pero aún no puede adoptar su punto de vista. Mediante las distintas interacciones y la mediación de las personas adultas, irá asimilando de manera natural y progresiva modelos adecuados de relación social, basados en el respeto, la empatía, la promoción de la igualdad entre hombres y mujeres, la aceptación de la discapacidad y el respeto a los derechos humanos. El reconocimiento y aprecio hacia la pluralidad sociocultural del aula se debe fomentar mediante actividades y juegos que pongan en valor las distintas costumbres y tradiciones y favorezcan la comunicación asertiva de las necesidades propias y la escucha activa de las de los otros en procesos coeducativos y cooperativos. En la misma línea, la interacción con otros niños y niñas con necesidades sensoriales, físicas o cognitivas favorecerá el desarrollo de una perspectiva que les permita entender que la inclusión es enriquecedora De esta manera, el alumnado va integrando herramientas para ofrecer y pedir ayuda y resolver conflictos de manera dialogada, con el fin de alcanzar una meta común. Todo ello refuerza el sentido de pertenencia a un grupo, contribuye a aprender a vivir en armonía con las otras personas y favorece el trabajo en equipo.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE04-CR01",
+                "descripcion": "Participar con iniciativa en juegos y actividades colectivas relacionándose con otras personas con actitudes de afecto y de empatía, respetando los distintos ritmos individuales y evitando todo tipo de discriminación.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE04-CR02",
+                "descripcion": "Reproducir conductas, acciones o situaciones a través del juego simbólico en interacción con sus iguales, identificando y rechazando todo tipo de estereotipos.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE04-CR03",
+                "descripcion": "Participar activamente en actividades relacionadas con la reflexión sobre las normas sociales que regulan la convivencia y promueven valores como el respeto a la diversidad, el trato no discriminatorio hacia las personas con discapacidad y la igualdad de género.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE04-CR04",
+                "descripcion": "Desarrollar destrezas y habilidades para la gestión de conflictos de forma positiva, proponiendo alternativas creativas y teniendo en cuenta el criterio de otras personas.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCA-CE04-CR05",
+                "descripcion": "Participar, desde una actitud de respeto, en actividades relacionadas con costumbres y tradiciones étnicas y culturales presentes en su entorno, mostrando interés por conocerlas.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CP"
+                ]
+              }
+            ]
+          }
+        },
+        "saberes_basicos": {
+          "bloques": {
+            "A. El cuerpo y el control progresivo del mismo": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB01-001",
+                "subtitulo_nivel_1": "Imagen global y segmentaria del cuerpo: características individuales y percepción de los cambios físicos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB01-002",
+                "subtitulo_nivel_1": "Autoimagen positiva y ajustada ante los demás.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB01-003",
+                "subtitulo_nivel_1": "Identificación y respeto de las diferencias.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB01-004",
+                "subtitulo_nivel_1": "Los sentidos y sus funciones. El cuerpo y el entorno.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB01-005",
+                "subtitulo_nivel_1": "El movimiento: control progresivo de la coordinación, el tono, el equilibrio y los desplazamientos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB01-006",
+                "subtitulo_nivel_1": "Implicaciones de la discapacidad sensorial o física en la vida cotidiana.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB01-007",
+                "subtitulo_nivel_1": "Dominio activo del tono y la postura en función de las características de los objetos, acciones y situaciones.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB01-008",
+                "subtitulo_nivel_1": "El juego como actividad placentera y fuente de aprendizaje. Normas de juego.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB01-009",
+                "subtitulo_nivel_1": "Progresiva autonomía en la realización de tareas.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "B. Desarrollo y equilibrio afectivos": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB02-001",
+                "subtitulo_nivel_1": "Herramientas para la identificación, expresión, aceptación y control progresivo de las propias emociones, sentimientos, vivencias, preferencias e intereses.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB02-002",
+                "subtitulo_nivel_1": "Estrategias de ayuda y cooperación en contextos de juego y rutinas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB02-003",
+                "subtitulo_nivel_1": "Estrategias para desarrollar la seguridad en sí mismo, el reconocimiento de sus posibilidades y la asertividad respetuosa hacia los demás.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB02-004",
+                "subtitulo_nivel_1": "Aceptación constructiva de los errores y las correcciones: manifestaciones de superación y logro.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB02-005",
+                "subtitulo_nivel_1": "Valoración del trabajo bien hecho: desarrollo inicial de hábitos y actitudes de esfuerzo, constancia, organización, atención e iniciativa.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "C. Hábitos de vida saludable para el autocuidado y el cuidado del entorno": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB03-001",
+                "subtitulo_nivel_1": "Necesidades básicas: manifestación, regulación y control en relación con el bienestar personal.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB03-002",
+                "subtitulo_nivel_1": "Hábitos y prácticas sostenibles y ecosocialmente responsables relacionados con la alimentación, la higiene, el descanso, el autocuidado y el cuidado del entorno.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB03-003",
+                "subtitulo_nivel_1": "Actividad física estructurada con diferentes grados de intensidad.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB03-004",
+                "subtitulo_nivel_1": "Rutinas: planificación secuenciada de las acciones para resolver una tarea; normas de comportamiento social en la comida, el descanso, la higiene y los desplazamientos, etc.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB03-005",
+                "subtitulo_nivel_1": "Identificación de situaciones peligrosas y prevención de accidentes.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "D. Interacción socioemocional en el entorno. La vida junto a los demás": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-001",
+                "subtitulo_nivel_1": "La diversidad familiar.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-002",
+                "subtitulo_nivel_1": "La familia y la incorporación a la escuela.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-003",
+                "subtitulo_nivel_1": "Habilidades socioafectivas y de convivencia: comunicación de sentimientos y emociones y pautas básicas de convivencia, que incluyan el respeto a la igualdad de género y el rechazo a cualquier tipo de discriminación.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-004",
+                "subtitulo_nivel_1": "Estrategias de autorregulación de la conducta. Empatía y respeto.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-005",
+                "subtitulo_nivel_1": "Resolución de conflictos surgidos en interacciones con los otros.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-006",
+                "subtitulo_nivel_1": "La amistad como elemento protector, de prevención de la violencia y de desarrollo de la cultura de la paz.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-007",
+                "subtitulo_nivel_1": "Fórmulas de cortesía e interacción social positiva. Actitud de ayuda y cooperación.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-008",
+                "subtitulo_nivel_1": "La respuesta empática a la diversidad debida a distintas formas de discapacidad y a sus implicaciones en la vida cotidiana.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-009",
+                "subtitulo_nivel_1": "Juego simbólico. Observación, imitación y representación de personas, personajes y situaciones. Estereotipos y prejuicios.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-010",
+                "subtitulo_nivel_1": "Otros grupos sociales de pertenencia: características, funciones y servicios.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-011",
+                "subtitulo_nivel_1": "Asentamientos y actividades del entorno.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCA-SB04-012",
+                "subtitulo_nivel_1": "Celebraciones, costumbres y tradiciones. Herramientas para el aprecio de las señas de identidad étnico-cultural presentes en su entorno.",
+                "subtitulo_nivel_2": ""
+              }
+            ]
+          }
+        }
+      },
+      "ÁDE": {
+        "denominacion": "Área 2. Descubrimiento y Exploración del Entorno",
+        "competencias_especificas": {
+          "ES-EFP-INFSC-ÁDE-CE01": {
+            "descripcion": "Identificar las características de materiales, objetos y colecciones y establecer relaciones entre ellos, mediante la exploración, la manipulación sensorial, el manejo de herramientas sencillas y el desarrollo de destrezas lógico-matemáticas para descubrir y crear una idea cada vez más compleja del mundo.",
+            "explicacion_bloque_competencial": "En esta etapa, la curiosidad de niños y niñas por descubrir el mundo que los rodea hace de la exploración a través de la manipulación sensorial el instrumento perfecto para identificar las características de los materiales y objetos de su entorno más cercano y para establecer relaciones entre ellos. La finalidad de este juego exploratorio en edades muy tempranas es disfrutar de las sensaciones físicas que produce. Sin embargo, a medida que el niño o la niña se desarrolla, la demanda exploratoria se amplía: al propósito de obtener placer por sentir y tocar se añade progresivamente el interés por indagar acerca de las diferentes características de los objetos. Al movimiento amplio y global se suma la capacidad para ejercer acciones más específicas y minuciosas sobre ellos. Todo ello les proporciona cada vez más información acerca de sus cualidades. La persona adulta debe proponer retos que hay que resolver, contextualizados en situaciones de aprendizaje y experiencias significativas, eligiendo el material y el tipo de actividad que responda a la intencionalidad que se pretenda conseguir y teniendo en cuenta que debe partir de los intereses y las inquietudes individuales y grupales, y que la interacción con los demás debe jugar un papel de primer orden. Así, los niños y las niñas continúan estableciendo relaciones entre sus aprendizajes, lo cual les permitirá desarrollar progresivamente sus habilidades lógicas y matemáticas de medida, relación, clasificación, ordenación y cuantificación; primero, ligadas a sus intereses particulares y, progresivamente, formando parte de situaciones de aprendizaje que atienden también a los intereses grupales y colectivos.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE01-CR01",
+                "descripcion": "Establecer distintas relaciones entre los objetos a partir de sus cualidades o atributos, mostrando curiosidad e interés.",
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE01-CR02",
+                "descripcion": "Emplear los cuantificadores básicos más significativos en el contexto del juego y en la interacción con los demás.",
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE01-CR03",
+                "descripcion": "Ubicarse adecuadamente en los espacios habituales, tanto en reposo como en movimiento, aplicando sus conocimientos acerca de las nociones espaciales básicas y jugando con el propio cuerpo y con objetos.",
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE01-CR04",
+                "descripcion": "Identificar las situaciones cotidianas en las que es preciso medir, utilizando el cuerpo u otros materiales y herramientas para efectuar las medidas.",
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE01-CR05",
+                "descripcion": "Organizar su actividad, ordenando las secuencias y utilizando las nociones temporales básicas.",
+                "competencias_clave": [
+                  "CCL",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFSC-ÁDE-CE02": {
+            "descripcion": "Desarrollar, de manera progresiva, los procedimientos del método científico y las destrezas del pensamiento computacional, a través de procesos de observación y manipulación de objetos, para iniciarse en la interpretación del entorno y responder de forma creativa a las situaciones y retos que se plantean.",
+            "explicacion_bloque_competencial": "Sentar las bases del pensamiento científico, la iniciativa investigadora y la curiosidad por el conocimiento es inherente al desarrollo de la etapa Educación Infantil. A lo largo de la etapa, el alumnado deberá encontrar soluciones o alternativas originales y creativas a diferentes cuestiones, retos o situaciones. Y lo hará mediante la aplicación de procesos inicialmente sencillos y manipulativos, que progresivamente ganarán en complejidad y requerirán mayor capacidad de abstracción. Dichos procesos son propios tanto de las destrezas de pensamiento computacional y de diseño como del método científico, y se aplicarán descomponiendo una tarea en otras más simples, formulando y comprobando hipótesis, explorando e investigando, relacionando conocimientos y planteando ideas o soluciones originales.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE02-CR01",
+                "descripcion": "Gestionar situaciones, dificultades, retos o problemas mediante la planificación de secuencias de actividades, la manifestación de interés e iniciativa y la cooperación con sus iguales.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE02-CR02",
+                "descripcion": "Canalizar progresivamente la frustración ante las dificultades o problemas mediante la aplicación de diferentes estrategias.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE02-CR03",
+                "descripcion": "Plantear hipótesis acerca del comportamiento de ciertos elementos o materiales, verificándolas a través de la manipulación y la actuación sobre ellos.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE02-CR04",
+                "descripcion": "Utilizar diferentes estrategias para la toma de decisiones con progresiva autonomía, afrontando el proceso de creación de soluciones originales en respuesta a los retos que se le planteen.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE02-CR05",
+                "descripcion": "Programar secuencias de acciones o instrucciones para la resolución de tareas analógicas y digitales, desarrollando habilidades básicas de pensamiento computacional.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE02-CR06",
+                "descripcion": "Participar en proyectos utilizando dinámicas cooperativas, compartiendo y valorando opiniones propias y ajenas, y expresando conclusiones personales a partir de ellas.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CPSAA",
+                  "STEM"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFSC-ÁDE-CE03": {
+            "descripcion": "Reconocer elementos y fenómenos de la naturaleza, mostrando interés por los hábitos que inciden sobre ella, para apreciar la importancia del uso sostenible, el cuidado y la conservación del entorno en la vida de las personas.",
+            "explicacion_bloque_competencial": "El entorno próximo es el primer contexto con el que se relacionan niños y niñas desde su nacimiento. Los diferentes elementos y fenómenos naturales que en él se desarrollan atraerán su atención y supondrán una oportunidad ideal para alentar su curiosidad a medida que los va descubriendo. La actitud con la que se relacionen con el medio físico y natural condicionará en gran medida sus experiencias y aprendizajes. Así, desde el primer momento, debe propiciarse un acercamiento al medio natural y a los seres vivos e inertes que forman parte de él con todo el cuidado y el respeto que su edad y aptitudes les permitan. Este proceso de descubrimiento y conocimiento progresivo del entorno deberá orientarse hacia el desarrollo de una incipiente conciencia de conservación para que, desde estas primeras edades, se comprenda la implicación y la responsabilidad de todos en el respeto y el cuidado del medio. A lo largo de la etapa, irán adoptando e incorporando en sus rutinas diarias hábitos para el desarrollo sostenible, como el consumo responsable o el cuidado y protección de la naturaleza y los animales que la habitan. Ello contribuirá a que, de manera paulatina, aprendan a valorar las oportunidades que ofrece el medioambiente y todo aquello que hace posible la vida en el planeta.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE03-CR01",
+                "descripcion": "Mostrar una actitud de respeto, cuidado y protección hacia el medio natural y los animales, identificando el impacto positivo o negativo que algunas acciones humanas ejercen sobre ellos.",
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE03-CR02",
+                "descripcion": "Identificar rasgos comunes y diferentes entre seres vivos e inertes.",
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁDE-CE03-CR03",
+                "descripcion": "Establecer relaciones entre el medio natural y el social a partir del conocimiento y la observación de algunos fenómenos naturales y de los elementos patrimoniales presentes en el medio físico.",
+                "competencias_clave": [
+                  "CC",
+                  "CPSAA",
+                  "STEM"
+                ]
+              }
+            ]
+          }
+        },
+        "saberes_basicos": {
+          "bloques": {
+            "A. Diálogo corporal con el entorno. Exploración creativa de objetos, materiales y espacios": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB01-001",
+                "subtitulo_nivel_1": "Cualidades o atributos de objetos y materiales. Relaciones de orden, correspondencia, clasificación y comparación.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB01-002",
+                "subtitulo_nivel_1": "Cuantificadores básicos contextualizados.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB01-003",
+                "subtitulo_nivel_1": "Funcionalidad de los números en la vida cotidiana.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB01-004",
+                "subtitulo_nivel_1": "Situaciones en las que se hace necesario medir.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB01-005",
+                "subtitulo_nivel_1": "Nociones espaciales básicas en relación con el propio cuerpo, los objetos y las acciones, tanto en reposo como en movimiento.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB01-006",
+                "subtitulo_nivel_1": "El tiempo y su organización: día-noche, estaciones, ciclos, calendario...",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "B. Experimentación en el entorno. Curiosidad, pensamiento científico y creatividad": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB02-001",
+                "subtitulo_nivel_1": "Pautas para la indagación en el entorno: interés, respeto, curiosidad, asombro, cuestionamiento y deseos de conocimiento.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB02-002",
+                "subtitulo_nivel_1": "Estrategias de construcción de nuevos conocimientos: relaciones y conexiones entre lo conocido y lo novedoso, y entre experiencias previas y nuevas; andamiaje e interacciones de calidad con las personas adultas, con iguales y con el entorno.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB02-003",
+                "subtitulo_nivel_1": "Modelo de control de variables. Estrategias y técnicas de investigación: ensayo-error, observación, experimentación, formulación y comprobación de hipótesis, realización de preguntas, manejo y búsqueda en distintas fuentes de información.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB02-004",
+                "subtitulo_nivel_1": "Estrategias de planificación, organización o autorregulación de tareas. Iniciativa en la búsqueda de acuerdos o consensos en la toma de decisiones.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB02-005",
+                "subtitulo_nivel_1": "Estrategias para proponer soluciones: creatividad, diálogo, imaginación y descubrimiento.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB02-006",
+                "subtitulo_nivel_1": "Procesos y resultados. Hallazgos, verificación y conclusiones.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "C. Indagación en el medio físico y natural. Cuidado, valoración y respeto": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB03-001",
+                "subtitulo_nivel_1": "Elementos naturales (agua, tierra y aire). Características y comportamiento (peso, capacidad, volumen, mezclas o trasvases).",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB03-002",
+                "subtitulo_nivel_1": "Influencia de las acciones de las personas en el medio físico y en el patrimonio natural y cultural. El cambio climático.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB03-003",
+                "subtitulo_nivel_1": "Recursos naturales. Sostenibilidad, energías limpias y naturales.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB03-004",
+                "subtitulo_nivel_1": "Fenómenos naturales: identificación y repercusión en la vida de las personas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB03-005",
+                "subtitulo_nivel_1": "Respeto y protección del medio natural.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB03-006",
+                "subtitulo_nivel_1": "Empatía, cuidado y protección de los animales. Respeto de sus derechos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁDE-SB03-007",
+                "subtitulo_nivel_1": "Respeto por el patrimonio cultural presente en el medio físico.",
+                "subtitulo_nivel_2": ""
+              }
+            ]
+          }
+        }
+      },
+      "ÁCR": {
+        "denominacion": "Área 3. Comunicación y Representación de la Realidad",
+        "competencias_especificas": {
+          "ES-EFP-INFSC-ÁCR-CE01": {
+            "descripcion": "Manifestar interés por interactuar en situaciones cotidianas a través de la exploración y el uso de su repertorio comunicativo, para expresar sus necesidades e intenciones y responder a las exigencias del entorno.",
+            "explicacion_bloque_competencial": "El deseo o la necesidad de interactuar con el entorno es el motor que posibilita la evolución de las destrezas comunicativas. Para ello es imprescindible experimentar el placer de comunicarse mediante las primeras interacciones ligadas a la emoción, que se producen en situaciones globales cuyo contexto (gestos, silencios, prosodia…) facilitan la comprensión, la expresión y la integración de los significados de las palabras antes de que el niño o la niña sea capaz de usarlas. La persona adulta, como principal interlocutor en las fases iniciales, se convierte en el facilitador de la experiencia comunicativa de cada niño o niña a partir de experiencias compartidas. Estimular y promover la intención comunicativa favorece el despliegue de diferentes capacidades que le permitirán interpretar los mensajes de los demás e interactuar con el entorno para expresar sus necesidades, emociones, sentimientos o ideas en un clima de bienestar y seguridad emocional y afectiva. Participar en situaciones de comunicación significativas y funcionales, desde el respeto a las diferencias individuales, permitirá al alumnado conocer e integrar progresivamente a su repertorio comunicativo los diferentes lenguajes (verbal, no verbal, plástico, musical, digital…) y descubrir las posibilidades expresivas de cada uno de ellos, para utilizar de manera ajustada y eficaz el más adecuado en función de su intención comunicativa o de las exigencias del entorno. Estas interacciones comunicativas fomentarán también la adquisición progresiva de las convenciones sociales que rigen los intercambios comunicativos, así como la curiosidad y motivación hacia el aprendizaje de otras lenguas, acercándose progresivamente a los significados de distintos mensajes en contextos de comunicación conocidos.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE01-CR01",
+                "descripcion": "Participar de manera activa, espontánea y respetuosa con las diferencias individuales en situaciones comunicativas de progresiva complejidad, en función de su desarrollo individual.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE01-CR02",
+                "descripcion": "Ajustar su repertorio comunicativo a las propuestas, a los interlocutores y al contexto, indagando en las posibilidades expresivas de los diferentes lenguajes.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE01-CR03",
+                "descripcion": "Participar en situaciones de uso de diferentes lenguas, mostrando interés, curiosidad y respeto por la diversidad de perfiles lingüísticos.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE01-CR04",
+                "descripcion": "Interactuar con distintos recursos digitales, familiarizándose con diferentes medios y herramientas digitales.",
+                "competencias_clave": [
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFSC-ÁCR-CE02": {
+            "descripcion": "Interpretar y comprender mensajes y representaciones apoyándose en conocimientos y recursos de su propia experiencia para responder a las demandas del entorno y construir nuevos aprendizajes.",
+            "explicacion_bloque_competencial": "La comprensión supone recibir y procesar información en distintos ámbitos y formatos, expresada a través de mensajes variados (orales, escritos, multimodales…), representaciones y manifestaciones personales, sociales, culturales y artísticas próximas al interés o a la necesidad personal. La comprensión implica interpretar mensajes, analizarlos y dar respuesta a los estímulos percibidos. Para ello, el alumnado de esta etapa irá adquiriendo y activando distintas estrategias para desarrollar la capacidad de realizar anticipaciones, aproximaciones e inferencias de una manera cada vez más personal y creativa. De esta forma, podrá comprender los mensajes y las intenciones comunicativas de otras personas e irá construyendo nuevos significados y aprendizajes, progresando desde el acompañamiento y la mediación hacia un determinado grado de autonomía y conocimiento del mundo.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE02-CR01",
+                "descripcion": "Interpretar de forma eficaz los mensajes e intenciones comunicativas de los demás.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE02-CR02",
+                "descripcion": "Interpretar los mensajes transmitidos mediante representaciones o manifestaciones artísticas, también en formato digital, reconociendo la intencionalidad del emisor y mostrando una actitud curiosa y responsable.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CP",
+                  "CPSAA"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFSC-ÁCR-CE03": {
+            "descripcion": "Producir mensajes de manera eficaz, personal y creativa, utilizando diferentes lenguajes, descubriendo los códigos de cada uno de ellos y explorando sus posibilidades expresivas, para responder a diferentes necesidades comunicativas.",
+            "explicacion_bloque_competencial": "En las primeras etapas, la producción y emisión de mensajes tienen que ver con la necesidad de contacto y satisfacción de las necesidades más básicas; el lenguaje corporal y gestual es esencial en ese primer acto comunicativo. El lenguaje oral, gracias a la interacción con la persona adulta, se convierte en el vehículo principal de aprendizaje, regulación de la conducta y expresión de necesidades, ideas, emociones, sentimientos y vivencias. La prosodia y todos los aspectos no verbales que acompañan al lenguaje oral cobran ahora una importancia capital. Conforme se avanza en la etapa, la producción de mensajes permite también representar aspectos de la realidad vivida o imaginada de una forma cada vez más personal y mejor ajustada a los distintos contextos y situaciones comunicativas, a través del uso de diferentes lenguajes. El alumnado utilizará diferentes formas de expresión de una manera libre y creativa a partir de su conocimiento e interpretación de la realidad y la conceptualización y el dominio de los sistemas de simbolización y de las técnicas requeridas en cada caso (verbales, no verbales, plásticas, musicales, digitales...). El alumnado irá descubriendo, mediante la experimentación y el uso, las posibilidades expresivas de cada uno de dichos lenguajes, en función del momento concreto de su proceso madurativo y de aprendizaje.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE03-CR01",
+                "descripcion": "Hacer un uso funcional del lenguaje oral, aumentando su repertorio lingüístico y construyendo progresivamente un discurso más eficaz, organizado y coherente en contextos formales e informales.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE03-CR02",
+                "descripcion": "Utilizar el lenguaje oral como instrumento regulador de la acción en las interacciones con los demás con seguridad y confianza.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE03-CR03",
+                "descripcion": "Evocar y expresar espontáneamente ideas a través del relato oral.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE03-CR04",
+                "descripcion": "Elaborar creaciones plásticas, explorando y utilizando diferentes materiales y técnicas y participando activamente en el trabajo en grupo cuando se precise.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE03-CR05",
+                "descripcion": "Interpretar propuestas dramáticas y musicales, utilizando y explorando diferentes instrumentos, recursos o técnicas.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE03-CR06",
+                "descripcion": "Ajustar armónicamente su movimiento al de los demás y al espacio como forma de expresión corporal libre, manifestando interés e iniciativa.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE03-CR07",
+                "descripcion": "Expresarse de manera creativa, utilizando diversas herramientas o aplicaciones digitales intuitivas y visuales.",
+                "competencias_clave": [
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP",
+                  "CPSAA",
+                  "STEM"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFSC-ÁCR-CE04": {
+            "descripcion": "Participar por iniciativa propia en actividades relacionadas con textos escritos, mostrando interés y curiosidad, para comprender su funcionalidad y algunas de sus características.",
+            "explicacion_bloque_competencial": "La etapa de Educación Infantil es el entorno privilegiado para realizar un acercamiento progresivo al lenguaje escrito como forma de comunicación, conocimiento y disfrute. A través del acercamiento a los textos escritos y su exploración mediante anticipaciones e inferencias, así como a través de la observación de modelos lectores y escritores de calidad, se irá despertando en niños y niñas la curiosidad por descubrir sus funcionalidades en tanto que herramienta de representación del lenguaje oral y sus sonidos. En la medida en que avanza en la comprensión de algunas de las características y convenciones del lenguaje escrito, se incrementa la necesidad de descubrir la información que contiene, con una actitud lúdica y de disfrute. Siempre desde el respeto a la evolución de los diferentes ritmos de desarrollo personal y del conocimiento del proceso a través del cual niños y niñas se apropian del sistema de escritura y las hipótesis que utilizan, se promoverá una aproximación al lenguaje escrito como actividad inserta en el quehacer cotidiano del aula, como inicio de un proceso que deberá consolidarse en la Educación Primaria. Las bibliotecas jugarán un papel relevante como espacios donde se pongan en juego las ideas infantiles sobre el porqué y el para qué del lenguaje escrito, así como lugar de acercamiento al disfrute de los primeros contactos con la literatura infantil. Del mismo modo, la presencia de soportes y útiles de escritura variados, en lugares accesibles, serán una invitación a producir mensajes por placer y a sentir la emoción de expresar sus pensamientos, vivencias o sentimientos de manera espontánea.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE04-CR01",
+                "descripcion": "Mostrar interés por comunicarse a través de códigos escritos, convencionales o no, valorando su función comunicativa.",
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE04-CR02",
+                "descripcion": "Identificar, de manera acompañada, alguna de las características textuales y paratextuales mediante la indagación en textos de uso social libres de prejuicios y estereotipos sexistas.",
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE04-CR03",
+                "descripcion": "Recurrir a la biblioteca como fuente de información y disfrute, respetando sus normas de uso.",
+                "competencias_clave": [
+                  "CC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              }
+            ]
+          },
+          "ES-EFP-INFSC-ÁCR-CE05": {
+            "descripcion": "Valorar la diversidad lingüística presente en su entorno, así como otras manifestaciones culturales, para enriquecer sus estrategias comunicativas y su bagaje cultural.",
+            "explicacion_bloque_competencial": "La riqueza plurilingüe del aula –y, en su caso, el aprendizaje de lenguas extranjeras– se convierte en un elemento de particular importancia, ya que favorece la exposición a lenguas distintas de la familiar de cada niño o niña, así como una aproximación a las mismas a través de interacciones y actividades lúdicas. A partir de ello, surge la necesidad de educar en el respeto y la valoración del bagaje lingüístico y sociocultural propio y ajeno, entendiendo la pluralidad lingüística y dialectal como un elemento enriquecedor que proporciona las claves para una mayor y mejor comprensión del mundo. También las manifestaciones y representaciones socioculturales constituyen un marco privilegiado para la comunicación. La pluralidad de sus lenguajes invita a promover el reconocimiento de las semejanzas y diferencias entre sus códigos y a desarrollar la sensibilidad hacia distintos referentes culturales, prestando una especial atención a la literatura infantil. De todo ello se espera que surja un diálogo lleno de matices entre las diferentes lenguas y manifestaciones culturales que generará un amplio abanico de conocimientos implícitos. En ese proceso, las palabras actuarán como nexo de unión desde el que enriquecer el bagaje cultural y desarrollar la sensibilidad y la creatividad, ofreciendo a la infancia, simultáneamente, la llave de acceso a una ciudadanía crítica, solidaria, igualitaria y comprometida con la sociedad.",
+            "criterios_evaluacion": [
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE05-CR01",
+                "descripcion": "Relacionarse de forma respetuosa en la pluralidad lingüística y cultural de su entorno, manifestando interés por otras lenguas, etnias y culturas.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE05-CR02",
+                "descripcion": "Participar en interacciones comunicativas en lengua extranjera relacionadas con rutinas y situaciones cotidianas.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE05-CR03",
+                "descripcion": "Participar en actividades de aproximación a la literatura infantil, tanto de carácter individual, como en contextos dialógicos y participativos, descubriendo, explorando y apreciando la belleza del lenguaje literario.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE05-CR04",
+                "descripcion": "Expresar emociones, ideas y pensamientos a través de manifestaciones artísticas y culturales, disfrutando del proceso creativo.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              },
+              {
+                "codigo": "ES-EFP-INFSC-ÁCR-CE05-CR05",
+                "descripcion": "Expresar gustos, preferencias y opiniones sobre distintas manifestaciones artísticas, explicando las emociones que produce su disfrute.",
+                "competencias_clave": [
+                  "CC",
+                  "CCEC",
+                  "CCL",
+                  "CD",
+                  "CE",
+                  "CP"
+                ]
+              }
+            ]
+          }
+        },
+        "saberes_basicos": {
+          "bloques": {
+            "A. Intención e interacción comunicativas": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB01-001",
+                "subtitulo_nivel_1": "Repertorio comunicativo y elementos de comunicación no verbal.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB01-002",
+                "subtitulo_nivel_1": "Comunicación interpersonal: empatía y asertividad.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB01-003",
+                "subtitulo_nivel_1": "Convenciones sociales del intercambio lingüístico en situaciones comunicativas que potencien el respeto y la igualdad: atención, escucha activa, turnos de diálogo y alternancia.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "B. Las lenguas y sus hablantes": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB02-001",
+                "subtitulo_nivel_1": "Repertorio lingüístico individual.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB02-002",
+                "subtitulo_nivel_1": "La realidad lingüística del entorno. Fórmulas o expresiones que responden a sus necesidades o intereses.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB02-003",
+                "subtitulo_nivel_1": "Aproximación a la lengua extranjera. Elementos para una comunicación funcional básica.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "C. Comunicación verbal oral: expresión, comprensión y diálogo": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB03-001",
+                "subtitulo_nivel_1": "El lenguaje oral en situaciones cotidianas: conversaciones, juegos de interacción social y expresión de vivencias.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB03-002",
+                "subtitulo_nivel_1": "Textos orales formales e informales.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB03-003",
+                "subtitulo_nivel_1": "Intención comunicativa de los mensajes.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB03-004",
+                "subtitulo_nivel_1": "Verbalización de la secuencia de acciones en una acción planificada.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB03-005",
+                "subtitulo_nivel_1": "Discriminación auditiva y conciencia fonológica.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "D. Aproximación al lenguaje escrito": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB04-001",
+                "subtitulo_nivel_1": "Los usos sociales de la lectura y la escritura. Funcionalidad y significatividad en situaciones comunicativas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB04-002",
+                "subtitulo_nivel_1": "Textos escritos en diferentes soportes.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB04-003",
+                "subtitulo_nivel_1": "Intención comunicativa y acercamiento a las principales características textuales y paratextuales. Primeras hipótesis para la interpretación y compresión.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB04-004",
+                "subtitulo_nivel_1": "Las propiedades del sistema de escritura: hipótesis cuantitativas y cualitativas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB04-005",
+                "subtitulo_nivel_1": "Aproximación al código escrito desde las escrituras indeterminadas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB04-006",
+                "subtitulo_nivel_1": "Otros códigos de representación gráfica: imágenes, símbolos, números…",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB04-007",
+                "subtitulo_nivel_1": "Iniciación a estrategias de búsqueda de información, reelaboración y comunicación.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB04-008",
+                "subtitulo_nivel_1": "Situaciones de lectura individual o a través de modelos lectores de referencia.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "E. Aproximación a la educación literaria": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB05-001",
+                "subtitulo_nivel_1": "Textos literarios infantiles orales y escritos adecuados al desarrollo infantil, que preferiblemente desarrollen valores sobre cultura de paz, derechos de la infancia, igualdad de género y diversidad funcional y étnico-cultural.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB05-002",
+                "subtitulo_nivel_1": "Vínculos afectivos y lúdicos con los textos literarios.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB05-003",
+                "subtitulo_nivel_1": "Conversaciones y diálogos en torno a textos literarios libres de todo tipo de prejuicios y estereotipos.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "F. El lenguaje y la expresión musicales": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB06-001",
+                "subtitulo_nivel_1": "Posibilidades sonoras, expresivas y creativas de la voz, el cuerpo, los objetos cotidianos de su entorno y los instrumentos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB06-002",
+                "subtitulo_nivel_1": "Propuestas musicales en distintos formatos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB06-003",
+                "subtitulo_nivel_1": "El sonido, el silencio y sus cualidades. El código musical.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB06-004",
+                "subtitulo_nivel_1": "Intención expresiva en las producciones musicales.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB06-005",
+                "subtitulo_nivel_1": "La escucha musical como disfrute.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "G. El lenguaje y la expresión plásticos y visuales": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB07-001",
+                "subtitulo_nivel_1": "Materiales específicos e inespecíficos, elementos, técnicas y procedimientos plásticos.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB07-002",
+                "subtitulo_nivel_1": "Intención expresiva de producciones plásticas y pictóricas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB07-003",
+                "subtitulo_nivel_1": "Manifestaciones plásticas variadas. Otras manifestaciones artísticas.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "H. El lenguaje y la expresión corporales": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB08-001",
+                "subtitulo_nivel_1": "Posibilidades expresivas y comunicativas del propio cuerpo en actividades individuales y grupales libres de prejuicios y estereotipos sexistas.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB08-002",
+                "subtitulo_nivel_1": "Juegos de expresión corporal y dramática.",
+                "subtitulo_nivel_2": ""
+              }
+            ],
+            "I. Alfabetización digital": [
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB09-001",
+                "subtitulo_nivel_1": "Aplicaciones y herramientas digitales con distintos fines: creación, comunicación, aprendizaje y disfrute.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB09-002",
+                "subtitulo_nivel_1": "Uso saludable y responsable de las tecnologías digitales.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB09-003",
+                "subtitulo_nivel_1": "Lectura e interpretación crítica de imágenes e información recibida a través de medios digitales.",
+                "subtitulo_nivel_2": ""
+              },
+              {
+                "nombre": "ES-EFP-INFSC-ÁCR-SB09-004",
+                "subtitulo_nivel_1": "Función educativa de los dispositivos y elementos tecnológicos de su entorno.",
+                "subtitulo_nivel_2": ""
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
   "Educación Primaria": {
     "1º Primaria": {
       "CMN": {
