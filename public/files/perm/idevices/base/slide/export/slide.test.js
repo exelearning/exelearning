@@ -102,6 +102,18 @@ describe('$slide._scrubSvg', () => {
         expect(_scrubSvg(svg)).not.toContain('javascript:');
     });
 
+    it('removes inline event handlers (unquoted value)', () => {
+        const svg = '<svg><rect onload=alert(1) /></svg>';
+        const out = _scrubSvg(svg);
+        expect(out).not.toContain('onload');
+        expect(out).not.toContain('alert(1)');
+    });
+
+    it('removes unquoted handlers without trailing space before />', () => {
+        const svg = '<svg><rect onclick=evil()/></svg>';
+        expect(_scrubSvg(svg)).not.toContain('onclick');
+    });
+
     it('returns empty string for non-string input', () => {
         expect(_scrubSvg(null)).toBe('');
         expect(_scrubSvg(undefined)).toBe('');
@@ -199,16 +211,14 @@ describe('$slide.renderView', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('$slide.init', () => {
-    it('caches normalized state on the module', () => {
-        const out = mod.init({ svg: '<svg/>', width: 1024, height: 768 });
-        expect(out).toBe(true);
-        expect(mod._state).toEqual({ svg: '<svg/>', width: 1024, height: 768 });
+    it('returns true for any input (renderView is the source of truth)', () => {
+        expect(mod.init({ svg: '<svg/>', width: 1024, height: 768 })).toBe(true);
+        expect(mod.init(null)).toBe(true);
     });
 
-    it('handles null input', () => {
-        const out = mod.init(null);
-        expect(out).toBe(true);
-        expect(mod._state).toEqual({ svg: '', width: null, height: null });
+    it('does not retain state on the module (renderView re-normalizes its arg)', () => {
+        mod.init({ svg: '<svg/>', width: 1024, height: 768 });
+        expect(mod._state).toBeUndefined();
     });
 });
 
@@ -262,6 +272,36 @@ describe('$slide.renderBehaviour', () => {
         expect(btn.getAttribute('aria-label')).toBe('Fullscreen');
 
         document.body.removeChild(wrap);
+    });
+
+    it('fullscreenchange does not clear slide-fs-active on inactive wrappers', () => {
+        // Two wrappers: one is in CSS-simulated fullscreen, neither matches
+        // document.fullscreenElement. A native fullscreenchange event must
+        // not wipe the CSS-fullscreen state of the other slide.
+        const wrapA = document.createElement('div');
+        wrapA.className = 'slide-export-fabric slide-fs-active';
+        const btnA = document.createElement('button');
+        btnA.className = 'slide-fullscreen-btn';
+        wrapA.appendChild(btnA);
+
+        const wrapB = document.createElement('div');
+        wrapB.className = 'slide-export-fabric';
+        const btnB = document.createElement('button');
+        btnB.className = 'slide-fullscreen-btn';
+        wrapB.appendChild(btnB);
+
+        document.body.appendChild(wrapA);
+        document.body.appendChild(wrapB);
+
+        document.body.style.overflow = 'hidden';
+        document.dispatchEvent(new Event('fullscreenchange'));
+
+        expect(wrapA.classList.contains('slide-fs-active')).toBe(true);
+        expect(document.body.style.overflow).toBe('hidden');
+
+        document.body.removeChild(wrapA);
+        document.body.removeChild(wrapB);
+        document.body.style.overflow = '';
     });
 
     it('ignores clicks outside the slide wrapper', () => {

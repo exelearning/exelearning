@@ -82,6 +82,15 @@
         window.__slideBundlePromise = loadGlobal('fabric', libsBase + 'fabric/fabric.min.js')
             .then(() => loadGlobal('DOMPurify', libsBase + 'dompurify/purify.min.js'))
             .then(() => loadScript(idevicePath + BUNDLE_FILE))
+            .then(() => {
+                // Guard against a script that loaded but didn't expose the
+                // expected global (corrupt build, wrong file, race in a
+                // proxy/CDN). Surface as a rejection so the cached promise
+                // is cleared and the next init can retry.
+                if (!window[BUNDLE_GLOBAL] || typeof window[BUNDLE_GLOBAL].mount !== 'function') {
+                    throw new Error('slide editor bundle did not expose mount()');
+                }
+            })
             .catch(err => {
                 delete window.__slideBundlePromise;
                 throw err;
@@ -153,6 +162,16 @@
         save: function () {
             if (!this._editorApi) {
                 return null;
+            }
+
+            // Newer-format payload the editor couldn't decode: re-emit as-is
+            // so an older bundle never silently overwrites a slide with a
+            // blank canvas.
+            if (typeof this._editorApi.getUnreadPayload === 'function') {
+                var unread = this._editorApi.getUnreadPayload();
+                if (unread) {
+                    return unread;
+                }
             }
 
             var dims =
