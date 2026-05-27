@@ -1674,7 +1674,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // GET /api/odes/current-users - Get users currently working on ODE
-            .get('/api/odes/current-users', ({ query }) => {
+            .get('/api/odes/current-users', ({ query, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const odeSessionId = query.odeSessionId as string | undefined;
 
                 // In single-user mode, return empty array or minimal info
@@ -1706,7 +1710,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/current-users - Register user working on ODE (for collaboration)
-            .post('/api/odes/current-users', ({ body }) => {
+            .post('/api/odes/current-users', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as OdeCurrentUserRequest;
                 // In stateless mode, just acknowledge
                 return {
@@ -1717,7 +1725,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // DELETE /api/odes/current-users - Unregister user from ODE (for collaboration)
-            .delete('/api/odes/current-users', () => {
+            .delete('/api/odes/current-users', ({ currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 // In stateless mode, just acknowledge
                 return {
                     success: true,
@@ -1726,7 +1738,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/check-before-leave - Check if safe to leave (no other users editing)
-            .post('/api/odes/check-before-leave', ({ body }) => {
+            .post('/api/odes/check-before-leave', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CheckBeforeLeaveRequest;
                 const odeSessionId = data.odeSessionId;
 
@@ -1746,7 +1762,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/session/close - Close an ODE session (called during logout)
-            .post('/api/odes/session/close', ({ body }) => {
+            .post('/api/odes/session/close', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CloseSessionRequest;
                 const odeSessionId = data.odeSessionId;
 

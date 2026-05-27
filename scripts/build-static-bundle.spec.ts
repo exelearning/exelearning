@@ -15,6 +15,9 @@ import {
     generatePwaManifestContent,
     generateServiceWorkerContent,
     appendVersionToUrls,
+    shouldCompressJson,
+    gzipBuffer,
+    COMPRESS_JSON_DIRS,
     LOCALES,
     LOCALE_NAMES,
     PACKAGE_LOCALES,
@@ -25,6 +28,7 @@ import {
 import { buildConfigParams } from '../src/routes/config-params';
 import fs from 'fs';
 import path from 'path';
+import * as zlib from 'zlib';
 
 // =============================================================================
 // appendVersionToUrls tests
@@ -952,5 +956,56 @@ describe('Config parameter parity between static and server', () => {
         expect(Object.keys(staticParams.odePagStructureSyncPropertiesConfig).sort()).toEqual(
             Object.keys(serverConfig.ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG).sort()
         );
+    });
+});
+
+// =============================================================================
+// iDevice JSON gzip helpers
+// =============================================================================
+
+describe('shouldCompressJson', () => {
+    it('returns true for .json files', () => {
+        expect(shouldCompressJson('lomloe-ES.json')).toBe(true);
+        expect(shouldCompressJson('digcompedu_es.json')).toBe(true);
+    });
+
+    it('returns false for non-json files', () => {
+        expect(shouldCompressJson('lomloe-ES.json.gz')).toBe(false);
+        expect(shouldCompressJson('readme.md')).toBe(false);
+        expect(shouldCompressJson('script.js')).toBe(false);
+        expect(shouldCompressJson('data.JSON')).toBe(false);
+    });
+});
+
+describe('gzipBuffer', () => {
+    it('produces output that round-trips via gunzip', () => {
+        const original = Buffer.from(
+            JSON.stringify({ a: 1, b: [2, 3, 4], c: 'lorem ipsum dolor sit amet' }),
+        );
+        const gz = gzipBuffer(original);
+        expect(gz.length).toBeGreaterThan(0);
+        const restored = zlib.gunzipSync(gz);
+        expect(restored.equals(original)).toBe(true);
+    });
+
+    it('compresses repetitive JSON well', () => {
+        const repetitive = JSON.stringify({
+            items: Array.from({ length: 500 }, (_, i) => ({
+                id: i,
+                name: 'criterio de evaluación de competencia específica',
+                tag: 'saber básico',
+            })),
+        });
+        const original = Buffer.from(repetitive);
+        const gz = gzipBuffer(original);
+        // Highly repetitive JSON should compress to under 25% of original.
+        expect(gz.length).toBeLessThan(original.length * 0.25);
+    });
+});
+
+describe('COMPRESS_JSON_DIRS', () => {
+    it('lists the LOMLOE and DIGCOMPEDU data directories', () => {
+        expect(COMPRESS_JSON_DIRS).toContain('files/perm/idevices/base/lomloe/data');
+        expect(COMPRESS_JSON_DIRS).toContain('files/perm/idevices/base/digcompedu/data');
     });
 });

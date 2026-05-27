@@ -26,13 +26,10 @@ import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
 import { uploadSessionRoutes } from './routes/upload-session';
-import {
-    createWebSocketRoutes,
-    initialize as initWebSocket,
-    getServerInfo,
-    getActiveRooms,
-    stop as stopWebSocket,
-} from './websocket/yjs-websocket';
+import { createWebSocketRoutes, initialize as initWebSocket, stop as stopWebSocket } from './websocket/yjs-websocket';
+import { webSocketInfoRoutes } from './routes/websocket-info';
+import { yjsDebugRoutes } from './routes/yjs-debug';
+import { getAppVersion } from './utils/version';
 import { getFilesDir } from './services/file-helper';
 import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
@@ -582,14 +579,12 @@ if (registerRootRoutes) {
         .use(apiV1Routes)
         .use(uploadSessionRoutes)
         .use(createWebSocketRoutes())
+        .use(webSocketInfoRoutes)
+        .use(yjsDebugRoutes)
         .get('/api', () => ({
             name: 'eXeLearning API',
-            version: '4.0.0-elysia',
-            framework: 'Elysia',
-            runtime: 'Bun',
-        }))
-        .get('/api/websocket/info', () => getServerInfo())
-        .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }));
+            version: getAppVersion(),
+        }));
 }
 
 // Also register routes at BASE_PATH if configured
@@ -620,14 +615,12 @@ if (routePrefix) {
             .use(apiV1Routes)
             .use(uploadSessionRoutes)
             .use(createWebSocketRoutes())
+            .use(webSocketInfoRoutes)
+            .use(yjsDebugRoutes)
             .get('/api', () => ({
                 name: 'eXeLearning API',
-                version: '4.0.0-elysia',
-                framework: 'Elysia',
-                runtime: 'Bun',
+                version: getAppVersion(),
             }))
-            .get('/api/websocket/info', () => getServerInfo())
-            .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }))
             // Editor handlers must be registered at BASE_PATH too
             .get('/api/exemindmap-editor', exemindmapEditorBaseHandler)
             .get('/api/exemindmap-editor/*', exemindmapEditorHandler)
@@ -702,8 +695,30 @@ async function syncBuiltinThemes() {
     console.log(`[Themes] Base themes synced`);
 }
 
+/**
+ * Refuse to boot in production if the JWT signing secret is still the
+ * insecure default. Catches the case where a deployment forgets to set
+ * `API_JWT_SECRET` / `JWT_SECRET` — without this check, tokens would be
+ * forgeable by anyone who reads the open-source codebase.
+ */
+function assertProductionJwtSecret(): void {
+    if (process.env.NODE_ENV !== 'production') return;
+    const secret = process.env.API_JWT_SECRET || process.env.JWT_SECRET || '';
+    if (!secret || secret === 'dev_secret_change_me' || secret === 'elysia-dev-secret-change-me') {
+        console.error(
+            '[SECURITY] Refusing to start: NODE_ENV=production but no API_JWT_SECRET/JWT_SECRET is set ' +
+                '(or it is still the in-repo default). Generate a long random string and export it as ' +
+                'API_JWT_SECRET before starting the server.',
+        );
+        process.exit(1);
+    }
+}
+
 // Bootstrap: run migrations, seed, and start server
 async function bootstrap() {
+    // 0. Production safety: do not start with the default JWT secret.
+    assertProductionJwtSecret();
+
     // 1. Run migrations
     console.log('[DB] Running migrations...');
     const migrationResult = await migrateToLatest(db);

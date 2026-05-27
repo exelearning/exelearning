@@ -2316,9 +2316,12 @@ describe('Project Routes', () => {
                 sessionId: 'current-users-session',
                 fileName: 'Test.elp',
             });
+            const token = await createAuthToken(1);
 
             const res = await app.handle(
-                new Request('http://localhost/api/odes/current-users?odeSessionId=current-users-session'),
+                new Request('http://localhost/api/odes/current-users?odeSessionId=current-users-session', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
             );
 
             expect(res.status).toBe(200);
@@ -2327,8 +2330,11 @@ describe('Project Routes', () => {
         });
 
         it('should return empty for non-existent session', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
-                new Request('http://localhost/api/odes/current-users?odeSessionId=non-existent'),
+                new Request('http://localhost/api/odes/current-users?odeSessionId=non-existent', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
             );
 
             expect(res.status).toBe(200);
@@ -2337,10 +2343,11 @@ describe('Project Routes', () => {
         });
 
         it('should register current user', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/odes/current-users', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
                     body: JSON.stringify({ odeSessionId: 'test-session' }),
                 }),
             );
@@ -2351,9 +2358,11 @@ describe('Project Routes', () => {
         });
 
         it('should unregister current user', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/odes/current-users', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -2363,10 +2372,11 @@ describe('Project Routes', () => {
         });
 
         it('should check before leave', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/odes/check-before-leave', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
                     body: JSON.stringify({ odeSessionId: 'test-session' }),
                 }),
             );
@@ -2377,10 +2387,11 @@ describe('Project Routes', () => {
         });
 
         it('should close session', async () => {
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/odes/session/close', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
                     body: JSON.stringify({ odeSessionId: 'test-session' }),
                 }),
             );
@@ -2391,11 +2402,30 @@ describe('Project Routes', () => {
         });
 
         it('should return empty when no session id provided for current-users', async () => {
-            const res = await app.handle(new Request('http://localhost/api/odes/current-users'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/odes/current-users', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.currentUsers).toEqual([]);
+        });
+
+        it('odes endpoints reject anonymous callers', async () => {
+            const endpoints: Array<[string, string]> = [
+                ['GET', 'http://localhost/api/odes/current-users'],
+                ['POST', 'http://localhost/api/odes/current-users'],
+                ['DELETE', 'http://localhost/api/odes/current-users'],
+                ['POST', 'http://localhost/api/odes/check-before-leave'],
+                ['POST', 'http://localhost/api/odes/session/close'],
+            ];
+            for (const [method, url] of endpoints) {
+                const res = await app.handle(new Request(url, { method }));
+                expect(res.status).toBe(401);
+            }
         });
 
         it('should get user recent projects when authenticated', async () => {

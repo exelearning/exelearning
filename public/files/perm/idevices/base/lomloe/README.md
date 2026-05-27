@@ -25,8 +25,11 @@ lomloe/
 │   ├── lomloe.css          # Export styles
 │   └── lomloe.html         # Export template wrapper
 └── data/
-    ├── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion (~7 MB)
-    └── lomloe-ES.json      # National concretion (ISO ES) — placeholder, not yet available
+    ├── lomloe-ES.json      # State minimums (ISO ES) — RD 95/2022, 157/2022, 217/2022, 243/2022
+    ├── lomloe-ES-EFP.json  # Ministry-managed territory (Ceuta, Melilla) — Órdenes EFP
+    ├── lomloe-ES-EX.json   # Extremadura (ISO ES-EX) — Decretos 98/2022, 107/2022, 110/2022, 109/2022
+    ├── lomloe-ES-MD.json   # Comunidad de Madrid (ISO ES-MD) — Decretos 36/2022, 61/2022, 65/2022, 64/2022
+    └── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion
 ```
 
 ## Dataset format
@@ -108,12 +111,250 @@ File names follow the pattern `lomloe-{ISO-code}.json`.
 | ES-CT | Catalunya                     | ES-IB | Illes Balears           |
 | ES-EX | Extremadura                   | ES-GA | Galicia                 |
 
-## Adding the national (state) concretion
+## National (state) datasets
 
-When the national JSON is available:
+Two state-level datasets ship alongside the Canary Islands concretion:
 
-1. Replace `data/lomloe-ES.json` with the real data (same schema).
-2. Set `available: true` on the `ES` entry in `DATASETS` in `edition/lomloe.js`.
+### `lomloe-ES.json` — State minimum teachings (Reales Decretos)
+
+Built from the four Royal Decrees that set the Spanish LOMLOE *enseñanzas mínimas*:
+
+| BOE ID | Norma | Etapa |
+|---|---|---|
+| `BOE-A-2022-1654` | RD 95/2022, de 1 de febrero | Educación Infantil |
+| `BOE-A-2022-3296` | RD 157/2022, de 1 de marzo | Educación Primaria |
+| `BOE-A-2022-4975` | RD 217/2022, de 29 de marzo | Educación Secundaria Obligatoria |
+| `BOE-A-2022-5521` | RD 243/2022, de 5 de abril | Bachillerato |
+
+These RDs apply across Spain as the state floor; each autonomous community adds its own concretion on top.
+
+### `lomloe-ES-EFP.json` — Ministry-managed territory (Ceuta and Melilla)
+
+Built from the four Órdenes that set the operative curricula for the *ámbito de gestión del Ministerio de Educación, Formación Profesional y Deportes* (Ceuta and Melilla). Use this dataset when the destination is a school inside that territory.
+
+| BOE ID | Norma | Etapa |
+|---|---|---|
+| `BOE-A-2022-10958` | Orden EFP/608/2022, de 29 de junio | Educación Infantil |
+| `BOE-A-2022-12066` | Orden EFP/678/2022, de 15 de julio | Educación Primaria |
+| `BOE-A-2022-13172` | Orden EFP/754/2022, de 28 de julio | Educación Secundaria Obligatoria |
+| `BOE-A-2022-13173` | Orden EFP/755/2022, de 28 de julio | Bachillerato |
+
+**Infantil build note.** Orden EFP/608/2022 reproduces the state *enseñanzas
+mínimas* of RD 95/2022 — the ámbito de gestión MEFPD is the state floor author.
+The Infantil etapa is therefore built by inheriting `lomloe-ES.json` verbatim
+with the code prefix re-emitted as `ES-EFP-INF…` (the same inheritance strategy
+used below for ESO). Because the inherited state tree already carries the
+Canarias-sourced competencias-clave backfill (see *Infantil competencias clave*
+below), the ES-EFP Infantil criterios appear in the editor with the same
+checkbox set as the state floor.
+
+**ESO build note.** The Orden EFP/754/2022 curriculum (competencias específicas,
+criterios de evaluación and saberes básicos) reproduces the state *enseñanzas
+mínimas* of RD 217/2022 — the ámbito de gestión MEFPD *is* the state floor author.
+The ESO etapa is therefore built by inheriting `lomloe-ES.json` verbatim with the
+code prefix re-emitted as `ES-EFP-…` (the same inheritance strategy used for
+`ES-EX` and `ES-MD`). The per-course distribution is taken from the order's own
+Anexo II course markers (see the per-course filter table above). This replaced an
+earlier extraction whose ESO etapa mis-parsed section headings (*Evaluación*,
+*Especificaciones…*) as materias. The 4.º-curso optatives that are specific to the
+MEFPD order and absent from the state RD (*Cultura Clásica*, *Introducción a la
+Filosofía*, *Medios y Recursos Digitales*, *Segunda Lengua Extranjera*) are not
+yet included, matching the scope of the `ES-EX`/`ES-MD` datasets.
+
+### Cycle-to-year mapping
+
+The BOE Royal Decrees define curriculum at cycle (ciclo) or course-group granularity, not per individual year. The iDevice UI browses by individual year, so cycle content is **duplicated** into each year of that cycle — matching the Canary Islands precedent. Generated codes embed the year/cycle tag (e.g. `ES-PRI1-MAT-CE01` for 1.º Primaria, `ES-PRI2-MAT-CE01` for 2.º Primaria) so each year keeps unique selection IDs even when the content is the same.
+
+| Etapa | Niveles in dataset | BOE source granularity | Mapping |
+|---|---|---|---|
+| Infantil | `Primer ciclo (0-3 años)`, `Segundo ciclo (3-6 años)` | 2 ciclos | One-to-one; no per-year duplication (BOE does not split Infantil by year). |
+| Primaria | `1º Primaria` … `6º Primaria` | 3 ciclos | Each ciclo is duplicated into both its years. |
+| ESO | `1º ESO` … `4º ESO` | Mostly "1.º–3.º" plus "4.º" | "1.º–3.º" duplicated into 1.º, 2.º, 3.º. |
+| Bachillerato | `1º Bachillerato`, `2º Bachillerato` | Per-curso | One-to-one (subjects named "I" / "II"). |
+
+#### Per-course subject filter for the ESO obligatory block
+
+The state RD 217/2022 defines the curriculum of the 1.º–3.º ESO subjects as a
+single block, **without** assigning each subject to a specific course, so the
+generator duplicates every subject into 1.º, 2.º and 3.º. The state floor (`ES`)
+keeps that cycle view because the RD genuinely does not fix the per-course
+distribution. Each autonomous community, however, *does* fix it in its decree's
+*Anexo horario* (weekly hours per course; 0 h = not taught that year).
+
+To avoid offering a subject in a course where it is not taught (e.g. *Física y
+Química* is never in 1.º ESO), the editor filters the materia list per course
+using `ESO_COURSE_SUBJECTS` in `edition/lomloe.js`. It is populated from:
+
+| Dataset | Source of the per-course distribution |
+|---|---|
+| `ES-EX`  | Decreto 110/2022 (DOE), **Anexo V** |
+| `ES-MD`  | Decreto 65/2022 (BOCM), **Anexo I** |
+| `ES-EFP` | Orden EFP/754/2022 (BOE), per-course markers of **Anexo II** |
+
+Datasets extracted per course already (`ES-CN`, `ES-GA`) and the state floor
+(`ES`) are not listed and are shown unfiltered. 4.º ESO is also left unfiltered
+because it is built on optional *materias de opción* the student chooses.
+
+#### Infantil competencias clave
+
+In Educación Infantil, LOMLOE does **not** itemise descriptores operativos or
+competencia-clave links per competencia específica / criterio — the *perfil de
+salida* is assessed at the end of basic education, not in Infantil — so the state
+RD 95/2022 (and the regional decrees that adopt it) contain no such links and the
+generator emitted empty `competencias_clave`. The **Canary Islands concretion is
+the only source that itemised them**, using the eight bare **competencias clave**
+(`CCL, CP, STEM, CD, CPSAA, CC, CE, CCEC`) rather than numbered descriptores.
+
+Because the Infantil competencias específicas are the national framework (their
+text is byte-identical across `ES`, `ES-CN`, `ES-EX`, `ES-MD`, `ES-EFP`), the
+`ES`, `ES-EX` and `ES-MD` Infantil criterios are **backfilled** with the
+competencia-clave set Canarias assigns to the matching área + competencia
+(matched by normalised área name and competencia ordinal, guarded by a
+description-equality assertion). This is what lets the editor offer the
+competencias clave as checkboxes in Infantil (column header "Comp. Clave"); the
+teacher then selects the applicable ones. `ES-EFP` inherits its Infantil etapa
+from `ES` verbatim (see *Infantil build note* above), so the backfilled links
+carry over without a separate pass. `ES-CN`/`ES-GA` already carry their own
+links.
+
+### Generator script
+
+The JSONs are produced by a Python script (`generate_lomloe_es.py`) that fetches each BOE XML, parses the ANEXO sections, and emits the dataset deterministically. The script is **not committed to this repo**; it is attached to the PR that introduced these datasets so the extraction is reproducible and auditable. Re-running it against the same BOE inputs produces byte-identical JSON.
+
+## `lomloe-ES-EX.json` — Extremadura concretion
+
+Hybrid dataset built from the Junta de Extremadura's curriculum decrees plus inheritance from the state RDs (LOMLOE framework mandates that the state minimums apply where the autonomous concretion does not explicitly override them).
+
+### Base curriculum decrees (DOE)
+
+| DOE PDF | Norma | Etapa |
+|---|---|---|
+| `2022040148` | Decreto 98/2022, de 20 de julio | Educación Infantil |
+| `2022040159` | Decreto 107/2022, de 28 de julio | Educación Primaria |
+| `2022040165C` | Decreto 110/2022, de 22 de agosto | Educación Secundaria Obligatoria |
+| `2022040164` | Decreto 109/2022, de 22 de agosto | Bachillerato |
+
+### Modification decrees reviewed
+
+- `Decreto 240/2023` (Infantil)
+- `Decreto 241/2023` (Primaria)
+- `Decreto 242/2023` (ESO)
+- `Decreto 243/2023` (Bachillerato)
+- `Decreto 73/2025` (Bachillerato)
+
+These modifications touch organisational provisions (timetable, optionality, modality lists) more than the curriculum elements consumed by the iDevice. Where a modification updates a regional saber básico or area name, the change is incorporated into the JSON; pure organisational changes are documented here but do not alter the dataset.
+
+### Build strategy (hybrid)
+
+The `ES-EX` dataset combines two sources:
+
+1. **Competencias específicas and criterios de evaluación**: inherited verbatim from `lomloe-ES.json` with the code prefix swapped to `ES-EX-…`. LOMLOE mandates that autonomous concretions adopt the state-level competencias and criterios; Extremadura's decrees state this explicitly.
+2. **Saberes básicos**: extracted from the DOE PDF tables with `pdfplumber` where the regional concretion is available (Decreto 107/2022 uses an explicit `A.1.1.1.` saber-code scheme — block letter, subblock, ciclo, item — that maps cleanly to the schema). Where the DOE table extraction does not yield content for an (etapa, area), the state saberes are used as the fallback per the LOMLOE inheritance rule.
+
+The dataset follows the same per-year duplication and code conventions used for `ES` and `ES-CN`: a `nivel_tag` is embedded into every generated code so duplicated cycle content keeps unique selection identifiers across years.
+
+#### Subject codes (`codArea`) — official Extremadura siglas
+
+Unlike the state dataset (whose `codArea` values are generator-derived abbreviations such as
+`BIG`, `FQX`, `EPV`), the **Educación Primaria** and **ESO** subject codes of `ES-EX` use the
+**official Extremadura siglas** taken from the *documentos de evaluación* resolution:
+
+> **Resolución de 5 de diciembre de 2022** de la Secretaría General de Educación, por la que se
+> establecen los documentos oficiales de evaluación LOMLOE — **DOE núm. 239, de 15 de diciembre de
+> 2022** ([BG/FQ/GH/EPVA/TECD/EVCE…], Anexo VII — Actas de Primaria; Anexo VIII — Actas de ESO).
+> PDF: `https://doe.juntaex.es/pdfs/doe/2022/2390o/22050223.pdf`
+
+Mapping applied (derived → official): `BIG→BG`, `FQX→FQ`, `GEH→GH`, `EPV→EPVA`, `TYD→TECD`,
+`EVC→EVCE`, `LEX→LE`, `EFI→EF`, `EEX→EyE`, `EAR→EA`, `FOP→FOPP`, `CMN→CMNS` (`LCL`, `MAT`, `MUS`,
+`DIG`, `LAT`, `TEC` already coincide). These codes are embedded in every competencia/criterio/saber
+code (`ES-EX-ESO1-BG-CE01-CR01`) and shown in the summary/export badges.
+
+**Infantil** and **Bachillerato** keep the derived codes: the resolution's Infantil documents
+(Anexos I–II) are qualitative and assign no subject siglas, and the Bachillerato actas (Anexo IX)
+only codify *materias de modalidad* (with per-course suffixes, e.g. `DA I`/`DA II`) while common
+subjects appear by full name without a sigla — so there is no complete, unambiguous official set to
+adopt there.
+
+### Generator script
+
+A separate Python script (`generate_lomloe_es_ex.py`) implements the hybrid build: load `lomloe-ES.json`, inherit + reprefix, then overlay DOE-extracted regional saberes. The script is **attached to the PR** that introduced this dataset rather than committed to the repo. The Primaria/ESO `codArea` values are then re-mapped to the official Extremadura siglas documented above.
+
+## `lomloe-ES-MD.json` — Comunidad de Madrid concretion
+
+Hybrid dataset, built the same way as `ES-EX`. The Comunidad de Madrid decrees adopt the state RDs (their text states the state *enseñanzas mínimas* occupy 60% of the curriculum, the autonomous addition the remaining 40%), so competencias específicas and criterios de evaluación are inherited from the state RDs while the regional *contenidos* (= saberes básicos) are published as BOCM tables.
+
+### Base curriculum decrees (BOCM / Comunidad de Madrid)
+
+| Norma | Etapa |
+|---|---|
+| Decreto 36/2022, de 8 de junio | Educación Infantil |
+| Decreto 61/2022, de 13 de julio | Educación Primaria |
+| Decreto 65/2022, de 20 de julio | Educación Secundaria Obligatoria |
+| Decreto 64/2022, de 20 de julio | Bachillerato |
+
+### Modification decree reviewed
+
+- `Decreto 59/2024, de 12 de junio` — modifies Decreto 61/2022 (Primaria), Decreto 65/2022 (ESO) and Decreto 64/2022 (Bachillerato). Reviewed for impact on the curriculum elements consumed by the iDevice (área/materia names, ESO Geografía e Historia content, Bachillerato subject organisation, criterios, contenidos). Changes that touch those elements are incorporated into the JSON; provisions that only affect organisation, bilingual-programme rules, or timetables are documented here and do not alter the dataset.
+
+### Build strategy (hybrid)
+
+1. **Competencias específicas + criterios de evaluación**: inherited verbatim from `lomloe-ES.json` with codes re-emitted as `ES-MD-…`. Madrid mandates the state minimums as the curriculum floor.
+2. **Saberes básicos**: overlaid from the BOCM `CONTENIDOS` tables (columns `BLOQUES | (subbloque) | CONOCIMIENTOS, DESTREZAS Y ACTITUDES`) extracted with `pdfplumber`, attributed to areas by matching the official area vocabulary present on each page. Where the BOCM extraction does not attribute content to an area, the state saberes are used as the fallback per the LOMLOE inheritance rule. In the current dataset the Primaria *contenidos* are overlaid from the BOCM; Infantil, ESO and Bachillerato inherit the state saberes (their BOCM area attribution is pending refinement).
+
+Granularity, code conventions and cycle-to-year duplication match the `ES`, `ES-EX` and `ES-CN` datasets. Codes use the `ES-MD-` prefix.
+
+### Generator script
+
+A Python script (`generate_lomloe_es_md.py`) implements the hybrid build. It is **attached to the PR** that introduced this dataset rather than committed to the repo.
+
+## `lomloe-ES-GA.json` — Galicia concretion
+
+Full extraction from the official Galician-language DOG (*Diario Oficial de Galicia*) decrees published by the Xunta de Galicia. Unlike the hybrid strategy used for Extremadura and Madrid, **all curriculum content is taken verbatim from the Galician-language official sources**. No Spanish text is inherited, translated, or paraphrased.
+
+### Base curriculum decrees (DOG, Galician language `_gl.html`)
+
+| DOG | Date | Norma | Etapa |
+|-----|------|-------|-------|
+| DOG 172 | 09/09/2022 | Decreto 150/2022, do 8 de setembro | Educación Infantil |
+| DOG 183 | 26/09/2022 | Decreto 155/2022, do 15 de setembro | Educación Primaria |
+| DOG 183 | 26/09/2022 | Decreto 156/2022, do 15 de setembro | Educación Secundaria Obrigatoria |
+| DOG 183 | 26/09/2022 | Decreto 157/2022, do 15 de setembro | Bacharelato |
+
+### Curriculum structure in Galician law
+
+Galicia's decrees use Galician terminology that maps onto the LOMLOE framework:
+
+| Galician term | LOMLOE equivalent | Schema field |
+|---------------|------------------|--------------|
+| Obxectivos da materia / área (OBX1…) | Competencias específicas | `competencias_especificas` |
+| Criterios de avaliación (CA{b}.{n}) | Criterios de evaluación | `criterios_evaluacion` |
+| Contidos | Saberes básicos | `saberes_basicos` |
+
+### Nivel labels (Galician)
+
+| Etapa | Nivel keys |
+|-------|-----------|
+| Educación Infantil | `Primeiro ciclo (0-3 anos)`, `Segundo ciclo (3-6 anos)` |
+| Educación Primaria | `1º de educación primaria` … `6º de educación primaria` |
+| Educación Secundaria Obrigatoria | `1º de ESO` … `4º de ESO` |
+| Bacharelato | `1º de bacharelato`, `2º de bacharelato` |
+
+### Language policy
+
+All text in `lomloe-ES-GA.json` is in Galician (`gl`). The generator does **not** inherit from `lomloe-ES.json` and does **not** translate or paraphrase any content. Every OBX description, CA criterio, and Contido item is extracted verbatim from the official Galician-language DOG HTML.
+
+### Build strategy (full Galician extraction)
+
+1. Fetch the four DOG Galician HTML files (cached locally).
+2. Locate `ANEXO II` in each decree; split by subject/area using `dog-base-sangria` section headers.
+3. For each subject: extract OBX objectives (→ `competencias_especificas`) from the "Obxectivos" subsection.
+4. For each course (per-year for Primaria/ESO/Bacharelato; per-ciclo for Infantil): extract CA criterio items (→ `criterios_evaluacion`) and Contidos items (→ `saberes_basicos`) organized by bloques.
+5. Link each CA criterio to its competencia específica via the OBX reference tag.
+6. Skip ciclo-level markers in Primaria (Primeiro/Segundo/Terceiro ciclo) that carry no direct content.
+
+### Generator script
+
+A Python script (`generate_lomloe_es_ga.py`, requires `beautifulsoup4`) implements the full extraction. It is **attached to the PR** that introduced this dataset rather than committed to the repo.
 
 ## Data source (Canary Islands)
 
@@ -192,8 +433,12 @@ The iDevice stores a JSON object in the Yjs document:
 ### Dataset switch
 
 1. Open the iDevice with existing selections.
-2. Change the concrecion selector to **Estado** — verify the "coming soon" notice appears and selections are preserved.
-3. Change back to **Canarias** — verify the browser reloads correctly.
+2. Change the concretion selector to **Estado (España)** — verify the state dataset loads and the curriculum tree is browsable. Tag one criterio and one saber.
+3. Change to **Ámbito de gestión MEFPD** — verify the Ceuta/Melilla dataset loads (Infantil/Primaria/ESO/Bachillerato etapas all present) and previous ES selections persist.
+4. Change to **Extremadura** — verify the regional dataset loads and that competencias mirror the state RD (inherited) while saberes show Extremadura-specific concretion where the DOE provides it.
+5. Change to **Comunidad de Madrid** — verify the regional dataset loads; Primaria shows BOCM-specific contenidos, other etapas inherit the state saberes.
+6. Change to **Galicia** — verify the regional dataset loads; all etapa and nivel labels are in Galician (`Educación Secundaria Obrigatoria`, `1º de educación primaria`, `Primeiro ciclo (0-3 anos)`, etc.) and competencia codes start with `ES-GA-`.
+7. Change back to **Canarias** — verify it still loads correctly.
 
 ### Empty state
 
