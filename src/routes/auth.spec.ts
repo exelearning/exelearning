@@ -547,6 +547,59 @@ describe('Auth Routes', () => {
     // Form-based login routes
     // =========================================================================
 
+    describe('POST /login_check Origin guard', () => {
+        it('redirects with error when Origin header does not match the request host', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Origin: 'https://evil.example.com',
+                    },
+                    body: '_username=x@example.com&_password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).toContain('/login');
+            expect(location).toContain('Invalid%20request%20origin');
+        });
+
+        it('redirects with error when Referer header cannot be parsed as a URL', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Referer: 'not-a-url',
+                    },
+                    body: '_username=x@example.com&_password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).toContain('Invalid%20request%20origin');
+        });
+
+        it('accepts Origin that matches the request host', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Origin: 'http://localhost',
+                    },
+                    body: '_username=nobody@example.com&_password=irrelevant',
+                }),
+            );
+            // Origin check passes; flow continues to the "invalid credentials"
+            // redirect (302 to /login?error=...), not the origin-error redirect.
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).not.toContain('Invalid%20request%20origin');
+        });
+    });
+
     describe('POST /login_check', () => {
         it('should redirect to login with error for invalid credentials', async () => {
             const response = await app.handle(
