@@ -201,21 +201,28 @@ export class FileSystemAssetHandler implements AssetHandler {
      * @returns Asset ID
      */
     async storeAsset(id: string, data: Uint8Array, metadata: AssetMetadata): Promise<string> {
-        // Determine the full directory path including any subfolders
-        let assetDir: string;
-        if (metadata.folderPath) {
-            assetDir = path.join(this.extractPath, metadata.folderPath);
-        } else {
-            assetDir = path.join(this.extractPath, 'resources');
+        // Both folderPath and filename can originate from untrusted ZIP entry
+        // names. Normalize backslashes (valid filename chars on POSIX) and
+        // resolve against the extract root so any traversal attempt is caught
+        // before any directory or file is written.
+        const resolvedExtractPath = path.resolve(this.extractPath);
+        const safeFolderPath = (metadata.folderPath ?? 'resources').replace(/\\/g, '/');
+        const assetDir = path.resolve(resolvedExtractPath, safeFolderPath);
+
+        if (assetDir !== resolvedExtractPath && !assetDir.startsWith(resolvedExtractPath + path.sep)) {
+            throw new Error(`Security error: asset folderPath escapes extract directory: ${metadata.folderPath}`);
         }
 
         if (!existsSync(assetDir)) {
             mkdirSync(assetDir, { recursive: true });
         }
 
-        // Store the file with its original filename (preserving extension)
-        const filename = metadata.filename;
-        const filePath = path.join(assetDir, filename);
+        const filename = metadata.filename.replace(/\\/g, '/');
+        const filePath = path.resolve(assetDir, filename);
+
+        if (!filePath.startsWith(assetDir + path.sep)) {
+            throw new Error(`Security error: asset filename escapes asset directory: ${metadata.filename}`);
+        }
 
         // Handle duplicate filenames by appending a number
         let finalPath = filePath;
@@ -415,7 +422,7 @@ export class FileSystemAssetHandler implements AssetHandler {
         themeDir: string | null;
         downloadable: boolean;
     }> {
-        const themeDir = path.join(this.extractPath, THEME_DIRECTORY);
+        const themeDir = path.resolve(this.extractPath, THEME_DIRECTORY);
         let themeName: string | null = null;
         let downloadable = false;
         let hasThemeFiles = false;
@@ -428,9 +435,16 @@ export class FileSystemAssetHandler implements AssetHandler {
 
             hasThemeFiles = true;
 
-            // Get relative path within theme directory
+            // Get relative path within theme directory. Normalize backslashes
+            // and resolve against themeDir to block Zip Slip via crafted entries
+            // such as `theme/../escape.txt`.
             const relativePath = zipPath.substring(THEME_DIRECTORY.length + 1);
-            const fullPath = path.join(themeDir, relativePath);
+            const safeRelativePath = relativePath.replace(/\\/g, '/');
+            const fullPath = path.resolve(themeDir, safeRelativePath);
+
+            if (!fullPath.startsWith(themeDir + path.sep)) {
+                throw new Error(`Security error: theme entry escapes theme directory: ${zipPath}`);
+            }
 
             // Create directory if needed
             const fileDir = path.dirname(fullPath);

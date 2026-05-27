@@ -84,9 +84,7 @@ function createBasePathTestApp(basePath: string | null = null): Elysia {
     const apiRoute = new Elysia()
         .get('/api', () => ({
             name: 'eXeLearning API',
-            version: '4.0.0-elysia',
-            framework: 'Elysia',
-            runtime: 'Bun',
+            version: '1.2.3-test',
         }))
         .get('/api/config/test', () => ({ config: 'test-value' }))
         .get('/api/translations/:lang', ({ params }) => ({
@@ -125,9 +123,9 @@ describe('BASE_PATH Integration', () => {
             const response = await testRequest(app, '/api');
             expect(response.status).toBe(200);
 
-            const body = await parseJsonResponse<{ name: string; framework: string }>(response);
+            const body = await parseJsonResponse<{ name: string; version: string }>(response);
             expect(body.name).toBe('eXeLearning API');
-            expect(body.framework).toBe('Elysia');
+            expect(body.version).toBe('1.2.3-test');
         });
 
         it('should serve API config at /api/config/test', async () => {

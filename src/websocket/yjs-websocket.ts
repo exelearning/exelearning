@@ -448,34 +448,46 @@ export function handleWebSocketClose(ws: ServerWebSocket<WsData>, data: WsData |
  * Create Elysia WebSocket routes for Yjs
  */
 export function createWebSocketRoutes() {
-    return new Elysia({ name: 'yjs-websocket' }).ws('/yjs/:docName', {
-        // Connection opened - validate token here since beforeHandle doesn't pass data to open
-        async open(ws) {
-            const rawData = ws.data as ElysiaWsRawData;
-            const docName = rawData.params?.docName;
-            const token = rawData.query?.token as string;
+    return (
+        new Elysia({ name: 'yjs-websocket' })
+            // Public liveness probe under the same prefix where the WebSocket is
+            // mounted. Used by external healthchecks and quick smoke tests that
+            // want to confirm the Yjs service is up without negotiating a WS
+            // upgrade. Intentionally minimal: no counts, ports, modes or hostnames.
+            .get('/yjs/info', () => ({ ok: true, service: 'yjs-websocket' }))
+            .ws('/yjs/:docName', {
+                // Connection opened - validate token here since beforeHandle doesn't pass data to open
+                async open(ws) {
+                    const rawData = ws.data as ElysiaWsRawData;
+                    const docName = rawData.params?.docName;
+                    const token = rawData.query?.token as string;
 
-            const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
-            if (!result.success && result.error) {
-                ws.close(result.error.code, result.error.reason);
-            }
-        },
+                    const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
+                    if (!result.success && result.error) {
+                        ws.close(result.error.code, result.error.reason);
+                    }
+                },
 
-        // Handle pong response (Bun WebSocket native support)
-        pong(ws) {
-            handleWebSocketPong(ws.data as WsData);
-        },
+                // Handle pong response (Bun WebSocket native support)
+                pong(ws) {
+                    handleWebSocketPong(ws.data as WsData);
+                },
 
-        // Message received
-        message(ws, message) {
-            handleWebSocketMessage(ws as ServerWebSocket<WsData>, ws.data as WsData, message as Buffer | string);
-        },
+                // Message received
+                message(ws, message) {
+                    handleWebSocketMessage(
+                        ws as ServerWebSocket<WsData>,
+                        ws.data as WsData,
+                        message as Buffer | string,
+                    );
+                },
 
-        // Connection closed
-        close(ws) {
-            handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
-        },
-    });
+                // Connection closed
+                close(ws) {
+                    handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
+                },
+            })
+    );
 }
 
 /**
