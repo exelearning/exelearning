@@ -73,6 +73,59 @@ class ResourceFetcher {
     // Whether running in static mode (no server backend)
     // Set during init() from app.capabilities (derived from RuntimeConfig)
     this.isStaticMode = false;
+    // Per-name cache-buster for site themes (Map<dirName, updatedAtMs>).
+    // Populated lazily from /api/themes/installed. Used to key IndexedDB cache
+    // and the bundle URL so a re-uploaded admin theme invalidates stale files.
+    this.siteThemeVersions = null;
+    this.siteThemeVersionsPromise = null;
+  }
+
+  /**
+   * Lazily load site theme versions (Map<dirName, updatedAtMs>) from the server.
+   * Idempotent across concurrent callers. No-op in static mode.
+   * @returns {Promise<Map<string, number>>}
+   */
+  async loadSiteThemeVersions() {
+    if (this.siteThemeVersions) return this.siteThemeVersions;
+    if (this.isStaticMode) {
+      this.siteThemeVersions = new Map();
+      return this.siteThemeVersions;
+    }
+    if (this.siteThemeVersionsPromise) return this.siteThemeVersionsPromise;
+
+    this.siteThemeVersionsPromise = (async () => {
+      const versions = new Map();
+      try {
+        const url = `${this.basePath}/api/themes/installed`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          const themes = Array.isArray(data?.themes) ? data.themes : [];
+          for (const theme of themes) {
+            if (theme?.type === 'site' && theme?.dirName && typeof theme.updatedAt === 'number') {
+              versions.set(theme.dirName, theme.updatedAt);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[ResourceFetcher] Failed to load site theme versions:', e?.message || e);
+      }
+      this.siteThemeVersions = versions;
+      this.siteThemeVersionsPromise = null;
+      return versions;
+    })();
+
+    return this.siteThemeVersionsPromise;
+  }
+
+  /**
+   * Resolve the cache-buster for a theme (null for base/user themes, or when
+   * versions haven't been loaded — e.g. tests that bypass init()).
+   * @param {string} themeName
+   * @returns {number|null}
+   */
+  getThemeVersion(themeName) {
+    return this.siteThemeVersions?.get(themeName) ?? null;
   }
 
   /**
@@ -99,6 +152,9 @@ class ResourceFetcher {
 
     // Server mode: load bundle manifest to check what bundles are available
     await this.loadBundleManifest();
+    // Load per-name cache-busters for site themes so re-uploads invalidate
+    // both the IndexedDB cache and the bundle URL automatically.
+    await this.loadSiteThemeVersions();
   }
 
   /**
@@ -401,10 +457,14 @@ class ResourceFetcher {
       }
     }
 
-    // 4. Check IndexedDB cache for server themes (version-based)
+    // 4. Check IndexedDB cache for server themes (version-based, with per-theme
+    // cache-buster for re-uploaded site themes so we don't return stale files).
+    const themeUpdatedAt = this.isStaticMode ? null : this.getThemeVersion(themeName);
+    const themeCacheVersion = themeUpdatedAt ? `${this.version}-${themeUpdatedAt}` : this.version;
+
     if (this.resourceCache) {
       try {
-        const cached = await this.resourceCache.get('theme', themeName, this.version);
+        const cached = await this.resourceCache.get('theme', themeName, themeCacheVersion);
         if (cached) {
           this.cache.set(cacheKey, cached);
           Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded from IndexedDB cache`);
@@ -426,7 +486,12 @@ class ResourceFetcher {
     }
     // 6. Try ZIP bundle (faster, single request)
     else if (this.bundlesAvailable) {
-      const bundleUrl = `${this.apiBase}/bundle/theme/${themeName}`;
+      // Include the theme's updated_at as a query param so re-uploads bypass the
+      // browser HTTP cache (the server ignores the param and just serves the
+      // current bundle).
+      const bundleUrl = themeUpdatedAt
+        ? `${this.apiBase}/bundle/theme/${themeName}?v=${themeUpdatedAt}`
+        : `${this.apiBase}/bundle/theme/${themeName}`;
       console.log(`[ResourceFetcher] 📦 Fetching theme '${themeName}' via bundle:`, bundleUrl);
       themeFiles = await this.fetchBundle(bundleUrl);
       if (themeFiles && themeFiles.size > 0) {
@@ -446,7 +511,7 @@ class ResourceFetcher {
     // Store in IndexedDB for persistence (only if non-empty, only for server themes)
     if (themeFiles.size > 0 && this.resourceCache) {
       try {
-        await this.resourceCache.set('theme', themeName, this.version, themeFiles);
+        await this.resourceCache.set('theme', themeName, themeCacheVersion, themeFiles);
       } catch (e) {
         console.warn('[ResourceFetcher] IndexedDB cache write failed:', e);
       }

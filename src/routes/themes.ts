@@ -117,6 +117,10 @@ interface ThemeConfig {
     icons: Record<string, ThemeIcon>;
     valid: boolean;
     isDefault?: boolean;
+    // Cache-buster timestamp (ms). Set for site themes from themes.updated_at so
+    // the client can key its persistent (IndexedDB) and bundle caches per
+    // re-upload. null/undefined for base themes (which version with the app).
+    updatedAt?: number | null;
 }
 
 /**
@@ -342,6 +346,7 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
         js,
         icons,
         valid: true,
+        updatedAt: siteTheme.updated_at ?? null,
     };
 }
 

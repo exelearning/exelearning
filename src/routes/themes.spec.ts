@@ -247,6 +247,12 @@ describe('Themes Routes', () => {
                 // URL embeds the theme's updated_at as a cache-buster suffix
                 // so re-uploaded themes invalidate the browser cache automatically.
                 expect(siteTheme.url).toMatch(/^\/v9\.9\.9-\d+\/site-files\/themes\/site-test-theme$/);
+                // Also exposed explicitly so the client can key its IndexedDB
+                // and bundle URL caches per re-upload (PR #1775).
+                expect(typeof siteTheme.updatedAt).toBe('number');
+                expect(siteTheme.updatedAt).toBeGreaterThan(0);
+                const urlMatch = siteTheme.url.match(/-(\d+)\/site-files\//);
+                expect(urlMatch?.[1]).toBe(String(siteTheme.updatedAt));
                 expect(body.defaultTheme).toEqual({ type: 'site', dirName: 'site-test-theme' });
             } finally {
                 await resetClientCacheForTesting();
