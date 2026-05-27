@@ -297,6 +297,7 @@ describe('$slide.renderBehaviour', () => {
         document.dispatchEvent(new Event('fullscreenchange'));
 
         expect(wrapA.classList.contains('slide-fs-active')).toBe(true);
+        expect(btnA.getAttribute('aria-label')).toBe('Exit fullscreen');
         expect(document.body.style.overflow).toBe('hidden');
 
         document.body.removeChild(wrapA);

@@ -63,6 +63,8 @@ function buildMockEditorApi(overrides = {}) {
         getSvgString: vi.fn(() => '<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
         getDimensions: vi.fn(() => ({ width: 1280, height: 720 })),
         getBackground: vi.fn(() => '#ffffff'),
+        canSave: vi.fn(() => true),
+        getUnreadPayload: vi.fn(() => null),
         setDimensions: vi.fn(),
         setBackground: vi.fn(),
         destroy: vi.fn(),
@@ -287,6 +289,17 @@ describe('save (after editor mount)', () => {
     it('includes svg snapshot from the editor', async () => {
         await initEditor(null);
         expect($exeDevice.save().svg).toContain('<svg');
+    });
+
+    it('refuses to save while code changes have not been applied to the canvas', async () => {
+        mockApi = buildMockEditorApi({ canSave: vi.fn(() => false) });
+        global.window.__slideEditorInit = { mount: vi.fn(() => mockApi) };
+        $exeDevice.init(container, null, '/path/');
+        await new Promise(r => setTimeout(r, 0));
+
+        expect($exeDevice.save()).toBe(false);
+        expect(mockApi.getFabricJSON).not.toHaveBeenCalled();
+        expect(mockApi.getSvgString).not.toHaveBeenCalled();
     });
 
     it('returns the original payload verbatim when the editor reports an unread future version', async () => {

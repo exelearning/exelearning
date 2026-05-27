@@ -190,8 +190,9 @@ var $slide = (() => {
                 document.querySelectorAll('.slide-export-fabric .slide-fullscreen-btn').forEach(btn => {
                     var wrap = btn.closest('.slide-export-fabric');
                     var isFs = !!document.fullscreenElement && wrap === document.fullscreenElement;
-                    btn.setAttribute('aria-label', isFs ? 'Exit fullscreen' : 'Fullscreen');
-                    btn.innerHTML = isFs ? ICON_EXIT_FS : ICON_ENTER_FS;
+                    var isExpanded = isFs || wrap.classList.contains('slide-fs-active');
+                    btn.setAttribute('aria-label', isExpanded ? 'Exit fullscreen' : 'Fullscreen');
+                    btn.innerHTML = isExpanded ? ICON_EXIT_FS : ICON_ENTER_FS;
                 });
                 var anyActive =
                     !!document.fullscreenElement ||

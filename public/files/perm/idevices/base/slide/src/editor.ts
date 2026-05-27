@@ -33,6 +33,7 @@ export interface EditorAPI {
     getSvgString(): string;
     getDimensions(): { width: number; height: number };
     getBackground(): string;
+    canSave(): boolean;
     setDimensions(width: number, height: number): void;
     setBackground(color: string): void;
     /**
@@ -225,6 +226,9 @@ export class SlideEditor implements EditorAPI {
         this.wrapper.insertBefore(banner, this.wrapper.firstChild);
         this.toolbar.root.classList.add('exe-slide-toolbar--disabled');
         this.canvasControls.root.classList.add('exe-slide-canvas-controls--disabled');
+        this.viewToggle.setAttribute('aria-disabled', 'true');
+        this.visualBtn.disabled = true;
+        this.codeBtn.disabled = true;
     }
 
     // ── DOM ────────────────────────────────────────────────────────────────
@@ -323,50 +327,15 @@ export class SlideEditor implements EditorAPI {
         this.codeTextarea.autocapitalize = 'off';
         this.codeTextarea.setAttribute('aria-label', t('Slide source (JSON)'));
 
-        // While the user edits the JSON in code mode the (hidden) Fabric
-        // canvas falls out of sync with the textarea, so getSvgString()
-        // would export a stale snapshot. Mirror the textarea into the
-        // canvas on input (debounced); failures stay silent — the user
-        // will see them when toggling back to Visual.
-        this.codeTextarea.addEventListener('input', () => this.scheduleCodeMirror());
-
         this.codePanel.appendChild(this.codeError);
         this.codePanel.appendChild(this.codeTextarea);
         this.canvasShell.appendChild(this.codePanel);
     }
 
-    private codeMirrorTimer: ReturnType<typeof setTimeout> | null = null;
-
-    private scheduleCodeMirror(): void {
-        if (this.codeMirrorTimer !== null) clearTimeout(this.codeMirrorTimer);
-        this.codeMirrorTimer = setTimeout(() => {
-            this.codeMirrorTimer = null;
-            void this.mirrorCodeToCanvas();
-        }, 200);
-    }
-
-    private async mirrorCodeToCanvas(): Promise<void> {
-        if (!this.codeMode || this.destroyed) return;
-        const text = this.codeTextarea.value.trim();
-        let parsed: AnyObj;
-        try {
-            parsed = JSON.parse(text || '{}') as AnyObj;
-        } catch {
-            return; // Mid-edit: leave the canvas alone.
-        }
-        this.applyingHistory = true;
-        try {
-            await this.adapter.loadFromJSON(parsed);
-        } catch {
-            /* invalid scene shape — silent until the user exits code mode */
-        } finally {
-            this.applyingHistory = false;
-        }
-    }
-
     // ── View toggle (Visual / Code) ────────────────────────────────────────
 
     private setCodeMode(enable: boolean): void {
+        if (this.unreadPayload) return;
         if (this.codeMode === enable) return;
         if (enable) {
             this.enterCodeMode();
@@ -444,8 +413,10 @@ export class SlideEditor implements EditorAPI {
         this.codePanel.setAttribute('aria-hidden', 'true');
         this.codePanel.classList.remove('exe-slide-code-panel--visible');
         this.canvasFrame.classList.remove('exe-slide-canvas-frame--hidden');
-        this.toolbar.root.classList.remove('exe-slide-toolbar--disabled');
-        this.canvasControls.root.classList.remove('exe-slide-canvas-controls--disabled');
+        if (!this.unreadPayload) {
+            this.toolbar.root.classList.remove('exe-slide-toolbar--disabled');
+            this.canvasControls.root.classList.remove('exe-slide-canvas-controls--disabled');
+        }
         this.codeBtn.classList.remove('is-active');
         this.visualBtn.classList.add('is-active');
         this.visualBtn.setAttribute('aria-selected', 'true');
@@ -654,10 +625,9 @@ export class SlideEditor implements EditorAPI {
     }
 
     getFabricJSON(): AnyObj {
-        // If the user is in code mode, the textarea is the source of truth.
-        // We try to parse it and return that; if it's invalid we fall back
-        // to the last-known-good scene (saved is better than refusing to
-        // save and losing data).
+        // Callers can inspect parsed code-mode contents here. Persistence
+        // calls canSave() first because SVG is generated from the applied
+        // visual canvas only.
         if (this.codeMode) {
             try {
                 return JSON.parse(this.codeTextarea.value.trim() || '{}') as AnyObj;
@@ -688,11 +658,28 @@ export class SlideEditor implements EditorAPI {
         return this.parsed.background;
     }
 
+    canSave(): boolean {
+        if (!this.codeMode) return true;
+        if (this.codeTextarea.value === this.codeOriginalJson) return true;
+
+        try {
+            JSON.parse(this.codeTextarea.value.trim() || '{}');
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            this.showCodeError(`${t('Invalid JSON')}: ${msg}`);
+            return false;
+        }
+
+        this.showCodeError(t('Switch to Visual to apply code changes before saving.'));
+        return false;
+    }
+
     getUnreadPayload(): unknown {
         return this.unreadPayload;
     }
 
     setDimensions(width: number, height: number): void {
+        if (this.unreadPayload) return;
         // Clamp with the same bounds the serializer will apply on reload, so
         // the user can never enter a value that silently changes when the
         // slide is reopened.
@@ -703,13 +690,13 @@ export class SlideEditor implements EditorAPI {
         this.fitCanvasToShell();
         this.canvasControls?.refresh();
         if (!this.applyingHistory) {
-            // Push (not commit) so a slider drag coalesces into one entry.
-            this.history.push(this.snapshotString());
+            this.history.commit(this.snapshotString());
             this.toolbar.setHistoryState(this.history.canUndo(), this.history.canRedo());
         }
     }
 
     setBackground(color: string): void {
+        if (this.unreadPayload) return;
         if (color === this.parsed.background) return;
         this.parsed = { ...this.parsed, background: color };
         // CSS-side: update the canvas-frame's background so the dotted grid

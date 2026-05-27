@@ -174,6 +174,10 @@
                 }
             }
 
+            if (typeof this._editorApi.canSave === 'function' && !this._editorApi.canSave()) {
+                return false;
+            }
+
             var dims =
                 typeof this._editorApi.getDimensions === 'function'
                     ? this._editorApi.getDimensions()
