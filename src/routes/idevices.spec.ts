@@ -4,12 +4,46 @@
  * These tests work with the actual iDevice files in the project.
  * The routes use hardcoded paths so we test against real iDevices.
  */
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
+import { SignJWT } from 'jose';
 import { idevicesRoutes } from './idevices';
+
+const TEST_JWT_SECRET = 'dev_secret_change_me';
+
+async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
+    const secret = new TextEncoder().encode(TEST_JWT_SECRET);
+    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('1h')
+        .sign(secret);
+}
 
 describe('iDevices Routes', () => {
     let app: Elysia;
+    let ownerToken: string;
+
+    /** Inject the owner JWT into every request unless one is already supplied. */
+    async function handle(req: Request): Promise<Response> {
+        if (req.headers.has('authorization')) {
+            return app.handle(req);
+        }
+        const headerObj: Record<string, string> = {};
+        req.headers.forEach((v, k) => {
+            headerObj[k] = v;
+        });
+        headerObj.authorization = `Bearer ${ownerToken}`;
+        const init: RequestInit = { method: req.method, headers: headerObj };
+        if (req.body !== null) {
+            init.body = await req.arrayBuffer();
+        }
+        return app.handle(new Request(req.url, init));
+    }
+
+    beforeAll(async () => {
+        ownerToken = await signTestToken(42);
+    });
 
     beforeEach(() => {
         app = new Elysia().use(idevicesRoutes);
@@ -17,7 +51,7 @@ describe('iDevices Routes', () => {
 
     describe('GET /api/idevices/installed', () => {
         it('should return idevices wrapper object', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -26,14 +60,14 @@ describe('iDevices Routes', () => {
         });
 
         it('should return at least one iDevice', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             expect(body.idevices.length).toBeGreaterThan(0);
         });
 
         it('should include required iDevice properties', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             const idevice = body.idevices[0];
@@ -48,7 +82,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should have name equal to id for frontend compatibility', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             const idevice = body.idevices[0];
@@ -57,7 +91,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should include icon object', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             const idevice = body.idevices[0];
@@ -69,7 +103,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should include JS and CSS file arrays', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             const idevice = body.idevices[0];
@@ -81,7 +115,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should include template properties', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             const idevice = body.idevices[0];
@@ -94,7 +128,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should sort by category then title', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             const idevices = body.idevices;
@@ -113,7 +147,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should include url with proper path', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             const idevice = body.idevices[0];
@@ -122,7 +156,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should include version prefix in idevice URLs for cache-busting', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             const idevice = body.idevices[0];
@@ -135,13 +169,13 @@ describe('iDevices Routes', () => {
     describe('GET /api/idevices/installed/:ideviceId', () => {
         it('should return specific iDevice by ID', async () => {
             // First get list to find a valid iDevice ID
-            const listRes = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const listRes = await handle(new Request('http://localhost/api/idevices/installed'));
             const listBody = await listRes.json();
             const ideviceId = listBody.idevices[0]?.id;
 
             if (!ideviceId) return;
 
-            const res = await app.handle(new Request(`http://localhost/api/idevices/installed/${ideviceId}`));
+            const res = await handle(new Request(`http://localhost/api/idevices/installed/${ideviceId}`));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -149,9 +183,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should return 404 for non-existent iDevice', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/idevices/installed/non-existent-idevice-xyz'),
-            );
+            const res = await handle(new Request('http://localhost/api/idevices/installed/non-existent-idevice-xyz'));
 
             expect(res.status).toBe(404);
             const body = await res.json();
@@ -159,13 +191,13 @@ describe('iDevices Routes', () => {
         });
 
         it('should include full config for specific iDevice', async () => {
-            const listRes = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const listRes = await handle(new Request('http://localhost/api/idevices/installed'));
             const listBody = await listRes.json();
             const ideviceId = listBody.idevices[0]?.id;
 
             if (!ideviceId) return;
 
-            const res = await app.handle(new Request(`http://localhost/api/idevices/installed/${ideviceId}`));
+            const res = await handle(new Request(`http://localhost/api/idevices/installed/${ideviceId}`));
 
             const body = await res.json();
 
@@ -180,7 +212,7 @@ describe('iDevices Routes', () => {
 
     describe('GET /api/idevices/download-file-resources', () => {
         it('should return 400 when resource parameter is missing', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/download-file-resources'));
+            const res = await handle(new Request('http://localhost/api/idevices/download-file-resources'));
 
             expect(res.status).toBe(400);
             const body = await res.json();
@@ -188,7 +220,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should return 404 for non-existent resource', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/download-file-resources?resource=non-existent-file.xyz'),
             );
 
@@ -196,7 +228,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should prevent path traversal attacks', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/download-file-resources?resource=../../../etc/passwd'),
             );
 
@@ -206,7 +238,7 @@ describe('iDevices Routes', () => {
 
         it('should download valid CSS resource', async () => {
             // Find an actual iDevice CSS file
-            const listRes = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const listRes = await handle(new Request('http://localhost/api/idevices/installed'));
             const listBody = await listRes.json();
             const idevice = listBody.idevices.find((i: any) => i.editionCss.length > 0);
 
@@ -215,7 +247,7 @@ describe('iDevices Routes', () => {
             const cssFile = idevice.editionCss[0];
             const resourcePath = `perm/idevices/base/${idevice.id}/edition/${cssFile}`;
 
-            const res = await app.handle(
+            const res = await handle(
                 new Request(`http://localhost/api/idevices/download-file-resources?resource=${resourcePath}`),
             );
 
@@ -225,7 +257,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should download valid JS resource', async () => {
-            const listRes = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const listRes = await handle(new Request('http://localhost/api/idevices/installed'));
             const listBody = await listRes.json();
             const idevice = listBody.idevices.find((i: any) => i.editionJs.length > 0);
 
@@ -234,7 +266,7 @@ describe('iDevices Routes', () => {
             const jsFile = idevice.editionJs[0];
             const resourcePath = `perm/idevices/base/${idevice.id}/edition/${jsFile}`;
 
-            const res = await app.handle(
+            const res = await handle(
                 new Request(`http://localhost/api/idevices/download-file-resources?resource=${resourcePath}`),
             );
 
@@ -244,7 +276,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should handle encoded resource paths', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request(
                     'http://localhost/api/idevices/download-file-resources?resource=' +
                         encodeURIComponent('perm/idevices/base/text/edition/text.css'),
@@ -258,7 +290,7 @@ describe('iDevices Routes', () => {
 
     describe('iDevice icon handling', () => {
         it('should parse simple icon names', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             // All iDevices should have icon defined
@@ -269,7 +301,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should have icon type as img or icon', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             for (const idevice of body.idevices) {
@@ -281,7 +313,7 @@ describe('iDevices Routes', () => {
     describe('security', () => {
         it('should block access outside public/files', async () => {
             const maliciousPath = '../../config/secrets.json';
-            const res = await app.handle(
+            const res = await handle(
                 new Request(
                     `http://localhost/api/idevices/download-file-resources?resource=${encodeURIComponent(maliciousPath)}`,
                 ),
@@ -291,7 +323,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should clean double dots from resource path', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/download-file-resources?resource=perm/../../../etc/passwd'),
             );
 
@@ -301,7 +333,7 @@ describe('iDevices Routes', () => {
 
     describe('POST /api/idevices/upload/file/resources', () => {
         it('should reject missing required parameters', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -315,7 +347,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should reject missing odeIdeviceId', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -330,7 +362,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should reject missing filename', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -345,7 +377,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should reject missing file data', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -361,7 +393,7 @@ describe('iDevices Routes', () => {
 
         it('should upload base64 file successfully', async () => {
             const base64Content = 'SGVsbG8gV29ybGQ='; // "Hello World" in base64
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -374,6 +406,9 @@ describe('iDevices Routes', () => {
                 }),
             );
 
+            if (res.status !== 200) {
+                console.log('DBG body:', await res.clone().text());
+            }
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.odeSessionId).toBe('test-session-upload');
@@ -382,7 +417,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should clean special characters from filename', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -406,7 +441,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should use default session ID when not provided', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -424,7 +459,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should handle base64 without data URI prefix', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -441,7 +476,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should include file size in response', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -464,7 +499,7 @@ describe('iDevices Routes', () => {
             // Small 1x1 pixel PNG in base64
             const pngBase64 =
                 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -485,7 +520,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should not create thumbnail for non-image files', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -505,7 +540,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should generate empty filename when all chars are invalid', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -526,7 +561,7 @@ describe('iDevices Routes', () => {
 
     describe('POST /api/idevices/upload/large/file/resources', () => {
         it('should reject missing required parameters', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/large/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -540,7 +575,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should reject missing odeIdeviceId', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/large/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -555,7 +590,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should upload large file (Buffer format)', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/large/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -575,7 +610,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should use default session ID when not provided', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/large/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -593,7 +628,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should clean special characters from filename', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/large/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -618,7 +653,7 @@ describe('iDevices Routes', () => {
         it('should return 403 when resolved path escapes base directory', async () => {
             // This tests lines 332-333 - when path.resolve() reveals escape
             // Using a path that after cleaning still escapes the base
-            const res = await app.handle(
+            const res = await handle(
                 new Request(
                     'http://localhost/api/idevices/download-file-resources?resource=' +
                         encodeURIComponent('/absolute/path/outside'),
@@ -633,7 +668,7 @@ describe('iDevices Routes', () => {
     describe('CSS URL rewriting', () => {
         it('should rewrite relative URLs in CSS to API endpoints', async () => {
             // Find a CSS file that has relative URLs (fonts, images)
-            const listRes = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const listRes = await handle(new Request('http://localhost/api/idevices/installed'));
             const listBody = await listRes.json();
             const idevice = listBody.idevices.find((i: any) => i.editionCss.length > 0);
 
@@ -642,7 +677,7 @@ describe('iDevices Routes', () => {
             const cssFile = idevice.editionCss[0];
             const resourcePath = `perm/idevices/base/${idevice.id}/edition/${cssFile}`;
 
-            const res = await app.handle(
+            const res = await handle(
                 new Request(`http://localhost/api/idevices/download-file-resources?resource=${resourcePath}`),
             );
 
@@ -657,7 +692,7 @@ describe('iDevices Routes', () => {
         it('should not rewrite absolute URLs in CSS', async () => {
             // The rewriteCSSUrls function should skip absolute URLs
             // This is verified indirectly - CSS files with http:// or / URLs stay intact
-            const res = await app.handle(
+            const res = await handle(
                 new Request(
                     'http://localhost/api/idevices/download-file-resources?resource=perm/idevices/base/text/edition/text.css',
                 ),
@@ -673,7 +708,7 @@ describe('iDevices Routes', () => {
             // This tests lines 476-483 - detecting mime from extension
             const pngBase64 =
                 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -699,7 +734,7 @@ describe('iDevices Routes', () => {
             // Small valid JPEG (1x1 pixel)
             const jpegBase64 =
                 '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBEQACEQA/AL+AB//Z';
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -721,7 +756,7 @@ describe('iDevices Routes', () => {
         it('should create thumbnail for GIF from extension', async () => {
             // Minimal valid GIF
             const gifBase64 = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -750,7 +785,7 @@ describe('iDevices Routes', () => {
             formData.append('filename', 'blob-file.txt');
             formData.append('odeSessionId', 'test-blob-session');
 
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/large/file/resources', {
                     method: 'POST',
                     body: formData,
@@ -771,7 +806,7 @@ describe('iDevices Routes', () => {
             formData.append('odeSessionId', 'test-file-name-session');
             // Don't include filename - should use file.name
 
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/large/file/resources', {
                     method: 'POST',
                     body: formData,
@@ -785,7 +820,7 @@ describe('iDevices Routes', () => {
 
         it('should generate filename when cleaned result is empty', async () => {
             // This tests line 528 - empty filename after cleaning
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/idevices/upload/large/file/resources', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -809,7 +844,7 @@ describe('iDevices Routes', () => {
             const fs = await import('fs');
             const path = await import('path');
 
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
             const errors: string[] = [];
@@ -860,7 +895,7 @@ describe('iDevices Routes', () => {
         });
 
         it('should include exportObject in iDevice response', async () => {
-            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+            const res = await handle(new Request('http://localhost/api/idevices/installed'));
 
             const body = await res.json();
 

@@ -55,7 +55,47 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: null,
             file: '../data/lomloe-ES.json',
-            available: false  // National concretion JSON not yet available
+            available: true
+        },
+        {
+            id: 'ES-EFP',
+            isoCode: 'ES-EFP',
+            label: 'LOMLOE — Ámbito de gestión MEFPD',
+            labelEn: 'LOMLOE — Ministry-managed territory (MEFPD)',
+            framework: 'LOMLOE',
+            community: 'Ámbito de gestión del Ministerio de Educación, Formación Profesional y Deportes',
+            file: '../data/lomloe-ES-EFP.json',
+            available: true
+        },
+        {
+            id: 'ES-EX',
+            isoCode: 'ES-EX',
+            label: 'LOMLOE — Extremadura',
+            labelEn: 'LOMLOE — Extremadura',
+            framework: 'LOMLOE',
+            community: 'Extremadura',
+            file: '../data/lomloe-ES-EX.json',
+            available: true
+        },
+        {
+            id: 'ES-MD',
+            isoCode: 'ES-MD',
+            label: 'LOMLOE — Comunidad de Madrid',
+            labelEn: 'LOMLOE — Community of Madrid',
+            framework: 'LOMLOE',
+            community: 'Comunidad de Madrid',
+            file: '../data/lomloe-ES-MD.json',
+            available: true
+        },
+        {
+            id: 'ES-GA',
+            isoCode: 'ES-GA',
+            label: 'LOMLOE — Galicia',
+            labelEn: 'LOMLOE — Galicia',
+            framework: 'LOMLOE',
+            community: 'Galicia',
+            file: '../data/lomloe-ES-GA.json',
+            available: true
         },
         {
             id: 'ES-CN',
@@ -65,7 +105,13 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Islas Canarias',
             file: '../data/lomloe-ES-CN.json',
-            available: true
+            available: true,
+            // Canarias is the only concretion whose official source maps
+            // descriptores operativos individually to each criterio de
+            // evaluación. The other datasets copy the competencia-level
+            // descriptor set onto every criterio, so the teacher must pick
+            // them explicitly (checkbox mode). See issue #1832.
+            descriptorsPerCriterion: true
         }
         // Future entries — add when data files are ready:
         // { id: 'ES-AN', isoCode: 'ES-AN', label: 'LOMLOE — Andalucía', ... }
@@ -74,6 +120,54 @@ var $exeDevice = (function () {
     ];
 
     var DEFAULT_DATASET = 'ES-CN';
+
+    /**
+     * Per-course subject availability for the obligatory ESO block (1.º–3.º).
+     *
+     * The state RD 217/2022 defines the curriculum of these subjects for the
+     * "primero a tercero" block as a whole, without assigning each subject to a
+     * specific course, so the generator duplicated every subject into all three
+     * years. Each autonomous community, however, fixes the per-course
+     * distribution in its own decree (Anexo horario). This map encodes that
+     * distribution (subjects with weekly hours > 0) so the materia list shows
+     * only the subjects actually taught in the selected course. See issue #1832.
+     *
+     * Only datasets whose norm fixes a per-course distribution appear here:
+     *   - ES-EX:  Decreto 110/2022 (DOE), Anexo V.
+     *   - ES-MD:  Decreto 65/2022 (BOCM), Anexo I.
+     *   - ES-EFP: Orden EFP/754/2022 (BOE), per-course markers of Anexo II.
+     * Datasets absent from this map (ES state floor, ES-CN, ES-GA already
+     * extracted per course, etc.) are not filtered. 4.º ESO is intentionally
+     * left unfiltered: it is built on optional "materias de opción" the student
+     * chooses, so all options remain visible.
+     */
+    var ESO_COURSE_SUBJECTS = {
+        // ES-EX uses the official Extremadura subject codes (see README).
+        'ES-EX': {
+            '1º ESO': ['BG', 'EF', 'EPVA', 'GH', 'LCL', 'LE', 'MAT', 'MUS'],
+            '2º ESO': ['EF', 'EVCE', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'MUS', 'TECD'],
+            '3º ESO': ['BG', 'EF', 'EPVA', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'TECD']
+        },
+        'ES-MD': {
+            '1º ESO': ['BIG', 'EFI', 'EPV', 'GEH', 'LCL', 'LEX', 'MAT', 'MUS'],
+            '2º ESO': ['EFI', 'EPV', 'EVC', 'FQX', 'GEH', 'LCL', 'LEX', 'MAT', 'TYD'],
+            '3º ESO': ['BIG', 'EFI', 'FQX', 'GEH', 'LCL', 'LEX', 'MAT', 'MUS', 'TYD']
+        },
+        'ES-EFP': {
+            '1º ESO': ['BIG', 'EFI', 'EPV', 'GEH', 'LCL', 'LEX', 'MAT', 'MUS'],
+            '2º ESO': ['EFI', 'EVC', 'FQX', 'GEH', 'LCL', 'LEX', 'MAT', 'MUS', 'TYD'],
+            '3º ESO': ['BIG', 'EFI', 'EPV', 'FQX', 'GEH', 'LCL', 'LEX', 'MAT', 'TYD']
+        }
+    };
+
+    /**
+     * Returns the allow-list of subject codes for a given dataset/nivel, or null
+     * when no per-course filter applies (→ show every subject present).
+     */
+    function getCourseSubjectFilter(datasetId, nivel) {
+        var byDataset = ESO_COURSE_SUBJECTS[datasetId];
+        return (byDataset && byDataset[nivel]) || null;
+    }
 
     /**
      * Display names for each LOMLOE competencia clave code.
@@ -170,6 +264,17 @@ var $exeDevice = (function () {
     }
 
     /**
+     * Whether the given dataset maps descriptores operativos individually to
+     * each criterio de evaluación (true → render the criterio's descriptors as
+     * fixed badges) or only at the competencia level (false → let the teacher
+     * pick the applicable descriptors per criterio via checkboxes).
+     */
+    function datasetHasPerCriterionDescriptors(id) {
+        var ds = getDataset(id);
+        return !!(ds && ds.descriptorsPerCriterion);
+    }
+
+    /**
      * Resolves a path like '../data/lomloe-canarias.json' relative to the
      * iDevice edition script URL, handling eXeLearning API, HTTP and file:// cases.
      */
@@ -236,24 +341,40 @@ var $exeDevice = (function () {
 
         var url = resolveEditionResource(ds.file);
 
-        var promise = (function () {
-            if (typeof fetch === 'function') {
-                return fetch(url)
-                    .then(function (r) {
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
-                        return r.json();
-                    })
-                    .catch(function () { return loadViaXHR(url); });
-            }
-            return loadViaXHR(url);
-        }()).then(function (data) {
+        var promise = fetchJsonMaybeGzipped(url).then(function (data) {
             dataCache[datasetId] = data;
             delete dataPromises[datasetId];
             return data;
+        }).catch(function (err) {
+            delete dataPromises[datasetId];
+            throw err;
         });
 
         dataPromises[datasetId] = promise;
         return promise;
+    }
+
+    // Tries <url>.gz first (decompressed in-browser via DecompressionStream),
+    // falls back to raw <url> for dev (uncompressed) and browsers that lack the API.
+    function fetchJsonMaybeGzipped(url) {
+        var canDecompress = typeof DecompressionStream !== 'undefined'
+            && typeof fetch === 'function';
+        var gzPromise = canDecompress
+            ? fetch(url + '.gz').then(function (r) {
+                if (!r.ok) throw new Error('gz HTTP ' + r.status);
+                var stream = r.body.pipeThrough(new DecompressionStream('gzip'));
+                return new Response(stream).json();
+            })
+            : Promise.reject(new Error('DecompressionStream unavailable'));
+        return gzPromise.catch(function () {
+            if (typeof fetch === 'function') {
+                return fetch(url).then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                }).catch(function () { return loadViaXHR(url); });
+            }
+            return loadViaXHR(url);
+        });
     }
 
     function loadViaXHR(url) {
@@ -300,9 +421,14 @@ var $exeDevice = (function () {
 
     function getMaterias(etapa, nivel) {
         if (!rawData || !rawData[etapa] || !rawData[etapa][nivel]) return [];
-        return Object.entries(rawData[etapa][nivel]).map(function (pair) {
-            return { codArea: pair[0], denominacion: pair[1].denominacion || pair[0] };
-        });
+        var allow = getCourseSubjectFilter(currentDataset, nivel);
+        return Object.entries(rawData[etapa][nivel])
+            .filter(function (pair) {
+                return !allow || allow.indexOf(pair[0]) !== -1;
+            })
+            .map(function (pair) {
+                return { codArea: pair[0], denominacion: pair[1].denominacion || pair[0] };
+            });
     }
 
     function getSabereBloques(etapa, nivel, codArea) {
@@ -516,7 +642,7 @@ var $exeDevice = (function () {
             '      <div class="lomloe-materia-content">',
             '        <div class="lomloe-materia-col">',
             '          <input class="lomloe-materia-search" id="lomloe-mat-search-' + uid + '"',
-            '            type="search" placeholder="' + _('Filtrar materias…') + '" autocomplete="off">',
+            '            type="search" placeholder="' + _('Filtrar…') + '" autocomplete="off">',
             '          <ul class="lomloe-materia-list" id="lomloe-mat-list-' + uid + '"></ul>',
             '        </div>',
             '        <div class="lomloe-content-col">',
@@ -670,6 +796,8 @@ var $exeDevice = (function () {
                 if (!selId) return;
                 if (e.target.classList.contains('lomloe-partial-cb')) {
                     onPartialChange(selId, e.target.checked);
+                } else if (e.target.classList.contains('lomloe-desc-cb')) {
+                    onDescriptorToggle(selId, e.target.dataset.cc, e.target.checked);
                 }
             });
             selList.addEventListener('click', function (e) {
@@ -828,7 +956,9 @@ var $exeDevice = (function () {
             var crit = criterios.find(function (c) { return c.codigo === codigoCriterio; }) || {};
             var matDenom = '';
             try { matDenom = rawData[etapa][nivel][codArea].denominacion || codArea; } catch (e) {}
-            selections.set(selId, {
+            var critDescriptors = crit.competencias_clave || [];
+            var perCriterion = datasetHasPerCriterionDescriptors(currentDataset);
+            var sel = {
                 id: selId,
                 type: 'criterio',
                 dataset: currentDataset,
@@ -840,9 +970,16 @@ var $exeDevice = (function () {
                 descripcionComp: comp.descripcion || '',
                 codigoCriterio: codigoCriterio,
                 descripcionCriterio: crit.descripcion || '',
-                competenciasClave: crit.competencias_clave || [],
+                // Per-criterion datasets (Canarias): descriptors are an
+                // authoritative fixed list. Other datasets: start empty and let
+                // the teacher choose from descriptorOptions via checkboxes.
+                competenciasClave: perCriterion ? critDescriptors : [],
                 partial: false
-            });
+            };
+            if (!perCriterion) {
+                sel.descriptorOptions = critDescriptors.slice();
+            }
+            selections.set(selId, sel);
         }
         refreshMateriaSelBadge();
         renderSelectedPanel();
@@ -852,6 +989,26 @@ var $exeDevice = (function () {
         if (selections.has(selId)) {
             selections.get(selId).partial = checked;
         }
+    }
+
+    /**
+     * Adds/removes an operational descriptor code from a criterio selection
+     * (checkbox mode only). Keeps the chosen subset ordered by descriptorOptions.
+     */
+    function onDescriptorToggle(selId, cc, checked) {
+        var sel = selections.get(selId);
+        if (!sel) return;
+        var chosen = sel.competenciasClave || [];
+        if (checked) {
+            if (chosen.indexOf(cc) === -1) chosen.push(cc);
+        } else {
+            chosen = chosen.filter(function (c) { return c !== cc; });
+        }
+        // Preserve the canonical order from the available options.
+        var options = sel.descriptorOptions || chosen;
+        sel.competenciasClave = options.filter(function (c) {
+            return chosen.indexOf(c) !== -1;
+        });
     }
 
     function onRemoveSelection(selId) {
@@ -1045,12 +1202,17 @@ var $exeDevice = (function () {
         if (!compKeys.length) {
             return '<div class="lomloe-no-materia">' + _('No hay competencias específicas para esta materia.') + '</div>';
         }
+        // Only Canarias has an authoritative per-criterio descriptor mapping;
+        // for the other datasets the descriptors are competencia-level, so we
+        // don't render them as if they were tied to each criterio here — the
+        // teacher selects the applicable ones in the right-hand panel instead.
+        var showCritDescriptors = datasetHasPerCriterionDescriptors(currentDataset);
         return compKeys.map(function (codComp) {
             var comp = comps[codComp];
             var criterios = comp.criterios_evaluacion || [];
             var criteriosHtml = criterios.map(function (crit) {
                 var selId = criterioSelId(selectedEtapa, selectedNivel, selectedMateria.codArea, codComp, crit.codigo);
-                var ccTags = (crit.competencias_clave || []).map(function (cc) {
+                var ccTags = !showCritDescriptors ? '' : (crit.competencias_clave || []).map(function (cc) {
                     var title = CC_DESCRIPTIONS[cc] || cc;
                     return '<span class="lomloe-cc-tag" title="' + esc(title) + '">' + esc(cc) + '</span>';
                 }).join('');
@@ -1132,6 +1294,35 @@ var $exeDevice = (function () {
 
     }
 
+    /**
+     * For datasets without a per-criterio descriptor mapping, renders the
+     * available operational descriptors as checkboxes so the teacher chooses
+     * which apply to this criterio. Returns '' for per-criterion datasets
+     * (Canarias) or when there are no descriptor options.
+     */
+    function buildDescriptorPickerHtml(sel) {
+        if (datasetHasPerCriterionDescriptors(sel.dataset)) return '';
+        var options = sel.descriptorOptions || [];
+        if (!options.length) return '';
+        var chosen = sel.competenciasClave || [];
+        var boxes = options.map(function (cc) {
+            var title = CC_DESCRIPTIONS[cc] || cc;
+            var checked = chosen.indexOf(cc) !== -1 ? ' checked' : '';
+            return [
+                '<label class="lomloe-desc-cb-label"' + tipAttr(title) + '>',
+                '  <input type="checkbox" class="lomloe-desc-cb" data-selid="' + esc(sel.id) + '" data-cc="' + esc(cc) + '"' + checked + '>',
+                '  ' + esc(cc),
+                '</label>'
+            ].join('');
+        }).join('');
+        return [
+            '  <div class="lomloe-sel-descriptors">',
+            '    <span class="lomloe-sel-descriptors-caption">' + esc(getCompClaveHeader(sel.etapa)) + ':</span>',
+            '    <div class="lomloe-desc-cb-group">' + boxes + '</div>',
+            '  </div>'
+        ].join('');
+    }
+
     function buildSelItemHtml(sel) {
         var icon = sel.type === 'saber' ? '📚' : '🎯';
         var code = sel.type === 'saber' ? sel.nombre : sel.codigoCriterio;
@@ -1147,7 +1338,8 @@ var $exeDevice = (function () {
                 '      <input type="checkbox" class="lomloe-partial-cb" data-selid="' + esc(sel.id) + '"' + (sel.partial ? ' checked' : '') + '>',
                 '      ' + _('Parcial'),
                 '    </label>',
-                '  </div>'
+                '  </div>',
+                buildDescriptorPickerHtml(sel)
             ].join('');
         }
 
