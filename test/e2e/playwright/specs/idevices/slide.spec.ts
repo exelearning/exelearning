@@ -303,6 +303,135 @@ test.describe('Slide iDevice', () => {
             const codePanel = page.locator('[data-testid="slide-code-panel"]').first();
             await expect(codePanel.locator('.exe-slide-code-panel__error--visible')).toBeVisible();
         });
+
+        test('does not save code edits until they have been applied in Visual mode', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide iDevice Code Save Guard');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+
+            await page.locator('[data-testid="slide-tool-shapes"]').first().click();
+            await page.locator('[data-testid="slide-shape-rect"]').first().click();
+            await waitForObjectCountAtLeast(page, 1);
+
+            await page.locator('[data-testid="slide-view-code"]').first().click();
+            const textarea = page.locator('[data-testid="slide-code-textarea"]').first();
+            await textarea.fill(JSON.stringify({ version: '6.0.0', objects: [], background: '' }, null, 2));
+            await page.locator(`.idevice_node#${ideviceId} .btn-save-idevice`).first().click();
+
+            await expect(textarea).toBeVisible();
+            await expect(
+                page.locator('[data-testid="slide-code-panel"] .exe-slide-code-panel__error--visible'),
+            ).toBeVisible();
+            await expect(page.locator(`.idevice_node#${ideviceId}`).first()).toHaveAttribute('mode', 'edition');
+
+            await page.locator('[data-testid="slide-view-visual"]').first().click();
+            await page.waitForFunction(
+                () => {
+                    const w = window as unknown as { __slideEditorCanvas?: { getObjects?: () => unknown[] } };
+                    return (w.__slideEditorCanvas?.getObjects?.().length ?? -1) === 0;
+                },
+                undefined,
+                { timeout: 10_000 },
+            );
+            await saveIdevice(page, ideviceId);
+        });
+    });
+
+    test.describe('Compatibility and history', () => {
+        test('preserves future payloads and disables editing when the mounted bundle cannot read them', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide iDevice Future Payload');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+
+            const result = await page.evaluate(() => {
+                const future = { version: 4, engine: 'fabric', fabric: { objects: [{ type: 'rect' }] }, svg: '<svg/>' };
+                const host = document.createElement('div');
+                document.body.appendChild(host);
+                const w = window as unknown as {
+                    __slideEditorInit?: {
+                        mount?: (
+                            container: HTMLElement,
+                            options: { previousData: unknown },
+                        ) => { getUnreadPayload?: () => unknown; destroy?: () => void };
+                    };
+                };
+                const api = w.__slideEditorInit?.mount?.(host, { previousData: future });
+                const data = {
+                    unread: api?.getUnreadPayload?.(),
+                    hasBanner: Boolean(host.querySelector('[data-testid="slide-unsupported-banner"]')),
+                    codeDisabled: (host.querySelector('[data-testid="slide-view-code"]') as HTMLButtonElement | null)
+                        ?.disabled,
+                };
+                api?.destroy?.();
+                host.remove();
+                return data;
+            });
+
+            expect(result.unread).toEqual({
+                version: 4,
+                engine: 'fabric',
+                fabric: { objects: [{ type: 'rect' }] },
+                svg: '<svg/>',
+            });
+            expect(result.hasBanner).toBe(true);
+            expect(result.codeDisabled).toBe(true);
+        });
+
+        test('undoes a newly inserted object before a preceding canvas resize', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide iDevice Dimension Undo');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+
+            const widthInput = page.locator('[data-testid="slide-config-width"]').first();
+            await widthInput.fill('1024');
+            await widthInput.dispatchEvent('change');
+            await expect(widthInput).toHaveValue('1024');
+
+            await page.locator('[data-testid="slide-tool-shapes"]').first().click();
+            await page.locator('[data-testid="slide-shape-rect"]').first().click();
+            await waitForObjectCountAtLeast(page, 1);
+
+            await page.locator('[data-testid="slide-action-undo"]').first().click();
+            await page.waitForFunction(
+                () => {
+                    const w = window as unknown as { __slideEditorCanvas?: { getObjects?: () => unknown[] } };
+                    return (w.__slideEditorCanvas?.getObjects?.().length ?? -1) === 0;
+                },
+                undefined,
+                { timeout: 10_000 },
+            );
+            await expect(widthInput).toHaveValue('1024');
+
+            await page.locator('[data-testid="slide-action-undo"]').first().click();
+            await expect(widthInput).toHaveValue('1280');
+        });
     });
 
     test.describe('Security', () => {

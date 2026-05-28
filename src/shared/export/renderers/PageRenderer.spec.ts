@@ -219,19 +219,19 @@ describe('PageRenderer', () => {
             expect(html).toContain('src="../libs/jquery/jquery.min.js"');
         });
 
-        it('should add SCORM-specific attributes', () => {
+        it('should add the onload attribute but never the deprecated onunload/onbeforeunload (issue #1831)', () => {
             const page = createTestPage();
             const options = createDefaultOptions({
                 allPages: [page],
                 isScorm: true,
                 onLoadScript: 'initScorm()',
-                onUnloadScript: 'terminateScorm()',
             });
 
             const html = renderer.render(page, options);
 
             expect(html).toContain('onload="initScorm()"');
-            expect(html).toContain('onunload="terminateScorm()"');
+            expect(html).not.toContain('onunload');
+            expect(html).not.toContain('onbeforeunload');
         });
 
         it('should hide navigation when hideNavigation is true', () => {
