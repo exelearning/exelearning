@@ -1122,6 +1122,147 @@ describe('ResourceFetcher', () => {
     });
   });
 
+  describe('site theme cache-buster (updated_at)', () => {
+    // Reproduces the bug reported in PR #1775: after re-uploading a site theme
+    // via the admin panel, stale CSS/icons kept being served from IndexedDB
+    // until the user cleared site data. Incognito worked because IndexedDB was
+    // empty. Fix: include the theme's updated_at in the IndexedDB cache key
+    // and in the bundle URL. Versions are populated from /api/themes/installed
+    // during init(); tests seed them directly.
+
+    it('uses the site theme updated_at as part of the IndexedDB cache key', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.siteThemeVersions = new Map([['my-style', 1700000000000]]);
+      const mockResourceCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+        getUserTheme: vi.fn().mockResolvedValue(null),
+      };
+      fetcher.resourceCache = mockResourceCache;
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+
+      await fetcher.fetchTheme('my-style');
+
+      expect(mockResourceCache.get).toHaveBeenCalledWith('theme', 'my-style', 'v3.1.0-1700000000000');
+    });
+
+    it('falls back to the app version when no updatedAt is known (base/user themes)', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.siteThemeVersions = new Map();
+      const mockResourceCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+        getUserTheme: vi.fn().mockResolvedValue(null),
+      };
+      fetcher.resourceCache = mockResourceCache;
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+
+      await fetcher.fetchTheme('base');
+
+      expect(mockResourceCache.get).toHaveBeenCalledWith('theme', 'base', 'v3.1.0');
+    });
+
+    it('produces a different cache key when the site theme is re-uploaded', async () => {
+      async function cacheKeyForUpdatedAt(updatedAt) {
+        const fetcher = new ResourceFetcher();
+        fetcher.siteThemeVersions = new Map([['my-style', updatedAt]]);
+        const cache = {
+          get: vi.fn().mockResolvedValue(null),
+          set: vi.fn().mockResolvedValue(undefined),
+          getUserTheme: vi.fn().mockResolvedValue(null),
+        };
+        fetcher.resourceCache = cache;
+        mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+        await fetcher.fetchTheme('my-style');
+        return cache.get.mock.calls[0][2];
+      }
+
+      const before = await cacheKeyForUpdatedAt(1700000000000);
+      const after = await cacheKeyForUpdatedAt(1700000099999);
+
+      expect(before).not.toBe(after);
+      expect(before).toContain('-1700000000000');
+      expect(after).toContain('-1700000099999');
+    });
+
+    it('appends ?v=<updatedAt> to the bundle URL so the HTTP cache invalidates', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.bundlesAvailable = true;
+      fetcher.bundleManifest = { themes: {} };
+      fetcher.siteThemeVersions = new Map([['my-style', 1700000000000]]);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => '0' },
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      });
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+
+      await fetcher.fetchTheme('my-style');
+
+      const calledUrls = mockFetch.mock.calls.map(c => c[0]);
+      expect(calledUrls).toContain('/web/exelearning/api/resources/bundle/theme/my-style?v=1700000000000');
+    });
+  });
+
+  describe('loadSiteThemeVersions', () => {
+    it('populates a name → updatedAt map from /api/themes/installed', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            themes: [
+              { type: 'site', dirName: 'my-style', updatedAt: 1700000000000 },
+              { type: 'site', dirName: 'other', updatedAt: 1700000000001 },
+              { type: 'base', dirName: 'base' }, // base themes are ignored
+              { type: 'site', dirName: 'bad' }, // missing updatedAt is ignored
+            ],
+          }),
+      });
+
+      const versions = await fetcher.loadSiteThemeVersions();
+
+      expect(versions.get('my-style')).toBe(1700000000000);
+      expect(versions.get('other')).toBe(1700000000001);
+      expect(versions.has('base')).toBe(false);
+      expect(versions.has('bad')).toBe(false);
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/themes/installed');
+    });
+
+    it('returns an empty map and does not throw when the request fails', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      const versions = await fetcher.loadSiteThemeVersions();
+
+      expect(versions.size).toBe(0);
+    });
+
+    it('skips the network call in static mode', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.isStaticMode = true;
+
+      const versions = await fetcher.loadSiteThemeVersions();
+
+      expect(versions.size).toBe(0);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('is idempotent across concurrent callers', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ themes: [] }),
+      });
+
+      const [a, b] = await Promise.all([fetcher.loadSiteThemeVersions(), fetcher.loadSiteThemeVersions()]);
+
+      expect(a).toBe(b);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('loadBundleManifest', () => {
     it('loads manifest and sets bundlesAvailable to true', async () => {
       const fetcher = new ResourceFetcher();

@@ -164,6 +164,12 @@ export class FileSystemAssetProvider implements AssetProvider {
      * Only collects known asset file types to avoid including XML, etc.
      */
     private async collectRootAssets(assets: ExportAsset[]): Promise<void> {
+        // Guard against a missing assets dir (created lazily). Mirrors the
+        // existing guard in listAssetMetadata(). See issue #1842.
+        if (!(await fs.pathExists(this.basePath))) {
+            return;
+        }
+
         const entries = await fs.readdir(this.basePath, { withFileTypes: true });
         const assetExtensions = new Set([
             '.jpg',
@@ -282,46 +288,49 @@ export class FileSystemAssetProvider implements AssetProvider {
             }
         }
 
-        // Root assets
-        const entries = await fs.readdir(this.basePath, { withFileTypes: true });
-        const assetExtensions = new Set([
-            '.jpg',
-            '.jpeg',
-            '.png',
-            '.gif',
-            '.webp',
-            '.svg',
-            '.bmp',
-            '.ico',
-            '.mp3',
-            '.wav',
-            '.ogg',
-            '.aac',
-            '.flac',
-            '.m4a',
-            '.mp4',
-            '.webm',
-            '.ogv',
-            '.avi',
-            '.mov',
-            '.pdf',
-            '.doc',
-            '.docx',
-            '.xls',
-            '.xlsx',
-            '.ppt',
-            '.pptx',
-            '.zip',
-            '.rar',
-            '.7z',
-        ]);
-        for (const entry of entries) {
-            if (entry.isFile()) {
-                const ext = path.extname(entry.name).toLowerCase();
-                if (assetExtensions.has(ext)) {
-                    const asset = await this.getAsset(entry.name);
-                    if (asset) {
-                        await processAsset(asset);
+        // Root assets. Guard against a missing assets dir (created lazily);
+        // mirrors the guard in listAssetMetadata(). See issue #1842.
+        if (await fs.pathExists(this.basePath)) {
+            const entries = await fs.readdir(this.basePath, { withFileTypes: true });
+            const assetExtensions = new Set([
+                '.jpg',
+                '.jpeg',
+                '.png',
+                '.gif',
+                '.webp',
+                '.svg',
+                '.bmp',
+                '.ico',
+                '.mp3',
+                '.wav',
+                '.ogg',
+                '.aac',
+                '.flac',
+                '.m4a',
+                '.mp4',
+                '.webm',
+                '.ogv',
+                '.avi',
+                '.mov',
+                '.pdf',
+                '.doc',
+                '.docx',
+                '.xls',
+                '.xlsx',
+                '.ppt',
+                '.pptx',
+                '.zip',
+                '.rar',
+                '.7z',
+            ]);
+            for (const entry of entries) {
+                if (entry.isFile()) {
+                    const ext = path.extname(entry.name).toLowerCase();
+                    if (assetExtensions.has(ext)) {
+                        const asset = await this.getAsset(entry.name);
+                        if (asset) {
+                            await processAsset(asset);
+                        }
                     }
                 }
             }

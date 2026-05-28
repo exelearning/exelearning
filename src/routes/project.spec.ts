@@ -10,6 +10,7 @@ import * as path from 'path';
 import {
     createProjectRoutes,
     createSymfonyCompatProjectRoutes,
+    buildDefaultThemePayload,
     type ProjectDependencies,
     type SessionManagerDeps,
     type FileHelperDeps,
@@ -17,6 +18,7 @@ import {
     type QueriesDeps,
     type UtilsDeps,
 } from './project';
+import type { Theme } from '../db/types';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'project-test');
 
@@ -5105,5 +5107,43 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             // The URL parser should catch this and return error
         });
+    });
+});
+
+describe('buildDefaultThemePayload', () => {
+    const siteTheme = {
+        dir_name: 'my-site-style',
+        display_name: 'My Site Style',
+        is_enabled: 1,
+        is_builtin: 0,
+        updated_at: 1700000000000,
+    } as unknown as Theme;
+
+    it('returns a cache-busted site URL for an enabled non-builtin theme', () => {
+        const payload = buildDefaultThemePayload(siteTheme, 'my-site-style', 'v3.0.0');
+        expect(payload).toEqual({
+            dirName: 'my-site-style',
+            displayName: 'My Site Style',
+            url: '/v3.0.0-1700000000000/site-files/themes/my-site-style',
+            type: 'site',
+        });
+    });
+
+    it('falls back to the base theme URL when no matching theme record exists', () => {
+        const payload = buildDefaultThemePayload(undefined, 'base', 'v3.0.0');
+        expect(payload).toEqual({
+            dirName: 'base',
+            displayName: 'base',
+            url: '/files/perm/themes/base/base',
+            type: 'base',
+        });
+    });
+
+    it('treats a disabled or builtin theme as base and keeps its display name', () => {
+        const builtin = { ...siteTheme, is_builtin: 1 } as unknown as Theme;
+        const payload = buildDefaultThemePayload(builtin, 'my-site-style', 'v3.0.0');
+        expect(payload.type).toBe('base');
+        expect(payload.url).toBe('/files/perm/themes/base/my-site-style');
+        expect(payload.displayName).toBe('My Site Style');
     });
 });
