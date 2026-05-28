@@ -6,10 +6,11 @@ import { Elysia, t } from 'elysia';
 
 import { db } from '../db/client';
 import type { Database } from '../db/types';
-import { findProjectByUuid, findAssetByClientId, updateAsset } from '../db/queries';
+import { findProjectByUuid, findAssetByClientId, updateAsset, checkProjectAccess } from '../db/queries';
 import type { Kysely } from 'kysely';
 
 import { createFolderManagerService, type FolderManagerService, type MoveItem } from '../services/folder-manager';
+import { withJwtAuth, enforceProjectAccess } from '../utils/route-auth';
 
 // ============================================================================
 // Types and Interfaces
@@ -24,6 +25,7 @@ export interface FileManagerDependencies {
     findProjectByUuid: typeof findProjectByUuid;
     findAssetByClientId: typeof findAssetByClientId;
     updateAsset: typeof updateAsset;
+    checkProjectAccess: typeof checkProjectAccess;
 }
 
 /**
@@ -34,6 +36,7 @@ const defaultDependencies: FileManagerDependencies = {
     findProjectByUuid,
     findAssetByClientId,
     updateAsset,
+    checkProjectAccess,
 };
 
 // ============================================================================
@@ -80,6 +83,27 @@ export function createFileManagerRoutes(deps: FileManagerDependencies = defaultD
 
     return (
         new Elysia({ prefix: '/api/projects/:projectId/filemanager' })
+            // Auth: every filemanager endpoint requires an authenticated user
+            // with access to the project (same semantics as assets routes).
+            .use(withJwtAuth())
+            .onBeforeHandle(async ({ jwtPayload, params, set }) => {
+                const projectIdParam = (params as Record<string, string>).projectId;
+                const result = await enforceProjectAccess(jwtPayload, projectIdParam, {
+                    db: database,
+                    queries: {
+                        // Filemanager routes are UUID-only in practice;
+                        // numeric IDs are rejected uniformly via not-found.
+                        findProjectByUuid: findProject,
+                        findProjectById: async () => undefined,
+                        checkProjectAccess: deps.checkProjectAccess,
+                    },
+                    acceptNumericId: false,
+                });
+                if ('status' in result) {
+                    set.status = result.status;
+                    return { success: false, error: result.message };
+                }
+            })
 
             // =====================================================
             // List Folder Contents
