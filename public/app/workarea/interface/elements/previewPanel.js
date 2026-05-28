@@ -19,6 +19,7 @@ export default class PreviewPanelManager {
         this.extractButton = document.getElementById('preview-extract-button');
         this.pinButton = document.getElementById('preview-pin-button');
         this.refreshButton = document.getElementById('preview-refresh-button');
+        this.mobileButton = document.getElementById('preview-mobile-button');
         this.iframe = document.getElementById('preview-iframe');
 
         // DOM Elements - Pinned mode
@@ -27,11 +28,13 @@ export default class PreviewPanelManager {
         this.pinnedExtractButton = document.getElementById('preview-pinned-extract-button');
         this.unpinButton = document.getElementById('preview-unpin-button');
         this.pinnedRefreshButton = document.getElementById('preview-pinned-refresh-button');
+        this.pinnedMobileButton = document.getElementById('preview-pinned-mobile-button');
 
         // State
         this.isOpen = false;
         this.isPinned = false;
         this.isLoading = false;
+        this.isMobileViewport = this._readStoredViewport() === 'mobile';
         this.autoRefreshEnabled = true;
         this.refreshDebounceTimer = null;
         this.refreshDebounceDelay = 500; // 500ms debounce for responsive updates
@@ -55,6 +58,7 @@ export default class PreviewPanelManager {
      */
     init() {
         this.bindEvents();
+        this.applyViewport();
         this.subscribeToChanges();
         this.resetToDefaultState();
         this._setupVisibilityHandler();
@@ -79,6 +83,58 @@ export default class PreviewPanelManager {
 
         const workarea = document.getElementById('workarea');
         workarea?.setAttribute('data-preview-pinned', 'false');
+    }
+
+    /** sessionStorage key used to persist the viewport choice for the session */
+    static VIEWPORT_STORAGE_KEY = 'exe-preview-viewport';
+
+    /**
+     * Read the stored viewport preference for the session.
+     * @returns {string|null} 'mobile', 'desktop', or null when unavailable
+     */
+    _readStoredViewport() {
+        try {
+            return window.sessionStorage?.getItem(PreviewPanelManager.VIEWPORT_STORAGE_KEY) ?? null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Toggle the preview iframe between desktop (full width) and mobile
+     * (phone-sized, centered) viewports. The choice persists for the session.
+     */
+    toggleViewport() {
+        this.isMobileViewport = !this.isMobileViewport;
+        try {
+            window.sessionStorage?.setItem(
+                PreviewPanelManager.VIEWPORT_STORAGE_KEY,
+                this.isMobileViewport ? 'mobile' : 'desktop',
+            );
+        } catch {
+            // sessionStorage may be unavailable (private mode); ignore.
+        }
+        this.applyViewport();
+    }
+
+    /**
+     * Apply the current viewport state to the preview bodies and toolbar
+     * buttons in both slide-out and pinned modes.
+     */
+    applyViewport() {
+        const bodies = [
+            this.iframe?.closest('.preview-panel-body'),
+            this.pinnedIframe?.closest('.preview-pinned-body'),
+        ];
+        for (const body of bodies) {
+            body?.classList.toggle('preview-mobile-viewport', this.isMobileViewport);
+        }
+
+        const buttons = [this.mobileButton, this.pinnedMobileButton];
+        for (const button of buttons) {
+            button?.setAttribute('aria-pressed', this.isMobileViewport ? 'true' : 'false');
+            button?.classList.toggle('is-active', this.isMobileViewport);
+        }
     }
 
     /**
@@ -265,6 +321,7 @@ export default class PreviewPanelManager {
         this.extractButton?.addEventListener('click', () => this.extractToNewTab());
         this.pinButton?.addEventListener('click', () => this.pin());
         this.refreshButton?.addEventListener('click', () => this.refresh());
+        this.mobileButton?.addEventListener('click', () => this.toggleViewport());
 
         // Keyboard on close button
         this.closeButton?.addEventListener('keydown', (e) => {
@@ -278,6 +335,7 @@ export default class PreviewPanelManager {
         this.pinnedExtractButton?.addEventListener('click', () => this.extractToNewTab());
         this.unpinButton?.addEventListener('click', () => this.unpin());
         this.pinnedRefreshButton?.addEventListener('click', () => this.refresh());
+        this.pinnedMobileButton?.addEventListener('click', () => this.toggleViewport());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {

@@ -74,7 +74,6 @@ export interface CanvasAdapterOptions {
     canvasEl: HTMLCanvasElement;
     width: number;
     height: number;
-    background: string;
     purifier?: DomPurifyLike;
     onChange?: (immediate: boolean) => void;
     onSelection?: (info: SelectionInfo) => void;

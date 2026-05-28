@@ -13,7 +13,7 @@
 import { buildColorPopover } from './colorPopover.js';
 import { renderIcon } from './icons.js';
 import { Popover } from './popover.js';
-import { SLIDE_PRESETS } from './constants.js';
+import { MAX_H, MAX_W, MIN_H, MIN_W, SLIDE_PRESETS } from './constants.js';
 import { t } from './i18n.js';
 
 export interface CanvasControlsController {
@@ -81,10 +81,10 @@ export class SlideCanvasControls {
 
         // Hidden width / height inputs — exposed for tests + power users
         // who need exact dimensions; the default UX uses the size preset.
-        this.widthInput = this.makeNumberInput(t('Width'), 'slide-config-width', v =>
+        this.widthInput = this.makeNumberInput(t('Width'), 'slide-config-width', MIN_W, MAX_W, v =>
             this.ctrl.setDimensions(v, this.ctrl.getDimensions().height),
         );
-        this.heightInput = this.makeNumberInput(t('Height'), 'slide-config-height', v =>
+        this.heightInput = this.makeNumberInput(t('Height'), 'slide-config-height', MIN_H, MAX_H, v =>
             this.ctrl.setDimensions(this.ctrl.getDimensions().width, v),
         );
         const inputs = document.createElement('div');
@@ -157,14 +157,20 @@ export class SlideCanvasControls {
         return btn;
     }
 
-    private makeNumberInput(label: string, testId: string, onChange: (v: number) => void): HTMLInputElement {
+    private makeNumberInput(
+        label: string,
+        testId: string,
+        min: number,
+        max: number,
+        onChange: (v: number) => void,
+    ): HTMLInputElement {
         const input = document.createElement('input');
         input.type = 'number';
         input.className = 'exe-slide-tb__canvas-num';
         input.setAttribute('aria-label', label);
         input.setAttribute('data-testid', testId);
-        input.min = '200';
-        input.max = '4000';
+        input.min = String(min);
+        input.max = String(max);
         input.step = '10';
         input.addEventListener('change', () => {
             const v = Number(input.value);
