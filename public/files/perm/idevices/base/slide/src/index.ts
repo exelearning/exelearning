@@ -39,8 +39,10 @@ export function mount(container: HTMLElement, options: EditorOptions = {}): Edit
         getSvgString: () => editor.getSvgString(),
         getDimensions: () => editor.getDimensions(),
         getBackground: () => editor.getBackground(),
+        canSave: () => editor.canSave(),
         setDimensions: (w: number, h: number) => editor.setDimensions(w, h),
         setBackground: (color: string) => editor.setBackground(color),
+        getUnreadPayload: () => editor.getUnreadPayload(),
         destroy: () => editor.destroy(),
     };
 }

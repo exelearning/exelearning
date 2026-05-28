@@ -68,6 +68,35 @@ describe('FileSystemAssetHandler', () => {
             expect(existsSync(resourcesDir)).toBe(true);
         });
 
+        it('should reject folderPath that escapes the extract directory', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            await expect(
+                handler.storeAsset('id', new Uint8Array([1]), {
+                    filename: 'evil.txt',
+                    mimeType: 'text/plain',
+                    folderPath: '../escape',
+                }),
+            ).rejects.toThrow();
+
+            const escapedPath = path.join(path.dirname(testDir), 'escape', 'evil.txt');
+            expect(existsSync(escapedPath)).toBe(false);
+        });
+
+        it('should reject filenames that escape the asset directory', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            await expect(
+                handler.storeAsset('id', new Uint8Array([1]), {
+                    filename: '../escape.txt',
+                    mimeType: 'text/plain',
+                }),
+            ).rejects.toThrow();
+
+            const escapedPath = path.join(testDir, 'escape.txt');
+            expect(existsSync(escapedPath)).toBe(false);
+        });
+
         it('should handle duplicate filenames', async () => {
             const handler = new FileSystemAssetHandler(testDir);
 
@@ -325,6 +354,21 @@ describe('FileSystemAssetHandler', () => {
 
             // Don't create any assets
             await expect(handler.clear()).resolves.toBeUndefined();
+        });
+    });
+
+    describe('extractThemeFromZip', () => {
+        it('should reject theme entries that escape the theme directory', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            const malicious: Record<string, Uint8Array> = {
+                'theme/../escape.txt': new Uint8Array([1, 2, 3]),
+            };
+
+            await expect(handler.extractThemeFromZip(malicious)).rejects.toThrow();
+
+            const escapedPath = path.join(testDir, 'escape.txt');
+            expect(existsSync(escapedPath)).toBe(false);
         });
     });
 });
