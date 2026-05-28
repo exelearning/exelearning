@@ -46,6 +46,8 @@ var $slide = (() => {
             .replace(/<script[\s\S]*?<\/script>/gi, '')
             .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
             .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+            // Unquoted handler values: stop at whitespace or '>' (also '/>').
+            .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
             .replace(/javascript:/gi, '');
     }
 
@@ -112,8 +114,10 @@ var $slide = (() => {
     // ── Public API ───────────────────────────────────────────────────────────
 
     return {
-        init: function (data) {
-            this._state = normalize(data);
+        init: function () {
+            // No state is retained here — renderView() re-normalizes its own
+            // argument. The host calls renderView(data) directly with the
+            // saved payload, so init has nothing to remember.
             return true;
         },
 
@@ -179,14 +183,23 @@ var $slide = (() => {
             });
 
             document.addEventListener('fullscreenchange', () => {
+                // Only update the wrapper(s) directly involved in the native
+                // fullscreen transition. CSS-simulated fullscreen on other
+                // slides must not be cleared, and body.style.overflow must
+                // not be reset while any slide remains in either mode.
                 document.querySelectorAll('.slide-export-fabric .slide-fullscreen-btn').forEach(btn => {
                     var wrap = btn.closest('.slide-export-fabric');
                     var isFs = !!document.fullscreenElement && wrap === document.fullscreenElement;
-                    btn.setAttribute('aria-label', isFs ? 'Exit fullscreen' : 'Fullscreen');
-                    btn.innerHTML = isFs ? ICON_EXIT_FS : ICON_ENTER_FS;
-                    if (wrap) wrap.classList.remove('slide-fs-active');
-                    document.body.style.overflow = '';
+                    var isExpanded = isFs || wrap.classList.contains('slide-fs-active');
+                    btn.setAttribute('aria-label', isExpanded ? 'Exit fullscreen' : 'Fullscreen');
+                    btn.innerHTML = isExpanded ? ICON_EXIT_FS : ICON_ENTER_FS;
                 });
+                var anyActive =
+                    !!document.fullscreenElement ||
+                    document.querySelector('.slide-export-fabric.slide-fs-active');
+                if (!anyActive) {
+                    document.body.style.overflow = '';
+                }
             });
 
             return Promise.resolve();

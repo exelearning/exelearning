@@ -299,6 +299,52 @@ describe('FileSystemAssetProvider', () => {
         });
     });
 
+    // Regression for issue #1842: server-side export logged a noisy
+    // "[BaseExporter] Failed to add assets to ZIP: ENOENT ... scandir" because
+    // the root basePath was read without an existence guard. getAllAssets() and
+    // forEachAsset() must resolve (no throw) when the assets dir is missing.
+    describe('missing / empty / populated basePath (issue #1842)', () => {
+        it.each([
+            ['missing', false, false],
+            ['empty', true, false],
+            ['with root asset', true, true],
+        ])('handles a %s basePath without throwing', async (_label, createDir, withAsset) => {
+            const dir = path.join(
+                os.tmpdir(),
+                `test-1842-${_label}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            );
+            if (createDir) {
+                await fs.ensureDir(dir);
+            }
+            if (withAsset) {
+                await fs.writeFile(path.join(dir, 'root-photo.jpg'), Buffer.from([0xff, 0xd8, 0xff]));
+            }
+
+            const isolatedProvider = new FileSystemAssetProvider(dir);
+
+            const allAssets = await isolatedProvider.getAllAssets();
+
+            let iterated = 0;
+            const count = await isolatedProvider.forEachAsset(async () => {
+                iterated += 1;
+            });
+
+            if (withAsset) {
+                expect(allAssets.length).toBeGreaterThanOrEqual(1);
+                expect(count).toBeGreaterThanOrEqual(1);
+                expect(iterated).toBeGreaterThanOrEqual(1);
+            } else {
+                expect(allAssets).toEqual([]);
+                expect(count).toBe(0);
+                expect(iterated).toBe(0);
+            }
+
+            if (createDir) {
+                await fs.remove(dir);
+            }
+        });
+    });
+
     describe('nested directories', () => {
         it('should handle deeply nested asset directories', async () => {
             // Create nested structure

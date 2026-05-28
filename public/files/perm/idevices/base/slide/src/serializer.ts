@@ -42,6 +42,13 @@ export interface ParsedSlide {
     height: number;
     background: string;
     fabric: AnyObj | null;
+    /**
+     * True when the payload claims a `version` newer than the one this
+     * build understands AND uses the matching engine, so the scene was
+     * dropped to avoid mis-rendering. Callers should warn the user and
+     * avoid overwriting the unread payload.
+     */
+    unsupportedVersion: boolean;
 }
 
 export interface SerializedSlide extends AnyObj {
@@ -57,6 +64,28 @@ export interface SerializedSlide extends AnyObj {
 
 function clamp(v: number, min: number, max: number): number {
     return Math.min(Math.max(v, min), max);
+}
+
+/**
+ * Single source of truth for slide dimension bounds. Rounds to integers,
+ * falls back to default width/height for non-finite or non-positive input,
+ * then clamps into [MIN_W..MAX_W] / [MIN_H..MAX_H]. Used both by the editor
+ * (input clamp on resize) and the serializer (load-time clamp).
+ */
+export function clampDimensions(width: unknown, height: unknown): { width: number; height: number } {
+    const widthSrc = Number(width);
+    const heightSrc = Number(height);
+    const w = clamp(
+        Math.round(Number.isFinite(widthSrc) && widthSrc > 0 ? widthSrc : DEFAULT_WIDTH),
+        MIN_W,
+        MAX_W,
+    );
+    const h = clamp(
+        Math.round(Number.isFinite(heightSrc) && heightSrc > 0 ? heightSrc : DEFAULT_HEIGHT),
+        MIN_H,
+        MAX_H,
+    );
+    return { width: w, height: h };
 }
 
 export function isHexColor(v: unknown): v is string {
@@ -84,13 +113,11 @@ export function parsePrevious(raw: unknown): ParsedSlide {
         height: DEFAULT_HEIGHT,
         background: DEFAULT_BG,
         fabric: null,
+        unsupportedVersion: false,
     };
     if (!parsed) return blank;
 
-    const widthSrc = Number(parsed.width);
-    const heightSrc = Number(parsed.height);
-    const width = clamp(Number.isFinite(widthSrc) && widthSrc > 0 ? widthSrc : DEFAULT_WIDTH, MIN_W, MAX_W);
-    const height = clamp(Number.isFinite(heightSrc) && heightSrc > 0 ? heightSrc : DEFAULT_HEIGHT, MIN_H, MAX_H);
+    const { width, height } = clampDimensions(parsed.width, parsed.height);
     const background = isHexColor(parsed.background) ? (parsed.background as string) : DEFAULT_BG;
 
     let fabricJSON: AnyObj | null = null;
@@ -102,7 +129,15 @@ export function parsePrevious(raw: unknown): ParsedSlide {
     ) {
         fabricJSON = parsed.fabric as AnyObj;
     }
-    return { width, height, background, fabric: fabricJSON };
+    // Only flag when the payload looks like a slide from a future bundle
+    // (same engine, higher version). Legacy versions and missing-version
+    // payloads are handled by the host's legacy import path.
+    const claimedVersion = Number(parsed.version);
+    const unsupportedVersion =
+        parsed.engine === ENGINE_NAME &&
+        Number.isFinite(claimedVersion) &&
+        claimedVersion > DATA_VERSION;
+    return { width, height, background, fabric: fabricJSON, unsupportedVersion };
 }
 
 interface BuildPayloadInput {
@@ -119,10 +154,7 @@ interface BuildPayloadInput {
  * safe range; missing values fall back to defaults.
  */
 export function buildPayload(input: BuildPayloadInput): SerializedSlide {
-    const widthSrc = Number(input.width);
-    const heightSrc = Number(input.height);
-    const width = clamp(Number.isFinite(widthSrc) && widthSrc > 0 ? widthSrc : DEFAULT_WIDTH, MIN_W, MAX_W);
-    const height = clamp(Number.isFinite(heightSrc) && heightSrc > 0 ? heightSrc : DEFAULT_HEIGHT, MIN_H, MAX_H);
+    const { width, height } = clampDimensions(input.width, input.height);
     const background = isHexColor(input.background) ? input.background : DEFAULT_BG;
 
     return {

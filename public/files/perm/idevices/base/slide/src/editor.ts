@@ -18,7 +18,8 @@ import { SlideAssetService } from './assetService.js';
 import { SlideCanvasAdapter, type SelectionInfo } from './canvasAdapter.js';
 import { SlideCanvasControls } from './canvasControls.js';
 import { SlideHistoryManager } from './history.js';
-import { parsePrevious, type AnyObj, type ParsedSlide } from './serializer.js';
+import { clampDimensions, parsePrevious, type AnyObj, type ParsedSlide } from './serializer.js';
+import { buildSnapshot, readSnapshot } from './snapshot.js';
 import type { ShapeKind } from './shapes.js';
 import { SlideToolbar, type ToolbarController } from './toolbar.js';
 import { t } from './i18n.js';
@@ -32,8 +33,15 @@ export interface EditorAPI {
     getSvgString(): string;
     getDimensions(): { width: number; height: number };
     getBackground(): string;
+    canSave(): boolean;
     setDimensions(width: number, height: number): void;
     setBackground(color: string): void;
+    /**
+     * When the editor mounted a payload it cannot decode (newer format),
+     * the original payload is returned verbatim so the host can re-save
+     * it unchanged. Returns null when the payload was decoded normally.
+     */
+    getUnreadPayload(): unknown;
     destroy(): void;
 }
 
@@ -69,11 +77,19 @@ export class SlideEditor implements EditorAPI {
      *  no-op reload if the user toggles back without editing. */
     private codeOriginalJson = '';
 
+    /** Verbatim payload kept around when parsePrevious can't decode it
+     *  (future-version case). Re-emitted on save so an editor with an
+     *  older bundle never overwrites a slide authored by a newer one. */
+    private unreadPayload: unknown = null;
+
     constructor(container: HTMLElement, options: EditorOptions = {}) {
         this.root = container;
         this.root.classList.add('exe-slide-editor');
         this.root.setAttribute('data-testid', 'slide-editor');
         this.parsed = parsePrevious(options.previousData);
+        if (this.parsed.unsupportedVersion) {
+            this.unreadPayload = options.previousData;
+        }
         this.history = new SlideHistoryManager();
 
         this.buildDom();
@@ -82,7 +98,6 @@ export class SlideEditor implements EditorAPI {
             canvasEl: this.canvasEl,
             width: this.parsed.width,
             height: this.parsed.height,
-            background: this.parsed.background,
             purifier: DOMPurify as unknown as { sanitize: (input: string, opts?: Record<string, unknown>) => string },
             onChange: immediate => this.handleCanvasChange(immediate),
             onSelection: info => this.handleSelectionChange(info),
@@ -194,7 +209,26 @@ export class SlideEditor implements EditorAPI {
         }, 120);
 
         this.attachKeyboard();
+        if (this.parsed.unsupportedVersion) {
+            this.showUnsupportedVersionBanner();
+        }
         void this.loadInitialScene();
+    }
+
+    private showUnsupportedVersionBanner(): void {
+        const banner = document.createElement('div');
+        banner.className = 'exe-slide-unsupported-banner';
+        banner.setAttribute('role', 'alert');
+        banner.setAttribute('data-testid', 'slide-unsupported-banner');
+        banner.textContent = t(
+            'This slide was created with a newer version of eXeLearning. Editing is disabled to avoid data loss.',
+        );
+        this.wrapper.insertBefore(banner, this.wrapper.firstChild);
+        this.toolbar.root.classList.add('exe-slide-toolbar--disabled');
+        this.canvasControls.root.classList.add('exe-slide-canvas-controls--disabled');
+        this.viewToggle.setAttribute('aria-disabled', 'true');
+        this.visualBtn.disabled = true;
+        this.codeBtn.disabled = true;
     }
 
     // ── DOM ────────────────────────────────────────────────────────────────
@@ -301,6 +335,7 @@ export class SlideEditor implements EditorAPI {
     // ── View toggle (Visual / Code) ────────────────────────────────────────
 
     private setCodeMode(enable: boolean): void {
+        if (this.unreadPayload) return;
         if (this.codeMode === enable) return;
         if (enable) {
             this.enterCodeMode();
@@ -378,8 +413,10 @@ export class SlideEditor implements EditorAPI {
         this.codePanel.setAttribute('aria-hidden', 'true');
         this.codePanel.classList.remove('exe-slide-code-panel--visible');
         this.canvasFrame.classList.remove('exe-slide-canvas-frame--hidden');
-        this.toolbar.root.classList.remove('exe-slide-toolbar--disabled');
-        this.canvasControls.root.classList.remove('exe-slide-canvas-controls--disabled');
+        if (!this.unreadPayload) {
+            this.toolbar.root.classList.remove('exe-slide-toolbar--disabled');
+            this.canvasControls.root.classList.remove('exe-slide-canvas-controls--disabled');
+        }
         this.codeBtn.classList.remove('is-active');
         this.visualBtn.classList.add('is-active');
         this.visualBtn.setAttribute('aria-selected', 'true');
@@ -537,7 +574,7 @@ export class SlideEditor implements EditorAPI {
         if (!snapshot) return;
         this.applyingHistory = true;
         try {
-            await this.adapter.loadFromJSON(JSON.parse(snapshot) as AnyObj);
+            await this.applySnapshot(snapshot);
         } finally {
             this.applyingHistory = false;
         }
@@ -551,7 +588,7 @@ export class SlideEditor implements EditorAPI {
         if (!snapshot) return;
         this.applyingHistory = true;
         try {
-            await this.adapter.loadFromJSON(JSON.parse(snapshot) as AnyObj);
+            await this.applySnapshot(snapshot);
         } finally {
             this.applyingHistory = false;
         }
@@ -561,7 +598,24 @@ export class SlideEditor implements EditorAPI {
     }
 
     private snapshotString(): string {
-        return JSON.stringify(this.adapter.serialize());
+        return buildSnapshot(
+            this.adapter.serialize(),
+            this.parsed.width,
+            this.parsed.height,
+            this.parsed.background,
+        );
+    }
+
+    private async applySnapshot(serialized: string): Promise<void> {
+        const snap = readSnapshot(serialized);
+        // Restore canvas dimensions and background first; the SVG export
+        // and the canvas frame's CSS variable both read from this.parsed.
+        this.parsed = { ...this.parsed, width: snap.width, height: snap.height, background: snap.background };
+        this.adapter.setBufferDimensions(snap.width, snap.height);
+        this.canvasFrame?.style.setProperty('--slide-canvas-bg', snap.background);
+        this.canvasControls?.refresh();
+        this.fitCanvasToShell();
+        await this.adapter.loadFromJSON(snap.scene);
     }
 
     // ── Public API ─────────────────────────────────────────────────────────
@@ -571,10 +625,9 @@ export class SlideEditor implements EditorAPI {
     }
 
     getFabricJSON(): AnyObj {
-        // If the user is in code mode, the textarea is the source of truth.
-        // We try to parse it and return that; if it's invalid we fall back
-        // to the last-known-good scene (saved is better than refusing to
-        // save and losing data).
+        // Callers can inspect parsed code-mode contents here. Persistence
+        // calls canSave() first because SVG is generated from the applied
+        // visual canvas only.
         if (this.codeMode) {
             try {
                 return JSON.parse(this.codeTextarea.value.trim() || '{}') as AnyObj;
@@ -605,22 +658,56 @@ export class SlideEditor implements EditorAPI {
         return this.parsed.background;
     }
 
+    canSave(): boolean {
+        if (!this.codeMode) return true;
+        if (this.codeTextarea.value === this.codeOriginalJson) return true;
+
+        try {
+            JSON.parse(this.codeTextarea.value.trim() || '{}');
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            this.showCodeError(`${t('Invalid JSON')}: ${msg}`);
+            return false;
+        }
+
+        this.showCodeError(t('Switch to Visual to apply code changes before saving.'));
+        return false;
+    }
+
+    getUnreadPayload(): unknown {
+        return this.unreadPayload;
+    }
+
     setDimensions(width: number, height: number): void {
-        const w = Math.max(200, Math.min(4000, Math.round(width)));
-        const h = Math.max(200, Math.min(4000, Math.round(height)));
+        if (this.unreadPayload) return;
+        // Clamp with the same bounds the serializer will apply on reload, so
+        // the user can never enter a value that silently changes when the
+        // slide is reopened.
+        const { width: w, height: h } = clampDimensions(width, height);
+        if (w === this.parsed.width && h === this.parsed.height) return;
         this.parsed = { ...this.parsed, width: w, height: h };
         this.adapter?.setBufferDimensions(w, h);
         this.fitCanvasToShell();
         this.canvasControls?.refresh();
+        if (!this.applyingHistory) {
+            this.history.commit(this.snapshotString());
+            this.toolbar.setHistoryState(this.history.canUndo(), this.history.canRedo());
+        }
     }
 
     setBackground(color: string): void {
+        if (this.unreadPayload) return;
+        if (color === this.parsed.background) return;
         this.parsed = { ...this.parsed, background: color };
         // CSS-side: update the canvas-frame's background so the dotted grid
         // sits on top of the chosen colour. Fabric's canvas buffer stays
         // transparent during editing.
         this.canvasFrame?.style.setProperty('--slide-canvas-bg', color);
         this.canvasControls?.refresh();
+        if (!this.applyingHistory) {
+            this.history.commit(this.snapshotString());
+            this.toolbar.setHistoryState(this.history.canUndo(), this.history.canRedo());
+        }
     }
 
     destroy(): void {
