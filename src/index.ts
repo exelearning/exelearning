@@ -26,13 +26,10 @@ import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
 import { uploadSessionRoutes } from './routes/upload-session';
-import {
-    createWebSocketRoutes,
-    initialize as initWebSocket,
-    getServerInfo,
-    getActiveRooms,
-    stop as stopWebSocket,
-} from './websocket/yjs-websocket';
+import { createWebSocketRoutes, initialize as initWebSocket, stop as stopWebSocket } from './websocket/yjs-websocket';
+import { webSocketInfoRoutes } from './routes/websocket-info';
+import { yjsDebugRoutes } from './routes/yjs-debug';
+import { getAppVersion } from './utils/version';
 import { getFilesDir } from './services/file-helper';
 import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
@@ -42,6 +39,7 @@ import { renderTemplate, setRenderLocale } from './services/template';
 import { getSettingNumber } from './services/app-settings';
 import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
 import { getBasePath } from './utils/basepath.util';
+import { serveSiteThemeFile } from './utils/site-theme-file';
 import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
@@ -385,28 +383,14 @@ const app = new Elysia()
             }
         }
 
-        // Match /v{version}/site-files/themes/* and serve from FILES_DIR
-        const versionedSiteFilesMatch = pathname.match(/^\/v[\d.]+[^/]*\/site-files\/themes\/(.+)$/);
-        if (versionedSiteFilesMatch) {
-            const relativePath = versionedSiteFilesMatch[1];
-            const filesDir = getFilesDir();
-            const filePath = path.join(filesDir, 'themes', 'site', relativePath);
-
-            // Security check
-            const resolvedPath = path.resolve(filePath);
-            const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'site'));
-            if (resolvedPath.startsWith(resolvedBase) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-                const content = fs.readFileSync(filePath);
-                const ext = path.extname(filePath).toLowerCase();
-                const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-                return new Response(content, {
-                    headers: {
-                        'Content-Type': contentType,
-                        'Cache-Control': 'public, max-age=31536000',
-                    },
-                });
-            }
+        // Serve site theme files from FILES_DIR/themes/site for both URL shapes:
+        //   - versioned, cache-busted:  /v{version}-{ts}/site-files/themes/*
+        //   - plain (admin screenshots): /site-files/themes/*
+        // BASE_PATH has already been stripped above, so this also covers requests
+        // behind a subdirectory proxy (issue: admin screenshots 404 with BASE_PATH set).
+        const siteThemeResponse = serveSiteThemeFile(pathname, getFilesDir());
+        if (siteThemeResponse) {
+            return siteThemeResponse;
         }
 
         // Match /v{version}/* and rewrite to /* (except /libs, /admin-files which are handled above)
@@ -465,27 +449,13 @@ const app = new Elysia()
     // Serve site theme files from FILES_DIR/themes/site/
     // URL pattern: /site-files/themes/{dirName}/* or /{version}/site-files/themes/{dirName}/*
     .get('/site-files/themes/*', ({ params, set }) => {
+        // Most requests are already handled by the onRequest hook above (which also
+        // covers BASE_PATH-prefixed and versioned URLs). This route is the fallback
+        // for the plain root-mounted path; reuse the same shared server helper.
         const relativePath = params['*'] || '';
-        const filesDir = getFilesDir();
-        const filePath = path.join(filesDir, 'themes', 'site', relativePath);
-
-        // Security: ensure path is within the themes/site directory
-        const resolvedPath = path.resolve(filePath);
-        const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'site'));
-        if (!resolvedPath.startsWith(resolvedBase)) {
-            set.status = 403;
-            return 'Forbidden';
-        }
-
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-            const content = fs.readFileSync(filePath);
-            const ext = path.extname(filePath).toLowerCase();
-            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-            set.headers['Content-Type'] = contentType;
-            set.headers['Content-Length'] = content.length.toString();
-            set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
-            return content;
+        const response = serveSiteThemeFile(`/site-files/themes/${relativePath}`, getFilesDir());
+        if (response) {
+            return response;
         }
 
         set.status = 404;
@@ -609,14 +579,12 @@ if (registerRootRoutes) {
         .use(apiV1Routes)
         .use(uploadSessionRoutes)
         .use(createWebSocketRoutes())
+        .use(webSocketInfoRoutes)
+        .use(yjsDebugRoutes)
         .get('/api', () => ({
             name: 'eXeLearning API',
-            version: '4.0.0-elysia',
-            framework: 'Elysia',
-            runtime: 'Bun',
-        }))
-        .get('/api/websocket/info', () => getServerInfo())
-        .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }));
+            version: getAppVersion(),
+        }));
 }
 
 // Also register routes at BASE_PATH if configured
@@ -647,14 +615,12 @@ if (routePrefix) {
             .use(apiV1Routes)
             .use(uploadSessionRoutes)
             .use(createWebSocketRoutes())
+            .use(webSocketInfoRoutes)
+            .use(yjsDebugRoutes)
             .get('/api', () => ({
                 name: 'eXeLearning API',
-                version: '4.0.0-elysia',
-                framework: 'Elysia',
-                runtime: 'Bun',
+                version: getAppVersion(),
             }))
-            .get('/api/websocket/info', () => getServerInfo())
-            .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }))
             // Editor handlers must be registered at BASE_PATH too
             .get('/api/exemindmap-editor', exemindmapEditorBaseHandler)
             .get('/api/exemindmap-editor/*', exemindmapEditorHandler)
@@ -729,8 +695,30 @@ async function syncBuiltinThemes() {
     console.log(`[Themes] Base themes synced`);
 }
 
+/**
+ * Refuse to boot in production if the JWT signing secret is still the
+ * insecure default. Catches the case where a deployment forgets to set
+ * `API_JWT_SECRET` / `JWT_SECRET` — without this check, tokens would be
+ * forgeable by anyone who reads the open-source codebase.
+ */
+function assertProductionJwtSecret(): void {
+    if (process.env.NODE_ENV !== 'production') return;
+    const secret = process.env.API_JWT_SECRET || process.env.JWT_SECRET || '';
+    if (!secret || secret === 'dev_secret_change_me' || secret === 'elysia-dev-secret-change-me') {
+        console.error(
+            '[SECURITY] Refusing to start: NODE_ENV=production but no API_JWT_SECRET/JWT_SECRET is set ' +
+                '(or it is still the in-repo default). Generate a long random string and export it as ' +
+                'API_JWT_SECRET before starting the server.',
+        );
+        process.exit(1);
+    }
+}
+
 // Bootstrap: run migrations, seed, and start server
 async function bootstrap() {
+    // 0. Production safety: do not start with the default JWT secret.
+    assertProductionJwtSecret();
+
     // 1. Run migrations
     console.log('[DB] Running migrations...');
     const migrationResult = await migrateToLatest(db);

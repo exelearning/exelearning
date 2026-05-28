@@ -12,6 +12,7 @@ import * as path from 'path';
 import { db } from '../db/client';
 import { getEnabledSiteThemes, getDefaultTheme, getBaseThemes } from '../db/queries/themes';
 import type { Theme } from '../db/types';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import { prefixPath } from '../utils/basepath.util';
 
 // Base path for themes (bundled with the app)
@@ -116,6 +117,10 @@ interface ThemeConfig {
     icons: Record<string, ThemeIcon>;
     valid: boolean;
     isDefault?: boolean;
+    // Cache-buster timestamp (ms). Set for site themes from themes.updated_at so
+    // the client can key its persistent (IndexedDB) and bundle caches per
+    // re-upload. null/undefined for base themes (which version with the app).
+    updatedAt?: number | null;
 }
 
 /**
@@ -301,8 +306,10 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
     const themePath = path.join(siteThemesPath, siteTheme.dir_name);
 
     // Build URL paths - site themes are served from FILES_DIR.
-    // prefixPath() prepends BASE_PATH so URLs are valid behind a subdirectory proxy.
-    const themeUrl = prefixPath(`/${version}/site-files/themes/${siteTheme.dir_name}`);
+    // Embed the theme's updated_at as a cache-buster so a re-uploaded theme
+    // forces clients to drop the cached CSS/icons on the next page load, and
+    // prefix BASE_PATH so URLs remain valid behind a subdirectory proxy.
+    const themeUrl = prefixPath(buildSiteThemeUrl(version, siteTheme.dir_name, siteTheme.updated_at));
 
     // Scan for CSS, JS, and icons
     const cssFiles = deps.fs.existsSync(themePath) ? scanThemeFiles(themePath, '.css') : ['style.css'];
@@ -339,6 +346,7 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
         js,
         icons,
         valid: true,
+        updatedAt: siteTheme.updated_at ?? null,
     };
 }
 

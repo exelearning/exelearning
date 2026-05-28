@@ -349,13 +349,18 @@ describe('Scorm12Exporter', () => {
         it('should include onload handler', () => {
             const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
-            expect(html).toContain('loadPage');
+            expect(html).toContain('onload="loadPage()"');
         });
 
-        it('should include onunload handler', () => {
+        // Regression: issue #1831 — Chrome blocks the deprecated `unload` event under a
+        // Permissions Policy (e.g. Moodle iframes), which dropped SCORM scores. Session
+        // finalization is now registered via pagehide/visibilitychange inside SCOFunctions.js,
+        // so the generated page must NOT carry onunload/onbeforeunload body attributes.
+        it('should NOT include deprecated onunload/onbeforeunload handlers', () => {
             const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
-            expect(html).toContain('unloadPage');
+            expect(html).not.toContain('onunload');
+            expect(html).not.toContain('onbeforeunload');
         });
 
         it('should have exe-scorm class', () => {
@@ -469,6 +474,14 @@ describe('Scorm12Exporter', () => {
             expect(scoFunctions).toContain('setComplete');
             expect(scoFunctions).toContain('setIncomplete');
             expect(scoFunctions).toContain('setScore');
+        });
+
+        it('should register lifecycle handlers without the deprecated unload event (issue #1831)', () => {
+            const scoFunctions = exporter.getScoFunctions();
+
+            expect(scoFunctions).toContain('pagehide');
+            expect(scoFunctions).toContain('visibilitychange');
+            expect(scoFunctions).not.toMatch(/addEventListener\(\s*["']unload["']/);
         });
     });
 

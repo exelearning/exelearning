@@ -1,8 +1,13 @@
 /**
  * Slide iDevice — edition bridge for the Fabric.js editor.
  *
- * Loads the pre-built Fabric editor bundle (slide-editor.bundle.js) and
+ * Loads (in order, on demand) the shared Fabric.js + DOMPurify libraries from
+ * public/libs/, then the pre-built editor bundle (slide-editor.bundle.js), and
  * implements the $exeDevice.init/save contract expected by eXeLearning.
+ *
+ * Fabric and DOMPurify are NOT inlined in slide-editor.bundle.js anymore — they
+ * live as vendored libraries in public/libs/{fabric,dompurify}/ and are exposed
+ * as window.fabric / window.DOMPurify so other code can reuse them.
  *
  * Vanilla DOM. No jQuery. No React. No tldraw. The editor itself owns
  * the toolbar, canvas, and status bar — the bridge only mounts it and
@@ -25,6 +30,45 @@
     var DEFAULT_HEIGHT = 720;
     var DEFAULT_BG = '#ffffff';
 
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    function loadGlobal(globalName, src) {
+        if (window[globalName]) {
+            return Promise.resolve();
+        }
+        var promiseKey = '__slideLoad_' + globalName;
+        if (window[promiseKey]) {
+            return window[promiseKey];
+        }
+        window[promiseKey] = loadScript(src).catch(err => {
+            delete window[promiseKey];
+            throw err;
+        });
+        return window[promiseKey];
+    }
+
+    /**
+     * Resolve the URL of the public/libs/ directory given the iDevice's
+     * edition path. Example: ".../files/perm/idevices/base/slide/edition/" →
+     * ".../libs/". Falls back to a relative climb if the pattern doesn't match.
+     */
+    function resolveLibsBase(idevicePath) {
+        var replaced = idevicePath.replace(/files\/perm\/idevices\/[^/]+\/[^/]+\/edition\/?$/, 'libs/');
+        if (replaced !== idevicePath) {
+            return replaced;
+        }
+        return idevicePath + '../../../../../../libs/';
+    }
+
     function loadBundle(idevicePath) {
         if (window[BUNDLE_GLOBAL]) {
             return Promise.resolve();
@@ -33,17 +77,24 @@
             return window.__slideBundlePromise;
         }
 
-        window.__slideBundlePromise = new Promise((resolve, reject) => {
-            var script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = idevicePath + BUNDLE_FILE;
-            script.onload = resolve;
-            script.onerror = err => {
+        var libsBase = resolveLibsBase(idevicePath);
+
+        window.__slideBundlePromise = loadGlobal('fabric', libsBase + 'fabric/fabric.min.js')
+            .then(() => loadGlobal('DOMPurify', libsBase + 'dompurify/purify.min.js'))
+            .then(() => loadScript(idevicePath + BUNDLE_FILE))
+            .then(() => {
+                // Guard against a script that loaded but didn't expose the
+                // expected global (corrupt build, wrong file, race in a
+                // proxy/CDN). Surface as a rejection so the cached promise
+                // is cleared and the next init can retry.
+                if (!window[BUNDLE_GLOBAL] || typeof window[BUNDLE_GLOBAL].mount !== 'function') {
+                    throw new Error('slide editor bundle did not expose mount()');
+                }
+            })
+            .catch(err => {
                 delete window.__slideBundlePromise;
-                reject(err);
-            };
-            document.head.appendChild(script);
-        });
+                throw err;
+            });
 
         return window.__slideBundlePromise;
     }
@@ -111,6 +162,20 @@
         save: function () {
             if (!this._editorApi) {
                 return null;
+            }
+
+            // Newer-format payload the editor couldn't decode: re-emit as-is
+            // so an older bundle never silently overwrites a slide with a
+            // blank canvas.
+            if (typeof this._editorApi.getUnreadPayload === 'function') {
+                var unread = this._editorApi.getUnreadPayload();
+                if (unread) {
+                    return unread;
+                }
+            }
+
+            if (typeof this._editorApi.canSave === 'function' && !this._editorApi.canSave()) {
+                return false;
             }
 
             var dims =

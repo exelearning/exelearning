@@ -484,7 +484,8 @@ export class Scorm12Exporter extends Html5Exporter {
             bodyClass: bodyClass,
             extraHeadScripts: this.getScormHeadScripts(basePath),
             onLoadScript: 'loadPage()',
-            onUnloadScript: 'unloadPage()',
+            // Issue #1831: unload finalization is registered via pagehide/visibilitychange
+            // inside SCOFunctions.js (no deprecated onunload attribute).
             // Hide navigation elements - LMS handles navigation in SCORM
             hideNavigation: true,
             hideNavButtons: true,
@@ -663,6 +664,29 @@ function setScore(score, maxScore, minScore) {
   if (minScore !== undefined) scorm.set("cmi.core.score.min", minScore);
   scorm.save();
 }
+
+// Issue #1831: finalize via pagehide/visibilitychange instead of the deprecated unload event,
+// which Chrome blocks under a Permissions Policy (e.g. Moodle iframes), losing SCORM scores.
+(function () {
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
+    return;
+  }
+  var finalized = false;
+  function finalizeOnce() {
+    if (finalized) return;
+    finalized = true;
+    unloadPage();
+  }
+  window.addEventListener("pagehide", finalizeOnce, false);
+  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden" && !finalized) {
+        computeTime();
+        scorm.save();
+      }
+    }, false);
+  }
+}());
 `;
     }
 

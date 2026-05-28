@@ -93,6 +93,7 @@ export async function resolveDefaultThemeForNewProject(
     return themeDirName;
 }
 import { getAppVersion } from '../utils/version';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
@@ -100,7 +101,36 @@ import {
 import { createBlankYjsDocument } from '../services/yjs-initializer';
 import { logActivity } from '../services/activity-logger';
 import type { Kysely } from 'kysely';
-import type { Database, Project, User } from '../db/types';
+import type { Database, Project, User, Theme } from '../db/types';
+
+/**
+ * Build the `defaultTheme` payload returned to the client when a project is
+ * created. A site theme (admin-uploaded, enabled, non-builtin) gets a
+ * cache-busted `/site-files/themes/...` URL (consistent with config.ts /
+ * themes.ts); anything else falls back to the bundled base theme URL.
+ *
+ * Pure helper extracted from the create route so both branches stay testable.
+ */
+export function buildDefaultThemePayload(
+    themeRecord: Theme | undefined,
+    themeDirName: string,
+    version: string,
+): { dirName: string; displayName: string; url: string; type: 'base' | 'site' } {
+    if (themeRecord && themeRecord.is_enabled === 1 && themeRecord.is_builtin === 0) {
+        return {
+            dirName: themeRecord.dir_name,
+            displayName: themeRecord.display_name,
+            url: buildSiteThemeUrl(version, themeRecord.dir_name, themeRecord.updated_at),
+            type: 'site',
+        };
+    }
+    return {
+        dirName: themeDirName,
+        displayName: themeRecord?.display_name || themeDirName,
+        url: `/files/perm/themes/base/${themeDirName}`,
+        type: 'base',
+    };
+}
 import type {
     ProjectUploadChunkRequest,
     ProjectPropertiesRequest,
@@ -606,22 +636,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 try {
                     const version = getAppVersion();
                     const themeRecord = await findThemeByDirName(db, themeDirName);
-
-                    if (themeRecord && themeRecord.is_enabled === 1 && themeRecord.is_builtin === 0) {
-                        defaultTheme = {
-                            dirName: themeRecord.dir_name,
-                            displayName: themeRecord.display_name,
-                            url: `/${version}/site-files/themes/${themeRecord.dir_name}`,
-                            type: 'site',
-                        };
-                    } else {
-                        defaultTheme = {
-                            dirName: themeDirName,
-                            displayName: themeRecord?.display_name || themeDirName,
-                            url: `/files/perm/themes/base/${themeDirName}`,
-                            type: 'base',
-                        };
-                    }
+                    defaultTheme = buildDefaultThemePayload(themeRecord, themeDirName, version);
                 } catch {
                     // Silently ignore if tables don't exist yet - defaults to 'base' theme on frontend
                 }
@@ -1659,7 +1674,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // GET /api/odes/current-users - Get users currently working on ODE
-            .get('/api/odes/current-users', ({ query }) => {
+            .get('/api/odes/current-users', ({ query, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const odeSessionId = query.odeSessionId as string | undefined;
 
                 // In single-user mode, return empty array or minimal info
@@ -1691,7 +1710,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/current-users - Register user working on ODE (for collaboration)
-            .post('/api/odes/current-users', ({ body }) => {
+            .post('/api/odes/current-users', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as OdeCurrentUserRequest;
                 // In stateless mode, just acknowledge
                 return {
@@ -1702,7 +1725,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // DELETE /api/odes/current-users - Unregister user from ODE (for collaboration)
-            .delete('/api/odes/current-users', () => {
+            .delete('/api/odes/current-users', ({ currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 // In stateless mode, just acknowledge
                 return {
                     success: true,
@@ -1711,7 +1738,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/check-before-leave - Check if safe to leave (no other users editing)
-            .post('/api/odes/check-before-leave', ({ body }) => {
+            .post('/api/odes/check-before-leave', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CheckBeforeLeaveRequest;
                 const odeSessionId = data.odeSessionId;
 
@@ -1731,7 +1762,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/session/close - Close an ODE session (called during logout)
-            .post('/api/odes/session/close', ({ body }) => {
+            .post('/api/odes/session/close', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CloseSessionRequest;
                 const odeSessionId = data.odeSessionId;
 

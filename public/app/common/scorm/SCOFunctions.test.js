@@ -383,6 +383,82 @@ describe('SCOFunctions.js', () => {
     });
   });
 
+  describe('registerScormLifecycleHandlers (issue #1831)', () => {
+    let listeners;
+    let fakeWin;
+    let fakeDoc;
+
+    beforeEach(() => {
+      listeners = {};
+      fakeWin = {
+        addEventListener: vi.fn((type, cb) => {
+          listeners['win:' + type] = cb;
+        }),
+      };
+      fakeDoc = {
+        visibilityState: 'visible',
+        addEventListener: vi.fn((type, cb) => {
+          listeners['doc:' + type] = cb;
+        }),
+      };
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
+      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
+    });
+
+    it('registers pagehide and visibilitychange instead of the deprecated unload event', () => {
+      scoFunctions.registerScormLifecycleHandlers(fakeWin, fakeDoc);
+
+      expect(fakeWin.addEventListener).toHaveBeenCalledWith('pagehide', expect.any(Function), false);
+      expect(fakeDoc.addEventListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function), false);
+      expect(fakeWin.addEventListener).not.toHaveBeenCalledWith('unload', expect.anything(), expect.anything());
+      expect(fakeWin.addEventListener).not.toHaveBeenCalledWith('beforeunload', expect.anything(), expect.anything());
+    });
+
+    it('finalizes the SCORM session exactly once on pagehide', () => {
+      scoFunctions.registerScormLifecycleHandlers(fakeWin, fakeDoc);
+
+      listeners['win:pagehide']();
+      listeners['win:pagehide'](); // a second pagehide must be a no-op
+
+      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalledTimes(1);
+    });
+
+    it('commits progress without quitting when the tab becomes hidden', () => {
+      scoFunctions.registerScormLifecycleHandlers(fakeWin, fakeDoc);
+
+      fakeDoc.visibilityState = 'hidden';
+      listeners['doc:visibilitychange']();
+
+      expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.quit).not.toHaveBeenCalled();
+    });
+
+    it('does nothing on visibilitychange while the page is still visible', () => {
+      scoFunctions.registerScormLifecycleHandlers(fakeWin, fakeDoc);
+
+      fakeDoc.visibilityState = 'visible';
+      listeners['doc:visibilitychange']();
+
+      expect(globalThis.pipwerks.SCORM.save).not.toHaveBeenCalled();
+    });
+
+    it('does not commit again once the session has been finalized', () => {
+      scoFunctions.registerScormLifecycleHandlers(fakeWin, fakeDoc);
+
+      listeners['win:pagehide'](); // finalize first
+      globalThis.pipwerks.SCORM.save.mockClear();
+      fakeDoc.visibilityState = 'hidden';
+      listeners['doc:visibilitychange']();
+
+      expect(globalThis.pipwerks.SCORM.save).not.toHaveBeenCalled();
+    });
+
+    it('is a safe no-op when addEventListener is unavailable', () => {
+      expect(() => scoFunctions.registerScormLifecycleHandlers({}, {})).not.toThrow();
+    });
+  });
+
   describe('goBack', () => {
     it('calls pipwerks.nav.goBack', () => {
       globalThis.goBack();

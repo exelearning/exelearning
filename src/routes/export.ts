@@ -14,6 +14,8 @@ import * as pathModule from 'path';
 import { buildContentDisposition } from '../shared/http/headers';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
+import { withJwtAuth } from '../utils/route-auth';
+import { hasRole, ROLES, requireAuth } from '../utils/guards';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -625,14 +627,37 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
     // Routes
     // ========================================================================
 
+    /**
+     * Authorisation rule used by both GET and POST download handlers.
+     * - Anonymous requests are rejected with 401.
+     * - For a real (in-memory) session, the caller must own it or be an admin.
+     * - For "Yjs-only" virtual sessions (where the caller supplies the
+     *   structure in the request body) we only require authentication; the
+     *   caller is exporting data they supplied themselves.
+     */
+    function authorizeExport(
+        session: ProjectSession | undefined,
+        jwtPayload: { sub?: number; roles?: string[] } | null | undefined,
+    ): { ok: true } | { ok: false; status: 401 | 403; message: string } {
+        const authErr = requireAuth(jwtPayload as any);
+        if (authErr) return { ok: false, status: authErr.status, message: authErr.message };
+        if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) return { ok: true };
+        if (session && session.userId !== undefined && session.userId !== Number(jwtPayload!.sub)) {
+            return { ok: false, status: 403, message: 'Access denied' };
+        }
+        return { ok: true };
+    }
+
     return (
         new Elysia({ prefix: '/api/export' })
+            .use(withJwtAuth())
 
             // =====================================================
             // Get Available Formats
             // =====================================================
 
             // GET /api/export/formats - List available export formats
+            // Public: the list of supported formats is static metadata.
             .get('/formats', () => {
                 return {
                     success: true,
@@ -645,10 +670,16 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // =====================================================
 
             // GET /api/export/:odeSessionId/:exportType/download - Download export
-            .get('/:odeSessionId/:exportType/download', async ({ params, set }) => {
+            .get('/:odeSessionId/:exportType/download', async ({ params, set, jwtPayload }) => {
                 const { odeSessionId, exportType } = params;
 
                 const session = getSession(odeSessionId);
+                const authz = authorizeExport(session, jwtPayload);
+                if (!authz.ok) {
+                    set.status = authz.status;
+                    return { success: false, error: authz.message };
+                }
+
                 if (!session) {
                     set.status = 404;
                     return { success: false, error: 'Session not found' };
@@ -697,11 +728,16 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // =====================================================
 
             // POST /api/export/:odeSessionId/:exportType/download - Download export with options
-            .post('/:odeSessionId/:exportType/download', async ({ params, body, set }) => {
+            .post('/:odeSessionId/:exportType/download', async ({ params, body, set, jwtPayload }) => {
                 const { odeSessionId, exportType } = params;
                 const options = body as ExportOptionsRequest;
 
                 let session = getSession(odeSessionId);
+                const authz = authorizeExport(session, jwtPayload);
+                if (!authz.ok) {
+                    set.status = authz.status;
+                    return { success: false, error: authz.message };
+                }
 
                 // For Yjs-only sessions (yjs-*), create a virtual session if structure is provided
                 if (!session && options.structure) {
