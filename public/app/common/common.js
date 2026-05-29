@@ -1314,6 +1314,10 @@ var $exeDevices = {
 
                     $exeDevices.iDevice.gamification.scorm.showFinalScore(lmsData, game);
 
+                    if (typeof pipwerks.SCORM.save === "function") {
+                        pipwerks.SCORM.save();
+                    }
+
                 },
 
                 showFinalScore: function (lmsData, game) {
@@ -1327,13 +1331,22 @@ var $exeDevices = {
                     }
 
                     const newFinalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                    const passed = newFinalScore >= 50;
 
-                    pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-
-                    if (newFinalScore >= 50) {
-                        pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
+                    // SCORM 1.2 stores everything under cmi.core.* and combines completion+success
+                    // in cmi.core.lesson_status; SCORM 2004 splits them and uses cmi.* (no .core.),
+                    // plus a normalized cmi.score.scaled. Branching on pipwerks.SCORM.version keeps
+                    // the score reaching the right CMI keys for both LMS profiles.
+                    if (pipwerks.SCORM.version === "2004") {
+                        pipwerks.SCORM.set("cmi.score.raw", newFinalScore);
+                        pipwerks.SCORM.set("cmi.score.min", 0);
+                        pipwerks.SCORM.set("cmi.score.max", 100);
+                        pipwerks.SCORM.set("cmi.score.scaled", newFinalScore / 100);
+                        pipwerks.SCORM.set("cmi.completion_status", "completed");
+                        pipwerks.SCORM.set("cmi.success_status", passed ? "passed" : "failed");
                     } else {
-                        pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
+                        pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
+                        pipwerks.SCORM.set("cmi.core.lesson_status", passed ? "passed" : "failed");
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);

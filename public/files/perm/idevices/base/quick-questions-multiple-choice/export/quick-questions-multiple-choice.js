@@ -51,16 +51,44 @@ var $quickquestionsmultiplechoice = {
     sendScore: function (auto, instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
 
-        mOptions.scorerp =
-            mOptions.order == 2
-                ? mOptions.score / 10
-                : (mOptions.scoreGame * 10) / mOptions.scoreTotal;
+        mOptions.scorerp = $quickquestionsmultiplechoice.getScoreRP(instance);
         mOptions.previousScore = $quickquestionsmultiplechoice.previousScore;
         mOptions.userName = $quickquestionsmultiplechoice.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $quickquestionsmultiplechoice.previousScore = mOptions.previousScore;
+    },
+
+    getScoreRP: function (instance) {
+        const mOptions = $quickquestionsmultiplechoice.options[instance];
+        if (mOptions.order == 2) {
+            return Number(mOptions.score || 0) / 10;
+        }
+
+        const total = Number(mOptions.scoreTotal);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (mOptions.scoreGame * 10) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $quickquestionsmultiplechoice.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        if (
+            !mOptions.repeatActivity &&
+            $quickquestionsmultiplechoice.initialScore !== ''
+        ) {
+            return;
+        }
+
+        const score = $quickquestionsmultiplechoice
+            .getScoreRP(instance)
+            .toFixed(2);
+        $quickquestionsmultiplechoice.sendScore(true, instance);
+        $(`#seleccionaRepeatActivity-${instance}`).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 
     loadGame: function () {
@@ -1467,6 +1495,7 @@ var $quickquestionsmultiplechoice = {
         $(`#seleccionaPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        $quickquestionsmultiplechoice.saveScormScore(instance);
         $quickquestionsmultiplechoice.newQuestion(instance, false, true);
     },
 
@@ -1787,22 +1816,6 @@ var $quickquestionsmultiplechoice = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsmultiplechoice.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestionsmultiplechoice.sendScore(true, instance);
-                $(`#seleccionaRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
         if (q.audio.length > 4 && q.type !== 2 && !mOptions.audioFeedBach) {
             $(`#seleccionaLinkAudio-${instance}`).show();
         }
@@ -1980,6 +1993,7 @@ var $quickquestionsmultiplechoice = {
         } else {
             $quickquestionsmultiplechoice.updateScoreThree(correct, instance);
         }
+        $quickquestionsmultiplechoice.saveScormScore(instance);
 
         if (
             mOptions.showSolution &&
@@ -2052,6 +2066,7 @@ var $quickquestionsmultiplechoice = {
         } else {
             $quickquestionsmultiplechoice.updateScoreThree(value, instance);
         }
+        $quickquestionsmultiplechoice.saveScormScore(instance);
 
         if (
             mOptions.showSolution &&

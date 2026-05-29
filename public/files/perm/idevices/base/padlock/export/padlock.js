@@ -291,8 +291,10 @@ var $padlock = {
 
         $('#candadoMainContainer-' + instance)
             .closest('.idevice_node')
-            .on('click', '.Games-SendScore', function () {
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
                 $padlock.sendScore(false, instance);
+                $padlock.saveEvaluation(instance);
             });
 
         if (mOptions.isScorm === 1) {
@@ -495,7 +497,7 @@ var $padlock = {
 
     saveEvaluation: function (instance) {
         const mOptions = $padlock.options[instance];
-        mOptions.scorerp = 10;
+        mOptions.scorerp = mOptions.score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $padlock.isInExe

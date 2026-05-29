@@ -1058,16 +1058,6 @@ var $eXeMathProblems = {
             $mthpPNumber.text(mOptions.numberQuestions - mActiveQuestion);
         }
 
-        if (mOptions.scorm.isScorm == 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
-                $eXeMathProblems.sendScore(true, instance);
-            }
-        }
-
-        $eXeMathProblems.saveEvaluation(instance);
     },
 
     updateNumberQuestion: function (numq, instance) {

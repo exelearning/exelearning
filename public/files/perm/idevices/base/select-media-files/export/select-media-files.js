@@ -84,7 +84,6 @@ var $eXeSeleccionaMedias = {
             if (dl.length === 0) return; // Skip already initialized activities
             const mOption = $eXeSeleccionaMedias.loadDataGame(dl, this);
 
-            mOption.scorerp = 0;
             mOption.idevicePath = $eXeSeleccionaMedias.idevicePath;
             mOption.main = 'slcmpMainContainer-' + i;
             mOption.idevice = 'seleccionamedias-IDevice';
@@ -262,6 +261,7 @@ var $eXeSeleccionaMedias = {
         mOptions.numberQuestions = mOptions.phrasesGame.length;
         mOptions.fullscreen = false;
         mOptions.hits = 0;
+        delete mOptions.scorerp;
 
         mOptions.phrasesGame.forEach((phrase) => {
             phrase.cards = $eXeSeleccionaMedias.getCardsPart(
@@ -508,7 +508,7 @@ var $eXeSeleccionaMedias = {
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
+        mOptions.scorerp = $eXeSeleccionaMedias.getScore(instance);
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $eXeSeleccionaMedias.isInExe
@@ -518,13 +518,22 @@ var $eXeSeleccionaMedias = {
     sendScore: function (auto, instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
+        mOptions.scorerp = $eXeSeleccionaMedias.getScore(instance);
         mOptions.previousScore = $eXeSeleccionaMedias.previousScore;
         mOptions.userName = $eXeSeleccionaMedias.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $eXeSeleccionaMedias.previousScore = mOptions.previousScore;
+    },
+
+    getScore: function (instance) {
+        const mOptions = $eXeSeleccionaMedias.options[instance],
+            total = Number(mOptions.numberQuestions) || 0;
+
+        if (total <= 0) return 0;
+
+        return ((Number(mOptions.hits) || 0) * 10) / total;
     },
 
     addCards(cardsGame, instance) {
@@ -696,12 +705,9 @@ var $eXeSeleccionaMedias = {
                 (mOptions.repeatActivity ||
                     $eXeSeleccionaMedias.initialScore === '')
             ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.phrasesGame.length
-                ).toFixed(2);
                 $eXeSeleccionaMedias.sendScore(true, instance);
-                $eXeSeleccionaMedias.initialScore = score;
+                $eXeSeleccionaMedias.initialScore =
+                    $eXeSeleccionaMedias.getScore(instance).toFixed(2);
             }
         } else {
             let msg = $eXeSeleccionaMedias.getMessageErrorAnswer(instance);
@@ -729,12 +735,9 @@ var $eXeSeleccionaMedias = {
                     (mOptions.repeatActivity ||
                         $eXeSeleccionaMedias.initialScore === '')
                 ) {
-                    const score = (
-                        (mOptions.hits * 10) /
-                        mOptions.phrasesGame.length
-                    ).toFixed(2);
                     $eXeSeleccionaMedias.sendScore(true, instance);
-                    $eXeSeleccionaMedias.initialScore = score;
+                    $eXeSeleccionaMedias.initialScore =
+                        $eXeSeleccionaMedias.getScore(instance).toFixed(2);
                 }
             }
         }
@@ -844,17 +847,6 @@ var $eXeSeleccionaMedias = {
         });
 
         $('#slcmpPNumber-' + instance).text(mOptions.numberQuestions);
-
-        $(window).on(
-            'unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias',
-            function () {
-                if (typeof $eXeSeleccionaMedias.mScorm != 'undefined') {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeSeleccionaMedias.mScorm
-                    );
-                }
-            }
-        );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -1018,9 +1010,6 @@ var $eXeSeleccionaMedias = {
         $('#slcmpFeedBackClose-' + instance).off('click');
         $('#slcmpCodeAccessButton-' + instance).off('click touchstart');
         $('#slcmpCodeAccessE-' + instance).off('keydown');
-        $(window).off(
-            'unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias'
-        );
         $('#slcmpMainContainer-' + instance)
             .closest('.seleccionamedias-IDevice')
             .off('click', '.Games-SendScore');
@@ -1244,12 +1233,9 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.showScoreGame(type, instance);
         $eXeSeleccionaMedias.saveEvaluation(instance);
         if (mOptions.isScorm == 1) {
-            const score = (
-                (mOptions.hits * 10) /
-                mOptions.phrasesGame.length
-            ).toFixed(2);
             $eXeSeleccionaMedias.sendScore(true, instance);
-            $eXeSeleccionaMedias.initialScore = score;
+            $eXeSeleccionaMedias.initialScore =
+                $eXeSeleccionaMedias.getScore(instance).toFixed(2);
         }
         $eXeSeleccionaMedias.showFeedBack(instance);
         $('#slcmpCodeAccessDiv-' + instance).hide();
@@ -1461,8 +1447,6 @@ var $eXeSeleccionaMedias = {
                     }
                 });
         }
-
-        $eXeSeleccionaMedias.saveEvaluation(instance);
 
         if (mOptions.numberQuestions - mOptions.hits - mOptions.errors <= 0) {
             mOptions.gameActived = false;

@@ -345,6 +345,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     $exeDevice.createForm();
 
+    expect(globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab).toHaveBeenCalledWith(true);
     expect(getIdeviceDescriptionSpy).toHaveBeenCalledWith(
       'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
       'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rubrica.html'
@@ -561,7 +562,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
       `;
     }
 
-    it('forwards SCORM fields from stored data to scorm.setValues', () => {
+    it('loads legacy manual SCORM mode as automatic mode', () => {
       vi.spyOn($exeDevice, 'jsonToTable').mockImplementation(() => {});
       const setValuesSpy = vi.spyOn(
         globalThis.$exeDevicesEdition.iDevice.gamification.scorm,
@@ -578,7 +579,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
       $exeDevice.loadPreviousValues();
 
       expect(setValuesSpy).toHaveBeenCalledTimes(1);
-      expect(setValuesSpy).toHaveBeenCalledWith(2, 'Guardar nota', false, 75);
+      expect(setValuesSpy).toHaveBeenCalledWith(1, 'Guardar nota', false, 75);
     });
 
     it('passes undefined SCORM fields when absent in stored data', () => {

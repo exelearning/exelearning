@@ -977,7 +977,7 @@ describe('rubric iDevice SCORM integration', () => {
       const game = $rubric.buildScormGame(data);
 
       expect(game.main).toBe('rubric-node-42');
-      expect(game.isScorm).toBe(2);
+      expect(game.isScorm).toBe(1);
       expect(game.textButtonScorm).toBe('Guardar');
       expect(game.repeatActivity).toBe(false);
       expect(game.weighted).toBe(75);
@@ -1060,7 +1060,7 @@ describe('rubric iDevice SCORM integration', () => {
       expect(registerSpy).not.toHaveBeenCalled();
     });
 
-    it('initScorm registers activity and adds save button for isScorm=2', () => {
+    it('initScorm treats legacy isScorm=2 as automatic mode', () => {
       const scope = $('<div class="idevice_node rubric" id="init-node"><div class="rubric"></div></div>');
       document.body.append(scope);
 
@@ -1087,7 +1087,8 @@ describe('rubric iDevice SCORM integration', () => {
 
       expect(registerSpy).toHaveBeenCalledTimes(1);
       expect(data.scormGame).toBeDefined();
-      expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(1);
+      expect(data.isScorm).toBe(1);
+      expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(0);
     });
 
     it('initScorm does not add save button when isScorm=1', () => {
@@ -1205,7 +1206,7 @@ describe('rubric iDevice SCORM integration', () => {
 
       const data = $rubric.getGameData($('#rubric-scorm'), 0);
 
-      expect(data.isScorm).toBe(2);
+      expect(data.isScorm).toBe(1);
       expect(data.textButtonScorm).toBe('Submit');
       expect(data.repeatActivity).toBe(false);
       expect(data.weighted).toBe(80);

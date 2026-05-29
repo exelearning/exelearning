@@ -1608,6 +1608,151 @@ describe('common.js $exeDevices', () => {
       expect(result).toContain('80%');
     });
 
+    it('updateActivity commits score changes to the LMS', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '8.50',
+            weighted: 100,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Activity'));
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 85);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('updateActivity uses SCORM 2004 CMI keys when the LMS reports version 2004', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '8.50',
+            weighted: 100,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        // SCORM 2004 keys live under cmi.* (no .core.) and split completion/success.
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.raw', 85);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.min', 0);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.max', 100);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0.85);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'passed');
+        // The SCORM 1.2-only keys must NOT leak into a 2004 package.
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.score.raw', expect.anything());
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('updateActivity marks SCORM 2004 success_status as failed below the passing threshold', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '3.00',
+            weighted: 100,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0.3);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'failed');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
     it('endScorm does not throw', () => {
       const scorm = getScorm();
       expect(() => scorm.endScorm({})).not.toThrow();

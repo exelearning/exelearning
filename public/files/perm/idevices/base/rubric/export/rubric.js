@@ -130,17 +130,24 @@ var $rubric = {
         }
         var instanceId = typeof instance === 'number' ? instance : 0;
 
+        var isScorm = this.normalizeScormMode(stored.isScorm);
+
         return {
             table: table,
             scope: scope,
             scopeId: id || 'rubric-' + instanceId,
             strings: this.getStringsFromData(stored),
             raw: stored,
-            isScorm: parseInt(stored.isScorm) || 0,
+            isScorm: isScorm,
             textButtonScorm: stored.textButtonScorm || '',
             repeatActivity: stored.repeatActivity !== false,
             weighted: stored.weighted || 100,
         };
+    },
+
+    normalizeScormMode: function (value) {
+        var mode = parseInt(value, 10) || 0;
+        return mode === 2 ? 1 : mode;
     },
 
     getIdeviceDomId: function (scope) {
@@ -1443,7 +1450,7 @@ var $rubric = {
         return {
             main: nodeId,
             mainElement: $node.length === 1 ? $node : $scope,
-            isScorm: data.isScorm || 0,
+            isScorm: this.normalizeScormMode(data.isScorm),
             textButtonScorm: data.textButtonScorm || '',
             repeatActivity: data.repeatActivity !== false,
             weighted: data.weighted || 100,
@@ -1504,6 +1511,7 @@ var $rubric = {
     },
 
     initScorm: function (data) {
+        if (data) data.isScorm = this.normalizeScormMode(data.isScorm);
         if (!data || data.isScorm <= 0) return;
         if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
             return;
@@ -1516,9 +1524,6 @@ var $rubric = {
 
         this.restoreVisibleScoreFromLms(data);
 
-        if (data.isScorm === 2) {
-            this.addScormSaveButton(data);
-        }
     },
 
     addScormSaveButton: function (data) {

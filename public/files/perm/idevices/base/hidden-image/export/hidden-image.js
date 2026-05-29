@@ -781,10 +781,6 @@ var $eXeHiddenImage = {
         );
         $eXeHiddenImage.showMessage(0, message, instance);
 
-        if (mOptions.isScorm > 0) {
-            $eXeHiddenImage.sendScore(true, instance);
-        }
-
         $eXeHiddenImage.showImageNeo(mQuestion.url, instance);
 
         if (mQuestion.audio.length > 4) {
@@ -1139,6 +1135,9 @@ var $eXeHiddenImage = {
             $eXeHiddenImage.drawSolution(instance);
         }
         $eXeHiddenImage.saveEvaluation(instance);
+        if (mOptions.isScorm > 0) {
+            $eXeHiddenImage.sendScore(true, instance);
+        }
 
         $eXeHiddenImage.hideSquares(instance, $eXeHiddenImage.startNewQuestion);
     },

@@ -312,7 +312,7 @@ var $trueorfalse = {
 
     saveEvaluation: function (data) {
         const mOptions = data;
-        const score = (10 * mOptions.hits) / mOptions.numberQuestions;
+        const score = $trueorfalse.getScore(mOptions.hits, mOptions.numberQuestions);
         mOptions.scorerp = score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
@@ -322,7 +322,10 @@ var $trueorfalse = {
 
     sendScore: function (auto, data) {
         const mOptions = data;
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.questionsGame.length;
+        mOptions.scorerp = $trueorfalse.getScore(
+            mOptions.hits,
+            mOptions.questionsGame.length
+        );
         mOptions.previousScore = $trueorfalse.previousScore;
         mOptions.userName = $trueorfalse.userName;
         mOptions.repeatActivity = true;
@@ -330,6 +333,14 @@ var $trueorfalse = {
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $trueorfalse.previousScore = mOptions.previousScore;
+    },
+
+    getScore: function (hits, numberQuestions) {
+        const total = Number(numberQuestions);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        const correctAnswers = Number(hits);
+        return (10 * (Number.isFinite(correctAnswers) ? correctAnswers : 0)) / total;
     },
 
     createInterfaceTrueOrFalse: function (data) {
@@ -496,7 +507,6 @@ var $trueorfalse = {
 
     removeEvents: function (data) {
         const instance = data.id;
-        $(window).off('unload.eXeTOF beforeunload.eXeTOF');
 
         $(`#tofPSendScore-${instance}`).off('click');
         $(`#tofPStartGame-${instance}`).off('click');
@@ -645,15 +655,6 @@ var $trueorfalse = {
         const msgs = mOptions.msgs;
         $trueorfalse.removeEvents(data);
 
-        $(window).on('unload.eXeTOF beforeunload.eXeTOF', () => {
-            if (mOptions.gameStarted || mOptions.gameOver) {
-                $trueorfalse.sendScore(true, mOptions);
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $trueorfalse.mScorm
-                );
-            }
-        });
-
         mOptions.gameOver = false;
         mOptions.gameStarted = false;
         mOptions.counter = parseInt(mOptions.tofPTime) * 60;
@@ -702,7 +703,7 @@ var $trueorfalse = {
                             : $trueorfalse.initialScore;
                     $trueorfalse.updateScoreData(mOptions);
                     $trueorfalse.sendScore(true, mOptions);
-                    $trueorfalse.initialScore = score;
+                    $trueorfalse.initialScore = mOptions.scorerp;
                 }
             }
         );
@@ -849,15 +850,18 @@ var $trueorfalse = {
             });
 
         mOptions.hits = hits;
-        mOptions.errors = hits;
-        score = (mOptions.hist * 10) / mOptions.numberQuestions;
+        mOptions.errors = errors;
+        const score = $trueorfalse.getScore(
+            mOptions.hits,
+            mOptions.numberQuestions
+        );
 
         $('#tofPMultimedia').data('score', score);
         $('#tofPMultimedia').data('isscorm', mOptions.isScorm);
         $('#tofPMultimedia').data('evaluation', mOptions.evaluation);
         $('#tofPMultimedia').data('evaluationID', mOptions.evaluationID);
 
-        mOptions.scorep = (10 * mOptions.hits) / mOptions.numberQuestions;
+        mOptions.scorep = score;
         const message =
             mOptions.msgs.msgYouScore + ': ' + mOptions.scorep.toFixed(2);
         const type = mOptions.scorep < 5 ? 1 : 2;
@@ -889,7 +893,7 @@ var $trueorfalse = {
                 const $selectedInput = $questionDiv.find(
                     '.TOFP-Answer:checked'
                 );
-                const solution = questions[index].solution;
+                const solution = Number(questions[index].solution);
                 if ($selectedInput.length) {
                     const selectedValue = parseInt($selectedInput.val(), 10);
                     if (selectedValue === solution) {

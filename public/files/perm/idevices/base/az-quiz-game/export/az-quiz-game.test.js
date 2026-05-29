@@ -187,4 +187,27 @@ describe('az-quiz-game iDevice export', () => {
       expect(result.gameOver).toBe(false);
     });
   });
+
+  describe('SCORM score saving', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('saves the current score and updates the score text', () => {
+      const sendScore = vi.spyOn($azquizgame, 'sendScore').mockImplementation(() => {});
+      document.body.innerHTML = '<span id="roscoRepeatActivity-0"></span>';
+      $azquizgame.options[0] = {
+        isScorm: 1,
+        hits: 3,
+        validWords: 6,
+        msgs: { msgYouScore: 'Score' },
+      };
+
+      $azquizgame.saveScormScore(0);
+
+      expect(sendScore).toHaveBeenCalledWith(true, 0);
+      expect($('#roscoRepeatActivity-0').text()).toBe('Score: 5.00');
+    });
+  });
 });

@@ -113,4 +113,24 @@ describe('quick-questions-multiple-choice export', () => {
         expect(hasLatexSpy).toHaveBeenCalled();
         expect(updateLatexSpy).toHaveBeenCalledWith('#seleccionaWordDiv-0');
     });
+
+    it('saves the current SCORM score and updates the score text', () => {
+        const sendScore = vi
+            .spyOn($quickquestionsmultiplechoice, 'sendScore')
+            .mockImplementation(() => {});
+        document.body.innerHTML = '<span id="seleccionaRepeatActivity-0"></span>';
+        $quickquestionsmultiplechoice.options[0] = {
+            isScorm: 1,
+            repeatActivity: true,
+            order: 0,
+            scoreGame: 5,
+            scoreTotal: 10,
+            msgs: { msgYouScore: 'Score' },
+        };
+
+        $quickquestionsmultiplechoice.saveScormScore(0);
+
+        expect(sendScore).toHaveBeenCalledWith(true, 0);
+        expect($('#seleccionaRepeatActivity-0').text()).toBe('Score: 5.00');
+    });
 });

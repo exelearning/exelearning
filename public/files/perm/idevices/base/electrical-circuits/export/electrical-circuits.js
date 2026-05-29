@@ -66,6 +66,7 @@ var $eXeEC = {
     getShowScoreRP: function (instance) {
         const mOptions = $eXeEC.options[instance];
         const total = mOptions.selectsGame.length;
+        if (total <= 0) return 0;
         return Math.min(((mOptions.visiteds + 1) * 10) / total, 10);
     },
 
@@ -76,7 +77,22 @@ var $eXeEC = {
             return $eXeEC.getShowScoreRP(instance);
         }
 
-        return (mOptions.scoreGame * 10) / mOptions.scoreTotal;
+        const total = Number(mOptions.scoreTotal);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (mOptions.scoreGame * 10) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $eXeEC.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        if (!mOptions.repeatActivity && $eXeEC.initialScore !== '') return;
+
+        const score = $eXeEC.getScoreRP(instance).toFixed(2);
+        $eXeEC.sendScore(true, instance);
+        $(`#elcpRepeatActivity-${instance}`).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 
     loadGame: function () {
@@ -1080,6 +1096,7 @@ var $eXeEC = {
         $(`#elcpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        $eXeEC.saveScormScore(instance);
         $eXeEC.newQuestion(instance);
     },
 
@@ -1307,23 +1324,6 @@ var $eXeEC = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeEC.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXeEC.sendScore(true, instance);
-                $(`#elcpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
-
         $eXeEC.saveEvaluation(instance);
     },
 
@@ -1444,6 +1444,7 @@ var $eXeEC = {
         mOptions.activeCounter = false;
 
         $eXeEC.updateScore(correct, instance);
+        $eXeEC.saveScormScore(instance);
 
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -1502,6 +1503,7 @@ var $eXeEC = {
         mOptions.activeCounter = false;
 
         $eXeEC.updateScore(value, instance);
+        $eXeEC.saveScormScore(instance);
 
          let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000

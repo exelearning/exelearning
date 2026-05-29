@@ -43,6 +43,12 @@ describe('classify iDevice export', () => {
     $eXeClasifica = loadExportIdevice(code);
   });
 
+  it('does not register its own unload or beforeunload SCORM handlers', () => {
+    const code = readFileSync(join(__dirname, 'classify.js'), 'utf-8');
+
+    expect(code).not.toMatch(/beforeunload|unload\.eXeClasifica|endScorm/);
+  });
+
   describe('hexToRgba', () => {
     it('converts 6-digit hex to rgba with default alpha 1', () => {
       expect($eXeClasifica.hexToRgba('#ffffff')).toBe('rgba(255, 255, 255, 1)');
@@ -137,6 +143,64 @@ describe('classify iDevice export', () => {
   describe('options', () => {
     it('is initialized as an empty array', () => {
       expect($eXeClasifica.options).toEqual([]);
+    });
+  });
+
+  describe('SCORM score saving', () => {
+    let originalSendScoreNew;
+
+    beforeEach(() => {
+      originalSendScoreNew = global.$exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      global.$exeDevices.iDevice.gamification.scorm.sendScoreNew = vi.fn();
+    });
+
+    afterEach(() => {
+      global.$exeDevices.iDevice.gamification.scorm.sendScoreNew = originalSendScoreNew;
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('uses zero as the level 0 score before there are attempts', () => {
+      $eXeClasifica.options[0] = {
+        cardsGame: [{}, {}],
+        gameLevel: 0,
+        hits: 0,
+        attempts: 0,
+        numberQuestions: 2,
+      };
+
+      expect($eXeClasifica.getScoreRP(0)).toBe(0);
+    });
+
+    it('saves the initial SCORM score when the game starts', () => {
+      const instance = 0;
+      $eXeClasifica.options[instance] = {
+        cardsGame: [],
+        gameLevel: 0,
+        gameStarted: false,
+        isScorm: 1,
+        msgs: {
+          mgsGameStart: 'Game started',
+        },
+        numberQuestions: 4,
+        time: 0,
+      };
+
+      vi.spyOn($eXeClasifica, 'addCards').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'initializeDragAndDrop').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'initCards').mockImplementation(() => {});
+
+      $eXeClasifica.startGame(instance);
+
+      expect(global.$exeDevices.iDevice.gamification.scorm.sendScoreNew).toHaveBeenCalledTimes(1);
+      expect(global.$exeDevices.iDevice.gamification.scorm.sendScoreNew).toHaveBeenCalledWith(
+        true,
+        expect.objectContaining({
+          scorerp: 0,
+        })
+      );
+      expect($eXeClasifica.options[instance].gameStarted).toBe(true);
     });
   });
 

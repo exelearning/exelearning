@@ -89,6 +89,7 @@ var $eXe3Dmol = {
     getShowScoreRP: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
         const total = mOptions.selectsGame.length;
+        if (total <= 0) return 0;
         return Math.min(((mOptions.visiteds + 1) * 10) / total, 10);
     },
 
@@ -99,7 +100,22 @@ var $eXe3Dmol = {
             return $eXe3Dmol.getShowScoreRP(instance);
         }
 
-        return (mOptions.scoreGame * 10) / mOptions.scoreTotal;
+        const total = Number(mOptions.scoreTotal);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (mOptions.scoreGame * 10) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $eXe3Dmol.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        if (!mOptions.repeatActivity && $eXe3Dmol.initialScore !== '') return;
+
+        const score = $eXe3Dmol.getScoreRP(instance).toFixed(2);
+        $eXe3Dmol.sendScore(true, instance);
+        $(`#dmolpRepeatActivity-${instance}`).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 
     loadGame: function () {
@@ -1638,6 +1654,7 @@ var $eXe3Dmol = {
         $(`#dmolpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        $eXe3Dmol.saveScormScore(instance);
         $eXe3Dmol.newQuestion(instance);
     },
 
@@ -1865,23 +1882,6 @@ var $eXe3Dmol = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXe3Dmol.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXe3Dmol.sendScore(true, instance);
-                $(`#dmolpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
-
         $eXe3Dmol.saveEvaluation(instance);
     },
 
@@ -2002,6 +2002,7 @@ var $eXe3Dmol = {
         mOptions.activeCounter = false;
 
         $eXe3Dmol.updateScore(correct, instance);
+        $eXe3Dmol.saveScormScore(instance);
 
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -2060,6 +2061,7 @@ var $eXe3Dmol = {
         mOptions.activeCounter = false;
 
         $eXe3Dmol.updateScore(value, instance);
+        $eXe3Dmol.saveScormScore(instance);
 
          let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000

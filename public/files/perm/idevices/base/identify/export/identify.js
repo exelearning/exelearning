@@ -68,7 +68,6 @@ var $eXeIdentifica = {
                 ),
                 msg = mOption.msgs.msgPlayStart;
 
-            mOption.scorerp = 0;
             mOption.idevicePath = $eXeIdentifica.idevicePath;
             mOption.main = 'idfMainContainer-' + i;
             mOption.idevice = 'identifica-IDevice';
@@ -344,6 +343,7 @@ var $eXeIdentifica = {
         mOptions.scoreGame = 0;
         mOptions.scoreTotal = 0;
         mOptions.score = 0;
+        delete mOptions.scorerp;
         mOptions.playerAudio = '';
         mOptions.evaluation =
             typeof mOptions.evaluation == 'undefined'
@@ -420,15 +420,6 @@ var $eXeIdentifica = {
             $useClue = $(`#idfUseClue-${instance}`),
             $messageClue = $(`#idfMessageClue-${instance}`),
             $startGameButton = $(`#idfStartGame-${instance}`);
-
-        $(window).on(
-            'unload.eXeIdentifica beforeunload.eXeIdentifica',
-            function () {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeIdentifica.mScorm
-                );
-            }
-        );
 
         $linkMaximize.on('click touchstart', function (e) {
             e.preventDefault();
@@ -530,7 +521,6 @@ var $eXeIdentifica = {
             $pulsados.each(function () {
                 $(this).attr('title', message);
             });
-            mOptions.initGame = true;
             $messageClue
                 .html(message)
                 .fadeOut(400)
@@ -556,7 +546,6 @@ var $eXeIdentifica = {
                 return;
             }
             const correct = $eXeIdentifica.checkWord(solution, answer);
-            mOptions.initGame = true;
             $eXeIdentifica.answerWord(correct, instance);
         });
 
@@ -610,8 +599,6 @@ var $eXeIdentifica = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXeIdentifica beforeunload.eXeIdentifica');
-
         $(`#idfLinkMaximize-${instance}`).off('click touchstart');
         $(`#idfLinkMinimize-${instance}`).off('click touchstart');
         $('#idfMainContainer-' + instance)
@@ -1092,14 +1079,6 @@ var $eXeIdentifica = {
         $(`#idfPoints-${instance}`).text(mOptions.pointsClue.toFixed(2));
         $(`#idfUseClue-${instance}`).text(mOptions.msgs.msgShowClue);
 
-        if (mOptions.isScorm === 1 && mOptions.initGame) {
-            const score = mOptions.score.toFixed(2);
-            $eXeIdentifica.sendScore(true, instance);
-            $(`#idfRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`
-            );
-        }
-
         $exeDevices.iDevice.gamification.media.stopSound();
         const hasAudio = q.audio && q.audio.trim().length > 4;
         if (hasAudio) {
@@ -1305,6 +1284,9 @@ var $eXeIdentifica = {
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeIdentifica.options[instance];
+
+        if (!mOptions) return;
+
         mOptions.scorerp = mOptions.score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,

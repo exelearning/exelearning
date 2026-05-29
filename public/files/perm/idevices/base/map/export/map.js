@@ -1666,17 +1666,6 @@ var $eXeMapa = {
             $('#mapaEdAnswer-' + instance).val('');
         }
 
-        if (mOptions.evaluationG == 4 && mOptions.isScorm === 1) {
-            let score = (
-                (mOptions.hits * 10) /
-                mOptions.numberQuestions
-            ).toFixed(2);
-            $eXeMapa.sendScore(true, instance);
-            $('#mapaRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score
-            );
-        }
-        $eXeMapa.saveEvaluation(instance);
     },
 
     showTPQuestion: function (instance) {
@@ -2860,6 +2849,11 @@ var $eXeMapa = {
             .closest('.idevice_node')
             .on('click', '.Games-SendScore', function (e) {
                 e.preventDefault();
+                if (
+                    mOptions.evaluationG == 4 ||
+                    (mOptions.evaluationG == 5 && !mOptions.gameOver)
+                )
+                    return true;
                 $eXeMapa.sendScore(false, instance);
                 $eXeMapa.saveEvaluation(instance);
                 return true;
@@ -3335,6 +3329,7 @@ var $eXeMapa = {
         if (
             mOptions.isScorm == 1 &&
             mOptions.evaluationG != 4 &&
+            mOptions.evaluationG != 5 &&
             mOptions.evaluationG > -1
         ) {
             const score =
@@ -3346,7 +3341,9 @@ var $eXeMapa = {
                 mOptions.msgs.msgYouScore + ': ' + score
             );
         }
-        $eXeMapa.saveEvaluation(instance);
+        if (mOptions.evaluationG != 4 && mOptions.evaluationG != 5) {
+            $eXeMapa.saveEvaluation(instance);
+        }
         $eXeMapa.messageAllVisited(instance);
     },
 
@@ -4408,8 +4405,7 @@ var $eXeMapa = {
             (mOptions.evaluationG == 5 ||
                 mOptions.evaluationG == 1 ||
                 mOptions.evaluationG == 2 ||
-                mOptions.evaluationG == 3 ||
-                mOptions.evaluationG == 4) &&
+                mOptions.evaluationG == 3) &&
             mOptions.isScorm === 1
         ) {
             let score = ((mOptions.hits * 10) / numq).toFixed(2);
@@ -4417,7 +4413,9 @@ var $eXeMapa = {
             $eXeMapa.initialScore = score;
         }
 
-        $eXeMapa.saveEvaluation(instance);
+        if (mOptions.evaluationG != 4) {
+            $eXeMapa.saveEvaluation(instance);
+        }
         $eXeMapa.hideCover(instance);
 
         $('#mapaFMessageOver-' + instance).show();
@@ -4677,11 +4675,14 @@ var $eXeMapa = {
         if (
             mOptions.isScorm == 1 &&
             mOptions.evaluationG != 4 &&
+            mOptions.evaluationG != 5 &&
             mOptions.evaluationG > -1
         ) {
             $eXeMapa.sendScore(true, instance);
         }
-        $eXeMapa.saveEvaluation(instance);
+        if (mOptions.evaluationG != 4 && mOptions.evaluationG != 5) {
+            $eXeMapa.saveEvaluation(instance);
+        }
     },
 
     answerFind: function (num, id, instance) {
@@ -4941,11 +4942,14 @@ var $eXeMapa = {
         if (
             mOptions.isScorm == 1 &&
             mOptions.evaluationG != 4 &&
+            mOptions.evaluationG != 5 &&
             mOptions.evaluationG > -1
         ) {
             $eXeMapa.sendScore(true, instance);
         }
-        $eXeMapa.saveEvaluation(instance);
+        if (mOptions.evaluationG != 4 && mOptions.evaluationG != 5) {
+            $eXeMapa.saveEvaluation(instance);
+        }
         let html = $('#mapaFDetails-' + instance).html(),
             latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)

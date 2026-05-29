@@ -1017,11 +1017,11 @@ var $eXeFlipCards = {
 
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        if (mOptions.isScorm === 1 && mOptions.type < 2) {
+        if (isFlipped && mOptions.isScorm === 1 && mOptions.type < 2) {
             $eXeFlipCards.sendScore(true, instance);
         }
 
-        if (mOptions.type < 2) {
+        if (isFlipped && mOptions.type < 2) {
             $eXeFlipCards.saveEvaluation(instance);
         }
 
@@ -1601,17 +1601,11 @@ var $eXeFlipCards = {
         $('#flcdsNextCard-' + instance).on('click', (e) => {
             e.preventDefault();
             $eXeFlipCards.nextCard(instance);
-            if (mOptions.isScorm == 1) {
-                $eXeFlipCards.sendScore(true, instance);
-            }
         });
 
         $('#flcdsPreviousCard-' + instance).on('click', (e) => {
             e.preventDefault();
             $eXeFlipCards.previousCard(instance);
-            if (mOptions.isScorm == 1) {
-                $eXeFlipCards.sendScore(true, instance);
-            }
         });
 
         $('#flcdsStartGame-' + instance).on('click', (e) => {
@@ -1706,7 +1700,7 @@ var $eXeFlipCards = {
         $('#flcdsMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
-        $(window).off('unload.eXeFlipcard');
+        $(window).off('unload.eXeFlipCards');
         $('#flcdsClueButton-' + instance).off('click');
         $('#flcdsNextCard-' + instance).off('click');
         $('#flcdsPreviousCard-' + instance).off('click');

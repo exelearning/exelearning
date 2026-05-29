@@ -125,6 +125,74 @@ describe('hidden-image iDevice export', () => {
     });
   });
 
+  describe('SCORM score sending', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('does not send the score when showing a question', () => {
+      const sendScore = vi.spyOn($eXeHiddenImage, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'showAuthor').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'showImageNeo').mockImplementation(() => {});
+
+      $eXeHiddenImage.options[0] = {
+        questionsGame: [
+          {
+            question: 'Question',
+            attempts: 1,
+            url: '',
+            audio: '',
+          },
+        ],
+        answersRamdon: false,
+        isScorm: 1,
+        msgs: {
+          msgCardClick: 'Click %s',
+        },
+      };
+
+      const previousMedia = $exeDevices.iDevice.gamification.media;
+      $exeDevices.iDevice.gamification.media = {
+        stopSound: vi.fn(),
+        playSound: vi.fn(),
+      };
+
+      try {
+        $eXeHiddenImage.showQuestion(0, 0);
+      } finally {
+        $exeDevices.iDevice.gamification.media = previousMedia;
+      }
+
+      expect(sendScore).not.toHaveBeenCalled();
+    });
+
+    it('sends the score immediately after answering a question', () => {
+      vi.spyOn($eXeHiddenImage, 'updateScore').mockImplementation(() => {});
+      const saveEvaluation = vi.spyOn($eXeHiddenImage, 'saveEvaluation').mockImplementation(() => {});
+      const sendScore = vi.spyOn($eXeHiddenImage, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'hideSquares').mockImplementation(() => {});
+
+      $eXeHiddenImage.options[0] = {
+        gameActived: true,
+        activeCounter: true,
+        question: {
+          solution: 1,
+        },
+        isScorm: 1,
+        showSolution: false,
+      };
+
+      $eXeHiddenImage.answerQuestion('1', 0);
+
+      expect(saveEvaluation).toHaveBeenCalledWith(0);
+      expect(sendScore).toHaveBeenCalledWith(true, 0);
+      expect(saveEvaluation.mock.invocationCallOrder[0]).toBeLessThan(
+        sendScore.mock.invocationCallOrder[0]
+      );
+    });
+  });
+
   describe('hideSquareAfterElapsedTime', () => {
     beforeEach(() => {
       vi.useFakeTimers();

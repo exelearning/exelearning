@@ -217,7 +217,7 @@ var $exeDevice = {
                         </div>
                     </fieldset>
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
@@ -328,7 +328,7 @@ var $exeDevice = {
         }
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
-            data.isScorm,
+            parseInt(data.isScorm, 10) === 2 ? 1 : data.isScorm,
             data.textButtonScorm,
             data.repeatActivity,
             data.weighted
@@ -1713,7 +1713,7 @@ var $exeDevice = {
         data.i18n = this.collectRubricStringsFromForm();
 
         var scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
-        data.isScorm = scorm.isScorm;
+        data.isScorm = scorm.isScorm === 2 ? 1 : scorm.isScorm;
         data.textButtonScorm = scorm.textButtonScorm;
         data.repeatActivity = scorm.repeatActivity;
         data.weighted = scorm.weighted || 100;

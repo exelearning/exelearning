@@ -983,6 +983,7 @@ var $eXeDesafio = {
                 mOptions.counter--;
                 $eXeDesafio.updateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
+                    $eXeDesafio.saveEvaluation(instance);
                     $eXeDesafio.gameOver(1, instance);
                 }
                 if (mOptions.typeQuestion === 1) {

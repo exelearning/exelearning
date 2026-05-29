@@ -41,6 +41,11 @@ describe('challenge iDevice export', () => {
     $eXeDesafio = loadExportIdevice(code);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
   describe('createArrayStateChallenges', () => {
     it('creates array with correct length', () => {
       const result = $eXeDesafio.createArrayStateChallenges(0, 5);
@@ -314,6 +319,39 @@ describe('challenge iDevice export', () => {
       const result = $eXeDesafio.createArrayStateChallenges(0, 3);
       // First challenge is always active (red)
       expect(result[0].state).toBe(3);
+    });
+  });
+
+  describe('timeout handling', () => {
+    it('saves results before ending the activity by time', () => {
+      vi.useFakeTimers();
+      document.body.innerHTML = '<div id="desafioMainContainer-0"></div>';
+      $eXeDesafio.options[0] = {
+        activeChallenge: 0,
+        challengesGame: [{ clueTimes: [] }],
+        counter: 1,
+        gameStarted: false,
+        msgs: {
+          msgChallengesAllCompleted: 'All challenges completed',
+          msgReadTime: 'Read the challenge',
+        },
+        solvedsChallenges: [],
+        timesShow: [0],
+        typeQuestion: 0,
+      };
+      $eXeDesafio.gameOver = vi.fn();
+      $eXeDesafio.saveDataStorage = vi.fn();
+      $eXeDesafio.saveEvaluation = vi.fn();
+      $eXeDesafio.showDesafio = vi.fn();
+      $eXeDesafio.showMessage = vi.fn();
+      $eXeDesafio.updateTime = vi.fn();
+
+      $eXeDesafio.startGame(0, 0, 0);
+      vi.advanceTimersByTime(1000);
+      clearInterval($eXeDesafio.options[0].counterClock);
+
+      expect($eXeDesafio.saveEvaluation).toHaveBeenCalledWith(0);
+      expect($eXeDesafio.gameOver).toHaveBeenCalledWith(1, 0);
     });
   });
 });

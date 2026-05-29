@@ -157,4 +157,69 @@ describe('flipcards iDevice export', () => {
       expect($eXeFlipCards.idevicePath).toBe('');
     });
   });
+
+  describe('SCORM persistence in browsing modes', () => {
+    it('saves visited cards only when a mode 0 or 1 card is flipped open', () => {
+      const selection = {
+        data: () => undefined,
+        eq: () => selection,
+        show: vi.fn(),
+      };
+      const card = {
+        data: (key) => (key === 'number' ? 2 : undefined),
+        find: () => selection,
+      };
+      const options = {
+        isScorm: 1,
+        type: 1,
+        visiteds: [],
+      };
+
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            media: {
+              stopSound: vi.fn(),
+            },
+          },
+        },
+      };
+      $eXeFlipCards.options[0] = options;
+      $eXeFlipCards.sendScore = vi.fn();
+      $eXeFlipCards.saveEvaluation = vi.fn();
+      $eXeFlipCards.showClue = vi.fn();
+
+      $eXeFlipCards.handleCardFlip(card, true, options, 0);
+
+      expect(options.visiteds).toEqual([2]);
+      expect($eXeFlipCards.sendScore).toHaveBeenCalledWith(true, 0);
+      expect($eXeFlipCards.saveEvaluation).toHaveBeenCalledWith(0);
+
+      $eXeFlipCards.sendScore.mockClear();
+      $eXeFlipCards.saveEvaluation.mockClear();
+
+      $eXeFlipCards.handleCardFlip(card, false, options, 0);
+
+      expect(options.visiteds).toEqual([2]);
+      expect($eXeFlipCards.sendScore).not.toHaveBeenCalled();
+      expect($eXeFlipCards.saveEvaluation).not.toHaveBeenCalled();
+    });
+
+    it('does not send scores from previous or next card handlers', () => {
+      const source = readFileSync(join(__dirname, 'flipcards.js'), 'utf-8');
+      const nextStart = source.indexOf("$('#flcdsNextCard-' + instance).on('click'");
+      const previousStart = source.indexOf("$('#flcdsPreviousCard-' + instance).on('click'");
+      const startGameStart = source.indexOf("$('#flcdsStartGame-' + instance).on('click'");
+
+      expect(nextStart).toBeGreaterThan(-1);
+      expect(previousStart).toBeGreaterThan(nextStart);
+      expect(startGameStart).toBeGreaterThan(previousStart);
+
+      const nextHandler = source.slice(nextStart, previousStart);
+      const previousHandler = source.slice(previousStart, startGameStart);
+
+      expect(nextHandler).not.toContain('sendScore');
+      expect(previousHandler).not.toContain('sendScore');
+    });
+  });
 });

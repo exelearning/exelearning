@@ -287,16 +287,27 @@ var $eXeClasifica = {
         return html;
     },
 
+    getScoreRP: function (instance) {
+        const mOptions = $eXeClasifica.options[instance],
+            hits = Number(mOptions.hits) || 0,
+            attempts = Number(mOptions.attempts) || 0,
+            totalCards =
+                mOptions.cardsGame && mOptions.cardsGame.length
+                    ? mOptions.cardsGame.length
+                    : 1,
+            numberQuestions = Number(mOptions.numberQuestions) || totalCards;
+
+        if (mOptions.gameLevel === 0) {
+            if (attempts <= 0 || numberQuestions <= 0) return 0;
+            return ((hits * 10) / numberQuestions) * (hits / attempts);
+        }
+
+        return (hits * 10) / totalCards;
+    },
+
     saveEvaluation: function (instance) {
         const mOptions = $eXeClasifica.options[instance],
-            hits = mOptions.hits || 0,
-            attempts = mOptions.attempts || 0,
-            totalCards = mOptions.cardsGame.length || 1;
-
-        let score = (hits * 10) / totalCards;
-        if (mOptions.gameLevel === 0)
-            score =
-                ((hits * 10) / mOptions.numberQuestions) * (hits / attempts);
+            score = $eXeClasifica.getScoreRP(instance);
 
         mOptions.scorerp = score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
@@ -307,14 +318,7 @@ var $eXeClasifica = {
 
     sendScore: function (auto, instance) {
         const mOptions = $eXeClasifica.options[instance],
-            hits = mOptions.hits || 0,
-            attempts = mOptions.attempts || 0,
-            totalCards = mOptions.cardsGame.length || 1;
-
-        let score = (hits * 10) / totalCards;
-        if (mOptions.gameLevel === 0)
-            score =
-                ((hits * 10) / mOptions.numberQuestions) * (hits / attempts);
+            score = $eXeClasifica.getScoreRP(instance);
 
         mOptions.scorerp = score;
 
@@ -807,14 +811,6 @@ var $eXeClasifica = {
 
         $('#clasificaPNumber-' + instance).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeClasifica beforeunload.eXeClasifica', () => {
-            if ($eXeClasifica.mScorm) {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeClasifica.mScorm
-                );
-            }
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1011,8 +1007,6 @@ var $eXeClasifica = {
             .find('.CQP-CardContainer')
             .off('mousedown touchstart mouseup touchend');
         $('#clasificaValidateAnswers-' + instance).off('click');
-
-        $(window).off('unload.eXeClasifica beforeunload.eXeClasifica');
     },
 
     refreshGame: function (instance) {
@@ -1717,6 +1711,9 @@ var $eXeClasifica = {
         }
 
         mOptions.gameStarted = true;
+        if (mOptions.isScorm === 1) {
+            $eXeClasifica.sendScore(true, instance);
+        }
     },
 
     uptateTime: function (tiempo, instance) {

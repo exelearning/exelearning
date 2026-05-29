@@ -92,6 +92,16 @@ describe('trueorfalse iDevice export', () => {
     });
   });
 
+  describe('score calculation', () => {
+    it('calculates the score from hits and total questions', () => {
+      expect($trueorfalse.getScore(2, 4)).toBe(5);
+    });
+
+    it('returns 0 when there are no questions', () => {
+      expect($trueorfalse.getScore(2, 0)).toBe(0);
+    });
+  });
+
   describe('initialScore', () => {
     it('is initially empty', () => {
       expect($trueorfalse.initialScore).toBe('');
@@ -168,6 +178,115 @@ describe('trueorfalse iDevice export', () => {
 
       expect(options.idevice).toBe('trueorfalseIdevice');
       expect(updateEvaluationIcon).toHaveBeenCalledWith(options, false);
+    });
+
+    it('does not register its own unload handlers', () => {
+      const onSpy = vi.spyOn($.fn, 'on');
+
+      document.body.innerHTML = `
+        <div class="idevice_body trueorfalseIdevice" id="tof-1">
+          <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
+            <div id="tofPGameContainer-tof-1"></div>
+            <button id="tofPStartGame-tof-1"></button>
+            <button id="tofPCheckTest-tof-1"></button>
+            <button id="tofRebootTest-tof-1"></button>
+            <input id="tofPSendScore-tof-1" />
+          </div>
+        </div>
+      `;
+
+      const options = {
+        id: 'tof-1',
+        idevicePath: '/idevices/trueorfalse/',
+        msgs: { tofPStartGame: 'Start' },
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isScorm: 0,
+        showSlider: false,
+        isTest: false,
+      };
+
+      try {
+        $trueorfalse.addEvents(options);
+        expect(onSpy).not.toHaveBeenCalledWith(
+          'unload.eXeTOF beforeunload.eXeTOF',
+          expect.any(Function)
+        );
+      } finally {
+        onSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('runtime scoring', () => {
+    it('updates hits and errors using numeric solutions', () => {
+      document.body.innerHTML = `
+        <div id="tofPGameContainer-tof-1">
+          <div class="TOFP-QuestionDiv">
+            <input class="TOFP-Answer" type="radio" value="1" checked />
+          </div>
+          <div class="TOFP-QuestionDiv">
+            <input class="TOFP-Answer" type="radio" value="0" checked />
+          </div>
+        </div>
+      `;
+
+      const options = {
+        id: 'tof-1',
+        questionsGame: [{ solution: '1' }, { solution: '0' }],
+      };
+
+      $trueorfalse.updateScoreData(options);
+
+      expect(options.hits).toBe(2);
+      expect(options.errors).toBe(0);
+    });
+
+    it('finalizes test scoring without implicit globals', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const saveEvaluation = vi.fn();
+      $exeDevices.iDevice.gamification.report = { saveEvaluation };
+
+      document.body.innerHTML = `
+        <button id="tofPCheckTest-tof-1"></button>
+        <button id="tofRebootTest-tof-1"></button>
+        <div id="tofPMessage-tof-1"></div>
+        <div id="tofPMultimedia"></div>
+        <div id="tofPGameContainer-tof-1">
+          <div class="TOFP-QuestionDiv">
+            <input class="TOFP-Answer" type="radio" value="1" checked />
+            <div class="TOFP-Feedback"><span class="TOFP-SolutionMessage"></span></div>
+          </div>
+          <div class="TOFP-QuestionDiv">
+            <input class="TOFP-Answer" type="radio" value="1" checked />
+            <div class="TOFP-Feedback"><span class="TOFP-SolutionMessage"></span></div>
+          </div>
+        </div>
+      `;
+
+      const options = {
+        id: 'tof-1',
+        questionsGame: [{ solution: '1' }, { solution: '0' }],
+        numberQuestions: 2,
+        msgs: {
+          msgKO: 'Incorrecto',
+          msgOk: 'Correcto',
+          msgYouScore: 'Puntuación',
+        },
+        isScorm: 0,
+        isInExe: false,
+      };
+
+      try {
+        expect(() => $trueorfalse.gameOver(options)).not.toThrow();
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+
+      expect(options.hits).toBe(1);
+      expect(options.errors).toBe(1);
+      expect(options.scorep).toBe(5);
+      expect(saveEvaluation).toHaveBeenCalledWith(options, false);
     });
   });
 });

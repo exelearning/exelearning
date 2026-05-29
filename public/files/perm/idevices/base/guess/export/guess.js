@@ -469,13 +469,32 @@ var $guess = {
     sendScore: function (auto, instance) {
         const mOptions = $guess.options[instance];
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
+        mOptions.scorerp = $guess.getScoreRP(instance);
         mOptions.previousScore = $guess.previousScore;
         mOptions.userName = $guess.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $guess.previousScore = mOptions.previousScore;
+    },
+
+    getScoreRP: function (instance) {
+        const mOptions = $guess.options[instance];
+        const total = Number(mOptions.numberQuestions);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (mOptions.hits * 10) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $guess.options[instance];
+        if (mOptions.isScorm !== 1) return;
+
+        const score = $guess.getScoreRP(instance).toFixed(2);
+        $guess.sendScore(true, instance);
+        $(`#adivinaRepeatActivity-${instance}`).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 
     drawPhrase: function (
@@ -914,6 +933,7 @@ var $guess = {
 
         $guess.updateTime(mOptions.counter, instance);
         mOptions.gameStarted = true;
+        $guess.saveScormScore(instance);
 
         $definition.show();
         $btnReply.show();
@@ -1206,10 +1226,6 @@ var $guess = {
         $('#adivinaEdAnswer-' + instance).prop('disabled', false);
         $('#adivinaEdAnswer-' + instance).val('');
 
-        if (q.isScorm === 1) {
-            $guess.sendScore(true, instance);
-        }
-
         if (mOptions.modeBoard) {
             $('#adivinaDivModeBoard-' + instance).css('display', 'flex');
             $('#adivinaDivModeBoard-' + instance).fadeIn();
@@ -1487,16 +1503,6 @@ var $guess = {
             $adivinaPNumber.text(mOptions.numberQuestions - mActiveQuestion);
         }
 
-        if (mOptions.isScorm === 1) {
-            const score = (
-                (mOptions.hits * 10) /
-                mOptions.numberQuestions
-            ).toFixed(2);
-            $guess.sendScore(true, instance);
-            $(`#adivinaRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`
-            );
-        }
         $guess.saveEvaluation(instance);
     },
 
@@ -1547,6 +1553,7 @@ var $guess = {
             isCorrect = userAnswer === correctSolution,
             type = $guess.updateScore(isCorrect, instance),
             percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
+        $guess.saveScormScore(instance);
 
         mOptions.activeCounter = false;
         let timeShowSolution = 1000;
@@ -1596,6 +1603,7 @@ var $guess = {
 
         const type = $guess.updateScore(value, instance),
             percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
+        $guess.saveScormScore(instance);
 
         mOptions.activeCounter = false;
         let timeShowSolution = 1000;

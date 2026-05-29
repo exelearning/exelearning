@@ -148,4 +148,27 @@ describe('guess iDevice export', () => {
       expect($guess.idevicePath).toBe('');
     });
   });
+
+  describe('SCORM score saving', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('saves the current score and updates the score text', () => {
+      const sendScore = vi.spyOn($guess, 'sendScore').mockImplementation(() => {});
+      document.body.innerHTML = '<span id="adivinaRepeatActivity-0"></span>';
+      $guess.options[0] = {
+        isScorm: 1,
+        hits: 2,
+        numberQuestions: 4,
+        msgs: { msgYouScore: 'Score' },
+      };
+
+      $guess.saveScormScore(0);
+
+      expect(sendScore).toHaveBeenCalledWith(true, 0);
+      expect($('#adivinaRepeatActivity-0').text()).toBe('Score: 5.00');
+    });
+  });
 });

@@ -848,6 +848,7 @@ var $azquizgame = {
 
         mOptions.gameActived = true;
         mOptions.gameStarted = true;
+        $azquizgame.saveScormScore(instance);
         $azquizgame.newWord(instance);
     },
 
@@ -997,16 +998,6 @@ var $azquizgame = {
         $('#roscoEdReply-' + instance)
             .prop('disabled', false)
             .focus();
-
-        if (mOptions.isScorm === 1) {
-            const score = ((mOptions.hits * 10) / mOptions.validWords).toFixed(
-                2
-            );
-            $azquizgame.sendScore(true, instance);
-            $('#roscoRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score
-            );
-        }
 
         $azquizgame.saveEvaluation(instance);
 
@@ -1296,6 +1287,7 @@ var $azquizgame = {
         });
 
         $azquizgame.drawRosco(instance);
+        $azquizgame.saveScormScore(instance);
 
         setTimeout(() => {
             $azquizgame.newWord(instance);
@@ -1371,6 +1363,7 @@ var $azquizgame = {
         });
 
         $azquizgame.drawRosco(instance);
+        $azquizgame.saveScormScore(instance);
 
         setTimeout(() => {
             $azquizgame.newWord(instance);
@@ -1736,7 +1729,7 @@ var $azquizgame = {
     sendScore: function (auto, instance) {
         const mOptions = $azquizgame.options[instance];
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.validWords;
+        mOptions.scorerp = $azquizgame.getScoreRP(instance);
 
         mOptions.previousScore = $azquizgame.previousScore;
         mOptions.userName = $azquizgame.userName;
@@ -1744,6 +1737,25 @@ var $azquizgame = {
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $azquizgame.previousScore = mOptions.previousScore;
+    },
+
+    getScoreRP: function (instance) {
+        const mOptions = $azquizgame.options[instance];
+        const total = Number(mOptions.validWords);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (mOptions.hits * 10) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $azquizgame.options[instance];
+        if (mOptions.isScorm !== 1) return;
+
+        const score = $azquizgame.getScoreRP(instance).toFixed(2);
+        $azquizgame.sendScore(true, instance);
+        $('#roscoRepeatActivity-' + instance).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 };
 

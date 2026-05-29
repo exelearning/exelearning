@@ -1180,6 +1180,7 @@ var $quickquestions = {
         $('#quextPErrors-' + instance).text(mOptions.errors);
         $('#quextPScore-' + instance).text(mOptions.score);
         mOptions.gameStarted = true;
+        $quickquestions.saveScormScore(instance);
         $quickquestions.newQuestion(instance);
     },
 
@@ -1332,22 +1333,6 @@ var $quickquestions = {
         $quickquestions.stopVideo(mOptions);
         $('#quextCursor-' + instance).hide();
         $quickquestions.showMessage(0, '', instance);
-
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestions.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestions.sendScore(true, instance);
-                $('#quextRepeatActivity-' + instance).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
 
         $quickquestions.saveEvaluation(instance);
 
@@ -1733,6 +1718,7 @@ var $quickquestions = {
             answord = parseInt(respuesta, 10);
 
         $quickquestions.updateScore(solution === answord, instance);
+        $quickquestions.saveScormScore(instance);
 
         const percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
 
@@ -1856,7 +1842,7 @@ var $quickquestions = {
 
     saveEvaluation: function (instance) {
         const mOptions = $quickquestions.options[instance];
-        mOptions.scorerp = (10 * mOptions.scoreGame) / mOptions.scoreTotal;
+        mOptions.scorerp = $quickquestions.getScoreRP(instance);
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $quickquestions.isInExe
@@ -1866,13 +1852,33 @@ var $quickquestions = {
     sendScore: function (auto, instance) {
         const mOptions = $quickquestions.options[instance];
 
-        mOptions.scorerp = (10 * mOptions.scoreGame) / mOptions.scoreTotal;
+        mOptions.scorerp = $quickquestions.getScoreRP(instance);
         mOptions.previousScore = $quickquestions.previousScore;
         mOptions.userName = $quickquestions.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $quickquestions.previousScore = mOptions.previousScore;
+    },
+
+    getScoreRP: function (instance) {
+        const mOptions = $quickquestions.options[instance];
+        const total = Number(mOptions.scoreTotal);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (10 * mOptions.scoreGame) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $quickquestions.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        if (!mOptions.repeatActivity && $quickquestions.initialScore !== '') return;
+
+        const score = $quickquestions.getScoreRP(instance).toFixed(2);
+        $quickquestions.sendScore(true, instance);
+        $('#quextRepeatActivity-' + instance).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 };
 $(function () {

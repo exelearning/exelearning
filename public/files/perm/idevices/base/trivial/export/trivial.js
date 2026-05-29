@@ -541,15 +541,7 @@ var $eXeTrivial = {
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        mOptions.scorerp = 10;
-        let points = mOptions.gamers[0].score;
-        if (mOptions.gamers[0].quesos.length < mOptions.numeroTemas) {
-            score =
-                (points * 10) /
-                (mOptions.numeroTemas * 10 + mOptions.numeroTemas);
-            score = score > 10 ? 10.0 : score;
-        }
-        mOptions.scorerp = score;
+        mOptions.scorerp = $eXeTrivial.getScore(mOptions);
         if (mOptions.numeroJugadores === 1) {
             $exeDevices.iDevice.gamification.report.saveEvaluation(
                 mOptions,
@@ -560,15 +552,7 @@ var $eXeTrivial = {
 
     sendScore: function (auto, instance) {
         let mOptions = $eXeTrivial.options[instance],
-            score = 10,
-            points = mOptions.gamers[0].score;
-
-        if (mOptions.gamers[0].quesos.length < mOptions.numeroTemas) {
-            score =
-                (points * 10) /
-                (mOptions.numeroTemas * 10 + mOptions.numeroTemas);
-            score = score > 10 ? 10 : score;
-        }
+            score = $eXeTrivial.getScore(mOptions);
 
         mOptions.scorerp = score;
         mOptions.previousScore = $eXeTrivial.previousScore;
@@ -577,6 +561,28 @@ var $eXeTrivial = {
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $eXeTrivial.previousScore = mOptions.previousScore;
+    },
+
+    getScore: function (mOptions) {
+        const points = mOptions.gamers[0].score;
+        let score = 10;
+
+        if (mOptions.gamers[0].quesos.length < mOptions.numeroTemas) {
+            score =
+                (points * 10) /
+                (mOptions.numeroTemas * 10 + mOptions.numeroTemas);
+        }
+
+        return score > 10 ? 10 : score;
+    },
+
+    saveQuestionScore: function (instance) {
+        const mOptions = $eXeTrivial.options[instance];
+
+        if (mOptions.isScorm == 1 && !mOptions.gameOver) {
+            $eXeTrivial.sendScore(true, instance);
+        }
+        $eXeTrivial.saveEvaluation(instance);
     },
 
     isVideoQuestion: function (temas) {
@@ -930,7 +936,7 @@ var $eXeTrivial = {
         }
 
         $exeDevices.iDevice.gamification.media.stopSound();
-        $eXeTrivial.saveEvaluation(instance);
+        $eXeTrivial.saveQuestionScore(instance);
         $eXeTrivial.saveDataStorage(instance);
     },
 
@@ -1019,7 +1025,6 @@ var $eXeTrivial = {
                 $eXeTrivial.loadGameBoard(instance);
             }, 3000);
         }
-        $eXeTrivial.sendScore(true, instance);
     },
 
     cheesePositions: function (numasi) {
@@ -1534,6 +1539,7 @@ var $eXeTrivial = {
             typeof mOptions.modeBoard == 'undefined'
                 ? false
                 : mOptions.modeBoard;
+        mOptions.isScorm = mOptions.isScorm === 2 ? 1 : mOptions.isScorm;
 
         // Default messages for legacy imports
         if (typeof mOptions.msgs === 'undefined') {
@@ -2064,11 +2070,6 @@ var $eXeTrivial = {
             });
 
         mOptions.respuesta = '';
-
-        $(window).on('unload.eXeTrivial beforeunload.eXeTrivial', function () {
-            $eXeTrivial.sendScore(true, instance);
-            $exeDevices.iDevice.gamification.scorm.endScorm($eXeTrivial.mScorm);
-        });
 
         $('#trivialClickDado-' + instance).on('click touchstart', function (e) {
             e.preventDefault();

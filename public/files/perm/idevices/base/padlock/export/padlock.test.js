@@ -40,6 +40,12 @@ describe('padlock iDevice export', () => {
     $padlock = loadExportIdevice(code);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    $(window).off('unload.eXeCandado beforeunload.eXeCandado');
+    document.body.innerHTML = '';
+  });
+
   describe('addZero', () => {
     it('adds zero to single digit numbers', () => {
       expect($padlock.addZero(0)).toBe('00');
@@ -128,6 +134,53 @@ describe('padlock iDevice export', () => {
   describe('options', () => {
     it('is defined', () => {
       expect($padlock.options).toBeDefined();
+    });
+  });
+
+  describe('progress report save', () => {
+    it('uses the current activity score when saving results', () => {
+      const saveEvaluation = vi.fn();
+      global.$exeDevices.iDevice.gamification.report = { saveEvaluation };
+      $padlock.options[0] = { score: 0 };
+
+      $padlock.saveEvaluation(0);
+
+      expect($padlock.options[0].scorerp).toBe(0);
+      expect(saveEvaluation).toHaveBeenCalledWith($padlock.options[0], false);
+    });
+
+    it('saves results when the manual score button is clicked', () => {
+      vi.useFakeTimers();
+      const updateEvaluationIcon = vi.fn();
+      global.$exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon,
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="candadoMainContainer-0">
+            <button class="Games-SendScore">Save</button>
+          </div>
+        </article>`;
+      $padlock.options[0] = {
+        candadoReboot: false,
+        candadoShowMinimize: true,
+        candadoTime: 1,
+        id: 'padlock-test',
+        isScorm: 0,
+        score: 4,
+      };
+      $padlock.sendScore = vi.fn();
+      $padlock.saveEvaluation = vi.fn();
+      $padlock.getCandadoData = vi.fn(() => false);
+
+      $padlock.addEvents(0);
+      $('.Games-SendScore').trigger('click');
+      vi.runOnlyPendingTimers();
+
+      expect($padlock.sendScore).toHaveBeenCalledWith(false, 0);
+      expect($padlock.saveEvaluation).toHaveBeenCalledWith(0);
+      expect(updateEvaluationIcon).toHaveBeenCalledWith($padlock.options[0], $padlock.isInExe);
     });
   });
 
