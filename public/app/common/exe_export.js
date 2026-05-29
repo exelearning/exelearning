@@ -191,8 +191,14 @@ window.$exeExport = {
                     }
                 }
             })
-            window.loadPage()
-            window.addEventListener('unload', () => window.unloadPage(isSCORM));
+            window.loadPage();
+            if (typeof window.registerScormLifecycleHandlers == 'function') {
+                window.registerScormLifecycleHandlers(isSCORM);
+            } else if (typeof window.addEventListener == 'function') {
+                window.addEventListener('pagehide', event => {
+                    if (!event || !event.persisted) window.unloadPage(isSCORM);
+                });
+            }
         }
     },
 

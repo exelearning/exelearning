@@ -58,6 +58,7 @@ With the understanding that:
 ****************************************************************************/
 var startDate;
 var exitPageStatus;
+var pageLoaded = false;
 
 // creating shortcut for less verbose code
 var scorm = pipwerks.SCORM;
@@ -67,12 +68,37 @@ function _getStartDate() { return startDate; }
 function _setStartDate(value) { startDate = value; }
 function _getExitPageStatus() { return exitPageStatus; }
 function _setExitPageStatus(value) { exitPageStatus = value; }
+function _getPageLoaded() { return pageLoaded; }
+function _setPageLoaded(value) { pageLoaded = value; }
+function _resetScormLifecycleState(win) {
+  win = win || (typeof window !== "undefined" ? window : undefined);
+  if (win && win.__exeScormLifecycleState) {
+    delete win.__exeScormLifecycleState;
+  }
+}
+
+// Marks the SCO as finalized so any post-quit lifecycle event (visibilitychange,
+// freeze) does not call LMSCommit on a terminated session.
+function _markScormFinalized(win) {
+  win = win || (typeof window !== "undefined" ? window : undefined);
+  if (win && win.__exeScormLifecycleState) {
+    win.__exeScormLifecycleState.finalized = true;
+  }
+}
 
 /**
  *
  */
 function loadPage() {
+  if (pageLoaded) {
+    return true;
+  }
+
   var result = scorm.init();
+  if (!result) {
+    return result;
+  }
+
   var status = scorm.GetCompletionStatus();
 
   if (status == "not attempted" || status == "incomplete") {
@@ -82,7 +108,9 @@ function loadPage() {
   }
 
   exitPageStatus = false;
+  pageLoaded = true;
   startTimer();
+  return result;
 }
 
 /**
@@ -121,6 +149,8 @@ function doBack() {
   // NOTE: LMSFinish will unload the current SCO.  All processing
   //       relative to the current page must be performed prior to calling LMSFinish.
   result = scorm.quit();
+  pageLoaded = false;
+  _markScormFinalized();
 }
 
 /**
@@ -154,13 +184,18 @@ function doContinue(status) {
   // NOTE: LMSFinish will unload the current SCO.  All processing
   //       relative to the current page must be performed prior to calling LMSFinish.
   result = scorm.quit();
+  pageLoaded = false;
+  _markScormFinalized();
 }
 
 /**
  *
  */
-function doQuit() {
-  scorm.SetExit("suspend");
+function doQuit(exitStatus) {
+  if (typeof exitStatus == "undefined") {
+    exitStatus = "suspend";
+  }
+  scorm.SetExit(exitStatus);
 
   computeTime();
   exitPageStatus = true;
@@ -169,6 +204,8 @@ function doQuit() {
   // NOTE: LMSFinish will unload the current SCO.  All processing
   //       relative to the current page must be performed prior to calling LMSFinish.
   result = scorm.quit();
+  pageLoaded = false;
+  _markScormFinalized();
 }
 
 /*******************************************************************************
@@ -199,19 +236,29 @@ function unloadPage(isSCORM) {
     isSCORM = false;
   }
   if (exitPageStatus != true) {
-    var status = scorm.GetSuccessStatus();
+    var completionStatus = scorm.GetCompletionStatus();
+    var successStatus = scorm.GetSuccessStatus();
+    var isScorm2004 = scorm.version == "2004";
+    var hasTerminalStatus = isScorm2004
+      ? completionStatus == "completed" || successStatus == "passed" || successStatus == "failed"
+      : successStatus == "passed" || successStatus == "failed" || successStatus == "completed";
+    var shouldExitNormally = isScorm2004
+      ? completionStatus == "completed"
+      : successStatus == "passed" || successStatus == "failed" || successStatus == "completed";
     // In SCORM12, information about completion and success is stored in the same place (cmi.core.lesson_status)
-    if (status != "passed" && status != "failed" && status != "completed") {
+    if (!hasTerminalStatus) {
       if (isSCORM == true) {
         scorm.SetCompletionStatus("incomplete");
         scorm.SetSuccessStatus("failed")
+        shouldExitNormally = false;
       }
       else {
         scorm.SetCompletionStatus("completed");
         scorm.SetSuccessStatus("passed")
+        shouldExitNormally = true;
       }
     }
-    doQuit();
+    doQuit(shouldExitNormally ? "normal" : "suspend");
   }
   // NOTE: don't return anything that resembles a javascript
   //       string from this function or IE will take the liberty of displaying a confirm message box.
@@ -224,41 +271,83 @@ function unloadPage(isSCORM) {
 ** Moodle iframe), which prevented LMSFinish from running and lost scores.
 **
 ** We instead register modern lifecycle handlers:
-**  - `pagehide`        -> finalize the session once (the recommended unload
-**                         replacement; fires on close, navigation and bfcache).
+**  - `pagehide`        -> finalize the session once when the page is really
+**                         being discarded. If the page enters bfcache
+**                         (`event.persisted`), commit only and keep the SCORM
+**                         session open.
 **  - `visibilitychange`-> when the tab becomes hidden, commit progress only
 **                         (no quit), so switching tabs does not terminate the
 **                         session prematurely while still persisting data if
 **                         `pagehide` is never delivered.
-** unloadPage() is still called at most once.
+**  - `freeze`          -> commit progress before Chromium freezes the page.
+** unloadPage(isSCORM) is still called at most once.
 **
+** @param {boolean} [isSCORM] - true when the page contains a scored iDevice.
 ** @param {Window} [win]  - target for pagehide (defaults to window)
 ** @param {Document} [doc] - target for visibilitychange (defaults to document)
 *******************************************************************************/
-function registerScormLifecycleHandlers(win, doc) {
+function registerScormLifecycleHandlers(isSCORM, win, doc) {
+  if (typeof isSCORM != "boolean") {
+    doc = win;
+    win = isSCORM;
+    isSCORM = undefined;
+  }
+
   win = win || (typeof window !== "undefined" ? window : undefined);
   doc = doc || (typeof document !== "undefined" ? document : undefined);
   if (!win || typeof win.addEventListener != "function") {
     return;
   }
 
-  var finalized = false;
+  if (!win.__exeScormLifecycleState) {
+    win.__exeScormLifecycleState = {
+      finalized: false,
+      isSCORM: false,
+      registered: false
+    };
+  }
 
-  function finalizeOnce() {
-    if (finalized) {
+  var state = win.__exeScormLifecycleState;
+
+  if (typeof isSCORM == "boolean") {
+    state.isSCORM = isSCORM;
+  }
+
+  if (state.registered) {
+    return;
+  }
+
+  state.registered = true;
+
+  function commitProgress() {
+    if (state.finalized) {
       return;
     }
-    finalized = true;
-    unloadPage();
+    computeTime();
+    if (typeof scorm.save == "function") {
+      scorm.save();
+    }
+  }
+
+  function finalizeOnce(event) {
+    if (event && event.persisted) {
+      commitProgress();
+      return;
+    }
+    if (state.finalized) {
+      return;
+    }
+    state.finalized = true;
+    unloadPage(state.isSCORM);
   }
 
   win.addEventListener("pagehide", finalizeOnce, false);
+  win.addEventListener("freeze", commitProgress, false);
 
   if (doc && typeof doc.addEventListener == "function") {
     doc.addEventListener("visibilitychange", function () {
-      if (doc.visibilityState == "hidden" && !finalized) {
-        computeTime();
-        scorm.save();
+      if (doc.visibilityState == "hidden") {
+        commitProgress();
       }
     }, false);
   }
@@ -301,5 +390,9 @@ if (typeof module !== 'undefined' && module.exports) {
         _setStartDate,
         _getExitPageStatus,
         _setExitPageStatus,
+        _getPageLoaded,
+        _setPageLoaded,
+        _resetScormLifecycleState,
+        _markScormFinalized,
     };
 }

@@ -374,6 +374,8 @@ describe('Scorm2004Exporter', () => {
 
             expect(scoFunctions).toContain('loadPage');
             expect(scoFunctions).toContain('unloadPage');
+            expect(scoFunctions).toContain('commitScormProgress');
+            expect(scoFunctions).toContain('registerScormLifecycleHandlers');
             expect(scoFunctions).toContain('setComplete');
             expect(scoFunctions).toContain('setScore');
             // SCORM 2004 uses cmi.completion_status instead of cmi.core.lesson_status
@@ -387,7 +389,19 @@ describe('Scorm2004Exporter', () => {
 
             expect(scoFunctions).toContain('pagehide');
             expect(scoFunctions).toContain('visibilitychange');
+            expect(scoFunctions).toContain('freeze');
+            expect(scoFunctions).toContain('event.persisted');
             expect(scoFunctions).not.toMatch(/addEventListener\(\s*["']unload["']/);
+        });
+
+        it('should suspend cmi.exit only when the SCO leaves in a non-terminal state', () => {
+            const scoFunctions = exporter.getSco2004Functions();
+
+            // The exit value depends on cmi.completion_status being "completed".
+            expect(scoFunctions).toContain('scormLifecycleState.finalized = true');
+            expect(scoFunctions).toMatch(
+                /cmi\.exit["']\s*,\s*completionStatus\s*===\s*["']completed["']\s*\?\s*["']normal["']\s*:\s*["']suspend["']/,
+            );
         });
 
         it('should use ISO 8601 duration format', () => {

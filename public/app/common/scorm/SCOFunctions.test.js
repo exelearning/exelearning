@@ -21,6 +21,9 @@ const setStartDate = scoFunctions._setStartDate;
 const getStartDate = scoFunctions._getStartDate;
 const setExitPageStatus = scoFunctions._setExitPageStatus;
 const getExitPageStatus = scoFunctions._getExitPageStatus;
+const setPageLoaded = scoFunctions._setPageLoaded;
+const getPageLoaded = scoFunctions._getPageLoaded;
+const resetScormLifecycleState = scoFunctions._resetScormLifecycleState;
 
 describe('SCOFunctions.js', () => {
   beforeEach(() => {
@@ -29,6 +32,8 @@ describe('SCOFunctions.js', () => {
     // Reset internal state via helpers
     setStartDate(0);
     setExitPageStatus(false);
+    setPageLoaded(false);
+    resetScormLifecycleState(globalThis.window);
 
     // Mock the scorm object methods
     globalThis.pipwerks.SCORM.init = vi.fn(() => true);
@@ -115,6 +120,14 @@ describe('SCOFunctions.js', () => {
       expect(getStartDate()).toBeGreaterThanOrEqual(beforeTime);
       expect(getStartDate()).toBeLessThanOrEqual(afterTime);
     });
+
+    it('does not initialize twice when loadPage is called more than once', () => {
+      globalThis.loadPage();
+      globalThis.loadPage();
+
+      expect(globalThis.pipwerks.SCORM.init).toHaveBeenCalledTimes(1);
+      expect(getPageLoaded()).toBe(true);
+    });
   });
 
   describe('startTimer', () => {
@@ -196,6 +209,15 @@ describe('SCOFunctions.js', () => {
 
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
     });
+
+    it('marks the SCORM lifecycle as finalized so post-quit events do not commit', () => {
+      globalThis.window.__exeScormLifecycleState = { finalized: false, isSCORM: false, registered: true };
+      setStartDate(new Date().getTime());
+
+      globalThis.doBack();
+
+      expect(globalThis.window.__exeScormLifecycleState.finalized).toBe(true);
+    });
   });
 
   describe('doContinue', () => {
@@ -261,6 +283,15 @@ describe('SCOFunctions.js', () => {
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
       expect(getExitPageStatus()).toBe(true);
     });
+
+    it('marks the SCORM lifecycle as finalized so post-quit events do not commit', () => {
+      globalThis.window.__exeScormLifecycleState = { finalized: false, isSCORM: false, registered: true };
+      setStartDate(new Date().getTime());
+
+      globalThis.doContinue('completed');
+
+      expect(globalThis.window.__exeScormLifecycleState.finalized).toBe(true);
+    });
   });
 
   describe('doQuit', () => {
@@ -270,6 +301,14 @@ describe('SCOFunctions.js', () => {
       globalThis.doQuit();
 
       expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
+    });
+
+    it('uses an explicit normal exit when provided', () => {
+      setStartDate(new Date().getTime());
+
+      globalThis.doQuit('normal');
+
+      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
     });
 
     it('computes session time', () => {
@@ -295,6 +334,15 @@ describe('SCOFunctions.js', () => {
 
       expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
+    });
+
+    it('marks the SCORM lifecycle as finalized so post-quit events do not commit', () => {
+      globalThis.window.__exeScormLifecycleState = { finalized: false, isSCORM: false, registered: true };
+      setStartDate(new Date().getTime());
+
+      globalThis.doQuit();
+
+      expect(globalThis.window.__exeScormLifecycleState.finalized).toBe(true);
     });
   });
 
@@ -370,16 +418,66 @@ describe('SCOFunctions.js', () => {
       expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
     });
 
-    it('calls doQuit after setting status', () => {
+    it('exits normally after completing a non-scored page', () => {
       setExitPageStatus(false);
       setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
       globalThis.unloadPage();
 
+      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+      expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
+    });
+
+    it('suspends after leaving a scored page incomplete', () => {
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
+      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
+
+      globalThis.unloadPage(true);
+
       expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
       expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
+    });
+
+    it('exits normally when a SCORM 1.2 page already has a terminal status', () => {
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
+      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('passed');
+
+      globalThis.unloadPage(true);
+
+      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+    });
+
+    it('does not downgrade a completed SCORM 2004 page when success is still unknown', () => {
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
+      globalThis.pipwerks.SCORM.version = '2004';
+      globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('completed');
+      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
+
+      globalThis.unloadPage(true);
+
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+    });
+
+    it('keeps SCORM 2004 suspended when success is failed but completion is incomplete', () => {
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
+      globalThis.pipwerks.SCORM.version = '2004';
+      globalThis.pipwerks.SCORM.GetCompletionStatus.mockReturnValue('incomplete');
+      globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('failed');
+
+      globalThis.unloadPage(true);
+
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
     });
   });
 
@@ -406,10 +504,11 @@ describe('SCOFunctions.js', () => {
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
     });
 
-    it('registers pagehide and visibilitychange instead of the deprecated unload event', () => {
+    it('registers pagehide, freeze and visibilitychange instead of the deprecated unload event', () => {
       scoFunctions.registerScormLifecycleHandlers(fakeWin, fakeDoc);
 
       expect(fakeWin.addEventListener).toHaveBeenCalledWith('pagehide', expect.any(Function), false);
+      expect(fakeWin.addEventListener).toHaveBeenCalledWith('freeze', expect.any(Function), false);
       expect(fakeDoc.addEventListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function), false);
       expect(fakeWin.addEventListener).not.toHaveBeenCalledWith('unload', expect.anything(), expect.anything());
       expect(fakeWin.addEventListener).not.toHaveBeenCalledWith('beforeunload', expect.anything(), expect.anything());
@@ -422,6 +521,26 @@ describe('SCOFunctions.js', () => {
       listeners['win:pagehide'](); // a second pagehide must be a no-op
 
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses the registered isSCORM value when finalizing on pagehide', () => {
+      scoFunctions.registerScormLifecycleHandlers(true, fakeWin, fakeDoc);
+
+      listeners['win:pagehide']({ persisted: false });
+
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('incomplete');
+      expect(globalThis.pipwerks.SCORM.SetSuccessStatus).toHaveBeenCalledWith('failed');
+      expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalledTimes(1);
+    });
+
+    it('commits without quitting when pagehide stores the page in bfcache', () => {
+      scoFunctions.registerScormLifecycleHandlers(true, fakeWin, fakeDoc);
+
+      listeners['win:pagehide']({ persisted: true });
+
+      expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.quit).not.toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.SetCompletionStatus).not.toHaveBeenCalled();
     });
 
     it('commits progress without quitting when the tab becomes hidden', () => {
@@ -441,6 +560,15 @@ describe('SCOFunctions.js', () => {
       listeners['doc:visibilitychange']();
 
       expect(globalThis.pipwerks.SCORM.save).not.toHaveBeenCalled();
+    });
+
+    it('commits progress without quitting when the page is frozen', () => {
+      scoFunctions.registerScormLifecycleHandlers(fakeWin, fakeDoc);
+
+      listeners['win:freeze']();
+
+      expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
+      expect(globalThis.pipwerks.SCORM.quit).not.toHaveBeenCalled();
     });
 
     it('does not commit again once the session has been finalized', () => {

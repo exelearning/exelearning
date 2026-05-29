@@ -601,8 +601,18 @@ var scorm = pipwerks.SCORM;
 
 var startTimeStamp = null;
 var exitPageStatus = false;
+var pageLoaded = false;
+var scormLifecycleState = {
+  finalized: false,
+  isSCORM: false,
+  registered: false
+};
 
 function loadPage() {
+  if (pageLoaded) {
+    return true;
+  }
+
   startTimeStamp = new Date();
   var result = scorm.init();
   if (result) {
@@ -610,15 +620,33 @@ function loadPage() {
     if (status === "not attempted" || status === "") {
       scorm.set("cmi.core.lesson_status", "incomplete");
     }
+    pageLoaded = true;
   }
   return result;
 }
 
-function unloadPage() {
+function commitScormProgress() {
+  computeTime();
+  scorm.save();
+}
+
+function unloadPage(isSCORM) {
   if (!exitPageStatus) {
     exitPageStatus = true;
-    computeTime();
+    scormLifecycleState.finalized = true;
+    var status = scorm.get("cmi.core.lesson_status");
+    var isTerminal = status === "passed" || status === "failed" || status === "completed";
+    if (!isTerminal) {
+      var newStatus = isSCORM === true ? "incomplete" : "completed";
+      scorm.set("cmi.core.lesson_status", newStatus);
+      isTerminal = newStatus === "completed";
+    }
+    // Only suspend when the SCO is leaving in a non-terminal state, so Moodle
+    // does not keep "completed/passed/failed" pages stuck in a resumable state.
+    scorm.set("cmi.core.exit", isTerminal ? "" : "suspend");
+    commitScormProgress();
     scorm.quit();
+    pageLoaded = false;
   }
 }
 
@@ -655,28 +683,45 @@ function setScore(score, maxScore, minScore) {
   scorm.save();
 }
 
-// Issue #1831: finalize via pagehide/visibilitychange instead of the deprecated unload event,
+// Issue #1831: finalize via pagehide instead of the deprecated unload event,
 // which Chrome blocks under a Permissions Policy (e.g. Moodle iframes), losing SCORM scores.
-(function () {
+function registerScormLifecycleHandlers(isSCORM) {
+  if (typeof isSCORM === "boolean") {
+    scormLifecycleState.isSCORM = isSCORM;
+  }
   if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
     return;
   }
-  var finalized = false;
-  function finalizeOnce() {
-    if (finalized) return;
-    finalized = true;
-    unloadPage();
+  if (scormLifecycleState.registered) {
+    return;
+  }
+  scormLifecycleState.registered = true;
+  function commitIfOpen() {
+    if (!scormLifecycleState.finalized) {
+      commitScormProgress();
+    }
+  }
+  function finalizeOnce(event) {
+    if (event && event.persisted) {
+      commitIfOpen();
+      return;
+    }
+    if (scormLifecycleState.finalized) return;
+    scormLifecycleState.finalized = true;
+    unloadPage(scormLifecycleState.isSCORM);
   }
   window.addEventListener("pagehide", finalizeOnce, false);
+  window.addEventListener("freeze", commitIfOpen, false);
   if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
     document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState === "hidden" && !finalized) {
-        computeTime();
-        scorm.save();
+      if (document.visibilityState === "hidden") {
+        commitIfOpen();
       }
     }, false);
   }
-}());
+}
+
+registerScormLifecycleHandlers();
 `;
     }
 

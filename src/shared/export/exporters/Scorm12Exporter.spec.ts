@@ -428,6 +428,8 @@ describe('Scorm12Exporter', () => {
 
             expect(scoFunctions).toContain('loadPage');
             expect(scoFunctions).toContain('unloadPage');
+            expect(scoFunctions).toContain('commitScormProgress');
+            expect(scoFunctions).toContain('registerScormLifecycleHandlers');
             expect(scoFunctions).toContain('setComplete');
             expect(scoFunctions).toContain('setIncomplete');
             expect(scoFunctions).toContain('setScore');
@@ -438,7 +440,19 @@ describe('Scorm12Exporter', () => {
 
             expect(scoFunctions).toContain('pagehide');
             expect(scoFunctions).toContain('visibilitychange');
+            expect(scoFunctions).toContain('freeze');
+            expect(scoFunctions).toContain('event.persisted');
             expect(scoFunctions).not.toMatch(/addEventListener\(\s*["']unload["']/);
+        });
+
+        it('should suspend cmi.core.exit only when the SCO leaves in a non-terminal state', () => {
+            const scoFunctions = exporter.getScoFunctions();
+
+            // The terminal flag must be derived from passed/failed/completed before
+            // deciding whether to set cmi.core.exit to "suspend" or to "" (normal exit).
+            expect(scoFunctions).toContain('isTerminal');
+            expect(scoFunctions).toContain('scormLifecycleState.finalized = true');
+            expect(scoFunctions).toMatch(/cmi\.core\.exit["']\s*,\s*isTerminal\s*\?\s*["']{2}\s*:\s*["']suspend["']/);
         });
     });
 

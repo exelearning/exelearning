@@ -145,6 +145,7 @@ describe('exe_export.js', () => {
     delete window.$exe_i18n;
     delete window.$;
     delete window.$exeExport;
+    delete window.registerScormLifecycleHandlers;
     delete window.localStorage;
     vi.useRealTimers();
   });
@@ -274,10 +275,11 @@ describe('exe_export.js', () => {
     intervalSpy.mockRestore();
   });
 
-  it('detects scorm data in idevices and wires unload handler', () => {
+  it('detects scorm data in idevices and registers lifecycle handlers', () => {
     window.scorm = {};
     window.loadPage = vi.fn();
     window.unloadPage = vi.fn();
+    window.registerScormLifecycleHandlers = vi.fn();
 
     window.$testidevice = {
       options: [{ isScorm: true }],
@@ -300,10 +302,38 @@ describe('exe_export.js', () => {
     document.body.append(jsNode, jsonNode);
 
     window.$exeExport.initScorm();
-    window.dispatchEvent(new Event('unload'));
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
-    expect(window.unloadPage).toHaveBeenCalledWith(true);
+    expect(window.registerScormLifecycleHandlers).toHaveBeenCalledWith(true);
+    expect(window.unloadPage).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a pagehide handler when registerScormLifecycleHandlers is missing', () => {
+    // Backward-compat path: an older SCO bundle without registerScormLifecycleHandlers.
+    window.scorm = {};
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
+    // Intentionally no window.registerScormLifecycleHandlers defined.
+
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+
+    window.$exeExport.initScorm();
+
+    expect(window.loadPage).toHaveBeenCalledTimes(1);
+    const pagehideRegistration = addEventListenerSpy.mock.calls.find((call) => call[0] === 'pagehide');
+    expect(pagehideRegistration).toBeDefined();
+
+    const pagehideHandler = pagehideRegistration[1];
+
+    // Bfcache entry must NOT terminate the SCO session.
+    pagehideHandler({ persisted: true });
+    expect(window.unloadPage).not.toHaveBeenCalled();
+
+    // Real unload must terminate it.
+    pagehideHandler({ persisted: false });
+    expect(window.unloadPage).toHaveBeenCalledWith(false);
+
+    addEventListenerSpy.mockRestore();
   });
 
   it('normalizes search strings', () => {
@@ -857,6 +887,7 @@ describe('exe_export.js', () => {
       window.scorm = {};
       window.loadPage = vi.fn();
       window.unloadPage = vi.fn();
+      window.registerScormLifecycleHandlers = vi.fn();
 
       const jsonNode = document.createElement('div');
       jsonNode.className = 'idevice_node';
@@ -874,6 +905,7 @@ describe('exe_export.js', () => {
       window.scorm = {};
       window.loadPage = vi.fn();
       window.unloadPage = vi.fn();
+      window.registerScormLifecycleHandlers = vi.fn();
 
       const jsonNode = document.createElement('div');
       jsonNode.className = 'idevice_node';
@@ -883,15 +915,16 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsonNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
 
-      expect(window.unloadPage).toHaveBeenCalledWith(false);
+      expect(window.registerScormLifecycleHandlers).toHaveBeenCalledWith(false);
+      expect(window.unloadPage).not.toHaveBeenCalled();
     });
 
     it('handles js component without options', () => {
       window.scorm = {};
       window.loadPage = vi.fn();
       window.unloadPage = vi.fn();
+      window.registerScormLifecycleHandlers = vi.fn();
       window.$testidevice = {}; // No options property
 
       const jsNode = document.createElement('div');
@@ -901,15 +934,16 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
 
-      expect(window.unloadPage).toHaveBeenCalledWith(false);
+      expect(window.registerScormLifecycleHandlers).toHaveBeenCalledWith(false);
+      expect(window.unloadPage).not.toHaveBeenCalled();
     });
 
     it('handles js component with non-scorm options', () => {
       window.scorm = {};
       window.loadPage = vi.fn();
       window.unloadPage = vi.fn();
+      window.registerScormLifecycleHandlers = vi.fn();
       window.$testidevice = { options: [{ isScorm: false }] };
 
       const jsNode = document.createElement('div');
@@ -919,9 +953,9 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
 
-      expect(window.unloadPage).toHaveBeenCalledWith(false);
+      expect(window.registerScormLifecycleHandlers).toHaveBeenCalledWith(false);
+      expect(window.unloadPage).not.toHaveBeenCalled();
     });
   });
 

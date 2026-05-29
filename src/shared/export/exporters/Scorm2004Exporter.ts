@@ -587,8 +587,18 @@ var scorm = pipwerks.SCORM;
 
 var startTimeStamp = null;
 var exitPageStatus = false;
+var pageLoaded = false;
+var scormLifecycleState = {
+  finalized: false,
+  isSCORM: false,
+  registered: false
+};
 
 function loadPage() {
+  if (pageLoaded) {
+    return true;
+  }
+
   startTimeStamp = new Date();
   var result = scorm.init();
   if (result) {
@@ -596,17 +606,39 @@ function loadPage() {
     if (status === "not attempted" || status === "unknown" || status === "") {
       scorm.set("cmi.completion_status", "incomplete");
     }
+    pageLoaded = true;
   }
   return result;
 }
 
-function unloadPage() {
+function commitScormProgress() {
+  computeTime();
+  scorm.save();
+}
+
+function unloadPage(isSCORM) {
   if (!exitPageStatus) {
     exitPageStatus = true;
-    computeTime();
-    scorm.set("cmi.exit", "suspend");
-    scorm.save();
+    scormLifecycleState.finalized = true;
+    var completionStatus = scorm.get("cmi.completion_status");
+    var successStatus = scorm.get("cmi.success_status");
+    if (completionStatus !== "completed" && successStatus !== "passed" && successStatus !== "failed") {
+      if (isSCORM === true) {
+        scorm.set("cmi.completion_status", "incomplete");
+        scorm.set("cmi.success_status", "failed");
+        completionStatus = "incomplete";
+      } else {
+        scorm.set("cmi.completion_status", "completed");
+        scorm.set("cmi.success_status", "passed");
+        completionStatus = "completed";
+      }
+    }
+    // Only suspend when the SCO is leaving in a non-terminal state; SCOs that
+    // already finished should exit normally so Moodle marks them as done.
+    scorm.set("cmi.exit", completionStatus === "completed" ? "normal" : "suspend");
+    commitScormProgress();
     scorm.quit();
+    pageLoaded = false;
   }
 }
 
@@ -646,28 +678,45 @@ function setScore(score, maxScore, minScore) {
   scorm.save();
 }
 
-// Issue #1831: finalize via pagehide/visibilitychange instead of the deprecated unload event,
+// Issue #1831: finalize via pagehide instead of the deprecated unload event,
 // which Chrome blocks under a Permissions Policy (e.g. Moodle iframes), losing SCORM scores.
-(function () {
+function registerScormLifecycleHandlers(isSCORM) {
+  if (typeof isSCORM === "boolean") {
+    scormLifecycleState.isSCORM = isSCORM;
+  }
   if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
     return;
   }
-  var finalized = false;
-  function finalizeOnce() {
-    if (finalized) return;
-    finalized = true;
-    unloadPage();
+  if (scormLifecycleState.registered) {
+    return;
+  }
+  scormLifecycleState.registered = true;
+  function commitIfOpen() {
+    if (!scormLifecycleState.finalized) {
+      commitScormProgress();
+    }
+  }
+  function finalizeOnce(event) {
+    if (event && event.persisted) {
+      commitIfOpen();
+      return;
+    }
+    if (scormLifecycleState.finalized) return;
+    scormLifecycleState.finalized = true;
+    unloadPage(scormLifecycleState.isSCORM);
   }
   window.addEventListener("pagehide", finalizeOnce, false);
+  window.addEventListener("freeze", commitIfOpen, false);
   if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
     document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState === "hidden" && !finalized) {
-        computeTime();
-        scorm.save();
+      if (document.visibilityState === "hidden") {
+        commitIfOpen();
       }
     }, false);
   }
-}());
+}
+
+registerScormLifecycleHandlers();
 `;
     }
 
