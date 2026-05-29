@@ -42,7 +42,58 @@ import {
 } from '../services/link-validator';
 import { getSettingString } from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
+import { getPreferenceValue } from '../db/queries/preferences';
+
+/**
+ * Resolves the dirName of the theme that should be baked into a brand-new
+ * project, applying the agreed precedence:
+ *
+ *   1. The user's "defaultTheme" preference, when set AND when the referenced
+ *      theme still exists in the themes table and is enabled.
+ *   2. The admin-wide global default theme stored in app_settings.
+ *   3. The hard-coded fallback "base".
+ *
+ * Exported so it can be unit-tested without booting an Elysia app, and so the
+ * create-quick handler is just glue on top of a small, predictable function.
+ *
+ * Failures from query layers (missing tables, etc.) are swallowed so that
+ * callers always get a usable theme name back.
+ */
+export async function resolveDefaultThemeForNewProject(
+    db: Kysely<Database>,
+    userId: number,
+    deps: {
+        getDefaultTheme: typeof getDefaultThemeDefault;
+        findThemeByDirName: typeof findThemeByDirName;
+        getPreferenceValue: typeof getPreferenceValue;
+    } = {
+        getDefaultTheme: getDefaultThemeDefault,
+        findThemeByDirName,
+        getPreferenceValue,
+    },
+): Promise<string> {
+    let themeDirName = 'base';
+    try {
+        const globalDefault = await deps.getDefaultTheme(db);
+        themeDirName = globalDefault.dirName;
+    } catch {
+        // app_settings may not exist yet (pre-migration); ignore
+    }
+    try {
+        const userPref = await deps.getPreferenceValue(db, userId, 'defaultTheme');
+        if (userPref) {
+            const themeRecord = await deps.findThemeByDirName(db, userPref);
+            if (themeRecord && themeRecord.is_enabled === 1) {
+                themeDirName = userPref;
+            }
+        }
+    } catch {
+        // users_preferences/themes may not exist yet (pre-migration); ignore
+    }
+    return themeDirName;
+}
 import { getAppVersion } from '../utils/version';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
@@ -50,7 +101,36 @@ import {
 import { createBlankYjsDocument } from '../services/yjs-initializer';
 import { logActivity } from '../services/activity-logger';
 import type { Kysely } from 'kysely';
-import type { Database, Project, User } from '../db/types';
+import type { Database, Project, User, Theme } from '../db/types';
+
+/**
+ * Build the `defaultTheme` payload returned to the client when a project is
+ * created. A site theme (admin-uploaded, enabled, non-builtin) gets a
+ * cache-busted `/site-files/themes/...` URL (consistent with config.ts /
+ * themes.ts); anything else falls back to the bundled base theme URL.
+ *
+ * Pure helper extracted from the create route so both branches stay testable.
+ */
+export function buildDefaultThemePayload(
+    themeRecord: Theme | undefined,
+    themeDirName: string,
+    version: string,
+): { dirName: string; displayName: string; url: string; type: 'base' | 'site' } {
+    if (themeRecord && themeRecord.is_enabled === 1 && themeRecord.is_builtin === 0) {
+        return {
+            dirName: themeRecord.dir_name,
+            displayName: themeRecord.display_name,
+            url: buildSiteThemeUrl(version, themeRecord.dir_name, themeRecord.updated_at),
+            type: 'site',
+        };
+    }
+    return {
+        dirName: themeDirName,
+        displayName: themeRecord?.display_name || themeDirName,
+        url: `/files/perm/themes/base/${themeDirName}`,
+        type: 'base',
+    };
+}
 import type {
     ProjectUploadChunkRequest,
     ProjectPropertiesRequest,
@@ -518,14 +598,9 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     saved_once: 0,
                 });
 
-                // Get global default theme early so we can use it for Yjs document initialization
-                let themeDirName = 'base';
-                try {
-                    const globalDefault = await getDefaultThemeDefault(db);
-                    themeDirName = globalDefault.dirName;
-                } catch {
-                    // Silently ignore if tables don't exist yet
-                }
+                // Resolve the theme to bake into the initial Yjs document.
+                // Precedence: user's "defaultTheme" preference > admin global default > 'base'.
+                const themeDirName = await resolveDefaultThemeForNewProject(db, userId);
 
                 // Create initial Yjs document with blank structure (prevents duplicate page race condition)
                 if (upsertSnapshot) {
@@ -552,33 +627,16 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
 
                 console.log(`[Project] Created new project ${projectRecord.uuid} with title "${title}"`);
 
-                // Get global default theme (can be base or site)
+                // Compute the defaultTheme payload returned to the client. Reuses the
+                // already-resolved themeDirName (which already considers the user
+                // preference) so the response stays consistent with what we baked into
+                // the Yjs document.
                 let defaultTheme: { dirName: string; displayName: string; url: string; type: 'base' | 'site' } | null =
                     null;
                 try {
-                    const globalDefault = await getDefaultThemeDefault(db);
                     const version = getAppVersion();
-
-                    if (globalDefault.type === 'site') {
-                        // Get site theme details
-                        const siteTheme = await findThemeByDirName(db, globalDefault.dirName);
-                        if (siteTheme?.is_enabled) {
-                            defaultTheme = {
-                                dirName: siteTheme.dir_name,
-                                displayName: siteTheme.display_name,
-                                url: `/${version}/site-files/themes/${siteTheme.dir_name}`,
-                                type: 'site',
-                            };
-                        }
-                    } else {
-                        // Base theme - use base path
-                        defaultTheme = {
-                            dirName: globalDefault.dirName,
-                            displayName: globalDefault.dirName, // Will be resolved by frontend
-                            url: `/files/perm/themes/base/${globalDefault.dirName}`,
-                            type: 'base',
-                        };
-                    }
+                    const themeRecord = await findThemeByDirName(db, themeDirName);
+                    defaultTheme = buildDefaultThemePayload(themeRecord, themeDirName, version);
                 } catch {
                     // Silently ignore if tables don't exist yet - defaults to 'base' theme on frontend
                 }
@@ -1616,7 +1674,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // GET /api/odes/current-users - Get users currently working on ODE
-            .get('/api/odes/current-users', ({ query }) => {
+            .get('/api/odes/current-users', ({ query, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const odeSessionId = query.odeSessionId as string | undefined;
 
                 // In single-user mode, return empty array or minimal info
@@ -1648,7 +1710,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/current-users - Register user working on ODE (for collaboration)
-            .post('/api/odes/current-users', ({ body }) => {
+            .post('/api/odes/current-users', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as OdeCurrentUserRequest;
                 // In stateless mode, just acknowledge
                 return {
@@ -1659,7 +1725,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // DELETE /api/odes/current-users - Unregister user from ODE (for collaboration)
-            .delete('/api/odes/current-users', () => {
+            .delete('/api/odes/current-users', ({ currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 // In stateless mode, just acknowledge
                 return {
                     success: true,
@@ -1668,7 +1738,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/check-before-leave - Check if safe to leave (no other users editing)
-            .post('/api/odes/check-before-leave', ({ body }) => {
+            .post('/api/odes/check-before-leave', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CheckBeforeLeaveRequest;
                 const odeSessionId = data.odeSessionId;
 
@@ -1688,7 +1762,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/session/close - Close an ODE session (called during logout)
-            .post('/api/odes/session/close', ({ body }) => {
+            .post('/api/odes/session/close', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CloseSessionRequest;
                 const odeSessionId = data.odeSessionId;
 

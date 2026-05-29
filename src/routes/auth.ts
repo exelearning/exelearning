@@ -188,6 +188,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         return { error: 'Unauthorized', message: 'Invalid credentials' };
                     }
 
+                    if (!user.is_active) {
+                        set.status = 403;
+                        return { error: 'Forbidden', message: 'Account deactivated' };
+                    }
+
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
                         email: user.email,
@@ -342,6 +347,32 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 if (basePath === '/') basePath = '';
                 const loginUrl = `${basePath}/login`;
 
+                // Origin/Referer guard: this endpoint sets the auth cookie on
+                // form POST. SameSite=Lax cookies allow top-level form posts
+                // from any site, so without this check an attacker page could
+                // submit credentials and silently sign the visitor in as the
+                // attacker (session fixation). When an Origin or Referer is
+                // present, require it to match the request host.
+                const origin = request.headers.get('origin');
+                const referer = request.headers.get('referer');
+                const headerHost = origin || referer;
+                if (headerHost) {
+                    try {
+                        const headerUrl = new URL(headerHost);
+                        if (headerUrl.host !== url.host) {
+                            return Response.redirect(
+                                `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid request origin')}`,
+                                302,
+                            );
+                        }
+                    } catch {
+                        return Response.redirect(
+                            `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid request origin')}`,
+                            302,
+                        );
+                    }
+                }
+
                 if (!email || !password) {
                     // Redirect back to login with error
                     return Response.redirect(
@@ -364,6 +395,13 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     // Redirect back to login with error
                     return Response.redirect(
                         `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
+                        302,
+                    );
+                }
+
+                if (!user.is_active) {
+                    return Response.redirect(
+                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Account deactivated')}`,
                         302,
                     );
                 }
@@ -784,11 +822,13 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     .find(c => c.trim().startsWith('oidc_state='));
 
                 let codeVerifier = '';
+                let expectedNonce = '';
                 if (oidcStateCookie) {
                     try {
                         const stateJson = decodeURIComponent(oidcStateCookie.split('=')[1]);
                         const stateData = JSON.parse(stateJson);
                         codeVerifier = stateData.codeVerifier || '';
+                        expectedNonce = stateData.nonce || '';
 
                         // Verify state matches
                         if (query.state && stateData.state !== query.state) {
@@ -847,19 +887,66 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const accessToken = tokenJson.access_token as string | undefined;
                     const idToken = tokenJson.id_token as string | undefined;
 
-                    // Decode ID token to get user info
+                    // Decode ID token to get user info.
+                    //
+                    // Security: when OIDC_JWKS_URI is configured we verify the
+                    // signature against the provider's published JWKS, which
+                    // is the only way to trust the claims. Without JWKS we
+                    // fall back to decoding (preserves legacy behaviour) but
+                    // log a loud warning so the operator notices. The nonce
+                    // claim, when our authorize request set one, is always
+                    // checked — that does not require knowing the key.
                     let userEmail: string | undefined;
                     let subject: string | undefined;
+                    let idTokenPayload: Record<string, unknown> | undefined;
 
                     if (idToken) {
-                        try {
-                            const [, payloadB64] = idToken.split('.');
-                            const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf-8');
-                            const payload = JSON.parse(payloadJson);
-                            userEmail = payload.email || payload.preferred_username;
-                            subject = payload.sub;
-                        } catch {
-                            // Ignore decode errors
+                        const jwksUri = await getSettingString(db, 'OIDC_JWKS_URI', process.env.OIDC_JWKS_URI || '');
+                        if (jwksUri) {
+                            try {
+                                const { jwtVerify, createRemoteJWKSet } = await import('jose');
+                                const jwks = createRemoteJWKSet(new URL(jwksUri));
+                                const verifyOpts: { audience?: string } = {};
+                                if (clientId) verifyOpts.audience = clientId;
+                                const { payload } = await jwtVerify(idToken, jwks, verifyOpts);
+                                idTokenPayload = payload as Record<string, unknown>;
+                            } catch (verifyErr) {
+                                console.warn(
+                                    `[auth/openid] id_token signature verification failed via JWKS ${jwksUri}:`,
+                                    verifyErr,
+                                );
+                                set.status = 401;
+                                return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                            }
+                        } else {
+                            console.warn(
+                                '[auth/openid] OIDC_JWKS_URI is not configured; id_token signature is NOT verified. ' +
+                                    'Set OIDC_JWKS_URI to enable signature verification in production.',
+                            );
+                            try {
+                                const [, payloadB64] = idToken.split('.');
+                                const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf-8');
+                                idTokenPayload = JSON.parse(payloadJson);
+                            } catch {
+                                // ignore decode errors; fall through
+                            }
+                        }
+
+                        if (idTokenPayload) {
+                            userEmail =
+                                (idTokenPayload.email as string) || (idTokenPayload.preferred_username as string);
+                            subject = idTokenPayload.sub as string | undefined;
+
+                            // Nonce binding: if our authorize request set a
+                            // nonce, the returned id_token must echo it.
+                            if (expectedNonce) {
+                                const tokenNonce = idTokenPayload.nonce as string | undefined;
+                                if (tokenNonce !== expectedNonce) {
+                                    console.warn('[auth/openid] id_token nonce mismatch');
+                                    set.status = 401;
+                                    return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                                }
+                            }
                         }
                     }
 

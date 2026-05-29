@@ -338,8 +338,15 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                             };
                         }
 
-                        // Check if dir name conflicts with base themes
-                        if (BASE_THEME_NAMES.includes(dirName)) {
+                        // Check if a theme with the same dir_name already exists.
+                        // Built-in themes (is_builtin=1) cannot be overwritten by an upload.
+                        // Site themes (is_builtin=0) are replaced in place: the on-disk files
+                        // are re-extracted and the DB record is updated, preserving the
+                        // is_default / is_enabled / sort_order flags so admins do not have
+                        // to reconfigure them after every upgrade.
+                        const existingTheme = await queries.findThemeByDirName(database, dirName);
+
+                        if (existingTheme && existingTheme.is_builtin === 1) {
                             set.status = 400;
                             return {
                                 error: 'Bad Request',
@@ -347,13 +354,13 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                             };
                         }
 
-                        // Check if dir name already exists in themes (both base and site)
-                        const exists = await queries.themeDirNameExists(database, dirName);
-                        if (exists) {
+                        // Defense-in-depth: even if the base theme has not been synced into
+                        // the DB yet, refuse to overwrite a hardcoded built-in name.
+                        if (!existingTheme && BASE_THEME_NAMES.includes(dirName)) {
                             set.status = 400;
                             return {
                                 error: 'Bad Request',
-                                message: `Theme with directory name "${dirName}" already exists`,
+                                message: `Theme name "${dirName}" conflicts with a built-in theme`,
                             };
                         }
 
@@ -361,17 +368,51 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                         const storagePath = `themes/site/${dirName}`;
                         const targetDir = path.join(filesDir(), storagePath);
 
-                        // Extract theme
-                        await validator.extractTheme(fileBuffer, targetDir);
-
                         // Get current user ID from JWT
                         const token = cookie.auth?.value;
                         const payload = (await jwt.verify(token!)) as JwtPayload;
 
-                        // Get next sort order
+                        if (existingTheme) {
+                            // Replace flow: wipe the old directory so leftover files from
+                            // the previous version do not survive the upgrade, then extract
+                            // the new ZIP into the same path.
+                            await deleteFileIfExists(targetDir);
+                            await validator.extractTheme(fileBuffer, targetDir);
+
+                            const updatedTheme = await queries.updateTheme(database, existingTheme.id, {
+                                display_name: displayName || validation.metadata!.title || dirName,
+                                description: validation.metadata!.description || null,
+                                version: validation.metadata!.version || null,
+                                author: validation.metadata!.author || null,
+                                license: validation.metadata!.license || null,
+                                storage_path: storagePath,
+                                file_size: fileBuffer.length,
+                                uploaded_by: payload.sub,
+                                // is_enabled toggled only if the admin explicitly passed it
+                                ...(isEnabled === undefined ? {} : { is_enabled: isEnabled ? 1 : 0 }),
+                            });
+
+                            if (!updatedTheme) {
+                                set.status = 500;
+                                return {
+                                    error: 'Internal Server Error',
+                                    message: 'Failed to update theme record',
+                                };
+                            }
+
+                            set.status = 200;
+                            return {
+                                replaced: true,
+                                message: `Theme "${dirName}" was replaced with the new upload`,
+                                theme: serializeTheme(updatedTheme),
+                            };
+                        }
+
+                        // Create flow: brand-new theme.
+                        await validator.extractTheme(fileBuffer, targetDir);
+
                         const sortOrder = await queries.getNextSiteThemeSortOrder(database);
 
-                        // Create database record (is_builtin=0 for site themes)
                         const theme = await queries.createTheme(database, {
                             dir_name: dirName,
                             display_name: displayName || validation.metadata!.title || dirName,

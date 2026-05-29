@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<idevice>
+    <name>markdown-text</name>
+    <title>Markdown text</title>
+    <css-class>markdown-text</css-class>
+    <category>Information and presentation</category>
+    <icon>
+        <name>markdown-text-icon</name>
+        <url>markdown-text-icon.svg</url>
+        <type>img</type>
+    </icon>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <location>location</location>
+    <location-type>location type</location-type>
+    <edition-js>
+        <filename>markdown-text.js</filename>
+    </edition-js>
+    <edition-css>
+        <filename>markdown-text.css</filename>
+    </edition-css>
+    <export-js>
+        <filename>markdown-text.js</filename>
+    </export-js>
+    <export-css>
+        <filename>markdown-text.css</filename>
+    </export-css>
+    <export-template-filename>markdown-text.html</export-template-filename>
+    <author>INTEF</author>
+    <author-url>https://exelearning.net</author-url>
+    <license>AGPL-3.0-or-later</license>
+    <license-url>https://www.gnu.org/licenses/agpl-3.0.html</license-url>
+    <description>Markdown component with GitHub style editing experience</description>
+    <downloadable>0</downloadable>
+</idevice>

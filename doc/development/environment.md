@@ -254,9 +254,116 @@ make shell            # Open shell inside container
 make logs             # View container logs
 ```
 
-### Running CLI Commands Inside Docker
+### Running CLI Commands with `docker run`
 
-When eXeLearning runs in Docker, execute CLI commands inside the container:
+If you only want to use the CLI (for example to export an `.elpx` file or convert a legacy `.elp` file), you do **not** need to clone the repository or run Docker Compose. The published image already contains everything:
+
+* `docker.io/exelearning/exelearning`
+* `ghcr.io/exelearning/exelearning`
+
+**List the available CLI commands:**
+
+```bash
+docker run --rm exelearning/exelearning bun cli
+```
+
+This is the simplest way to discover what the CLI can do. It works directly with the published image, without checking out the source or starting a server. It is also the recommended entry point for automation (CI pipelines, batch conversions, scheduled exports, …).
+
+> The image's entrypoint runs database migrations on every start. For one-shot CLI runs against an ephemeral container this is harmless — the SQLite database is created inside the container and discarded by `--rm`.
+
+#### Exporting an `.elpx` file
+
+Mount the host directory that contains your project on `/data` inside the container and reference files through that path:
+
+=== "macOS / Linux"
+
+    ```bash
+    docker run --rm \
+      -v "$PWD:/data" \
+      exelearning/exelearning \
+      bun cli elp:export /data/project.elpx /data/exported --format=html5
+    ```
+
+=== "Windows Git Bash"
+
+    Git Bash (MSYS) rewrites POSIX-style paths passed to Docker (e.g. `/data/project.elpx` becomes `C:/Program Files/Git/data/project.elpx`), which makes the container fail with `Input file not found`. Prefix the command with `MSYS_NO_PATHCONV=1` to disable that rewriting:
+
+    ```bash
+    MSYS_NO_PATHCONV=1 docker run --rm \
+      -v "$PWD:/data" \
+      exelearning/exelearning \
+      bun cli elp:export /data/project.elpx /data/exported --format=html5
+    ```
+
+=== "Windows PowerShell"
+
+    ```powershell
+    docker run --rm `
+      -v "${PWD}:/data" `
+      exelearning/exelearning `
+      bun cli elp:export /data/project.elpx /data/exported --format=html5
+    ```
+
+=== "Windows CMD"
+
+    ```bat
+    docker run --rm ^
+      -v "%cd%:/data" ^
+      exelearning/exelearning ^
+      bun cli elp:export /data/project.elpx /data/exported --format=html5
+    ```
+
+* `project.elpx` must exist in the current directory.
+* The export is written to `./exported/` on the host (the same directory, via the `/data` mount).
+* Supported `--format` values: `html5`, `html5-sp`, `scorm12`, `scorm2004`, `ims`, `epub3`.
+
+#### Converting a legacy `.elp` to `.elpx`
+
+=== "macOS / Linux"
+
+    ```bash
+    docker run --rm \
+      -v "$PWD:/data" \
+      exelearning/exelearning \
+      bun cli elp:convert /data/project.elp /data/project.elpx
+    ```
+
+=== "Windows Git Bash"
+
+    Prefix with `MSYS_NO_PATHCONV=1` so MSYS does not rewrite the `/data/...` paths into Windows-style paths (see note in the export example above).
+
+    ```bash
+    MSYS_NO_PATHCONV=1 docker run --rm \
+      -v "$PWD:/data" \
+      exelearning/exelearning \
+      bun cli elp:convert /data/project.elp /data/project.elpx
+    ```
+
+=== "Windows PowerShell"
+
+    ```powershell
+    docker run --rm `
+      -v "${PWD}:/data" `
+      exelearning/exelearning `
+      bun cli elp:convert /data/project.elp /data/project.elpx
+    ```
+
+=== "Windows CMD"
+
+    ```bat
+    docker run --rm ^
+      -v "%cd%:/data" ^
+      exelearning/exelearning ^
+      bun cli elp:convert /data/project.elp /data/project.elpx
+    ```
+
+The converted file is written back to the host directory.
+
+> **Do not pass `-w /app`.** The entrypoint lives at `/app/docker-entrypoint.sh` and the application files are expected to stay in `/app`. Overriding the working directory — or mounting your own data on top of `/app` — will break the entrypoint with errors like `[dumb-init] /app/docker-entrypoint.sh: No such file or directory`. Always mount user files on `/data` (or any other path that is not `/app`).
+
+### Running CLI Commands in a Running Compose Stack
+
+When you are developing with `make up` / `docker compose up`, run CLI commands inside the already-running container instead of spawning a new one:
 
 ```bash
 # General pattern
@@ -269,13 +376,15 @@ docker compose exec exelearning bun cli promote-admin admin@example.com
 # Generate JWT token
 docker compose exec exelearning bun cli jwt:generate admin@example.com --ttl=86400
 
-# Export commands
+# Export commands (paths are inside the container)
 docker compose exec exelearning bun cli elp:export /data/input.elpx /data/output --format=html5
 docker compose exec exelearning bun cli elp:convert /data/legacy.elp /data/output.elpx
 
 # Cleanup
 docker compose exec exelearning bun cli tmp:cleanup --max-age=86400
 ```
+
+Use this form when you need the CLI to see the same database, files, and configuration as the running server. Use `docker run` (above) for one-shot, stateless invocations against the published image.
 
 ### Interactive Shell
 
@@ -287,6 +396,58 @@ make shell
 bun cli --help
 bun cli create-user test@example.com test123 testuser
 ```
+
+### Troubleshooting
+
+**`[dumb-init] /app/docker-entrypoint.sh: No such file or directory`**
+
+You either passed `-w /app` to `docker run`, or mounted a host directory on top of `/app`, hiding the application files. Remove `-w /app` and mount your project files on `/data` instead:
+
+=== "macOS / Linux"
+
+    ```bash
+    # Wrong — hides /app/docker-entrypoint.sh
+    docker run --rm -v "$PWD:/app" -w /app exelearning/exelearning bun cli
+
+    # Right — keep /app untouched, mount user files on /data
+    docker run --rm -v "$PWD:/data" exelearning/exelearning \
+      bun cli elp:export /data/project.elpx /data/out --format=html5
+    ```
+
+=== "Windows Git Bash"
+
+    Same as macOS / Linux, but prefix with `MSYS_NO_PATHCONV=1` so MSYS does not rewrite the `/data/...` paths into Windows-style paths.
+
+    ```bash
+    # Wrong — hides /app/docker-entrypoint.sh
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$PWD:/app" -w /app exelearning/exelearning bun cli
+
+    # Right — keep /app untouched, mount user files on /data
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$PWD:/data" exelearning/exelearning \
+      bun cli elp:export /data/project.elpx /data/out --format=html5
+    ```
+
+=== "Windows PowerShell"
+
+    ```powershell
+    # Wrong — hides /app/docker-entrypoint.sh
+    docker run --rm -v "${PWD}:/app" -w /app exelearning/exelearning bun cli
+
+    # Right — keep /app untouched, mount user files on /data
+    docker run --rm -v "${PWD}:/data" exelearning/exelearning `
+      bun cli elp:export /data/project.elpx /data/out --format=html5
+    ```
+
+=== "Windows CMD"
+
+    ```bat
+    :: Wrong — hides /app/docker-entrypoint.sh
+    docker run --rm -v "%cd%:/app" -w /app exelearning/exelearning bun cli
+
+    :: Right — keep /app untouched, mount user files on /data
+    docker run --rm -v "%cd%:/data" exelearning/exelearning ^
+      bun cli elp:export /data/project.elpx /data/out --format=html5
+    ```
 
 See [Deployment](../deployment.md) for production Docker configuration.
 

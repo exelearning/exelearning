@@ -80,6 +80,9 @@
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT
+*   Package: dompurify
+    *   Copyright: Mario Heiderich and DOMPurify contributors
+    *   License: Apache-2.0 OR MPL-2.0
 *   Package: dotenv
     *   Copyright: 2015, Scott Motte
     *   License: BSD-2-Clause
@@ -94,6 +97,9 @@
     *   License: MIT
 *   Package: esbuild
     *   Copyright: Evan Wallace
+    *   License: MIT
+*   Package: fabric
+    *   Copyright: Juriy Zaytsev and Fabric.js contributors
     *   License: MIT
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta

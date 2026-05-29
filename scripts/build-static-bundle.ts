@@ -23,6 +23,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as zlib from 'zlib';
 import { execSync } from 'child_process';
 import { XMLParser } from 'fast-xml-parser';
 
@@ -811,8 +812,6 @@ function generateModalsHtml(): string {
         'generic/modalInfo.njk',
         'generic/modalConfirm.njk',
         'generic/modalSessionLogout.njk',
-        'pages/uploadtodrive.njk',
-        'pages/uploadtodropbox.njk',
         'pages/filemanager.njk',
         'pages/stylemanager.njk',
         'pages/idevicemanager.njk',
@@ -848,11 +847,20 @@ function generateModalsHtml(): string {
 export type ApiParameters = ReturnType<typeof buildApiParameters>;
 
 export function buildApiParameters() {
+    // Static mode bundles every base theme found on disk; the user-preference
+    // dropdown shows them so the user can pick a default style without a server.
+    const themesList = buildThemesList().themes;
+    const THEMES: Record<string, string> = {};
+    for (const theme of themesList) {
+        THEMES[theme.dirName] = theme.title || theme.dirName;
+    }
+
     const configParams = buildConfigParams({
         TRANS_PREFIX: '',
         LICENSES,
         PACKAGE_LOCALES,
         LOCALES: LOCALE_NAMES,
+        THEMES,
     });
 
     return buildParameterResponse({
@@ -1067,6 +1075,59 @@ export function generateServiceWorker(): string {
 }
 
 /**
+ * Directories (relative to dist/static/) whose .json files must be shipped as
+ * .json.gz. Large repetitive curricular data — compressing ~85% saves ~30 MB
+ * in the static build and Electron package. Decompressed on the fly in the
+ * browser via DecompressionStream('gzip').
+ *
+ * Add new entries when introducing other large JSON datasets that the iDevice
+ * loaders fetch through the .gz-first pattern (see lomloe.js / digcompedu.js).
+ */
+export const COMPRESS_JSON_DIRS = [
+    'files/perm/idevices/base/lomloe/data',
+    'files/perm/idevices/base/digcompedu/data',
+];
+
+export function shouldCompressJson(fileName: string): boolean {
+    return fileName.endsWith('.json');
+}
+
+export function gzipBuffer(input: Buffer): Buffer {
+    return zlib.gzipSync(input, { level: zlib.constants.Z_BEST_COMPRESSION });
+}
+
+/**
+ * Walk a directory, gzip every .json into a sibling .json.gz, and delete the
+ * raw .json. Returns aggregate stats for logging.
+ */
+function compressJsonInDir(absDir: string): { count: number; origTotal: number; gzTotal: number } {
+    let count = 0;
+    let origTotal = 0;
+    let gzTotal = 0;
+    if (!fs.existsSync(absDir)) return { count, origTotal, gzTotal };
+    const entries = fs.readdirSync(absDir, { withFileTypes: true });
+    for (const entry of entries) {
+        const abs = path.join(absDir, entry.name);
+        if (entry.isDirectory()) {
+            const sub = compressJsonInDir(abs);
+            count += sub.count;
+            origTotal += sub.origTotal;
+            gzTotal += sub.gzTotal;
+            continue;
+        }
+        if (!shouldCompressJson(entry.name)) continue;
+        const data = fs.readFileSync(abs);
+        const gz = gzipBuffer(data);
+        fs.writeFileSync(abs + '.gz', gz);
+        fs.unlinkSync(abs);
+        count += 1;
+        origTotal += data.length;
+        gzTotal += gz.length;
+    }
+    return { count, origTotal, gzTotal };
+}
+
+/**
  * Copy directory recursively
  * @param src - Source directory
  * @param dest - Destination directory
@@ -1200,6 +1261,40 @@ async function buildStaticBundle() {
     // Copy files/perm (themes, iDevices, favicon)
     copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));
     console.log('  Copied files/perm/');
+
+    // Gzip large iDevice JSON datasets in place (browser decompresses on the fly).
+    let totalOrig = 0;
+    let totalGz = 0;
+    let totalCount = 0;
+    for (const relDir of COMPRESS_JSON_DIRS) {
+        const absDir = path.join(outputDir, relDir);
+        const stats = compressJsonInDir(absDir);
+        if (stats.count === 0) {
+            throw new Error(
+                `Compression guard failed: no .json files found under ${relDir}. ` +
+                `Update COMPRESS_JSON_DIRS in build-static-bundle.ts or restore the data.`,
+            );
+        }
+        const pct = stats.origTotal > 0
+            ? Math.round((1 - stats.gzTotal / stats.origTotal) * 100)
+            : 0;
+        console.log(
+            `  Gzipped ${stats.count} file(s) in ${relDir}: ` +
+            `${(stats.origTotal / 1024 / 1024).toFixed(2)} MB → ` +
+            `${(stats.gzTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+        );
+        totalCount += stats.count;
+        totalOrig += stats.origTotal;
+        totalGz += stats.gzTotal;
+    }
+    if (totalCount > 0) {
+        const pct = Math.round((1 - totalGz / totalOrig) * 100);
+        console.log(
+            `  Total: ${totalCount} JSON file(s) compressed, ` +
+            `${(totalOrig / 1024 / 1024).toFixed(2)} MB → ` +
+            `${(totalGz / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+        );
+    }
 
     // Copy images folder (default-avatar.svg, logo.svg, etc.)
     copyDirRecursive(path.join(projectRoot, 'public/images'), path.join(outputDir, 'images'));

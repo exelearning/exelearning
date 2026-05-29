@@ -205,6 +205,41 @@ describe('Auth Routes', () => {
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie).toContain('auth=');
         });
+
+        it('should return 403 with "Account deactivated" for disabled user with correct password', async () => {
+            const hashedPw = await hashPassword('correct-password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'disabled@example.com',
+                    user_id: 'disabled-user',
+                    password: hashedPw,
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'disabled@example.com',
+                        password: 'correct-password',
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(403);
+            const data = (await response.json()) as { error: string; message: string };
+            expect(data.error).toBe('Forbidden');
+            expect(data.message).toBe('Account deactivated');
+            const setCookie = response.headers.get('set-cookie');
+            expect(setCookie ?? '').not.toContain('auth=');
+        });
     });
 
     describe('POST /api/auth/logout', () => {
@@ -512,6 +547,59 @@ describe('Auth Routes', () => {
     // Form-based login routes
     // =========================================================================
 
+    describe('POST /login_check Origin guard', () => {
+        it('redirects with error when Origin header does not match the request host', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Origin: 'https://evil.example.com',
+                    },
+                    body: '_username=x@example.com&_password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).toContain('/login');
+            expect(location).toContain('Invalid%20request%20origin');
+        });
+
+        it('redirects with error when Referer header cannot be parsed as a URL', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Referer: 'not-a-url',
+                    },
+                    body: '_username=x@example.com&_password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).toContain('Invalid%20request%20origin');
+        });
+
+        it('accepts Origin that matches the request host', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Origin: 'http://localhost',
+                    },
+                    body: '_username=nobody@example.com&_password=irrelevant',
+                }),
+            );
+            // Origin check passes; flow continues to the "invalid credentials"
+            // redirect (302 to /login?error=...), not the origin-error redirect.
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).not.toContain('Invalid%20request%20origin');
+        });
+    });
+
     describe('POST /login_check', () => {
         it('should redirect to login with error for invalid credentials', async () => {
             const response = await app.handle(
@@ -554,6 +642,39 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const location = response.headers.get('location');
             expect(location).toContain('/workarea');
+        });
+
+        it('should redirect to login with "Account deactivated" error for disabled user', async () => {
+            const hashedPw = await hashPassword('password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'form-disabled@example.com',
+                    user_id: 'form-disabled-user',
+                    password: hashedPw,
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: '_username=form-disabled@example.com&_password=password',
+                }),
+            );
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('/login');
+            expect(location).toContain(`error=${encodeURIComponent('Account deactivated')}`);
+            expect(location).not.toContain('/workarea');
+            const setCookie = response.headers.get('set-cookie');
+            expect(setCookie ?? '').not.toContain('auth=');
         });
     });
 

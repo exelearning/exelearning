@@ -735,6 +735,57 @@ describe('Html5Exporter', () => {
             expect(result.success).toBe(true);
         });
 
+        // Regression test for exelearning/exelearning#1769:
+        // saving and exporting must NOT bundle each asset twice (once under its
+        // friendly filename and once under a UUID-shaped duplicate). The screenshot
+        // attached to that issue showed `pie_pagina_FEDER_2027.png` and a paired
+        // `2c161d17-249b-9bcd-7e0d-f9a4d758bae9.png` with identical content/CRC32.
+        it('should not duplicate assets under UUID-shaped paths (issue #1769)', async () => {
+            const assetsWithUuids: AssetProvider = {
+                async getAsset() {
+                    return null;
+                },
+                async getAllAssets() {
+                    return [
+                        {
+                            id: '2c161d17-249b-9bcd-7e0d-f9a4d758bae9',
+                            filename: 'pie_pagina_FEDER_2027.png',
+                            originalPath: 'pie_pagina_FEDER_2027.png',
+                            folderPath: '',
+                            mime: 'image/png',
+                            data: Buffer.from('feder-banner-data'),
+                        },
+                        {
+                            id: '49d44e76-3d6a-4b21-b911-41746ab60814',
+                            filename: 'photo_2024-09-05_12-31-44.jpg',
+                            originalPath: 'photo_2024-09-05_12-31-44.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            data: Buffer.from('photo-data'),
+                        },
+                    ];
+                },
+                async getProjectAssets() {
+                    return this.getAllAssets();
+                },
+            };
+
+            const exporterWithUuidAssets = new Html5Exporter(document, resources, assetsWithUuids, zip);
+            const result = await exporterWithUuidAssets.export();
+
+            expect(result.success).toBe(true);
+
+            // Friendly filenames are present...
+            expect(zip.files.has('content/resources/pie_pagina_FEDER_2027.png')).toBe(true);
+            expect(zip.files.has('content/resources/photo_2024-09-05_12-31-44.jpg')).toBe(true);
+
+            // ...and the UUID-shaped duplicates that PR #1740 used to write must NOT be.
+            const uuidDuplicates = Array.from(zip.files.keys()).filter(p =>
+                /content\/resources\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.[a-z0-9]+$/i.test(p),
+            );
+            expect(uuidDuplicates).toEqual([]);
+        });
+
         it('should export root assets directly under content/resources/', async () => {
             // Assets without folderPath (at root level)
             const assetsWithoutFolder: AssetProvider = {

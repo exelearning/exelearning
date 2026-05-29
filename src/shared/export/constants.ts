@@ -122,10 +122,12 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 
     // Code highlighting
+    // Matches the legacy TinyMCE class (`highlighted-code`) and the
+    // `language-<lang>` classes produced by Showdown for fenced code blocks.
     {
         name: 'exe_highlighter',
-        type: 'class',
-        pattern: 'highlighted-code',
+        type: 'regex',
+        pattern: /class\s*=\s*["'][^"']*\b(?:highlighted-code|language-[a-z0-9_+-]+)\b/i,
         files: ['exe_highlighter/exe_highlighter.js', 'exe_highlighter/exe_highlighter.css'],
     },
 
@@ -313,6 +315,18 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         files: ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'],
     },
 ];
+
+/**
+ * Inline handler for download-source-file links.
+ *
+ * In editor preview, delegate to the parent workarea so it exports the complete
+ * Yjs document as ELPX. In standalone exports, fall back to the manifest-based
+ * download helper bundled with the HTML package.
+ */
+export const ELPX_DOWNLOAD_ONCLICK =
+    'try{var p=window.parent;' +
+    "if(p&&p!==window&&p.eXeLearning&&p.eXeLearning.app){p.postMessage({type:'exe-download-elpx'},'*');" +
+    "return false;}}catch(e){}if(typeof downloadElpx==='function')downloadElpx();return false;";
 
 // =============================================================================
 // Base Libraries (always included in exports)

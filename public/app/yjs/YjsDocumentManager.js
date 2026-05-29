@@ -650,11 +650,23 @@ class YjsDocumentManager {
       metadata.set('description', '');
       metadata.set('language', userLanguage);
       metadata.set('license', 'creative commons: attribution - share alike 4.0');
-      // Use configured default theme from admin panel, fallback to 'base'
-      const defaultTheme = window.eXeLearning?.config?.defaultTheme || 'base';
+      // Theme precedence for new projects: user defaultTheme preference >
+      // legacy hidden "theme" preference > admin/site default > 'base'.
+      // Empty values fall through so the site default is applied.
+      const userPrefs = window.eXeLearning?.app?.user?.preferences?.preferences;
+      const userDefaultTheme = userPrefs?.defaultTheme?.value;
+      const legacyThemePref = userPrefs?.theme?.value;
+      const siteDefaultTheme = window.eXeLearning?.config?.defaultTheme;
+      const defaultTheme = userDefaultTheme || legacyThemePref || siteDefaultTheme || 'base';
       metadata.set('theme', defaultTheme);
       metadata.set('createdAt', Date.now());
       metadata.set('modifiedAt', Date.now());
+
+      // Stable identifiers (odeIdentifier / odeVersionId) are NOT minted on
+      // create -- the first import (v4 <odeResources> or legacy mint at
+      // import time) writes them. Minting here would create CRDT history
+      // that gets superseded by the import and inflate the persisted state.
+      // See #1786.
 
       // Create root page
       const rootPageId = this.generateId();

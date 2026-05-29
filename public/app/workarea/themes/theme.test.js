@@ -88,6 +88,35 @@ describe('Theme', () => {
       expect(theme.path).toBe('http://localhost:8080/themes/test-theme/');
     });
 
+    // Regression for #1802 / #1804 — server-emitted theme URLs already include
+    // BASE_PATH, so the client must not prepend manager.symfonyURL again or the
+    // browser asks for "/aplicaciones/.../aplicaciones/.../style.css" and 404s.
+    it('uses an absolute server URL verbatim instead of double-prefixing symfonyURL', () => {
+      const prefixedManager = { symfonyURL: '/aplicaciones/medusa/exelearning' };
+      const prefixedData = {
+        ...mockData,
+        url: '/aplicaciones/medusa/exelearning/v0.0.0-alpha/files/perm/themes/base/base',
+      };
+
+      const t = new Theme(prefixedManager, prefixedData);
+
+      expect(t.path).toBe(
+        '/aplicaciones/medusa/exelearning/v0.0.0-alpha/files/perm/themes/base/base/',
+      );
+      expect(t.path).not.toContain(
+        '/aplicaciones/medusa/exelearning/aplicaciones/medusa/exelearning/',
+      );
+    });
+
+    it('still prefixes purely relative URLs with symfonyURL (legacy contract)', () => {
+      const legacyManager = { symfonyURL: 'http://localhost:8080' };
+      const legacyData = { ...mockData, url: 'themes/legacy-theme' };
+
+      const t = new Theme(legacyManager, legacyData);
+
+      expect(t.path).toBe('http://localhost:8080themes/legacy-theme/');
+    });
+
     it('should call setConfigValues with data', () => {
       const spy = vi.spyOn(Theme.prototype, 'setConfigValues');
       new Theme(mockManager, mockData);

@@ -12,6 +12,8 @@ import * as path from 'path';
 import { db } from '../db/client';
 import { getEnabledSiteThemes, getDefaultTheme, getBaseThemes } from '../db/queries/themes';
 import type { Theme } from '../db/types';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
+import { prefixPath } from '../utils/basepath.util';
 
 // Base path for themes (bundled with the app)
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
@@ -115,6 +117,10 @@ interface ThemeConfig {
     icons: Record<string, ThemeIcon>;
     valid: boolean;
     isDefault?: boolean;
+    // Cache-buster timestamp (ms). Set for site themes from themes.updated_at so
+    // the client can key its persistent (IndexedDB) and bundle caches per
+    // re-upload. null/undefined for base themes (which version with the app).
+    updatedAt?: number | null;
 }
 
 /**
@@ -204,16 +210,19 @@ function parseThemeConfig(
 
         const version = getAppVersion();
 
-        // Build URL paths with version for cache busting
+        // Build URL paths with version for cache busting.
+        // prefixPath() ensures BASE_PATH is prepended when configured, so URLs
+        // are correct behind a reverse proxy that only mounts the BASE_PATH
+        // namespace (see issue #1802).
         let themeBasePath: string;
         if (customUrlPrefix) {
-            themeBasePath = `/${version}${customUrlPrefix}/${themeId}`;
+            themeBasePath = prefixPath(`/${version}${customUrlPrefix}/${themeId}`);
         } else {
-            themeBasePath = `/${version}/files/perm/themes/base/${themeId}`;
+            themeBasePath = prefixPath(`/${version}/files/perm/themes/base/${themeId}`);
         }
 
         const previewPath =
-            type === 'base' ? `/${version}/style/${themeId}/preview.png` : `${themeBasePath}/preview.png`;
+            type === 'base' ? prefixPath(`/${version}/style/${themeId}/preview.png`) : `${themeBasePath}/preview.png`;
 
         // Scan for CSS files
         const cssFiles = scanThemeFiles(themePath, '.css');
@@ -296,8 +305,11 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
     const siteThemesPath = getSiteThemesPath();
     const themePath = path.join(siteThemesPath, siteTheme.dir_name);
 
-    // Build URL paths - site themes are served from FILES_DIR
-    const themeUrl = `/${version}/site-files/themes/${siteTheme.dir_name}`;
+    // Build URL paths - site themes are served from FILES_DIR.
+    // Embed the theme's updated_at as a cache-buster so a re-uploaded theme
+    // forces clients to drop the cached CSS/icons on the next page load, and
+    // prefix BASE_PATH so URLs remain valid behind a subdirectory proxy.
+    const themeUrl = prefixPath(buildSiteThemeUrl(version, siteTheme.dir_name, siteTheme.updated_at));
 
     // Scan for CSS, JS, and icons
     const cssFiles = deps.fs.existsSync(themePath) ? scanThemeFiles(themePath, '.css') : ['style.css'];
@@ -334,6 +346,7 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
         js,
         icons,
         valid: true,
+        updatedAt: siteTheme.updated_at ?? null,
     };
 }
 

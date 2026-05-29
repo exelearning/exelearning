@@ -6,6 +6,7 @@
  * message-parser, config). Only external dependencies are mocked via DI.
  */
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
@@ -190,6 +191,27 @@ describe('Yjs WebSocket Service', () => {
             wsHook?.pong?.(ws as any, undefined as any);
             wsHook?.message?.(ws as any, Buffer.from([0x01]));
             wsHook?.close?.(ws as any, 1000, 'closed');
+        });
+
+        it('exposes a public GET /yjs/info liveness probe without leaking ops detail', async () => {
+            const routes = createWebSocketRoutes();
+            const app = new Elysia().use(routes);
+
+            const res = await app.handle(new Request('http://localhost/yjs/info'));
+            expect(res.status).toBe(200);
+
+            const data = (await res.json()) as Record<string, unknown>;
+            expect(data).toEqual({ ok: true, service: 'yjs-websocket' });
+            // Must not leak the same operational detail that /api/websocket/info hides.
+            for (const forbidden of ['port', 'mode', 'roomsCount', 'totalConnections', 'host', 'version']) {
+                expect(data).not.toHaveProperty(forbidden);
+            }
+        });
+
+        it('does not shadow the WS upgrade route for other docName values', () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+            expect(wsRoute).toBeDefined();
         });
     });
 

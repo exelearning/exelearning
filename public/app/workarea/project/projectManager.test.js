@@ -3463,4 +3463,60 @@ describe('ProjectManager', () => {
             });
         });
     });
+
+    // ===========================================
+    // initialiceProject — default theme preference
+    // ===========================================
+
+    describe('initialiceProject default theme preference', () => {
+        let selectThemeMock;
+
+        beforeEach(() => {
+            window.eXeLearning.config.defaultTheme = 'site-default';
+            selectThemeMock = vi.fn().mockResolvedValue();
+            mockApp.themes = { selected: null, selectTheme: selectThemeMock };
+            mockApp.user = { preferences: { preferences: {} } };
+            mockApp.selectFirstNodeStructure = vi.fn().mockResolvedValue();
+            // Bypass Yjs branch so we always exercise the preference logic
+            projectManager._yjsEnabled = false;
+        });
+
+        it('uses the site default when the user has no theme preference', async () => {
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('site-default', false);
+        });
+
+        it('falls back to site default when defaultTheme preference is empty', async () => {
+            mockApp.user.preferences.preferences = {
+                defaultTheme: { value: '' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('site-default', false);
+        });
+
+        it('uses the user defaultTheme preference when set', async () => {
+            mockApp.user.preferences.preferences = {
+                defaultTheme: { value: 'spectrum128k' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('spectrum128k', false);
+        });
+
+        it('prefers defaultTheme over the legacy theme key', async () => {
+            mockApp.user.preferences.preferences = {
+                defaultTheme: { value: 'spectrum128k' },
+                theme: { value: 'legacy-value' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('spectrum128k', false);
+        });
+
+        it('honors the legacy theme key when defaultTheme is missing', async () => {
+            mockApp.user.preferences.preferences = {
+                theme: { value: 'legacy-value' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('legacy-value', false);
+        });
+    });
 });

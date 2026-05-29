@@ -23,6 +23,7 @@ globalThis.eXeLearning = {
     },
     api: {
       apiUrlBase: 'http://localhost',
+      apiUrlBasePath: '/exelearning',
       func: {
         getText: vi.fn().mockResolvedValue('css content'),
       },
@@ -224,6 +225,26 @@ describe('TinyMCE 5 Settings', () => {
       expect(result).toContain('/app/editor/tinymce_5_extra.css');
     });
 
+    // Regression for #1802 / #1804 — these CSS files were previously emitted
+    // with apiUrlBase only (origin), so on a subdirectory deploy they 404'd
+    // because BASE_PATH was missing.
+    it('getContentCSS prefixes static CSS with apiUrlBasePath (BASE_PATH)', () => {
+      const result = globalThis.$exeTinyMCE.getContentCSS();
+      expect(result).toContain('http://localhost/exelearning/app/editor/tinymce_5_extra.css');
+      expect(result).toContain('http://localhost/exelearning/libs/bootstrap/bootstrap.min.css');
+    });
+
+    it('getContentCSS works when apiUrlBasePath is missing (no BASE_PATH)', () => {
+      const original = globalThis.eXeLearning.app.api.apiUrlBasePath;
+      globalThis.eXeLearning.app.api.apiUrlBasePath = '';
+
+      const result = globalThis.$exeTinyMCE.getContentCSS();
+      expect(result).toContain('http://localhost/app/editor/tinymce_5_extra.css');
+      expect(result).toContain('http://localhost/libs/bootstrap/bootstrap.min.css');
+
+      globalThis.eXeLearning.app.api.apiUrlBasePath = original;
+    });
+
     it('getContentCSS falls back to base theme when missing', () => {
       const originalTheme = globalThis.eXeLearning.app.themes.selected;
       globalThis.eXeLearning.app.themes.selected = null;
@@ -255,6 +276,33 @@ describe('TinyMCE 5 Settings', () => {
       globalThis.$exeTinyMCE.init('multiple', '#editor', true);
       const config = globalThis.tinymce.init.mock.calls[0][0];
       expect(config.images_replace_blob_uris).toBe(false);
+    });
+
+    it('init forwards document.baseURI as document_base_url so srcdoc embedders avoid the about:srcdoc URI-parser bug (#1799)', () => {
+      // Under iframe-srcdoc, window.location.href === 'about:srcdoc'. The
+      // TinyMCE 5 URI parser matches /^([\w-]+):([^/]{2})/ against that
+      // value (consuming "about:" + "sr") and short-circuits with
+      // .path / .directory undefined. Every editor instance later built
+      // from tinymce.documentBaseURL inherits the broken URI and crashes
+      // the first toAbsolute() against a relative URL with
+      // "TypeError: can't access property 'split', e is undefined".
+      // document.baseURI reflects the embedder's <base href> in that
+      // scenario and is a valid http(s) URL, so passing it explicitly to
+      // tinymce.init() sidesteps the broken parse entirely.
+      const previousBaseURI = Object.getOwnPropertyDescriptor(document, 'baseURI');
+      Object.defineProperty(document, 'baseURI', {
+        value: 'https://example.test/exelearning/editor/',
+        configurable: true,
+      });
+      try {
+        globalThis.$exeTinyMCE.init('multiple', '#editor', true);
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+        expect(config.document_base_url).toBe('https://example.test/exelearning/editor/');
+      } finally {
+        if (previousBaseURI) {
+          Object.defineProperty(document, 'baseURI', previousBaseURI);
+        }
+      }
     });
 
     it('init instance callback triggers toggler and editor hook', () => {
