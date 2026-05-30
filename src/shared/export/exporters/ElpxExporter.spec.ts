@@ -1204,4 +1204,64 @@ describe('ElpxExporter', () => {
             expect(zip.files.has('screenshot.png')).toBe(false);
         });
     });
+
+    describe('Asset metadata sidecar', () => {
+        // Provider exposing one image asset plus its centralized metadata.
+        class MetadataAssetProvider implements AssetProvider {
+            constructor(private metadata: Map<string, Record<string, string>>) {}
+            async getAsset() {
+                return null;
+            }
+            async getAllAssets() {
+                return [
+                    {
+                        id: 'a1',
+                        filename: 'photo.jpg',
+                        originalPath: 'photo.jpg',
+                        folderPath: '',
+                        mime: 'image/jpeg',
+                        data: new Uint8Array([1, 2, 3]),
+                    },
+                ];
+            }
+            async getProjectAssets() {
+                return this.getAllAssets();
+            }
+            async getExportMetadataMap() {
+                return this.metadata;
+            }
+        }
+
+        it('writes content/asset-metadata.json keyed by export path when metadata exists', async () => {
+            const provider = new MetadataAssetProvider(
+                new Map([['a1', { description: 'A sunset', altText: 'Sunset over the sea' }]]),
+            );
+            const exporter2 = new ElpxExporter(document, resources, provider, zip);
+
+            await exporter2.export();
+
+            expect(zip.files.has('content/asset-metadata.json')).toBe(true);
+            const sidecar = JSON.parse(zip.files.get('content/asset-metadata.json') as string);
+            expect(sidecar.version).toBe(1);
+            expect(sidecar.assets['photo.jpg']).toEqual({
+                description: 'A sunset',
+                altText: 'Sunset over the sea',
+            });
+        });
+
+        it('omits the sidecar entirely when no asset has metadata', async () => {
+            const provider = new MetadataAssetProvider(new Map());
+            const exporter2 = new ElpxExporter(document, resources, provider, zip);
+
+            await exporter2.export();
+
+            expect(zip.files.has('content/asset-metadata.json')).toBe(false);
+        });
+
+        it('omits the sidecar when the provider does not support metadata', async () => {
+            // Default MockAssetProvider has no getExportMetadataMap
+            await exporter.export();
+            expect(zip.files.has('content/asset-metadata.json')).toBe(false);
+        });
+    });
 });

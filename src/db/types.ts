@@ -97,6 +97,13 @@ interface AssetsTable {
     component_id: string | null;
     content_hash: string | null;
     folder_path: string; // Relative folder path: "" = root, "website/css" = nested
+    // Centralized, reusable asset-level metadata (see migration 008). All optional;
+    // null means "no metadata set" and is treated as empty everywhere.
+    description: string | null; // Human-readable description of the asset
+    alt_text: string | null; // Alternative text reused when inserting the image
+    title: string | null; // Optional image title
+    license: string | null; // License label (resolved via LICENSE_REGISTRY at export)
+    author: string | null; // Author / creator attribution
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }

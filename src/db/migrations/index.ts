@@ -18,6 +18,7 @@ import * as migration004 from './004_fix_user_foreign_keys';
 import * as migration005 from './005_user_id_nullable';
 import * as migration006 from './006_impersonation_audit_log';
 import * as migration007 from './007_activity_log';
+import * as migration008 from './008_asset_metadata';
 
 // ============================================================================
 // MIGRATION REGISTRY
@@ -32,6 +33,7 @@ const migrations: Record<string, Migration> = {
     '005_user_id_nullable': migration005,
     '006_impersonation_audit_log': migration006,
     '007_activity_log': migration007,
+    '008_asset_metadata': migration008,
 };
 
 // ============================================================================

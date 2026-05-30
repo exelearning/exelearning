@@ -22,6 +22,11 @@ describe('DatabaseAssetProvider', () => {
         file_size: '1024',
         component_id: null,
         content_hash: null,
+        description: null,
+        alt_text: null,
+        title: null,
+        license: null,
+        author: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         ...overrides,
@@ -520,6 +525,43 @@ describe('DatabaseAssetProvider', () => {
 
             expect(result).not.toBeNull();
             expect(result?.data.toString()).toBe('direct content');
+        });
+    });
+
+    describe('getExportMetadataMap', () => {
+        it('returns metadata keyed by client_id for assets that have any', async () => {
+            const mockQueries = createMockQueries({
+                findAllAssetsForProject: async () => [
+                    createMockDbAsset({
+                        client_id: 'with-meta',
+                        description: 'A sunset',
+                        alt_text: 'Sunset over the sea',
+                        license: 'Creative Commons BY',
+                    }),
+                    createMockDbAsset({ id: 2, client_id: 'no-meta' }),
+                ],
+            });
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
+
+            const map = await provider.getExportMetadataMap();
+
+            expect(map.size).toBe(1);
+            expect(map.get('with-meta')).toEqual({
+                description: 'A sunset',
+                altText: 'Sunset over the sea',
+                license: 'Creative Commons BY',
+            });
+            expect(map.has('no-meta')).toBe(false);
+        });
+
+        it('falls back to the numeric id when client_id is missing', async () => {
+            const mockQueries = createMockQueries({
+                findAllAssetsForProject: async () => [createMockDbAsset({ id: 7, client_id: null, author: 'Grace' })],
+            });
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
+
+            const map = await provider.getExportMetadataMap();
+            expect(map.get('7')).toEqual({ author: 'Grace' });
         });
     });
 });

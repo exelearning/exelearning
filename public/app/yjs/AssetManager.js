@@ -530,7 +530,13 @@ class AssetManager {
   /**
    * Set asset metadata in Yjs
    * @param {string} assetId
-   * @param {Object} metadata - {filename, folderPath, mime, size, hash, uploaded, createdAt}
+   * @param {Object} metadata - {filename, folderPath, mime, size, hash, uploaded, createdAt,
+   *   description, altText, title, license, author}
+   *
+   * Note: this writes an explicit whitelist of fields. The centralized metadata
+   * fields (description/altText/title/license/author) MUST be included here so they
+   * are preserved across rename/move/import, all of which call this method with a
+   * spread of the existing metadata. Dropping them here would silently lose them.
    */
   setAssetMetadata(assetId, metadata) {
     const assetsMap = this.getAssetsYMap();
@@ -538,7 +544,7 @@ class AssetManager {
       return;
     }
     // Store as plain object (Yjs will serialize it)
-    assetsMap.set(assetId, {
+    const entry = {
       filename: metadata.filename,
       folderPath: metadata.folderPath || '',
       mime: metadata.mime,
@@ -546,8 +552,94 @@ class AssetManager {
       hash: metadata.hash,
       uploaded: metadata.uploaded || false,
       createdAt: metadata.createdAt || new Date().toISOString()
-    });
+    };
+    // Centralized, reusable metadata: only persist fields that have a value so
+    // assets without metadata keep a minimal entry (backward compatible).
+    for (const field of ['description', 'altText', 'title', 'license', 'author']) {
+      if (metadata[field] !== undefined && metadata[field] !== null && metadata[field] !== '') {
+        entry[field] = metadata[field];
+      }
+    }
+    assetsMap.set(assetId, entry);
     Logger.log(`[AssetManager] Set metadata for ${assetId.substring(0, 8)}... in Yjs`);
+  }
+
+  /**
+   * Update centralized, reusable metadata for an asset (description, altText, title,
+   * license, author). Merges the patch into the existing Yjs metadata (source of truth)
+   * and best-effort persists it to the server via the PATCH endpoint when online.
+   *
+   * Only the keys present in `patch` are changed; pass an empty string to clear a field.
+   * @param {string} assetId
+   * @param {{description?: string, altText?: string, title?: string, license?: string, author?: string}} patch
+   * @returns {Promise<boolean>} True if the asset existed and was updated locally
+   */
+  async updateAssetMetadata(assetId, patch) {
+    const metadata = this.getAssetMetadata(assetId);
+    if (!metadata) {
+      Logger.warn(`[AssetManager] updateAssetMetadata: asset ${assetId} not found`);
+      return false;
+    }
+
+    const ALLOWED = ['description', 'altText', 'title', 'license', 'author'];
+    const merged = { ...metadata };
+    for (const key of ALLOWED) {
+      if (patch[key] !== undefined) {
+        merged[key] = typeof patch[key] === 'string' ? patch[key].trim() : patch[key];
+      }
+    }
+
+    // Update Yjs (instant sync to collaborators + persisted with the document)
+    this.setAssetMetadata(assetId, merged);
+    Logger.log(`[AssetManager] Updated metadata for ${assetId.substring(0, 8)}... in Yjs`);
+
+    // Best-effort server persistence so the DB/API/CLI/search stay in sync.
+    // Failure here is non-fatal: Yjs remains the source of truth and the snapshot
+    // will carry the metadata on the next save.
+    try {
+      await this.syncAssetMetadataToServer(assetId, patch);
+    } catch (e) {
+      Logger.warn(`[AssetManager] Failed to sync metadata to server for ${assetId}: ${e?.message || e}`);
+    }
+
+    return true;
+  }
+
+  /**
+   * Persist centralized metadata to the server via PATCH so the DB / external API /
+   * CLI export / backend search stay in sync with the Yjs source of truth.
+   *
+   * Mirrors _deleteFromServer: uses the collaborative-session API config and is a
+   * no-op in static/offline mode (no token). Fire-and-forget — failures are logged
+   * but never block the local Yjs update.
+   * @param {string} assetId
+   * @param {Object} patch
+   * @returns {Promise<void>}
+   */
+  async syncAssetMetadataToServer(assetId, patch) {
+    const config = window.eXeLearning?.config || {};
+    const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
+    const token = config.token || '';
+    const projectUuid = this.projectId;
+
+    if (!projectUuid || !token) {
+      // Not in a collaborative/server session: Yjs snapshot carries the metadata.
+      return;
+    }
+
+    const url = `${apiBaseUrl}/projects/${projectUuid}/assets/by-client-id/${encodeURIComponent(assetId)}/metadata`;
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(patch)
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
   }
 
   /**
@@ -747,7 +839,9 @@ class AssetManager {
    * @returns {Promise<void>}
    */
   async putAsset(asset) {
-    // 1. Store metadata in Yjs (instant sync to other clients)
+    // 1. Store metadata in Yjs (instant sync to other clients).
+    // Forward centralized metadata (description/altText/title/license/author) when
+    // present so it survives import (e.g. the ELPX asset-metadata.json sidecar).
     this.setAssetMetadata(asset.id, {
       filename: asset.filename,
       folderPath: asset.folderPath || '',
@@ -755,7 +849,12 @@ class AssetManager {
       size: asset.size,
       hash: asset.hash,
       uploaded: asset.uploaded || false,
-      createdAt: asset.createdAt || new Date().toISOString()
+      createdAt: asset.createdAt || new Date().toISOString(),
+      description: asset.description,
+      altText: asset.altText,
+      title: asset.title,
+      license: asset.license,
+      author: asset.author
     });
 
     // 2. Store blob in memory temporarily (for immediate use by callers)
@@ -3013,10 +3112,74 @@ class AssetManager {
    * @param {Function} [onAssetProgress] - Optional callback for progress reporting (current, total, filename)
    * @returns {Promise<Map<string, string>>} Map of originalPath -> assetId
    */
+  /**
+   * Parse the optional ELPX asset-metadata sidecar from an extracted ZIP object.
+   * Returns a plain object keyed by resource export path, or an empty object when
+   * the sidecar is absent or malformed (tolerant by design for backward compatibility).
+   * @param {Object} zip - Extracted ZIP files {path: Uint8Array}
+   * @returns {Object<string, {description?: string, altText?: string, title?: string, license?: string, author?: string}>}
+   */
+  _parseAssetMetadataSidecar(zip) {
+    const SIDECAR_PATHS = ['content/asset-metadata.json', 'asset-metadata.json'];
+    for (const sidecarPath of SIDECAR_PATHS) {
+      const fileData = zip[sidecarPath];
+      if (!fileData) continue;
+      try {
+        const text = new TextDecoder().decode(fileData);
+        const parsed = JSON.parse(text);
+        const assets = parsed && typeof parsed === 'object' ? parsed.assets : null;
+        if (assets && typeof assets === 'object') {
+          Logger.log(`[AssetManager] Loaded asset metadata sidecar (${Object.keys(assets).length} entries)`);
+          return assets;
+        }
+      } catch (e) {
+        Logger.warn(`[AssetManager] Failed to parse ${sidecarPath}: ${e?.message || e}`);
+      }
+    }
+    return {};
+  }
+
+  /**
+   * Resolve centralized metadata for an extracted asset path from the sidecar.
+   * Tries the path with the content/resources/ (or resources/) prefix stripped,
+   * then the raw path. Returns an object with only the known string fields.
+   * @param {Object} sidecar - Parsed sidecar (keyed by resource export path)
+   * @param {string} path - The ZIP-relative path of the extracted asset
+   * @returns {{description?: string, altText?: string, title?: string, license?: string, author?: string}}
+   */
+  _lookupAssetMetadataForPath(sidecar, path) {
+    if (!sidecar) return {};
+    const candidates = [
+      path.replace(/^content\/resources\//, '').replace(/^resources\//, ''),
+      path,
+    ];
+    let entry = null;
+    for (const key of candidates) {
+      if (sidecar[key]) {
+        entry = sidecar[key];
+        break;
+      }
+    }
+    if (!entry || typeof entry !== 'object') return {};
+
+    const result = {};
+    for (const field of ['description', 'altText', 'title', 'license', 'author']) {
+      if (typeof entry[field] === 'string' && entry[field] !== '') {
+        result[field] = entry[field];
+      }
+    }
+    return result;
+  }
+
   async extractAssetsFromZip(zip, onAssetProgress = null) {
     const assetMap = new Map();
     const assetFiles = [];
     let storedAssetsCount = 0;
+
+    // Parse the optional centralized asset-metadata sidecar (written by ElpxExporter).
+    // Keyed by the resource export path (the path under content/resources/). Absent or
+    // malformed sidecars are tolerated so older packages import unchanged.
+    const assetMetadataSidecar = this._parseAssetMetadataSidecar(zip);
 
     // Detect format: legacy .elp has contentv3.xml, new .elpx has content.xml
     const isLegacyFormat = Object.keys(zip).some(path => path === 'contentv3.xml' || path.endsWith('/contentv3.xml'));
@@ -3143,6 +3306,9 @@ class AssetManager {
         const filename = path.split('/').pop();
         const folderPath = this._extractFolderPathFromImport(path, assetId);
 
+        // Look up centralized metadata for this resource (if a sidecar was present)
+        const importedMetadata = this._lookupAssetMetadataForPath(assetMetadataSidecar, path);
+
         // Check if already exists (same content = same ID)
         const existing = await this.getAsset(assetId);
         if (existing) {
@@ -3165,7 +3331,8 @@ class AssetManager {
             createdAt: new Date().toISOString(),
             filename,
             originalPath: path,
-            folderPath
+            folderPath,
+            ...importedMetadata
           };
           await this.putAsset(reusedAsset);
           storedAssetsCount++;
@@ -3185,7 +3352,8 @@ class AssetManager {
           createdAt: new Date().toISOString(),
           filename,
           originalPath: path,  // Store original path for {{context_path}} mapping
-          folderPath
+          folderPath,
+          ...importedMetadata
         };
 
         await this.putAsset(asset);

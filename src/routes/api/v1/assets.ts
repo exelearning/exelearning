@@ -76,6 +76,12 @@ interface SerializedAsset {
     mimeType: string | null;
     size: number;
     folderPath: string;
+    // Centralized, reusable asset-level metadata (empty string when unset)
+    description: string;
+    altText: string;
+    title: string;
+    license: string;
+    author: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -88,6 +94,11 @@ function serializeAsset(asset: Asset): SerializedAsset {
         mimeType: asset.mime_type,
         size: parseInt(asset.file_size || '0', 10),
         folderPath: asset.folder_path || '',
+        description: asset.description || '',
+        altText: asset.alt_text || '',
+        title: asset.title || '',
+        license: asset.license || '',
+        author: asset.author || '',
         createdAt: asset.created_at,
         updatedAt: asset.updated_at,
     };

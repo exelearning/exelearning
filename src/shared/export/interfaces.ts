@@ -273,10 +273,30 @@ export interface AssetProvider {
      */
     listAssetMetadata?(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>>;
 
+    /**
+     * Get centralized, reusable metadata (description/altText/title/license/author)
+     * for assets that have any, keyed by asset id. Used by the ELPX exporter to write
+     * an asset-metadata sidecar so this metadata survives an export → re-import round
+     * trip. Optional: when not implemented, no sidecar is written.
+     */
+    getExportMetadataMap?(): Promise<Map<string, AssetExportMetadata>>;
+
     // Optional methods present in some implementations
     exists?(assetPath: string): Promise<boolean>;
     getMimeType?(assetPath: string): string;
     clearCache?(): void;
+}
+
+/**
+ * Centralized, reusable asset-level metadata carried through export/import.
+ * All fields optional; only non-empty values are included.
+ */
+export interface AssetExportMetadata {
+    description?: string;
+    altText?: string;
+    title?: string;
+    license?: string;
+    author?: string;
 }
 
 /**

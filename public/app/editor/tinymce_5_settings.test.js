@@ -612,6 +612,8 @@ describe('TinyMCE 5 Settings', () => {
         title: 'file.png',
         text: 'file.png',
         alt: '',
+        authorname: '',
+        captionlicense: '',
         'data-asset-id': 'abc123',
       });
     });
@@ -643,6 +645,8 @@ describe('TinyMCE 5 Settings', () => {
         title: 'file.png',
         text: 'file.png',
         alt: '',
+        authorname: '',
+        captionlicense: '',
         'data-asset-id': 'abc123',
       });
     });
@@ -672,6 +676,8 @@ describe('TinyMCE 5 Settings', () => {
         title: 'image.jpg',
         text: 'image.jpg',
         alt: '',
+        authorname: '',
+        captionlicense: '',
         'data-asset-id': assetUUID,
       });
     });
@@ -709,6 +715,8 @@ describe('TinyMCE 5 Settings', () => {
         title: 'video.mp4',
         text: 'video.mp4',
         alt: '',
+        authorname: '',
+        captionlicense: '',
         'data-asset-id': assetUUID,
       });
     });
@@ -2662,6 +2670,73 @@ describe('TinyMCE 5 Settings', () => {
       // No links in DOM → getHelpLink returns '' → else branch (comment-only, no-op)
       expect(() => globalThis.$exeTinyMCEToggler.createEditorLink(wrapper, 'editor')).not.toThrow();
       expect(document.getElementById('editor-toggler')).toBeNull();
+    });
+  });
+
+  describe('buildImagePickerMeta', () => {
+    const buildImagePickerMeta = tinyMCEModule.buildImagePickerMeta;
+
+    it('pre-fills alt from altText and title from the asset title', () => {
+      const meta = buildImagePickerMeta({
+        id: 'a1',
+        filename: 'photo.jpg',
+        altText: 'A sunset',
+        title: 'Sunset',
+      });
+      expect(meta.alt).toBe('A sunset');
+      expect(meta.title).toBe('Sunset');
+      expect(meta['data-asset-id']).toBe('a1');
+      expect(meta.text).toBe('photo.jpg');
+    });
+
+    it('pre-fills author and maps license to the caption-license code', () => {
+      const meta = buildImagePickerMeta({
+        id: 'a1',
+        filename: 'photo.jpg',
+        author: 'Ada Lovelace',
+        license: 'Creative Commons BY-SA',
+      });
+      expect(meta.authorname).toBe('Ada Lovelace');
+      expect(meta.captionlicense).toBe('CC-BY-SA');
+    });
+
+    it('falls back to description for alt when no altText exists', () => {
+      const meta = buildImagePickerMeta({ id: 'a1', filename: 'p.jpg', description: 'desc only' });
+      expect(meta.alt).toBe('desc only');
+    });
+
+    it('falls back to filename for the title when no title exists', () => {
+      const meta = buildImagePickerMeta({ id: 'a1', filename: 'p.jpg' });
+      expect(meta.title).toBe('p.jpg');
+      expect(meta.alt).toBe('');
+    });
+
+    it('is null-safe', () => {
+      const meta = buildImagePickerMeta(undefined);
+      expect(meta).toEqual({
+        title: '',
+        text: '',
+        alt: '',
+        authorname: '',
+        captionlicense: '',
+        'data-asset-id': undefined,
+      });
+    });
+  });
+
+  describe('mapAssetLicenseToCaptionCode', () => {
+    const mapAssetLicenseToCaptionCode = tinyMCEModule.mapAssetLicenseToCaptionCode;
+
+    it('maps Creative Commons labels to their listbox codes', () => {
+      expect(mapAssetLicenseToCaptionCode('Creative Commons BY')).toBe('CC-BY');
+      expect(mapAssetLicenseToCaptionCode('Creative Commons BY-NC-ND')).toBe('CC-BY-NC-ND');
+      expect(mapAssetLicenseToCaptionCode('GNU/GPL')).toBe('gnu-gpl');
+    });
+
+    it('returns empty string for empty or unknown licenses', () => {
+      expect(mapAssetLicenseToCaptionCode('')).toBe('');
+      expect(mapAssetLicenseToCaptionCode(undefined)).toBe('');
+      expect(mapAssetLicenseToCaptionCode('Some Unknown License')).toBe('');
     });
   });
 });

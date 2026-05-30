@@ -3,6 +3,61 @@ const ASSET_URL_MEDIA_SELECTOR =
 const PLACEHOLDER_IMAGE_DATA_URL =
     'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
+/**
+ * Map a centralized asset license label (as stored by the File Manager / image-gallery,
+ * e.g. "Creative Commons BY") to the exeimage caption-license listbox value (e.g. "CC-BY").
+ * Built with the same translation helper used to store the labels, so the translated
+ * "Public Domain" / "All Rights Reserved" entries match in the current locale. Returns ''
+ * (no license) for unknown/empty labels. Pure-ish (depends only on the global _()).
+ * @param {string|undefined} license
+ * @returns {string} exeimage caption-license code
+ */
+function mapAssetLicenseToCaptionCode(license) {
+    if (!license) return '';
+    const t = typeof _ === 'function' ? _ : s => s;
+    const map = {
+        [t('Public Domain')]: 'pd',
+        'GNU/GPL': 'gnu-gpl',
+        ['Creative Commons (' + t('Public Domain') + ')']: 'CC0',
+        'Creative Commons BY': 'CC-BY',
+        'Creative Commons BY-SA': 'CC-BY-SA',
+        'Creative Commons BY-ND': 'CC-BY-ND',
+        'Creative Commons BY-NC': 'CC-BY-NC',
+        'Creative Commons BY-NC-SA': 'CC-BY-NC-SA',
+        'Creative Commons BY-NC-ND': 'CC-BY-NC-ND',
+        ['Copyright (' + t('All Rights Reserved') + ')']: 'copyright',
+    };
+    return map[license] || '';
+}
+
+/**
+ * Build the TinyMCE image dialog meta object from a File Manager asset, pre-filling
+ * the reusable centralized metadata as sensible defaults for a newly inserted image.
+ *
+ *   alt            ← asset.altText, falling back to asset.description
+ *   title          ← asset.title, falling back to the filename
+ *   authorname     ← asset.author        (exeimage "Source/Author" field)
+ *   captionlicense ← asset.license mapped (exeimage "License" listbox)
+ *
+ * The exeimage plugin's formFillFromMeta2 reads these meta keys and only applies the
+ * non-empty ones, so user-typed values are never clobbered. This only seeds defaults
+ * when the asset is picked/reselected from the File Manager.
+ * Pure function (no DOM/TinyMCE access) so it can be unit-tested directly.
+ * @param {{id?: string, filename?: string, altText?: string, description?: string, title?: string, author?: string, license?: string}} asset
+ * @returns {{title: string, text: string, alt: string, authorname: string, captionlicense: string, 'data-asset-id': string|undefined}}
+ */
+function buildImagePickerMeta(asset) {
+    const a = asset || {};
+    return {
+        title: a.title || a.filename || '',
+        text: a.filename || '',
+        alt: a.altText || a.description || '',
+        authorname: a.author || '',
+        captionlicense: mapAssetLicenseToCaptionCode(a.license),
+        'data-asset-id': a.id,
+    };
+}
+
 var $exeTinyMCE = {
     // imagetools is disabled because it generates base64 images
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
@@ -409,12 +464,9 @@ var $exeTinyMCE = {
                             }
 
                             // Keep asset:// in the editor model; rendering resolves it later.
-                            cb(result.assetUrl || result.blobUrl || '', {
-                                title: result.asset.filename || '',
-                                text: result.asset.filename || '',
-                                alt: '',
-                                'data-asset-id': result.asset.id
-                            });
+                            // Pre-fill alt/title from the asset's centralized metadata so the
+                            // image dialog opens with sensible reusable defaults.
+                            cb(result.assetUrl || result.blobUrl || '', buildImagePickerMeta(result.asset));
                         }
                     });
                 } else {
@@ -1182,5 +1234,5 @@ var $exeTinyMCEToggler = {
 
 // Export for Node.js/CommonJS (tests)
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { $exeTinyMCE, $exeTinyMCEToggler };
+    module.exports = { $exeTinyMCE, $exeTinyMCEToggler, buildImagePickerMeta, mapAssetLicenseToCaptionCode };
 }

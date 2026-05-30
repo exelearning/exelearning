@@ -1095,6 +1095,58 @@
         }
     }
 
+    /* Editable centralized metadata — lives inside the scrollable .media-library-metadata
+       so it flows directly after the read-only info and scrolls together with it. */
+    .media-library-edit-metadata {
+        margin-top: var(--margin-m);
+        padding-top: var(--margin-m);
+        border-top: 1px solid var(--elements-hover);
+
+        .media-library-edit-metadata-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--icon-gray);
+            margin: 0 0 var(--margin-m);
+        }
+
+        .metadata-edit-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: var(--margin-m);
+
+            label {
+                font-size: 11px;
+                color: var(--icon-gray);
+                text-transform: uppercase;
+                margin-bottom: 2px;
+                margin-top: 0;
+            }
+
+            .form-control,
+            .form-select {
+                font-size: 12px;
+                padding: 4px 8px;
+                height: auto;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            textarea.form-control {
+                resize: vertical;
+            }
+        }
+
+        .metadata-edit-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--margin-m);
+        }
+
+        .media-library-meta-status {
+            font-size: 12px;
+        }
+    }
+
     /* Actions */
     .media-library-actions {
         padding: var(--margin-l);

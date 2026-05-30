@@ -271,3 +271,39 @@ describe('ExeImage Plugin - TinyMCE Editor Direct Update', () => {
     expect(result).toBe(false);
   });
 });
+
+describe('ExeImage Plugin - formFillFromMeta2 attribution pre-fill', () => {
+  // Mirrors the title/author/license mapping added to formFillFromMeta2 so the
+  // File Manager picker pre-fills the exeimage attribution fields. Only non-empty
+  // meta values are applied so user-typed values are never overwritten.
+  const isString = (v) => typeof v === 'string';
+  function fillFromMeta(data, meta) {
+    if (isString(meta.alt)) data.alt = meta.alt;
+    if (isString(meta.title) && meta.title !== '') data.title = meta.title;
+    if (isString(meta.authorname) && meta.authorname !== '') data.authorname = meta.authorname;
+    if (isString(meta.captionlicense) && meta.captionlicense !== '') data.captionlicense = meta.captionlicense;
+    return data;
+  }
+
+  it('pre-fills title, author and license from the picker meta', () => {
+    const data = { alt: '', title: '', authorname: '', captionlicense: '' };
+    fillFromMeta(data, {
+      alt: 'A sunset',
+      title: 'Sunset',
+      authorname: 'Ada Lovelace',
+      captionlicense: 'CC-BY-SA',
+    });
+    expect(data.alt).toBe('A sunset');
+    expect(data.title).toBe('Sunset');
+    expect(data.authorname).toBe('Ada Lovelace');
+    expect(data.captionlicense).toBe('CC-BY-SA');
+  });
+
+  it('does not overwrite existing values with empty meta', () => {
+    const data = { alt: 'kept', title: 'kept', authorname: 'kept', captionlicense: 'CC-BY' };
+    fillFromMeta(data, { title: '', authorname: '', captionlicense: '' });
+    expect(data.title).toBe('kept');
+    expect(data.authorname).toBe('kept');
+    expect(data.captionlicense).toBe('CC-BY');
+  });
+});

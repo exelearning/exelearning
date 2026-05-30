@@ -1773,6 +1773,160 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('centralized asset metadata', () => {
+    it('persists description/altText/title/license/author via setAssetMetadata', () => {
+      assetManager.setAssetMetadata('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        description: 'A sunset',
+        altText: 'Sunset over the sea',
+        title: 'Sunset',
+        license: 'Creative Commons BY',
+        author: 'Ada',
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.description).toBe('A sunset');
+      expect(meta.altText).toBe('Sunset over the sea');
+      expect(meta.title).toBe('Sunset');
+      expect(meta.license).toBe('Creative Commons BY');
+      expect(meta.author).toBe('Ada');
+    });
+
+    it('omits empty metadata fields to keep entries minimal', () => {
+      assetManager.setAssetMetadata('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        description: '',
+        altText: undefined,
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect('description' in meta).toBe(false);
+      expect('altText' in meta).toBe(false);
+    });
+
+    it('preserves metadata across a rename (setAssetMetadata whitelist)', async () => {
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'old.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        description: 'A sunset',
+        altText: 'Sunset',
+      });
+
+      await assetManager.renameAsset('a1', 'new.jpg');
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.filename).toBe('new.jpg');
+      expect(meta.description).toBe('A sunset');
+      expect(meta.altText).toBe('Sunset');
+    });
+
+    it('merges a patch via updateAssetMetadata and trims values', async () => {
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        description: 'old',
+      });
+
+      const ok = await assetManager.updateAssetMetadata('a1', {
+        description: '  new description  ',
+        author: 'Grace',
+      });
+
+      expect(ok).toBe(true);
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.description).toBe('new description');
+      expect(meta.author).toBe('Grace');
+      // Untouched fields are preserved
+      expect(meta.filename).toBe('photo.jpg');
+    });
+
+    it('returns false from updateAssetMetadata when the asset is missing', async () => {
+      const ok = await assetManager.updateAssetMetadata('missing', { description: 'x' });
+      expect(ok).toBe(false);
+    });
+
+    it('does not call the server when not in a collaborative session', async () => {
+      delete global.window.eXeLearning;
+      mockYjsBridge._assetsMap.set('a1', { filename: 'photo.jpg', mime: 'image/jpeg', size: 1 });
+
+      await assetManager.updateAssetMetadata('a1', { description: 'x' });
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('PATCHes the server when in a collaborative session', async () => {
+      global.window.eXeLearning = { config: { apiUrl: 'http://srv/api', token: 'tok' } };
+      global.fetch = mock(async () => ({ ok: true, json: async () => ({ success: true }) }));
+      mockYjsBridge._assetsMap.set('a1', { filename: 'photo.jpg', mime: 'image/jpeg', size: 1 });
+
+      await assetManager.updateAssetMetadata('a1', { description: 'x' });
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const [url, opts] = global.fetch.mock.calls[0];
+      expect(url).toBe('http://srv/api/projects/project-123/assets/by-client-id/a1/metadata');
+      expect(opts.method).toBe('PATCH');
+      expect(JSON.parse(opts.body)).toEqual({ description: 'x' });
+      delete global.window.eXeLearning;
+    });
+
+    it('putAsset forwards centralized metadata to Yjs', async () => {
+      await assetManager.putAsset({
+        id: 'a1',
+        blob: new Blob(['x']),
+        mime: 'image/jpeg',
+        size: 1,
+        filename: 'photo.jpg',
+        description: 'A sunset',
+        altText: 'Sunset',
+      });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.description).toBe('A sunset');
+      expect(meta.altText).toBe('Sunset');
+    });
+  });
+
+  describe('asset metadata sidecar (ELPX import)', () => {
+    const encode = obj => new TextEncoder().encode(JSON.stringify(obj));
+
+    it('parses a content/asset-metadata.json sidecar', () => {
+      const zip = {
+        'content/asset-metadata.json': encode({
+          version: 1,
+          assets: { 'photo.jpg': { description: 'A sunset' } },
+        }),
+      };
+      const sidecar = assetManager._parseAssetMetadataSidecar(zip);
+      expect(sidecar['photo.jpg']).toEqual({ description: 'A sunset' });
+    });
+
+    it('returns an empty object when the sidecar is absent', () => {
+      expect(assetManager._parseAssetMetadataSidecar({})).toEqual({});
+    });
+
+    it('tolerates a malformed sidecar', () => {
+      const zip = { 'content/asset-metadata.json': new TextEncoder().encode('{ not json') };
+      expect(assetManager._parseAssetMetadataSidecar(zip)).toEqual({});
+    });
+
+    it('looks up metadata by the resources-relative path', () => {
+      const sidecar = { 'photo.jpg': { description: 'A sunset', altText: 'Sunset', extra: 'ignored' } };
+      const result = assetManager._lookupAssetMetadataForPath(sidecar, 'content/resources/photo.jpg');
+      expect(result).toEqual({ description: 'A sunset', altText: 'Sunset' });
+    });
+
+    it('returns empty object when no sidecar entry matches', () => {
+      expect(assetManager._lookupAssetMetadataForPath({}, 'content/resources/x.jpg')).toEqual({});
+      expect(assetManager._lookupAssetMetadataForPath(null, 'x.jpg')).toEqual({});
+    });
+  });
+
   describe('getImageDimensions', () => {
     it('returns dimensions for image', async () => {
       // (In-memory storage - no db initialization needed)

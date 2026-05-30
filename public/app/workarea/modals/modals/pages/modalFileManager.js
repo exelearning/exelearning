@@ -1,4 +1,5 @@
 import Modal from '../modal.js';
+import { getLicenseOptions } from '../../../../common/licenseOptions.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -198,12 +199,46 @@ export default class ModalFilemanager extends Modal {
 
         // List view location column header (for toggling visibility in search mode)
         this.locationColumnHeader = this.listTable?.querySelector('th.col-location');
+
+        // Editable centralized metadata (images only)
+        this.editMetadataForm = this.modalElement.querySelector('.media-library-edit-metadata');
+        this.metaDescriptionInput = this.modalElement.querySelector('.media-library-meta-description');
+        this.metaAltRow = this.modalElement.querySelector('.metadata-edit-alt-row');
+        this.metaAltInput = this.modalElement.querySelector('.media-library-meta-alt');
+        this.metaTitleInput = this.modalElement.querySelector('.media-library-meta-title');
+        this.metaLicenseSelect = this.modalElement.querySelector('.media-library-meta-license');
+        this.metaAuthorInput = this.modalElement.querySelector('.media-library-meta-author');
+        this.metaStatus = this.modalElement.querySelector('.media-library-meta-status');
+        this.populateLicenseOptions();
+    }
+
+    /**
+     * Populate the license <select> from the shared license vocabulary
+     * (reuses the existing LICENSE_REGISTRY labels; introduces no new registry).
+     */
+    populateLicenseOptions() {
+        if (!this.metaLicenseSelect) return;
+        this.metaLicenseSelect.innerHTML = '';
+        for (const { value, label } of getLicenseOptions()) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            this.metaLicenseSelect.appendChild(option);
+        }
     }
 
     /**
      * Set up event handlers
      */
     initBehaviour() {
+        // Save centralized metadata for the currently selected image
+        if (this.editMetadataForm) {
+            this.editMetadataForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.saveAssetMetadata();
+            });
+        }
+
         // Upload button click
         if (this.uploadBtn && this.uploadInput) {
             this.uploadBtn.addEventListener('click', () => {
@@ -922,10 +957,16 @@ export default class ModalFilemanager extends Modal {
                 const category = this.getAssetTypeCategory(asset.mime, asset.filename);
                 if (category !== this.typeFilter) return false;
             }
-            // Filter by search term
+            // Filter by search term (filename, description or alt text — case-insensitive)
             if (!searchTerm) return true;
             const filename = (asset.filename || '').toLowerCase();
-            return filename.includes(searchTerm);
+            const description = (asset.description || '').toLowerCase();
+            const altText = (asset.altText || '').toLowerCase();
+            return (
+                filename.includes(searchTerm) ||
+                description.includes(searchTerm) ||
+                altText.includes(searchTerm)
+            );
         });
 
         // Update file count
@@ -2026,8 +2067,83 @@ export default class ModalFilemanager extends Modal {
             this.locationValue.title = displayPath;
         }
 
+        // Editable centralized metadata (images only)
+        this.populateEditMetadata(asset);
+
         // Update footer button states
         this.updateButtonStates();
+    }
+
+    /**
+     * Populate (and show) the editable metadata form for the selected asset.
+     * Available for every file type; the image-specific "Alternative text" row is
+     * only shown for images. Reads the asset's centralized metadata
+     * (description / altText / title / license / author) from Yjs.
+     * @param {Object} asset
+     */
+    populateEditMetadata(asset) {
+        if (!this.editMetadataForm) return;
+
+        // Metadata applies to all asset types.
+        this.editMetadataForm.style.display = 'block';
+        if (this.metaStatus) this.metaStatus.textContent = '';
+
+        // Alt text is image-specific accessibility metadata: only relevant for images.
+        const isImage = !!(asset.mime && asset.mime.startsWith('image/'));
+        if (this.metaAltRow) this.metaAltRow.style.display = isImage ? 'flex' : 'none';
+
+        if (this.metaDescriptionInput) this.metaDescriptionInput.value = asset.description || '';
+        if (this.metaAltInput) this.metaAltInput.value = asset.altText || '';
+        if (this.metaTitleInput) this.metaTitleInput.value = asset.title || '';
+        if (this.metaAuthorInput) this.metaAuthorInput.value = asset.author || '';
+        if (this.metaLicenseSelect) {
+            const license = asset.license || '';
+            // If the stored license is not one of the known options, add it so the
+            // existing value is preserved and visible rather than silently reset.
+            const known = Array.from(this.metaLicenseSelect.options).some(o => o.value === license);
+            if (license && !known) {
+                const option = document.createElement('option');
+                option.value = license;
+                option.textContent = license;
+                this.metaLicenseSelect.appendChild(option);
+            }
+            this.metaLicenseSelect.value = license;
+        }
+    }
+
+    /**
+     * Persist the editable metadata for the currently selected image asset.
+     * Trims values, writes to the AssetManager (Yjs source of truth + best-effort
+     * server sync), refreshes local state and shows a "Metadata saved" status.
+     */
+    async saveAssetMetadata() {
+        const asset = this.selectedAsset;
+        if (!asset || !this.assetManager) return;
+
+        const patch = {
+            description: (this.metaDescriptionInput?.value || '').trim(),
+            altText: (this.metaAltInput?.value || '').trim(),
+            title: (this.metaTitleInput?.value || '').trim(),
+            license: this.metaLicenseSelect?.value || '',
+            author: (this.metaAuthorInput?.value || '').trim(),
+        };
+
+        try {
+            await this.assetManager.updateAssetMetadata(asset.id, patch);
+            // Reflect the change in the local list + selected asset so search and
+            // the panel stay in sync without a full reload.
+            Object.assign(asset, patch);
+            const listed = this.assets.find(a => a.id === asset.id);
+            if (listed) Object.assign(listed, patch);
+            if (this.metaStatus) this.metaStatus.textContent = _('Metadata saved');
+        } catch (e) {
+            Logger.warn('[MediaLibrary] Failed to save asset metadata:', e?.message || e);
+            if (this.metaStatus) {
+                this.metaStatus.classList.remove('text-success');
+                this.metaStatus.classList.add('text-danger');
+                this.metaStatus.textContent = _('Could not save metadata');
+            }
+        }
     }
 
     /**
@@ -2062,6 +2178,7 @@ export default class ModalFilemanager extends Modal {
         if (this.usageSpan) this.usageSpan.textContent = '-';
         if (this.urlInput) this.urlInput.value = '';
         if (this.locationRow) this.locationRow.style.display = 'none';
+        if (this.editMetadataForm) this.editMetadataForm.style.display = 'none';
 
         // Ensure folder selection is cleared
         this.selectedFolder = null;

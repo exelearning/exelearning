@@ -96,6 +96,16 @@ describe('ModalFilemanager', () => {
           <input class="media-library-url" readonly>
           <button class="media-library-copy-url-btn"><span class="exe-icon">content_copy</span></button>
         </div>
+        <form class="media-library-edit-metadata" style="display:none;">
+          <h4 class="media-library-edit-metadata-title">Metadata</h4>
+          <textarea class="media-library-meta-description"></textarea>
+          <div class="metadata-edit-alt-row"><input type="text" class="media-library-meta-alt"></div>
+          <input type="text" class="media-library-meta-title">
+          <select class="media-library-meta-license"></select>
+          <input type="text" class="media-library-meta-author">
+          <button type="submit" class="media-library-meta-save-btn">Save metadata</button>
+          <span class="media-library-meta-status"></span>
+        </form>
         <span class="media-library-count-value">0</span>
       </div>
       <div class="media-library-footer">
@@ -4343,6 +4353,126 @@ describe('getMimeTypeFromFilename', () => {
       modal.deleteBtn.disabled = false;
       modal.syncMobileActions();
       expect(modal.mobileActionsToggle.disabled).toBe(false);
+    });
+  });
+
+  describe('centralized asset metadata', () => {
+    beforeEach(() => {
+      modal.grid = document.createElement('div');
+      modal.listContainer = document.createElement('div');
+      modal.listTbody = document.createElement('tbody');
+      modal.emptyState = document.createElement('div');
+      modal.viewMode = 'grid';
+      modal.currentPath = '';
+      modal.createdFolders = new Set();
+      modal.renderCurrentView = vi.fn();
+    });
+
+    it('populates the license <select> from the shared vocabulary', () => {
+      expect(modal.metaLicenseSelect.options.length).toBeGreaterThan(1);
+      const values = Array.from(modal.metaLicenseSelect.options).map(o => o.value);
+      expect(values).toContain('Creative Commons BY');
+      expect(values[0]).toBe(''); // "no license" first
+    });
+
+    it('shows the edit form for images (with alt row) and pre-fills values', () => {
+      modal.populateEditMetadata({
+        id: 'a1',
+        mime: 'image/png',
+        description: 'A sunset',
+        altText: 'Sunset over the sea',
+        title: 'Sunset',
+        license: 'Creative Commons BY',
+        author: 'Ada',
+      });
+
+      expect(modal.editMetadataForm.style.display).toBe('block');
+      expect(modal.metaAltRow.style.display).toBe('flex');
+      expect(modal.metaDescriptionInput.value).toBe('A sunset');
+      expect(modal.metaAltInput.value).toBe('Sunset over the sea');
+      expect(modal.metaTitleInput.value).toBe('Sunset');
+      expect(modal.metaLicenseSelect.value).toBe('Creative Commons BY');
+      expect(modal.metaAuthorInput.value).toBe('Ada');
+    });
+
+    it('shows the edit form for non-image assets but hides the alt-text row', () => {
+      modal.populateEditMetadata({ id: 'a2', mime: 'application/pdf', description: 'A report' });
+      expect(modal.editMetadataForm.style.display).toBe('block');
+      expect(modal.metaAltRow.style.display).toBe('none');
+      expect(modal.metaDescriptionInput.value).toBe('A report');
+    });
+
+    it('shows the edit form for a 3D model (e.g. .stl)', () => {
+      modal.populateEditMetadata({ id: 'a3', mime: 'model/stl', filename: 'part.stl' });
+      expect(modal.editMetadataForm.style.display).toBe('block');
+      expect(modal.metaAltRow.style.display).toBe('none');
+    });
+
+    it('preserves an unknown stored license value as an option', () => {
+      modal.populateEditMetadata({ id: 'a1', mime: 'image/png', license: 'Some Custom License' });
+      const values = Array.from(modal.metaLicenseSelect.options).map(o => o.value);
+      expect(values).toContain('Some Custom License');
+      expect(modal.metaLicenseSelect.value).toBe('Some Custom License');
+    });
+
+    it('finds an image by description via applyFiltersAndRender', () => {
+      modal.assets = [
+        { id: 'a1', filename: 'IMG_001.jpg', folderPath: '', mime: 'image/jpeg', description: 'A red bicycle' },
+        { id: 'a2', filename: 'IMG_002.jpg', folderPath: '', mime: 'image/jpeg', description: 'A blue car' },
+      ];
+
+      modal.searchInput.value = 'bicycle';
+      modal.applyFiltersAndRender();
+
+      expect(modal.filteredAssets.map(a => a.id)).toEqual(['a1']);
+    });
+
+    it('finds an image by alt text via applyFiltersAndRender', () => {
+      modal.assets = [
+        { id: 'a1', filename: 'IMG_001.jpg', folderPath: '', mime: 'image/jpeg', altText: 'A red bicycle' },
+        { id: 'a2', filename: 'IMG_002.jpg', folderPath: '', mime: 'image/jpeg', altText: 'A blue car' },
+      ];
+
+      modal.searchInput.value = 'CAR';
+      modal.applyFiltersAndRender();
+
+      expect(modal.filteredAssets.map(a => a.id)).toEqual(['a2']);
+    });
+
+    it('saves metadata through the AssetManager and updates local state', async () => {
+      const updateAssetMetadata = vi.fn().mockResolvedValue(true);
+      modal.assetManager = { updateAssetMetadata };
+      const asset = { id: 'a1', mime: 'image/png', description: 'old' };
+      modal.selectedAsset = asset;
+      modal.assets = [asset];
+
+      modal.metaDescriptionInput.value = '  New description  ';
+      modal.metaAltInput.value = 'Alt';
+      modal.metaLicenseSelect.innerHTML = '<option value="Creative Commons BY">cc</option>';
+      modal.metaLicenseSelect.value = 'Creative Commons BY';
+
+      await modal.saveAssetMetadata();
+
+      expect(updateAssetMetadata).toHaveBeenCalledWith('a1', {
+        description: 'New description',
+        altText: 'Alt',
+        title: '',
+        license: 'Creative Commons BY',
+        author: '',
+      });
+      // Local asset reflects the saved values
+      expect(asset.description).toBe('New description');
+      expect(modal.metaStatus.textContent).toBe('Metadata saved');
+    });
+
+    it('does nothing when no asset is selected', async () => {
+      const updateAssetMetadata = vi.fn();
+      modal.assetManager = { updateAssetMetadata };
+      modal.selectedAsset = null;
+
+      await modal.saveAssetMetadata();
+
+      expect(updateAssetMetadata).not.toHaveBeenCalled();
     });
   });
 });

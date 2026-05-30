@@ -72,6 +72,13 @@ export interface AssetMetadata {
     hash?: string;
     uploaded: boolean;
     createdAt: string;
+    // Centralized, reusable asset-level metadata. All optional so older documents
+    // (and assets created before this feature) load unchanged with empty metadata.
+    description?: string;
+    altText?: string;
+    title?: string;
+    license?: string;
+    author?: string;
 }
 
 /**

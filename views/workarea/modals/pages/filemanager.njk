@@ -4,7 +4,7 @@
             <div class="modal-header">
                 <div class="modal-title">{{ 'File manager' | trans }}</div>
                 <div class="media-library-header-search d-none d-md-block">
-                    <input type="search" class="form-control media-library-search" placeholder="{{ 'Search files...' | trans }}">
+                    <input type="search" class="form-control media-library-search" placeholder="{{ 'Search by name or description' | trans }}">
                 </div>
                 <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
                     <span aria-hidden="true">&times;</span>
@@ -158,6 +158,33 @@
                                         </button>
                                     </div>
                                 </div>
+                                <form class="media-library-edit-metadata" style="display:none;">
+                                    <h4 class="media-library-edit-metadata-title">{{ 'Metadata' | trans }}</h4>
+                                    <div class="metadata-row metadata-edit-row">
+                                        <label for="media-library-meta-description">{{ 'Description' | trans }}</label>
+                                        <textarea id="media-library-meta-description" class="form-control form-control-sm media-library-meta-description" rows="2"></textarea>
+                                    </div>
+                                    <div class="metadata-row metadata-edit-row metadata-edit-alt-row">
+                                        <label for="media-library-meta-alt">{{ 'Alternative text' | trans }}</label>
+                                        <input type="text" id="media-library-meta-alt" class="form-control form-control-sm media-library-meta-alt">
+                                    </div>
+                                    <div class="metadata-row metadata-edit-row">
+                                        <label for="media-library-meta-title">{{ 'Title' | trans }}</label>
+                                        <input type="text" id="media-library-meta-title" class="form-control form-control-sm media-library-meta-title">
+                                    </div>
+                                    <div class="metadata-row metadata-edit-row">
+                                        <label for="media-library-meta-license">{{ 'License' | trans }}</label>
+                                        <select id="media-library-meta-license" class="form-select form-select-sm media-library-meta-license"></select>
+                                    </div>
+                                    <div class="metadata-row metadata-edit-row">
+                                        <label for="media-library-meta-author">{{ 'Author' | trans }}</label>
+                                        <input type="text" id="media-library-meta-author" class="form-control form-control-sm media-library-meta-author">
+                                    </div>
+                                    <div class="metadata-row metadata-edit-actions">
+                                        <button type="submit" class="btn btn-sm btn-primary media-library-meta-save-btn">{{ 'Save metadata' | trans }}</button>
+                                        <span class="media-library-meta-status text-success small" role="status" aria-live="polite"></span>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
