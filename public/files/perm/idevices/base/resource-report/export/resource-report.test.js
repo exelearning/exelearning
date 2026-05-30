@@ -26,7 +26,6 @@ describe('resource-report iDevice export', () => {
     });
 
     const baseConfig = {
-        title: 'Resource report',
         intro: '',
         layout: 'list',
         showThumbnail: true,
@@ -34,6 +33,8 @@ describe('resource-report iDevice export', () => {
         showDescription: true,
         showAuthor: true,
         showLicense: true,
+        showViewLink: true,
+        showDownloadLink: true,
     };
 
     function render(resources, overrides) {
@@ -48,6 +49,43 @@ describe('resource-report iDevice export', () => {
         expect(html).toContain('sunset.jpg');
         expect(html).toContain('href="asset://img-1.jpg"');
         expect(html).toContain('download="sunset.jpg"');
+        expect(html).toContain('resource-report-view');
+        expect(html).toContain('resource-report-download');
+    });
+
+    it('hides the View link when showViewLink is off', () => {
+        const html = render(
+            [{ id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true, title: 'Photo' }],
+            { showViewLink: false },
+        );
+        expect(html).not.toContain('resource-report-view');
+        expect(html).toContain('resource-report-download');
+        expect(html).toContain('resource-report-actions');
+    });
+
+    it('hides the Download link when showDownloadLink is off', () => {
+        const html = render(
+            [{ id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true, title: 'Photo' }],
+            { showDownloadLink: false },
+        );
+        expect(html).not.toContain('resource-report-download');
+        expect(html).toContain('resource-report-view');
+    });
+
+    it('omits the actions block entirely when both links are off', () => {
+        const html = render(
+            [{ id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true, title: 'Photo' }],
+            { showViewLink: false, showDownloadLink: false },
+        );
+        expect(html).not.toContain('resource-report-actions');
+    });
+
+    it('renders both links for legacy snapshots without the link flags', () => {
+        const html = $rr.renderView({
+            intro: '',
+            layout: 'list',
+            resources: [{ id: 'a', assetUrl: 'asset://a.jpg', filename: 'a.jpg', type: 'image', isImage: true }],
+        });
         expect(html).toContain('resource-report-view');
         expect(html).toContain('resource-report-download');
     });

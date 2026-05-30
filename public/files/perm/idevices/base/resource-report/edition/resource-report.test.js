@@ -93,11 +93,38 @@ describe('resource-report iDevice edition', () => {
         });
     });
 
+    describe('createForm markup', () => {
+        beforeEach(() => {
+            setAssetManager(SAMPLE);
+            $exeDevice.init(container, {});
+        });
+
+        it('drops the redundant title field', () => {
+            expect(container.querySelector('#rrTitle')).toBeNull();
+        });
+
+        it('exposes the View/Download link toggles', () => {
+            expect(container.querySelector('#rrShowViewLink')).not.toBeNull();
+            expect(container.querySelector('#rrShowDownloadLink')).not.toBeNull();
+        });
+
+        it('keeps every toggle inside the collapsible group so it folds away cleanly', () => {
+            const fieldset = container.querySelector('.resource-report-toggles');
+            const group = fieldset.querySelector('.resource-report-toggle-grid');
+            // The grid must be a sibling of <legend> (CSS hides `legend ~ div` when collapsed).
+            expect(group).not.toBeNull();
+            expect(group.parentElement).toBe(fieldset);
+            const toggles = group.querySelectorAll('input[type="checkbox"]');
+            expect(toggles.length).toBe(7);
+            // No checkbox may live directly under the fieldset (those would not collapse).
+            expect(fieldset.querySelectorAll(':scope > input[type="checkbox"]').length).toBe(0);
+        });
+    });
+
     describe('save / loadPreviousValues round-trip', () => {
         it('preserves all config fields and snapshots resources', () => {
             setAssetManager(SAMPLE);
             const previous = {
-                title: 'My resources',
                 intro: 'Here they are',
                 resourceMode: 'used',
                 typeFilter: 'image',
@@ -107,18 +134,21 @@ describe('resource-report iDevice edition', () => {
                 showDescription: false,
                 showAuthor: false,
                 showLicense: false,
+                showViewLink: false,
+                showDownloadLink: false,
             };
             $exeDevice.init(container, previous);
             const saved = $exeDevice.save();
 
             // Config round-trips
-            expect(saved.title).toBe('My resources');
             expect(saved.intro).toBe('Here they are');
             expect(saved.resourceMode).toBe('used');
             expect(saved.typeFilter).toBe('image');
             expect(saved.layout).toBe('cards');
             expect(saved.showThumbnail).toBe(false);
             expect(saved.showLicense).toBe(false);
+            expect(saved.showViewLink).toBe(false);
+            expect(saved.showDownloadLink).toBe(false);
             expect(saved.ideviceId).toBe('idev-1');
 
             // Snapshot reflects used + image filters → only 'used-1'
@@ -130,8 +160,9 @@ describe('resource-report iDevice edition', () => {
             setAssetManager(SAMPLE);
             $exeDevice.init(container, {});
             const saved = $exeDevice.save();
-            expect(saved.title).toBe('Resource report');
             expect(saved.resourceMode).toBe('all');
+            expect(saved.showViewLink).toBe(true);
+            expect(saved.showDownloadLink).toBe(true);
             expect(saved.resources.length).toBe(4);
         });
 

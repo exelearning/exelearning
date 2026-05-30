@@ -17,7 +17,6 @@ var $exeDevice = {
 
     // Default configuration — produces a useful report with zero configuration.
     defaults: {
-        title: _('Resource report'),
         intro: '',
         resourceMode: 'all', // 'all' | 'used'
         typeFilter: 'all', // 'all' | 'image' | 'audio' | 'video' | 'document' | 'other'
@@ -27,6 +26,8 @@ var $exeDevice = {
         showDescription: true,
         showAuthor: true,
         showLicense: true,
+        showViewLink: true,
+        showDownloadLink: true,
     },
 
     /**
@@ -132,7 +133,6 @@ var $exeDevice = {
             return el ? el.checked : fallback;
         };
         return {
-            title: (val('#rrTitle', this.defaults.title) || '').trim() || this.defaults.title,
             intro: (val('#rrIntro', '') || '').trim(),
             resourceMode: val('#rrResourceMode', this.defaults.resourceMode),
             typeFilter: val('#rrTypeFilter', this.defaults.typeFilter),
@@ -142,6 +142,8 @@ var $exeDevice = {
             showDescription: checked('#rrShowDescription', this.defaults.showDescription),
             showAuthor: checked('#rrShowAuthor', this.defaults.showAuthor),
             showLicense: checked('#rrShowLicense', this.defaults.showLicense),
+            showViewLink: checked('#rrShowViewLink', this.defaults.showViewLink),
+            showDownloadLink: checked('#rrShowDownloadLink', this.defaults.showDownloadLink),
         };
     },
 
@@ -175,50 +177,58 @@ var $exeDevice = {
         const opt = (value, label, selected) =>
             `<option value="${value}"${selected === value ? ' selected' : ''}>${label}</option>`;
         const toggle = (id, label, on) =>
-            `<label class="exe-field exe-checkbox-field"><input type="checkbox" id="${id}"${on ? ' checked' : ''}> ${label}</label>`;
+            `<div class="toggle-item resource-report-toggle">
+                <span class="toggle-control">
+                    <input type="checkbox" id="${id}" class="toggle-input"${on ? ' checked' : ''}>
+                    <span class="toggle-visual" aria-hidden="true"></span>
+                </span>
+                <label class="toggle-label" for="${id}">${label}</label>
+            </div>`;
 
         this.ideviceBody.innerHTML = `
         <div id="resourceReportForm" class="resource-report-form">
             <div class="exe-field exe-text-field">
-                <label for="rrTitle">${_('Title')}:</label>
-                <input type="text" id="rrTitle" class="ideviceTextfield" value="${this.escapeAttr(d.title)}" />
-            </div>
-            <div class="exe-field exe-text-field">
                 <label for="rrIntro">${_('Introductory text')}:</label>
                 <textarea id="rrIntro" class="ideviceTextfield" rows="2"></textarea>
             </div>
-            <div class="exe-field exe-text-field">
-                <label for="rrResourceMode">${_('Resources')}:</label>
-                <select id="rrResourceMode" class="ideviceTextfield">
-                    ${opt('all', _('All resources'), d.resourceMode)}
-                    ${opt('used', _('Used in this project'), d.resourceMode)}
-                </select>
-            </div>
-            <div class="exe-field exe-text-field">
-                <label for="rrTypeFilter">${_('File type')}:</label>
-                <select id="rrTypeFilter" class="ideviceTextfield">
-                    ${opt('all', _('All'), d.typeFilter)}
-                    ${opt('image', _('Images'), d.typeFilter)}
-                    ${opt('audio', _('Audio'), d.typeFilter)}
-                    ${opt('video', _('Video'), d.typeFilter)}
-                    ${opt('document', _('Documents'), d.typeFilter)}
-                    ${opt('other', _('Other'), d.typeFilter)}
-                </select>
-            </div>
-            <div class="exe-field exe-text-field">
-                <label for="rrLayout">${_('Layout')}:</label>
-                <select id="rrLayout" class="ideviceTextfield">
-                    ${opt('list', _('List'), d.layout)}
-                    ${opt('cards', _('Cards'), d.layout)}
-                </select>
+            <div class="resource-report-selects">
+                <div class="exe-field exe-text-field">
+                    <label for="rrResourceMode">${_('Resources')}:</label>
+                    <select id="rrResourceMode" class="ideviceTextfield">
+                        ${opt('all', _('All resources'), d.resourceMode)}
+                        ${opt('used', _('Used in this project'), d.resourceMode)}
+                    </select>
+                </div>
+                <div class="exe-field exe-text-field">
+                    <label for="rrTypeFilter">${_('File type')}:</label>
+                    <select id="rrTypeFilter" class="ideviceTextfield">
+                        ${opt('all', _('All'), d.typeFilter)}
+                        ${opt('image', _('Images'), d.typeFilter)}
+                        ${opt('audio', _('Audio'), d.typeFilter)}
+                        ${opt('video', _('Video'), d.typeFilter)}
+                        ${opt('document', _('Documents'), d.typeFilter)}
+                        ${opt('other', _('Other'), d.typeFilter)}
+                    </select>
+                </div>
+                <div class="exe-field exe-text-field">
+                    <label for="rrLayout">${_('Layout')}:</label>
+                    <select id="rrLayout" class="ideviceTextfield">
+                        ${opt('list', _('List'), d.layout)}
+                        ${opt('cards', _('Cards'), d.layout)}
+                    </select>
+                </div>
             </div>
             <fieldset class="exe-fieldset resource-report-toggles">
                 <legend><a href="#">${_('Display options')}</a></legend>
-                ${toggle('rrShowThumbnail', _('Show thumbnail'), d.showThumbnail)}
-                ${toggle('rrShowFileName', _('Show file name'), d.showFileName)}
-                ${toggle('rrShowDescription', _('Show description'), d.showDescription)}
-                ${toggle('rrShowAuthor', _('Show author'), d.showAuthor)}
-                ${toggle('rrShowLicense', _('Show license'), d.showLicense)}
+                <div class="resource-report-toggle-grid">
+                    ${toggle('rrShowThumbnail', _('Show thumbnail'), d.showThumbnail)}
+                    ${toggle('rrShowFileName', _('Show file name'), d.showFileName)}
+                    ${toggle('rrShowDescription', _('Show description'), d.showDescription)}
+                    ${toggle('rrShowAuthor', _('Show author'), d.showAuthor)}
+                    ${toggle('rrShowLicense', _('Show license'), d.showLicense)}
+                    ${toggle('rrShowViewLink', _('Show view link'), d.showViewLink)}
+                    ${toggle('rrShowDownloadLink', _('Show download link'), d.showDownloadLink)}
+                </div>
             </fieldset>
         </div>`;
     },
@@ -239,7 +249,6 @@ var $exeDevice = {
             const el = body.querySelector(sel);
             if (el != null && typeof value === 'boolean') el.checked = value;
         };
-        if (typeof data.title === 'string') setVal('#rrTitle', data.title);
         if (typeof data.intro === 'string') setVal('#rrIntro', data.intro);
         setVal('#rrResourceMode', data.resourceMode);
         setVal('#rrTypeFilter', data.typeFilter);
@@ -249,14 +258,7 @@ var $exeDevice = {
         setChecked('#rrShowDescription', data.showDescription);
         setChecked('#rrShowAuthor', data.showAuthor);
         setChecked('#rrShowLicense', data.showLicense);
-    },
-
-    escapeAttr: function (str) {
-        return String(str == null ? '' : str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        setChecked('#rrShowViewLink', data.showViewLink);
+        setChecked('#rrShowDownloadLink', data.showDownloadLink);
     },
 };

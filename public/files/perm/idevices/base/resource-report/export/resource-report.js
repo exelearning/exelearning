@@ -78,15 +78,21 @@ var $resourcereport = {
         if (metaParts.length) {
             body += `<div class="resource-report-meta">${metaParts.join('<span class="resource-report-sep"> · </span>')}</div>`;
         }
-        if (res.assetUrl) {
-            const viewLabel = this.t('View');
-            const dlLabel = this.t('Download');
+        // View/Download links are opt-in (default on for back-compat with older snapshots).
+        const showView = config.showViewLink !== false;
+        const showDownload = config.showDownloadLink !== false;
+        if (res.assetUrl && (showView || showDownload)) {
             const forName = esc(title);
-            body +=
-                `<div class="resource-report-actions">` +
-                `<a class="resource-report-view" href="${esc(res.assetUrl)}" target="_blank" rel="noopener" aria-label="${viewLabel}: ${forName}">${viewLabel}</a>` +
-                `<a class="resource-report-download" href="${esc(res.assetUrl)}" download="${esc(res.filename)}" aria-label="${dlLabel}: ${forName}">${dlLabel}</a>` +
-                `</div>`;
+            let actions = '';
+            if (showView) {
+                const viewLabel = this.t('View');
+                actions += `<a class="resource-report-view" href="${esc(res.assetUrl)}" target="_blank" rel="noopener" aria-label="${viewLabel}: ${forName}">${viewLabel}</a>`;
+            }
+            if (showDownload) {
+                const dlLabel = this.t('Download');
+                actions += `<a class="resource-report-download" href="${esc(res.assetUrl)}" download="${esc(res.filename)}" aria-label="${dlLabel}: ${forName}">${dlLabel}</a>`;
+            }
+            body += `<div class="resource-report-actions">${actions}</div>`;
         }
 
         return `<li class="resource-report-item">${thumb}<div class="resource-report-body">${body}</div></li>`;
@@ -103,9 +109,6 @@ var $resourcereport = {
         const layout = config.layout === 'cards' ? 'cards' : 'list';
 
         let html = '<div class="resource-report-IDevice">';
-        if (config.title) {
-            html += `<h3 class="resource-report-title">${esc(config.title)}</h3>`;
-        }
         if (config.intro) {
             html += `<p class="resource-report-intro">${esc(config.intro)}</p>`;
         }

@@ -3,16 +3,30 @@
     margin-bottom: 0.8em;
 }
 
-.resource-report-form .resource-report-toggles {
-    margin-top: 0.5em;
-}
-
-.resource-report-form .exe-checkbox-field {
-    display: block;
-    margin: 0.3em 0;
-    font-weight: normal;
-}
-
 .resource-report-form textarea.ideviceTextfield {
     width: 100%;
+}
+
+/* Inline row of the Resources / File type / Layout selects */
+.resource-report-form .resource-report-selects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em 1.5em;
+    align-items: flex-end;
+}
+
+.resource-report-form .resource-report-selects .exe-field {
+    margin-bottom: 0;
+}
+
+/* Toggles live inside the collapsible "Display options" group and lay out as a
+   responsive grid so they wrap cleanly instead of spilling out of the fieldset. */
+.resource-report-form .resource-report-toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.4em 1.2em;
+}
+
+.resource-report-form .resource-report-toggle {
+    margin: 0;
 }

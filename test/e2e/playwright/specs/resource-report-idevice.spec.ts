@@ -1,5 +1,12 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, gotoWorkarea, selectFirstPage, addIdevice, saveIdevice } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    gotoWorkarea,
+    selectFirstPage,
+    addIdevice,
+    editIdevice,
+    saveIdevice,
+} from '../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -59,5 +66,43 @@ test.describe('Resource Report iDevice', () => {
         await expect(node.locator('.resource-report-view')).toBeVisible();
         await expect(node.locator('.resource-report-download')).toBeVisible();
         await expect(node).toContainText('sample-2.jpg');
+    });
+
+    test('lets the author turn off the View and Download links', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Resource Report Links Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await uploadAssetViaFileManager(page, 'test/fixtures/sample-2.jpg');
+
+        await selectFirstPage(page);
+        await addIdevice(page, 'resource-report');
+        await page.locator('#resourceReportForm').waitFor({ state: 'visible', timeout: 15000 });
+
+        const ideviceId = (await page
+            .locator('#node-content article .idevice_node.resource-report')
+            .first()
+            .getAttribute('id')) as string;
+        expect(ideviceId).toBeTruthy();
+
+        // Save once so both links render, then re-edit and disable them.
+        await saveIdevice(page, ideviceId);
+        const node = page.locator(`.idevice_node[id="${ideviceId}"]`);
+        await expect(node.locator('.resource-report-view')).toBeVisible();
+        await expect(node.locator('.resource-report-download')).toBeVisible();
+
+        await editIdevice(page, ideviceId);
+        // The toggles live inside the collapsible "Display options" group; the
+        // checkboxes are still present in the DOM even while it is collapsed.
+        await node.locator('#rrShowViewLink').uncheck({ force: true });
+        await node.locator('#rrShowDownloadLink').uncheck({ force: true });
+        await saveIdevice(page, ideviceId);
+
+        await expect(node.locator('.resource-report-view')).toHaveCount(0);
+        await expect(node.locator('.resource-report-download')).toHaveCount(0);
+        await expect(node.locator('.resource-report-actions')).toHaveCount(0);
+        // The asset itself is still listed — only the links were removed.
+        await expect(node.locator('.resource-report-item')).toHaveCount(1);
     });
 });
