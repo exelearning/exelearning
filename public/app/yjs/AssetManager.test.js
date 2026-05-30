@@ -1958,6 +1958,72 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('asset reference scanning', () => {
+    // Build a mock Y.Doc: one page → one block → N components.
+    // Each component is { html, props } searched for asset:// references.
+    function setMockYDoc(components) {
+      const compMaps = components.map(c => ({
+        get: k =>
+            k === 'htmlContent'
+                ? c.html
+                : k === 'jsonProperties'
+                  ? c.props
+                  : k === 'properties'
+                    ? c.properties
+                    : undefined,
+      }));
+      const arr = items => ({ length: items.length, get: i => items[i] });
+      const componentsArr = arr(compMaps);
+      const blockMap = { get: k => (k === 'components' ? componentsArr : undefined) };
+      const pageMap = { get: k => (k === 'blocks' ? arr([blockMap]) : undefined) };
+      const ydoc = { getArray: name => (name === 'navigation' ? arr([pageMap]) : null) };
+      global.window.eXeLearning = { app: { project: { _yjsBridge: { documentManager: { ydoc } } } } };
+    }
+
+    afterEach(() => {
+      delete global.window.eXeLearning;
+    });
+
+    it('countAssetReferences counts components referencing the asset', () => {
+      setMockYDoc([
+        { html: '<img src="asset://a1.jpg">' },
+        { html: '<p>no assets here</p>' },
+        { props: { gallery: [{ img: 'asset://a1.jpg' }] } },
+      ]);
+      expect(assetManager.countAssetReferences('a1')).toBe(2);
+      expect(assetManager.countAssetReferences('missing')).toBe(0);
+      expect(assetManager.countAssetReferences('')).toBe(0);
+    });
+
+    it('counts references in the legacy properties field', () => {
+      setMockYDoc([{ properties: { src: 'asset://a1.png' } }]);
+      expect(assetManager.countAssetReferences('a1')).toBe(1);
+    });
+
+    it('counts a component only once when referenced in both html and props', () => {
+      setMockYDoc([{ html: '<img src="asset://a1.jpg">', props: { img: 'asset://a1.jpg' } }]);
+      expect(assetManager.countAssetReferences('a1')).toBe(1);
+    });
+
+    it('getReferencedAssetIds collects all referenced ids (extension stripped)', () => {
+      setMockYDoc([
+        { html: '<img src="asset://a1.jpg"> <a href="asset://b2.pdf">x</a>' },
+        { props: { url: 'asset://c3' } },
+      ]);
+      const ids = assetManager.getReferencedAssetIds();
+      expect(ids.has('a1')).toBe(true);
+      expect(ids.has('b2')).toBe(true);
+      expect(ids.has('c3')).toBe(true);
+      expect(ids.has('zzz')).toBe(false);
+    });
+
+    it('returns safe defaults when no project Y.Doc is available', () => {
+      delete global.window.eXeLearning;
+      expect(assetManager.countAssetReferences('a1')).toBe(0);
+      expect(assetManager.getReferencedAssetIds().size).toBe(0);
+    });
+  });
+
   describe('getImageDimensions', () => {
     it('returns dimensions for image', async () => {
       // (In-memory storage - no db initialization needed)
