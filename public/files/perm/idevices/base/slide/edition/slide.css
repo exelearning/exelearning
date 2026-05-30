@@ -414,6 +414,22 @@
     outline-offset: -2px;
 }
 
+.exe-slide-unsupported-banner {
+    margin: 8px 8px 0;
+    padding: 10px 12px;
+    border: 1px solid #d97706;
+    border-radius: var(--slide-radius);
+    background: #fef3c7;
+    color: #78350f;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.exe-slide-view-toggle[aria-disabled='true'] {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
 /* ── Code panel (textarea overlay) ───────────────────────────────────── */
 .exe-slide-code-panel {
     position: absolute;

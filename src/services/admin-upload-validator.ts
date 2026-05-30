@@ -234,31 +234,36 @@ export function createAdminUploadValidator(deps: AdminUploadValidatorDeps = {}):
     };
 
     /**
-     * Extract theme to target directory
+     * Extract theme to target directory.
+     *
+     * Defends against Zip Slip: every ZIP entry path is normalized (backslashes
+     * to forward slashes, since on POSIX `\` is a valid filename character that
+     * archive crafters can abuse) and resolved against the target directory.
+     * Any entry whose resolved path falls outside the target directory is
+     * rejected before any write happens.
      */
     const extractTheme = async (buffer: Buffer, targetDir: string): Promise<string[]> => {
         const uint8Data = new Uint8Array(buffer);
         const unzipped = fflate.unzipSync(uint8Data);
         const extractedFiles: string[] = [];
 
-        // Ensure target directory exists
         await fs.ensureDir(targetDir);
+        const resolvedTargetDir = path.resolve(targetDir);
 
-        // Extract all files
         for (const [relativePath, data] of Object.entries(unzipped)) {
-            // Skip directories (they end with /)
+            const safeRelativePath = relativePath.replace(/\\/g, '/');
+            const targetPath = path.resolve(resolvedTargetDir, safeRelativePath);
+
+            if (targetPath !== resolvedTargetDir && !targetPath.startsWith(resolvedTargetDir + path.sep)) {
+                throw new Error(`Security error: theme entry escapes target directory: ${relativePath}`);
+            }
+
             if (relativePath.endsWith('/')) {
-                await fs.ensureDir(path.join(targetDir, relativePath));
+                await fs.ensureDir(targetPath);
                 continue;
             }
 
-            // Build target path
-            const targetPath = path.join(targetDir, relativePath);
-
-            // Ensure parent directory exists
             await fs.ensureDir(path.dirname(targetPath));
-
-            // Write file
             await fs.writeFile(targetPath, Buffer.from(data));
             extractedFiles.push(relativePath);
         }

@@ -10,6 +10,8 @@ import { getFilesDir } from '../services/file-helper';
 import { getAppVersion } from '../utils/version';
 import { getBasePath } from '../utils/basepath.util';
 import type { IdeviceFileUploadRequest } from './types/request-payloads';
+import { withJwtAuth } from '../utils/route-auth';
+import { requireAuth } from '../utils/guards';
 
 /**
  * Response data for file upload
@@ -249,6 +251,7 @@ function scanIdevices(basePath: string): IdeviceConfig[] {
  * iDevices routes
  */
 export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
+    .use(withJwtAuth())
     // GET /api/idevices/installed - Get list of installed iDevices
     .get('/api/idevices/installed', () => {
         const baseIdevices = scanIdevices(IDEVICES_BASE_PATH);
@@ -376,7 +379,12 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     })
 
     // POST /api/idevices/upload/file/resources - Upload file resource (base64)
-    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request }) => {
+    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request, jwtPayload }) => {
+        const authErr = requireAuth(jwtPayload);
+        if (authErr) {
+            set.status = authErr.status;
+            return { error: authErr.error, message: authErr.message };
+        }
         // Debug: log what we're receiving
         console.log('[idevices/upload] Content-Type:', request.headers.get('content-type'));
         console.log('[idevices/upload] Body type:', typeof body);
@@ -502,7 +510,12 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     })
 
     // POST /api/idevices/upload/large/file/resources - Upload large file resource (FormData)
-    .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set }) => {
+    .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set, jwtPayload }) => {
+        const authErr = requireAuth(jwtPayload);
+        if (authErr) {
+            set.status = authErr.status;
+            return { error: authErr.error, message: authErr.message };
+        }
         const data = body as IdeviceFileUploadRequest;
         const odeIdeviceId = data.odeIdeviceId;
         const file = data.file;

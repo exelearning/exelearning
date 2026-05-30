@@ -63,6 +63,8 @@ function buildMockEditorApi(overrides = {}) {
         getSvgString: vi.fn(() => '<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
         getDimensions: vi.fn(() => ({ width: 1280, height: 720 })),
         getBackground: vi.fn(() => '#ffffff'),
+        canSave: vi.fn(() => true),
+        getUnreadPayload: vi.fn(() => null),
         setDimensions: vi.fn(),
         setBackground: vi.fn(),
         destroy: vi.fn(),
@@ -164,6 +166,36 @@ describe('loadBundle', () => {
         expect(errEl.textContent).toContain('Could not load');
     });
 
+    it('clears the cached bundle promise when the script loads but the global is missing', async () => {
+        delete global.window.__slideEditorInit;
+
+        const createElement = document.createElement.bind(document);
+        let scriptCount = 0;
+        vi.spyOn(document, 'createElement').mockImplementation(tag => {
+            if (tag === 'script') {
+                scriptCount++;
+                const script = { onload: null, onerror: null, type: '', src: '' };
+                // Resolve onload, but never set __slideEditorInit — simulates
+                // a corrupted or partially shipped bundle.
+                setTimeout(() => script.onload && script.onload(), 0);
+                return script;
+            }
+            return createElement(tag);
+        });
+        vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
+
+        $exeDevice.init(container, null, '/path/');
+        await new Promise(r => setTimeout(r, 20));
+        // Cache must NOT keep a stale resolved promise — second mount should
+        // be allowed to retry, not silently fail forever.
+        expect(global.window.__slideBundlePromise).toBeUndefined();
+
+        const c2 = buildContainerMock();
+        $exeDevice.init(c2, null, '/path/');
+        await new Promise(r => setTimeout(r, 20));
+        expect(scriptCount).toBeGreaterThan(1);
+    });
+
     it('reuses existing __slideBundlePromise for concurrent inits', async () => {
         delete global.window.__slideEditorInit;
         let resolveScript;
@@ -257,6 +289,26 @@ describe('save (after editor mount)', () => {
     it('includes svg snapshot from the editor', async () => {
         await initEditor(null);
         expect($exeDevice.save().svg).toContain('<svg');
+    });
+
+    it('refuses to save while code changes have not been applied to the canvas', async () => {
+        mockApi = buildMockEditorApi({ canSave: vi.fn(() => false) });
+        global.window.__slideEditorInit = { mount: vi.fn(() => mockApi) };
+        $exeDevice.init(container, null, '/path/');
+        await new Promise(r => setTimeout(r, 0));
+
+        expect($exeDevice.save()).toBe(false);
+        expect(mockApi.getFabricJSON).not.toHaveBeenCalled();
+        expect(mockApi.getSvgString).not.toHaveBeenCalled();
+    });
+
+    it('returns the original payload verbatim when the editor reports an unread future version', async () => {
+        const future = { version: 99, engine: 'fabric', fabric: { mystery: true }, svg: '<svg data-v="99"/>' };
+        mockApi = buildMockEditorApi({ getUnreadPayload: vi.fn(() => future) });
+        global.window.__slideEditorInit = { mount: vi.fn(() => mockApi) };
+        $exeDevice.init(container, future, '/path/');
+        await new Promise(r => setTimeout(r, 0));
+        expect($exeDevice.save()).toEqual(future);
     });
 
     it('passes previousData to mount verbatim', async () => {
