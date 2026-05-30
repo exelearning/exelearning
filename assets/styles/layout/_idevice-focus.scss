@@ -107,10 +107,13 @@ body.exe-idevice-focus-editing {
     }
 
     /* Visible + accessible "disabled" affordance for global header controls.
-     * Authoritative blocking still lives in checkOpenIdevice(); this is UX only. */
+     * We deliberately do NOT set `pointer-events: none`: the click must still
+     * reach the existing checkOpenIdevice() guard (which explains, via an alert,
+     * that the open iDevice must be saved/discarded first) — the same behaviour
+     * as outside focus mode. Blocking pointer events would also make the
+     * controls unactionable for tooling. This is a visual + a11y cue only. */
     .exe-disabled-during-focus {
         opacity: 0.5;
-        pointer-events: none;
         cursor: not-allowed;
     }
 

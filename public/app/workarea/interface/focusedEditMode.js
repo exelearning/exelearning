@@ -167,9 +167,14 @@ export default class FocusedEditMode {
     }
 
     /**
-     * Toggle the visible/accessible disabled state on the global header
-     * controls. Uses `aria-disabled` + a class (never the `disabled` attribute,
-     * which `saveButton.js` manages itself during a save).
+     * Mark the global header controls as unavailable while an iDevice is open.
+     *
+     * This is a visual + tooltip cue only (a dimmed class and an explanatory
+     * `title`). We intentionally do NOT set `aria-disabled` or the `disabled`
+     * attribute: the control must stay clickable so the existing
+     * `checkOpenIdevice()` guard can show its "save or discard first" alert,
+     * exactly as outside focus mode. (`aria-disabled`/`disabled` would also make
+     * the control unactionable for automated tooling.)
      *
      * @param {boolean} disabled
      */
@@ -179,14 +184,12 @@ export default class FocusedEditMode {
             const el = document.getElementById(id);
             if (!el) return;
             if (disabled) {
-                el.setAttribute('aria-disabled', 'true');
                 el.classList.add(CONTROL_DISABLED_CLASS);
                 if (el.dataset.exeFocusOriginalTitle === undefined) {
                     el.dataset.exeFocusOriginalTitle = el.getAttribute('title') || '';
                 }
                 el.setAttribute('title', message);
             } else {
-                el.removeAttribute('aria-disabled');
                 el.classList.remove(CONTROL_DISABLED_CLASS);
                 if (el.dataset.exeFocusOriginalTitle !== undefined) {
                     el.setAttribute('title', el.dataset.exeFocusOriginalTitle);

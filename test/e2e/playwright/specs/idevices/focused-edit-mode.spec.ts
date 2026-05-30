@@ -101,11 +101,11 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         // The edited node is marked as the focused surface.
         await expect(page.locator(`.idevice_node[id="${ideviceId}"]`)).toHaveClass(new RegExp(NODE_CLASS));
 
-        // Global save is visibly + accessibly disabled (but not via the
-        // `disabled` attribute, which saveButton.js owns).
+        // Global save shows a dimmed "unavailable" cue + tooltip while editing
+        // (it stays clickable so the existing checkOpenIdevice alert can fire).
         const save = page.locator('#head-top-save-button');
-        await expect(save).toHaveAttribute('aria-disabled', 'true');
         await expect(save).toHaveClass(/exe-disabled-during-focus/);
+        await expect(save).toHaveAttribute('title', 'Save or discard the open iDevice before saving the project.');
 
         // The bottom quick toolbar is hidden during focused editing.
         await expect(page.locator('#idevices-bottom')).toBeHidden();
@@ -156,7 +156,7 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         await saveIdevice(page, ideviceId);
 
         await waitForFocusInactive(page);
-        await expect(page.locator('#head-top-save-button')).not.toHaveAttribute('aria-disabled', 'true');
+        await expect(page.locator('#head-top-save-button')).not.toHaveClass(/exe-disabled-during-focus/);
         await expect(page.locator(`.idevice_node[id="${ideviceId}"]`)).not.toHaveClass(new RegExp(NODE_CLASS));
     });
 

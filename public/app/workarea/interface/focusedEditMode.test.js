@@ -101,14 +101,15 @@ describe('FocusedEditMode', () => {
             ).toBe(true);
         });
 
-        it('disables global controls with aria-disabled and a title, not the disabled attribute', () => {
+        it('marks global controls with a dim class + tooltip, never aria-disabled/disabled', () => {
             const save = document.getElementById('head-top-save-button');
             save.setAttribute('disabled', 'disabled'); // emulate saveButton.js mid-save
             mode.enter(document.getElementById('idevice-1'));
 
-            expect(save.getAttribute('aria-disabled')).toBe('true');
             expect(save.classList.contains('exe-disabled-during-focus')).toBe(true);
-            // The module must never clear the disabled attribute it doesn't own.
+            // Must NOT block actionability: no aria-disabled, and never touch the
+            // `disabled` attribute it does not own (kept here only as a fixture).
+            expect(save.hasAttribute('aria-disabled')).toBe(false);
             expect(save.getAttribute('disabled')).toBe('disabled');
             expect(save.getAttribute('title')).toBe(
                 'Save or discard the open iDevice before saving the project.'
