@@ -78,9 +78,7 @@ test.describe('File Manager - centralized asset metadata', () => {
         // Search by description finds the image.
         await page.locator('#modalFileManager .media-library-search').fill('mountain');
         await page.waitForTimeout(400);
-        await expect(
-            page.locator('#modalFileManager .media-library-item:not(.media-library-folder)'),
-        ).toHaveCount(1);
+        await expect(page.locator('#modalFileManager .media-library-item:not(.media-library-folder)')).toHaveCount(1);
 
         // Clear search, reopen the panel and confirm persistence.
         await page.locator('#modalFileManager .media-library-search').fill('');
