@@ -474,6 +474,35 @@ describe('adaptative-quiz edition', () => {
             });
             expect(out.typeSelect).toBe(1);
         });
+
+        it('preserves image author and alt text when loading saved data', () => {
+            const out = idevice.normalizeQuestion({
+                question: 'Look',
+                type: 1,
+                typeSelect: 0,
+                url: 'pic.png',
+                author: 'Jane Doe',
+                alt: 'A red flower',
+                numberOptions: 2,
+                options: [{ text: 'A' }, { text: 'B' }],
+                difficulty: 2,
+            });
+            expect(out.author).toBe('Jane Doe');
+            expect(out.alt).toBe('A red flower');
+        });
+
+        it('defaults author and alt to empty strings when absent', () => {
+            const out = idevice.normalizeQuestion({
+                question: 'Q',
+                type: 0,
+                typeSelect: 0,
+                numberOptions: 2,
+                options: [{ text: 'A' }, { text: 'B' }],
+                difficulty: 2,
+            });
+            expect(out.author).toBe('');
+            expect(out.alt).toBe('');
+        });
     });
 
     describe('save', () => {
@@ -1095,10 +1124,13 @@ describe('adaptative-quiz edition', () => {
                         <input type="radio" name="adqtypeselect" value="0" id="adaptativeQuizTypeSelect" checked />
                         <input type="radio" name="adqtypeselect" value="1" id="adaptativeQuizTypeOrder" />
                         <input type="radio" name="adqtypeselect" value="2" id="adaptativeQuizTypeWord" />
-                        <input type="radio" name="adqtype" value="0" checked />
+                        <input type="radio" name="adqtype" value="0" id="adaptativeQuizMediaNormal" checked />
+                        <input type="radio" name="adqtype" value="1" id="adaptativeQuizMediaImage" />
                         <input type="radio" name="adqnumber" value="4" checked />
                         <select id="adaptativeQuizDifficulty"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
                         <input id="adaptativeQuizEURLImage" value="" />
+                        <input id="adaptativeQuizEAuthor" value="" />
+                        <input id="adaptativeQuizEAlt" value="" />
                         <input id="adaptativeQuizAudio-question" value="" />
                         <input id="adaptativeQuizEQuestion" value="Q" />
                         <input id="adaptativeQuizEOption0" value="A" />
@@ -1197,6 +1229,36 @@ describe('adaptative-quiz edition', () => {
             expect(q.audio).toBe('word.mp3');
             expect(q.solutionWord).toBe('answer');
             expect(q.solutionWordAudio).toBe('sol.mp3');
+        });
+
+        it('getCuestionDefault includes empty author and alt fields', () => {
+            const q = idevice.getCuestionDefault();
+            expect(q.author).toBe('');
+            expect(q.alt).toBe('');
+        });
+
+        it('readQuestionFromDom captures author and alt when media type is image', () => {
+            document.querySelector('#adaptativeQuizMediaImage').checked = true;
+            document.querySelector('#adaptativeQuizMediaNormal').checked = false;
+            document.querySelector('#adaptativeQuizEURLImage').value = 'pic.png';
+            document.querySelector('#adaptativeQuizEAuthor').value = 'Jane Doe';
+            document.querySelector('#adaptativeQuizEAlt').value = 'A red flower';
+            const q = idevice.readQuestionFromDom();
+            expect(q.type).toBe(1);
+            expect(q.url).toBe('pic.png');
+            expect(q.author).toBe('Jane Doe');
+            expect(q.alt).toBe('A red flower');
+        });
+
+        it('readQuestionFromDom discards author and alt when media type is not image', () => {
+            document.querySelector('#adaptativeQuizMediaNormal').checked = true;
+            document.querySelector('#adaptativeQuizMediaImage').checked = false;
+            document.querySelector('#adaptativeQuizEAuthor').value = 'Jane Doe';
+            document.querySelector('#adaptativeQuizEAlt').value = 'A red flower';
+            const q = idevice.readQuestionFromDom();
+            expect(q.type).toBe(0);
+            expect(q.author).toBe('');
+            expect(q.alt).toBe('');
         });
 
         it('migrates legacy typeSelect=3 (Test) to 0 with solutionMulti from solution', () => {

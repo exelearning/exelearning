@@ -80,6 +80,67 @@ describe('adaptative-quiz export', () => {
         });
     });
 
+    describe('image author and alt', () => {
+        it('renders the author centered below the image when provided', () => {
+            const html = adq.renderMedia({ msgs: {} }, 'pic.png', 'image', 'A red flower', null, 'Jane Doe');
+            expect(html).toContain('class="ADAPTATIVEQUIZ-Image"');
+            expect(html).toContain('alt="A red flower"');
+            expect(html).toContain('<div class="ADAPTATIVEQUIZ-ImageAuthor">Jane Doe</div>');
+            // The author caption sits after the image element.
+            expect(html.indexOf('<img')).toBeLessThan(html.indexOf('ADAPTATIVEQUIZ-ImageAuthor'));
+        });
+
+        it('omits the author caption when no author is provided', () => {
+            const html = adq.renderMedia({ msgs: {} }, 'pic.png', 'image', 'Alt', null, '');
+            expect(html).not.toContain('ADAPTATIVEQUIZ-ImageAuthor');
+        });
+
+        it('escapes the author text', () => {
+            const html = adq.renderMedia({ msgs: {} }, 'pic.png', 'image', 'Alt', null, '<b>x</b>');
+            expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
+            expect(html).not.toContain('<b>x</b>');
+        });
+
+        it('normalizeQuestions keeps author and alt for image questions and drops them otherwise', () => {
+            const out = adq.normalizeQuestions(
+                [
+                    {
+                        question: 'Look',
+                        type: 1,
+                        url: 'pic.png',
+                        author: 'Jane Doe',
+                        alt: 'A red flower',
+                        options: [{ text: 'A' }, { text: 'B' }],
+                        solution: 0,
+                        difficulty: 1,
+                    },
+                    {
+                        question: 'Text only',
+                        type: 0,
+                        author: 'Ignored',
+                        alt: 'Ignored',
+                        options: [{ text: 'A' }, { text: 'B' }],
+                        solution: 0,
+                        difficulty: 1,
+                    },
+                ],
+                3,
+            );
+            expect(out[0].author).toBe('Jane Doe');
+            expect(out[0].alt).toBe('A red flower');
+            expect(out[1].author).toBe('');
+            expect(out[1].alt).toBe('');
+        });
+
+        it('centers the image column and styles the author caption in CSS', () => {
+            const css = readFileSync(join(__dirname, 'adaptative-quiz.css'), 'utf-8');
+            const imageRule = css.match(/\.ADAPTATIVEQUIZ-Image\s*\{[\s\S]*?\}/)?.[0] || '';
+            const authorRule = css.match(/\.ADAPTATIVEQUIZ-ImageAuthor\s*\{[\s\S]*?\}/)?.[0] || '';
+            expect(imageRule).toContain('flex-direction: column;');
+            expect(authorRule).toContain('text-align: center;');
+        });
+    });
+
     describe('formatTime', () => {
         it('pads minutes and seconds below 10', () => {
             expect(adq.formatTime(0)).toBe('00:00');
@@ -189,6 +250,64 @@ describe('adaptative-quiz export', () => {
             expect(html).not.toContain('ADAPTATIVEQUIZ-BtnNext');
             expect(html).not.toContain('adaptativeQuizBtnNext-');
             expect(html).toContain('ADAPTATIVEQUIZ-BtnCheck');
+        });
+
+        it('gives every control button an explicit type="button" so it never acts as a submit', () => {
+            const data = {
+                questionsGame: [
+                    { question: 'Q1', options: [{ text: 'A' }, { text: 'B' }], solution: 0, difficulty: 1 },
+                ],
+                numRound: 1,
+                initialLevel: 2,
+            };
+            adq.options = adq.options || {};
+            adq.options['if-types'] = adq.updateConfig(data, 'if-types');
+            const html = adq.createInterface('if-types');
+            // No <button> may be left without an explicit type attribute.
+            expect(/<button(?![^>]*\btype=)/.test(html)).toBe(false);
+            expect(html).toContain('type="button" class="ADAPTATIVEQUIZ-BtnStart"');
+            expect(html).toContain('type="button" class="ADAPTATIVEQUIZ-BtnCheck"');
+            expect(html).toContain('type="button" class="ADAPTATIVEQUIZ-BtnNewGame"');
+        });
+    });
+
+    describe('answer group accessibility', () => {
+        function renderQuestion(id, question) {
+            document.body.innerHTML = `<div id="adaptativeQuizQuestionContainer-${id}"></div>`;
+            adq.options[id] = {
+                id,
+                questions: [question],
+                currentQuestionIndex: 0,
+                shuffle: false,
+                roundCount: 0,
+                msgs: adq.msgs,
+            };
+            adq.renderCurrentQuestion(id);
+            return document.getElementById(`adaptativeQuizQuestionContainer-${id}`).innerHTML;
+        }
+
+        it('names the select (checkbox) options group after the question text', () => {
+            const id = 'a11y-select';
+            const html = renderQuestion(id, {
+                typeSelect: 0,
+                question: 'Pick all',
+                options: [{ text: 'A' }, { text: 'B' }],
+                solutionMulti: [0],
+            });
+            const labelId = `adaptativeQuizQuestionText-${id}`;
+            expect(html).toContain(`class="ADAPTATIVEQUIZ-QuestionText" id="${labelId}"`);
+            expect(html).toContain(`role="group" aria-labelledby="${labelId}"`);
+        });
+
+        it('names the sort list after the question text', () => {
+            const id = 'a11y-sort';
+            const html = renderQuestion(id, {
+                typeSelect: 1,
+                question: 'Order them',
+                options: [{ text: 'A' }, { text: 'B' }],
+                solutionOrder: [1, 2],
+            });
+            expect(html).toContain(`aria-labelledby="adaptativeQuizQuestionText-${id}"`);
         });
     });
 
@@ -699,6 +818,55 @@ describe('adaptative-quiz export', () => {
                 .click();
 
             expect(playSound).toHaveBeenCalledWith('sounds/a.mp3');
+        });
+    });
+
+    describe('audio toggle playing-state sync', () => {
+        afterEach(() => {
+            delete global.$exeDevices;
+        });
+
+        it('clears is-playing when the clip ends so the next click plays again (no every-other-click dead zone)', () => {
+            const id = 'stemaudio';
+            let endedHandler = null;
+            const fakeAudio = {
+                addEventListener: (evt, cb) => {
+                    if (evt === 'ended') endedHandler = cb;
+                },
+            };
+            const media = {
+                playerAudio: null,
+                playSound: vi.fn(function () {
+                    // Mirror the real helper: build the audio element synchronously.
+                    media.playerAudio = fakeAudio;
+                }),
+                stopSound: vi.fn(function () {
+                    media.playerAudio = null;
+                }),
+            };
+            global.$exeDevices = { iDevice: { gamification: { media } } };
+            document.body.innerHTML = `
+                <div id="adaptativeQuizQuestionContainer-${id}">
+                    <button class="ADAPTATIVEQUIZ-AudioToggle ADAPTATIVEQUIZ-AudioToggle--stem" data-audio-url="stem.mp3"></button>
+                </div>
+            `;
+
+            adq.bindMediaToggle(id);
+            const btn = document.querySelector(`#adaptativeQuizQuestionContainer-${id} .ADAPTATIVEQUIZ-AudioToggle`);
+
+            btn.click();
+            expect(media.playSound).toHaveBeenCalledTimes(1);
+            expect(btn.classList.contains('is-playing')).toBe(true);
+
+            // The clip finishes on its own — the visual state must reset.
+            expect(typeof endedHandler).toBe('function');
+            endedHandler();
+            expect(btn.classList.contains('is-playing')).toBe(false);
+
+            // Next click plays again instead of being swallowed as a "stop".
+            btn.click();
+            expect(media.playSound).toHaveBeenCalledTimes(2);
+            expect(btn.classList.contains('is-playing')).toBe(true);
         });
     });
 

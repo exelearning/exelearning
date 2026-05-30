@@ -360,6 +360,16 @@ var $exeDevice = {
                                         <input type="text" class="exe-image-picker w-100 form-control me-0 ADQ-EImageInput" id="adaptativeQuizEURLImage"/>
                                         <a href="#" class="ADQ-ENavigationButton ADQ-EImageReload" id="adaptativeQuizEReloadImage" title="${_('Reload image')}" aria-label="${_('Reload image')}"><img src="${path}quextIEPlay.png" alt="${_('Reload image')}" class="ADQ-ENavigationButton" /></a>
                                     </div>
+                                    <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="adaptativeQuizEAuthorAlt">
+                                        <div class="w-50" id="adaptativeQuizEInputAuthor">
+                                            <label for="adaptativeQuizEAuthor" class="form-label mb-1">${_('Authorship')}</label>
+                                            <input id="adaptativeQuizEAuthor" type="text" class="form-control w-100 ADQ-EImageAuthor" />
+                                        </div>
+                                        <div class="w-50" id="adaptativeQuizEInputAlt">
+                                            <label for="adaptativeQuizEAlt" class="form-label mb-1">${_('Alternative text')}</label>
+                                            <input id="adaptativeQuizEAlt" type="text" class="form-control w-100 ADQ-EImageAlt" />
+                                        </div>
+                                    </div>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizEOptionsNumberDiv">
                                         <span>${_('Options Number')}:</span>
                                         <span class="ADQ-EInputNumbers d-flex align-items-center gap-2 flex-nowrap">
@@ -550,6 +560,8 @@ var $exeDevice = {
         type: 0,
         typeSelect: 0,
         url: '',
+        author: '',
+        alt: '',
         audio: '',
         question: '',
         numberOptions: 4,
@@ -599,10 +611,14 @@ var $exeDevice = {
 
         if (q.type === 1) {
             $('#adaptativeQuizInputImage').removeClass('d-none').addClass('d-flex');
+            $('#adaptativeQuizEAuthorAlt').removeClass('d-none').addClass('d-flex');
         } else {
             $('#adaptativeQuizInputImage').removeClass('d-flex').addClass('d-none');
+            $('#adaptativeQuizEAuthorAlt').removeClass('d-flex').addClass('d-none');
         }
         $('#adaptativeQuizEURLImage').val(q.url || '');
+        $('#adaptativeQuizEAuthor').val(q.author || '');
+        $('#adaptativeQuizEAlt').val(q.alt || '');
         this.updateImagePreview(q.url || '');
 
         // Populate both question structures (select/sort and word). The
@@ -1022,6 +1038,8 @@ var $exeDevice = {
         q.difficulty = parseInt($('#adaptativeQuizDifficulty').val()) || 1;
         if (this.LEVELS.indexOf(q.difficulty) === -1) q.difficulty = 1;
         q.url = q.type === 1 ? $('#adaptativeQuizEURLImage').val() || '' : '';
+        q.author = q.type === 1 ? $('#adaptativeQuizEAuthor').val() || '' : '';
+        q.alt = q.type === 1 ? $('#adaptativeQuizEAlt').val() || '' : '';
         if (q.typeSelect === 2) {
             // Word type reads its own dedicated inputs.
             q.audio = $('#adaptativeQuizAudio-word').val() || '';
@@ -1073,7 +1091,7 @@ var $exeDevice = {
 
     clearQuestion: function () {
         $(
-            '#adaptativeQuizEURLImage, #adaptativeQuizAudio-question, #adaptativeQuizEQuestion, #adaptativeQuizEWord, #adaptativeQuizAudio-word, #adaptativeQuizESolutionWord, #adaptativeQuizAudio-solutionWord',
+            '#adaptativeQuizEURLImage, #adaptativeQuizEAuthor, #adaptativeQuizEAlt, #adaptativeQuizAudio-question, #adaptativeQuizEQuestion, #adaptativeQuizEWord, #adaptativeQuizAudio-word, #adaptativeQuizESolutionWord, #adaptativeQuizAudio-solutionWord',
         ).val('');
         for (let k = 0; k < this.MAX_OPTIONS; k++) {
             $('#adaptativeQuizEOption' + k).val('');
@@ -1449,6 +1467,8 @@ var $exeDevice = {
             type: type === 1 ? 1 : 0,
             typeSelect: typeSelect,
             url: url,
+            author: source.author || '',
+            alt: source.alt || '',
             audio: source.audio || '',
             question: questionText,
             numberOptions: numberOptions,
@@ -1647,6 +1667,8 @@ var $exeDevice = {
             type: 0,
             typeSelect: 0,
             url: '',
+            author: '',
+            alt: '',
             audio: '',
             question: '',
             numberOptions: $exeDevice.MAX_OPTIONS,
@@ -1995,9 +2017,13 @@ var $exeDevice = {
             const type = parseInt($('input[name="adqtype"]:checked').val()) || 0;
             if (type === 1) {
                 $('#adaptativeQuizInputImage').removeClass('d-none').addClass('d-flex');
+                $('#adaptativeQuizEAuthorAlt').removeClass('d-none').addClass('d-flex');
             } else {
                 $('#adaptativeQuizInputImage').removeClass('d-flex').addClass('d-none');
+                $('#adaptativeQuizEAuthorAlt').removeClass('d-flex').addClass('d-none');
                 $('#adaptativeQuizEURLImage').val('');
+                $('#adaptativeQuizEAuthor').val('');
+                $('#adaptativeQuizEAlt').val('');
                 this.updateImagePreview('');
             }
         });

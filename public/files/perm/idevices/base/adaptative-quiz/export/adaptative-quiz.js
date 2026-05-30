@@ -238,6 +238,8 @@ var $adaptativequiz = {
                 type: type === 1 ? 1 : 0,
                 typeSelect: typeSelect,
                 url: this.resolveMediaUrl(url),
+                author: type === 1 ? source.author || '' : '',
+                alt: type === 1 ? source.alt || '' : '',
                 audio: this.resolveMediaUrl(source.audio || ''),
                 question: questionText,
                 numberOptions: options.length,
@@ -368,12 +370,12 @@ var $adaptativequiz = {
                     </div>
                     <div class="ADAPTATIVEQUIZ-StartGameDiv" id="adaptativeQuizStartGameDiv-${id}" style="display:none">
                         <p class="ADAPTATIVEQUIZ-Ready">${msgs.msgReady || 'Ready?'}</p>
-                        <button class="ADAPTATIVEQUIZ-BtnStart" id="adaptativeQuizBtnStart-${id}">${msgs.msgStart || 'Start'}</button>
+                        <button type="button" class="ADAPTATIVEQUIZ-BtnStart" id="adaptativeQuizBtnStart-${id}">${msgs.msgStart || 'Start'}</button>
                     </div>
                     <div class="ADAPTATIVEQUIZ-QuestionContainer" id="adaptativeQuizQuestionContainer-${id}"></div>
                     <div class="ADAPTATIVEQUIZ-ButtonsContainer" id="adaptativeQuizButtonsContainer-${id}">
-                        <button class="ADAPTATIVEQUIZ-BtnCheck" id="adaptativeQuizBtnCheck-${id}">${msgs.msgCheck || 'Check'}</button>
-                        <button class="ADAPTATIVEQUIZ-BtnNewGame" id="adaptativeQuizBtnNewGame-${id}" style="display:none">${msgs.msgPlayAgain || 'Play Again'}</button>
+                        <button type="button" class="ADAPTATIVEQUIZ-BtnCheck" id="adaptativeQuizBtnCheck-${id}">${msgs.msgCheck || 'Check'}</button>
+                        <button type="button" class="ADAPTATIVEQUIZ-BtnNewGame" id="adaptativeQuizBtnNewGame-${id}" style="display:none">${msgs.msgPlayAgain || 'Play Again'}</button>
                     </div>
                     <div class="ADAPTATIVEQUIZ-Report" id="adaptativeQuizReport-${id}" style="display:none" aria-live="polite"></div>
                     <div class="ADAPTATIVEQUIZ-Cubierta" id="adaptativeQuizCubierta-${id}" style="display:none">
@@ -553,7 +555,7 @@ var $adaptativequiz = {
         return -1;
     },
 
-    renderMedia: function (opts, url, kind, altText, variant) {
+    renderMedia: function (opts, url, kind, altText, variant, author) {
         if (!url) return '';
         const msgs = opts.msgs || {};
         if (kind === 'audio') {
@@ -568,7 +570,10 @@ var $adaptativequiz = {
             `;
         }
         const alt = altText || msgs.msgImageAlt || 'Illustration';
-        return `<div class="ADAPTATIVEQUIZ-Image"><img src="${this.escapeAttr(url)}" alt="${this.escapeAttr(alt)}" /></div>`;
+        const authorHtml = author
+            ? `<div class="ADAPTATIVEQUIZ-ImageAuthor">${this.escapeHtml(author)}</div>`
+            : '';
+        return `<div class="ADAPTATIVEQUIZ-Image"><img src="${this.escapeAttr(url)}" alt="${this.escapeAttr(alt)}" />${authorHtml}</div>`;
     },
 
     /**
@@ -716,14 +721,29 @@ var $adaptativequiz = {
                     // Fall through with the original URL — playSound will log.
                 }
             }
-            if (
+            const media =
                 typeof $exeDevices !== 'undefined' &&
                 $exeDevices.iDevice &&
                 $exeDevices.iDevice.gamification &&
-                $exeDevices.iDevice.gamification.media &&
-                typeof $exeDevices.iDevice.gamification.media.playSound === 'function'
-            ) {
-                $exeDevices.iDevice.gamification.media.playSound(url);
+                $exeDevices.iDevice.gamification.media
+                    ? $exeDevices.iDevice.gamification.media
+                    : null;
+            if (media && typeof media.playSound === 'function') {
+                media.playSound(url);
+                // `playSound` builds `media.playerAudio` synchronously (its
+                // body has no awaits). Without an "ended" listener the toggle's
+                // `is-playing` class stays set after the clip finishes on its
+                // own, so the next click is swallowed as a "stop" and audio
+                // only plays every other click. Clearing it on natural end
+                // keeps the visual state in sync. Manual stops pause the clip
+                // (no "ended" event), so this never double-fires.
+                if (media.playerAudio && typeof media.playerAudio.addEventListener === 'function') {
+                    media.playerAudio.addEventListener(
+                        'ended',
+                        () => $container.find('.ADAPTATIVEQUIZ-AudioToggle').removeClass('is-playing'),
+                        { once: true },
+                    );
+                }
             }
         };
 
@@ -781,7 +801,10 @@ var $adaptativequiz = {
                   : question.options.map((_, i) => i);
         opts.optionOrder = order;
 
-        const stemImage = question.type === 1 ? this.renderMedia(opts, question.url, 'image', question.question) : '';
+        const stemImage =
+            question.type === 1
+                ? this.renderMedia(opts, question.url, 'image', question.alt || question.question, null, question.author)
+                : '';
         const stemAudio = this.renderMedia(opts, question.audio, 'audio', null, 'stem');
 
         let html = `<div class="ADAPTATIVEQUIZ-QuestionMedia">${stemImage}</div>`;
@@ -789,7 +812,7 @@ var $adaptativequiz = {
             // Non-word types show the question stem above the answers.
             // Word-type renders its own (centered) layout below: hint cells,
             // definition, then input.
-            html += `<div class="ADAPTATIVEQUIZ-QuestionRow">${stemAudio}<div class="ADAPTATIVEQUIZ-QuestionText">${this.escapeHtml(question.question)}</div></div>`;
+            html += `<div class="ADAPTATIVEQUIZ-QuestionRow">${stemAudio}<div class="ADAPTATIVEQUIZ-QuestionText" id="adaptativeQuizQuestionText-${id}">${this.escapeHtml(question.question)}</div></div>`;
         }
 
         if (tSel === 2) {
@@ -818,7 +841,7 @@ var $adaptativequiz = {
             // the image off-screen on narrow viewports).
             const hasOptionAudio = order.some(origIndex => (question.options[origIndex] || {}).audio);
             const layoutClass = hasOptionAudio || stemImage ? ' ADAPTATIVEQUIZ-OptionsGrid' : '';
-            html += `<ol class="ADAPTATIVEQUIZ-Options ADAPTATIVEQUIZ-SortList${layoutClass}" data-type-select="1">`;
+            html += `<ol class="ADAPTATIVEQUIZ-Options ADAPTATIVEQUIZ-SortList${layoutClass}" data-type-select="1" aria-labelledby="adaptativeQuizQuestionText-${id}">`;
             for (let visualIndex = 0; visualIndex < order.length; visualIndex++) {
                 const origIndex = order[visualIndex];
                 const option = question.options[origIndex] || {};
@@ -848,7 +871,7 @@ var $adaptativequiz = {
             const hasOptionAudio = order.some(origIndex => (question.options[origIndex] || {}).audio);
             const layoutClass = hasOptionAudio || stemImage ? ' ADAPTATIVEQUIZ-OptionsGrid' : '';
             // Default to multi-select (checkbox) for tSel===0 and any unknown.
-            html += `<div class="ADAPTATIVEQUIZ-Options${layoutClass}" role="group" data-type-select="${tSel}">`;
+            html += `<div class="ADAPTATIVEQUIZ-Options${layoutClass}" role="group" aria-labelledby="adaptativeQuizQuestionText-${id}" data-type-select="${tSel}">`;
             const groupName = `adaptativeQuizAnswer-${id}`;
 
             for (let visualIndex = 0; visualIndex < order.length; visualIndex++) {
