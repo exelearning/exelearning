@@ -55,8 +55,9 @@ body.exe-idevice-focus-editing {
         flex-direction: column;
         overflow: hidden;
 
-        /* The block (section) title bar is not the iDevice being edited — hide
-         * it so the editor gets the full height and the focus is unambiguous. */
+        /* The block (section) header is not the iDevice being edited — hide it
+         * so the focused surface shows only the iDevice editor. Block-level
+         * actions (incl. the icon) are edited outside iDevice edition mode. */
         > .box-head {
             display: none;
         }

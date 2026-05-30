@@ -58,9 +58,7 @@ describe('FocusedEditMode', () => {
             return 0;
         });
         buildDom();
-        // Enabled by default in this suite so the enter/exit behaviour can be
-        // exercised; the isEnabled describe block overrides the flag per test.
-        window.eXeLearning = { config: { experimentalIdeviceFocusedEditMode: true } };
+        window.eXeLearning = { config: {} };
         mode = new FocusedEditMode(window.eXeLearning.app);
     });
 
@@ -72,82 +70,14 @@ describe('FocusedEditMode', () => {
         delete window.eXeLearning;
     });
 
-    describe('isEnabled', () => {
-        let originalLocalStorage;
-
-        beforeEach(() => {
-            // localStorage is not available in this test runner, so provide a
-            // minimal in-memory stub for the opt-in cases.
-            originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
-            const store = {};
-            Object.defineProperty(window, 'localStorage', {
-                configurable: true,
-                value: {
-                    getItem: k => (k in store ? store[k] : null),
-                    setItem: (k, v) => {
-                        store[k] = String(v);
-                    },
-                    removeItem: k => {
-                        delete store[k];
-                    },
-                },
-            });
-        });
-
-        afterEach(() => {
-            if (originalLocalStorage) {
-                Object.defineProperty(window, 'localStorage', originalLocalStorage);
-            } else {
-                delete window.localStorage;
-            }
-        });
-
-        it('is off by default when the flag is absent', () => {
-            window.eXeLearning.config = {};
-            expect(FocusedEditMode.isEnabled()).toBe(false);
-        });
-
-        it('is on when the config flag is explicitly true', () => {
-            window.eXeLearning.config.experimentalIdeviceFocusedEditMode = true;
-            expect(FocusedEditMode.isEnabled()).toBe(true);
-        });
-
-        it('is off when the config flag is explicitly false', () => {
-            window.eXeLearning.config.experimentalIdeviceFocusedEditMode = false;
-            expect(FocusedEditMode.isEnabled()).toBe(false);
-        });
-
-        it('can be opted in via localStorage when no config flag is set', () => {
-            window.eXeLearning.config = {};
-            window.localStorage.setItem('exe.experimentalIdeviceFocusedEditMode', '1');
-            expect(FocusedEditMode.isEnabled()).toBe(true);
-        });
-
-        it('config flag takes precedence over localStorage opt-in', () => {
-            window.eXeLearning.config.experimentalIdeviceFocusedEditMode = false;
-            window.localStorage.setItem('exe.experimentalIdeviceFocusedEditMode', '1');
-            expect(FocusedEditMode.isEnabled()).toBe(false);
-        });
-    });
-
     describe('init', () => {
-        it('does nothing when disabled by config', async () => {
-            window.eXeLearning.config.experimentalIdeviceFocusedEditMode = false;
-            mode.init();
-            expect(mode.observer).toBeNull();
-
-            setEditing(true);
-            await flushObserver();
-            expect(document.body.classList.contains('exe-idevice-focus-editing')).toBe(false);
-        });
-
         it('does nothing when #node-content is missing', () => {
             document.getElementById('node-content').remove();
             mode.init();
             expect(mode.observer).toBeNull();
         });
 
-        it('starts observing when enabled', () => {
+        it('always starts observing when #node-content is present', () => {
             mode.init();
             expect(mode.observer).not.toBeNull();
         });
@@ -200,12 +130,12 @@ describe('FocusedEditMode', () => {
             expect(mode.savedScrollTop).toBe(250);
         });
 
-        it('moves focus into the focused node when triggered from outside it', () => {
-            const node = document.getElementById('idevice-1');
-            document.getElementById('editIdevice-1').focus();
-            // previousFocus (edit button) is inside the node -> focus is NOT stolen.
-            mode.enter(node);
-            expect(node.contains(document.activeElement)).toBe(true);
+        it('does not steal focus on enter (the editor manages its own focus)', () => {
+            const editButton = document.getElementById('editIdevice-1');
+            editButton.focus();
+            mode.enter(document.getElementById('idevice-1'));
+            // Focus is left where it was so TinyMCE init is not disrupted.
+            expect(document.activeElement).toBe(editButton);
         });
     });
 

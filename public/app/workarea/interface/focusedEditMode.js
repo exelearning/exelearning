@@ -42,9 +42,8 @@ const CONTROL_IDS = [
  *    accessible explanation.
  *
  * All layout is driven by CSS keyed on `body.exe-idevice-focus-editing`
- * (assets/styles/layout/_idevice-focus.scss). The feature is on by default and
- * can be disabled at runtime with
- * `window.eXeLearning.config.experimentalIdeviceFocusedEditMode = false`.
+ * (assets/styles/layout/_idevice-focus.scss). This is the final editing
+ * behaviour: it is always active and not configurable.
  *
  * Related issues: #1811, #1411.
  */
@@ -64,35 +63,10 @@ export default class FocusedEditMode {
     }
 
     /**
-     * Whether the experiment is active.
-     *
-     * Off by default so the existing editing behaviour is unchanged. Opt in
-     * either by setting `window.eXeLearning.config.experimentalIdeviceFocusedEditMode`
-     * (boolean) or, for quick trials/tests, the localStorage key
-     * `exe.experimentalIdeviceFocusedEditMode = '1'`.
-     *
-     * @returns {boolean}
-     */
-    static isEnabled() {
-        const cfg = window.eXeLearning?.config?.experimentalIdeviceFocusedEditMode;
-        if (typeof cfg === 'boolean') return cfg;
-        try {
-            return window.localStorage.getItem('exe.experimentalIdeviceFocusedEditMode') === '1';
-        } catch {
-            return false;
-        }
-    }
-
-    /**
-     * Start observing iDevice edit-mode transitions. No-op when disabled or
-     * when the content node is not present.
+     * Start observing iDevice edit-mode transitions. No-op only when the
+     * content node is not present (e.g. a page without the workarea canvas).
      */
     init() {
-        if (!FocusedEditMode.isEnabled()) {
-            Logger.log('[FocusedEditMode] disabled via config; not initialising');
-            return;
-        }
-
         this.nodeContent = document.querySelector('#node-content');
         if (!this.nodeContent) {
             Logger.log('[FocusedEditMode] #node-content not found; not initialising');
@@ -148,12 +122,10 @@ export default class FocusedEditMode {
         this._setGlobalControlsDisabled(true);
         this._announce(_('Editing iDevice. Other actions are disabled until you save or discard.'));
 
-        // Move focus into the focused surface, but never steal it from a field
-        // the user just clicked into (e.g. double-click straight into TinyMCE).
-        if (!node.contains(this.previousFocus)) {
-            node.setAttribute('tabindex', '-1');
-            node.focus({ preventScroll: true });
-        }
+        // Intentionally do NOT move focus here. The editor (e.g. TinyMCE) manages
+        // its own focus as it initialises; stealing focus to the node could
+        // disrupt that for freshly-added iDevices. The polite live region above
+        // already announces the focused-editing state to assistive tech.
     }
 
     /**

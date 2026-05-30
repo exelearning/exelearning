@@ -8,13 +8,12 @@ import {
 } from '../../helpers/workarea-helpers';
 
 /**
- * E2E tests for the experimental focused full-workarea iDevice edit mode
- * (Refs #1811, #1411).
+ * E2E tests for the focused full-workarea iDevice edit mode (Refs #1811, #1411).
  *
- * Verifies that entering iDevice edit mode applies the focused layout/state,
- * that every exit path (save / discard / delete) tears it down, that the outer
- * workarea is locked while the editor body fills the workarea, and that the
- * experiment can be disabled at runtime.
+ * This is the final, always-on editing behaviour. The tests verify that
+ * entering iDevice edit mode applies the focused layout/state, that every exit
+ * path (save / discard / delete) tears it down, that the editor fills the
+ * workarea, and that the outer workarea scroll is locked while editing.
  */
 
 const BODY_CLASS = 'exe-idevice-focus-editing';
@@ -71,20 +70,6 @@ async function confirmModal(page): Promise<void> {
     await confirmBtn.click();
 }
 
-/**
- * Opt into the experiment (it is OFF by default). Must be called before
- * navigating to the workarea so the flag is present when the app boots.
- */
-async function enableFocusMode(page): Promise<void> {
-    await page.addInitScript(() => {
-        try {
-            window.localStorage.setItem('exe.experimentalIdeviceFocusedEditMode', '1');
-        } catch {
-            /* ignore */
-        }
-    });
-}
-
 async function waitForFocusActive(page): Promise<void> {
     await page.waitForFunction(cls => document.body.classList.contains(cls), BODY_CLASS, {
         timeout: 10000,
@@ -103,7 +88,6 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         createProject,
     }) => {
         const page = authenticatedPage;
-        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - enter');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -134,7 +118,6 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
 
     test('the focused editor fills the content workarea', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
-        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - layout');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -160,7 +143,6 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         createProject,
     }) => {
         const page = authenticatedPage;
-        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - save');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -180,7 +162,6 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
 
     test('discarding changes exits focused mode', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
-        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - discard');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -206,7 +187,6 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
 
     test('deleting the iDevice exits focused mode', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
-        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - delete');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -224,20 +204,22 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         await waitForFocusInactive(page);
     });
 
-    test('is off by default (no opt-in) and does not alter editing', async ({ authenticatedPage, createProject }) => {
+    test('locks the outer workarea scroll while editing', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
-        // NOTE: enableFocusMode() is intentionally NOT called here.
-        const projectUuid = await createProject(page, 'Focused Edit - disabled');
+        const projectUuid = await createProject(page, 'Focused Edit - scroll lock');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         await addTextIdevice(page);
         const ideviceId = await getTextIdeviceId(page);
         await ensureEditing(page, ideviceId);
+        await waitForFocusActive(page);
 
-        // Focused state must NOT be applied, and global controls stay enabled.
-        await page.waitForTimeout(500);
-        expect(await page.evaluate(cls => document.body.classList.contains(cls), BODY_CLASS)).toBe(false);
-        await expect(page.locator('#head-top-save-button')).not.toHaveAttribute('aria-disabled', 'true');
+        // The scroll container is locked while editing; only the editor body scrolls.
+        const overflowY = await page.evaluate(() => {
+            const el = document.getElementById('node-content-container');
+            return el ? getComputedStyle(el).overflowY : '';
+        });
+        expect(overflowY).toBe('hidden');
     });
 });
