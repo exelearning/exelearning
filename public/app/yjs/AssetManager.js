@@ -575,22 +575,33 @@ class AssetManager {
    * @returns {Promise<boolean>} True if the asset existed and was updated locally
    */
   async updateAssetMetadata(assetId, patch) {
-    const metadata = this.getAssetMetadata(assetId);
-    if (!metadata) {
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap || !assetsMap.get(assetId)) {
       Logger.warn(`[AssetManager] updateAssetMetadata: asset ${assetId} not found`);
       return false;
     }
 
     const ALLOWED = ['description', 'altText', 'title', 'license', 'author'];
-    const merged = { ...metadata };
-    for (const key of ALLOWED) {
-      if (patch[key] !== undefined) {
-        merged[key] = typeof patch[key] === 'string' ? patch[key].trim() : patch[key];
-      }
-    }
 
-    // Update Yjs (instant sync to collaborators + persisted with the document)
-    this.setAssetMetadata(assetId, merged);
+    // Atomic read-modify-write inside a Yjs transaction: re-read the *current* entry
+    // and merge only the patched fields, so a debounced flush never clobbers fields a
+    // remote collaborator changed in the meantime (field-level update semantics).
+    const applyMerge = () => {
+      const current = assetsMap.get(assetId);
+      if (!current) return;
+      const merged = { ...current };
+      for (const key of ALLOWED) {
+        if (patch[key] !== undefined) {
+          merged[key] = typeof patch[key] === 'string' ? patch[key].trim() : patch[key];
+        }
+      }
+      this.setAssetMetadata(assetId, merged);
+    };
+    if (assetsMap.doc?.transact) {
+      assetsMap.doc.transact(applyMerge);
+    } else {
+      applyMerge();
+    }
     Logger.log(`[AssetManager] Updated metadata for ${assetId.substring(0, 8)}... in Yjs`);
 
     // Best-effort server persistence so the DB/API/CLI/search stay in sync.

@@ -58,55 +58,95 @@ describe('ModalFilemanager', () => {
         </div>
       </div>
       <div class="modal-body">
+        <div class="media-library-toolbar">
+          <button class="media-library-upload-btn">Upload</button>
+          <input class="media-library-upload-input" type="file">
+          <div class="media-library-view-btn" data-view="grid"></div>
+          <div class="media-library-view-btn" data-view="list"></div>
+          <div class="media-library-sort-controls">
+            <select class="media-library-sort">
+              <option value="name-asc">name-asc</option>
+              <option value="size-asc">size-asc</option>
+              <option value="type-asc">type-asc</option>
+              <option value="type-desc">type-desc</option>
+            </select>
+          </div>
+          <div class="media-library-filter-controls">
+            <select class="media-library-filter">
+              <option value="">All</option>
+            </select>
+          </div>
+          <div class="media-library-refcount-toggle">
+            <input type="checkbox" class="media-library-show-refcount" id="media-library-show-refcount">
+          </div>
+        </div>
         <div class="media-library-main">
+          <div class="media-library-nav-bar">
+            <div class="media-library-breadcrumbs"></div>
+            <div class="media-library-file-count"><span class="media-library-count-value">0</span> files</div>
+          </div>
           <div class="media-library-empty"></div>
           <div class="media-library-grid"></div>
           <div class="media-library-list-container" style="display:none;"><table class="media-library-list"><thead><th data-sort="name"></th></thead><tbody></tbody></table></div>
         </div>
         <div class="media-library-sidebar">
+          <button class="media-library-sheet-close" aria-label="Close"><span class="exe-icon">expand_more</span></button>
           <div class="media-library-sidebar-empty"></div>
-          <div class="media-library-sidebar-content"></div>
-        </div>
-        <button class="media-library-upload-btn">Upload</button>
-        <input class="media-library-upload-input" type="file">
-        <div class="media-library-view-btn" data-view="grid"></div>
-        <div class="media-library-view-btn" data-view="list"></div>
-        <select class="media-library-sort">
-          <option value="name-asc">name-asc</option>
-          <option value="size-asc">size-asc</option>
-          <option value="type-asc">type-asc</option>
-          <option value="type-desc">type-desc</option>
-        </select>
-        <select class="media-library-filter">
-          <option value="">All</option>
-        </select>
+          <div class="media-library-sidebar-content">
+            <div class="media-library-preview">
+              <img class="media-library-preview-img">
+              <video class="media-library-preview-video"></video>
+              <audio class="media-library-preview-audio"></audio>
+              <div class="media-library-preview-file"></div>
+              <iframe class="media-library-preview-pdf"></iframe>
+            </div>
+            <div class="media-library-metadata">
+              <div class="metadata-row metadata-filename"><span class="media-library-filename"></span></div>
 
-        <img class="media-library-preview-img">
-        <video class="media-library-preview-video"></video>
-        <audio class="media-library-preview-audio"></audio>
-        <div class="media-library-preview-file"></div>
-        <iframe class="media-library-preview-pdf"></iframe>
+              <details class="media-library-section media-library-section-metadata" open>
+                <summary class="media-library-section-summary">Metadata</summary>
+                <form class="media-library-edit-metadata" style="display:none;">
+                  <span class="media-library-meta-status" role="status" aria-live="polite"></span>
+                  <fieldset class="metadata-edit-group metadata-edit-alt-row">
+                    <legend class="metadata-edit-legend">Accessibility</legend>
+                    <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-alt"></div>
+                  </fieldset>
+                  <fieldset class="metadata-edit-group">
+                    <legend class="metadata-edit-legend">Identification</legend>
+                    <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-title"></div>
+                    <div class="metadata-row metadata-edit-row"><textarea class="media-library-meta-description"></textarea></div>
+                  </fieldset>
+                  <fieldset class="metadata-edit-group">
+                    <legend class="metadata-edit-legend">Attribution</legend>
+                    <div class="metadata-row metadata-edit-row"><select class="media-library-meta-license"></select></div>
+                    <div class="metadata-row metadata-edit-row"><input type="text" class="media-library-meta-author"></div>
+                  </fieldset>
+                </form>
+              </details>
 
-        <span class="media-library-filename"></span>
-        <span class="media-library-type"></span>
-        <span class="media-library-size"></span>
-        <div class="media-library-dimensions-row"><span class="media-library-dimensions"></span></div>
-        <span class="media-library-date"></span>
-        <div class="url-input-group">
-          <input class="media-library-url" readonly>
-          <button class="media-library-copy-url-btn"><span class="exe-icon">content_copy</span></button>
+              <details class="media-library-section media-library-section-details">
+                <summary class="media-library-section-summary">Details</summary>
+                <span class="media-library-type"></span>
+                <span class="media-library-size"></span>
+                <div class="media-library-dimensions-row"><span class="media-library-dimensions"></span></div>
+                <span class="media-library-date"></span>
+                <div class="media-library-location-row" style="display:none;">
+                  <span class="media-library-location-value">/</span>
+                  <button class="media-library-open-folder-btn"></button>
+                </div>
+                <div class="url-input-group">
+                  <input class="media-library-url" readonly>
+                  <button class="media-library-copy-url-btn"><span class="exe-icon">content_copy</span></button>
+                </div>
+              </details>
+
+              <details class="media-library-section media-library-section-usage">
+                <summary class="media-library-section-summary">Usage</summary>
+                <div class="media-library-usage-row"><span class="media-library-usage">0 iDevices</span></div>
+              </details>
+            </div>
+          </div>
         </div>
-        <form class="media-library-edit-metadata" style="display:none;">
-          <h4 class="media-library-edit-metadata-title">Metadata</h4>
-          <textarea class="media-library-meta-description"></textarea>
-          <div class="metadata-edit-alt-row"><input type="text" class="media-library-meta-alt"></div>
-          <input type="text" class="media-library-meta-title">
-          <select class="media-library-meta-license"></select>
-          <input type="text" class="media-library-meta-author">
-          <button type="submit" class="media-library-meta-save-btn">Save metadata</button>
-          <span class="media-library-meta-status"></span>
-        </form>
-        <span class="media-library-count-value">0</span>
       </div>
       <div class="media-library-footer">
         <div class="media-library-footer-actions">
@@ -126,6 +166,7 @@ describe('ModalFilemanager', () => {
           <div class="dropdown media-library-mobile-actions">
             <button class="dropdown-toggle media-library-mobile-actions-toggle" disabled>Actions</button>
             <ul class="dropdown-menu">
+              <li><a class="dropdown-item media-library-edit-metadata-action" href="#" data-mobile-action="edit-metadata">Edit metadata</a></li>
               <li><a class="dropdown-item" href="#" data-mobile-action="delete">Delete</a></li>
               <li><a class="dropdown-item" href="#" data-mobile-action="rename">Rename</a></li>
               <li><a class="dropdown-item" href="#" data-mobile-action="duplicate">Duplicate</a></li>
@@ -4387,7 +4428,7 @@ describe('getMimeTypeFromFilename', () => {
       });
 
       expect(modal.editMetadataForm.style.display).toBe('block');
-      expect(modal.metaAltRow.style.display).toBe('flex');
+      expect(modal.metaAltRow.style.display).toBe('');
       expect(modal.metaDescriptionInput.value).toBe('A sunset');
       expect(modal.metaAltInput.value).toBe('Sunset over the sea');
       expect(modal.metaTitleInput.value).toBe('Sunset');
@@ -4439,40 +4480,165 @@ describe('getMimeTypeFromFilename', () => {
       expect(modal.filteredAssets.map(a => a.id)).toEqual(['a2']);
     });
 
-    it('saves metadata through the AssetManager and updates local state', async () => {
-      const updateAssetMetadata = vi.fn().mockResolvedValue(true);
-      modal.assetManager = { updateAssetMetadata };
-      const asset = { id: 'a1', mime: 'image/png', description: 'old' };
-      modal.selectedAsset = asset;
-      modal.assets = [asset];
+    it('finds assets by title, author and license via applyFiltersAndRender', () => {
+      modal.assets = [
+        { id: 'a1', filename: 'IMG_001.jpg', folderPath: '', mime: 'image/jpeg', title: 'Mountain Sunset' },
+        { id: 'a2', filename: 'IMG_002.jpg', folderPath: '', mime: 'image/jpeg', author: 'Ada Lovelace' },
+        { id: 'a3', filename: 'IMG_003.jpg', folderPath: '', mime: 'image/jpeg', license: 'Creative Commons BY' },
+      ];
 
-      modal.metaDescriptionInput.value = '  New description  ';
-      modal.metaAltInput.value = 'Alt';
-      modal.metaLicenseSelect.innerHTML = '<option value="Creative Commons BY">cc</option>';
-      modal.metaLicenseSelect.value = 'Creative Commons BY';
+      modal.searchInput.value = 'sunset';
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.map(a => a.id)).toEqual(['a1']);
 
-      await modal.saveAssetMetadata();
+      modal.searchInput.value = 'lovelace';
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.map(a => a.id)).toEqual(['a2']);
 
-      expect(updateAssetMetadata).toHaveBeenCalledWith('a1', {
-        description: 'New description',
-        altText: 'Alt',
-        title: '',
-        license: 'Creative Commons BY',
-        author: '',
-      });
-      // Local asset reflects the saved values
-      expect(asset.description).toBe('New description');
-      expect(modal.metaStatus.textContent).toBe('Metadata saved');
+      modal.searchInput.value = 'creative commons';
+      modal.applyFiltersAndRender();
+      expect(modal.filteredAssets.map(a => a.id)).toEqual(['a3']);
     });
 
-    it('does nothing when no asset is selected', async () => {
-      const updateAssetMetadata = vi.fn();
-      modal.assetManager = { updateAssetMetadata };
-      modal.selectedAsset = null;
+    describe('autosave', () => {
+      let updateAssetMetadata;
+      let asset;
 
-      await modal.saveAssetMetadata();
+      beforeEach(() => {
+        updateAssetMetadata = vi.fn().mockResolvedValue(true);
+        modal.assetManager = { updateAssetMetadata };
+        asset = { id: 'a1', mime: 'image/png', description: 'old' };
+        modal.selectedAsset = asset;
+        modal.assets = [asset];
+        modal.populateEditMetadata(asset);
+      });
 
-      expect(updateAssetMetadata).not.toHaveBeenCalled();
+      it('typing shows a saving status and schedules a debounced save (no immediate write)', () => {
+        const scheduleSpy = vi.spyOn(modal, 'scheduleMetadataSave').mockImplementation(() => {});
+        modal.metaDescriptionInput.value = '  New description  ';
+        modal.metaDescriptionInput.dispatchEvent(new Event('input'));
+
+        // Saving... status shown immediately, save is debounced (not written yet)
+        expect(modal.metaStatus.classList.contains('is-saving')).toBe(true);
+        expect(scheduleSpy).toHaveBeenCalled();
+        expect(updateAssetMetadata).not.toHaveBeenCalled();
+        expect(modal._metaDirty.has('description')).toBe(true);
+      });
+
+      it('flushes only dirty fields and updates local state', async () => {
+        modal.metaDescriptionInput.value = '  New description  ';
+        modal.metaDescriptionInput.dispatchEvent(new Event('input'));
+
+        await modal.flushPendingMetadata();
+
+        expect(updateAssetMetadata).toHaveBeenCalledWith('a1', {
+          description: 'New description',
+        });
+        expect(asset.description).toBe('New description');
+        expect(modal.metaStatus.classList.contains('is-saved')).toBe(true);
+        expect(modal.metaStatus.textContent).toContain('Saved');
+      });
+
+      it('blur flushes pending changes immediately', () => {
+        modal.metaAltInput.value = 'Alt text';
+        modal.metaAltInput.dispatchEvent(new Event('input'));
+        modal.metaAltInput.dispatchEvent(new Event('blur'));
+
+        expect(updateAssetMetadata).toHaveBeenCalledWith('a1', { altText: 'Alt text' });
+      });
+
+      it('changing the license flushes immediately', () => {
+        modal.metaLicenseSelect.innerHTML = '<option value="Creative Commons BY">cc</option>';
+        modal.metaLicenseSelect.value = 'Creative Commons BY';
+        modal.metaLicenseSelect.dispatchEvent(new Event('change'));
+
+        expect(updateAssetMetadata).toHaveBeenCalledWith('a1', { license: 'Creative Commons BY' });
+      });
+
+      it('flush with nothing pending is a no-op', async () => {
+        await modal.flushPendingMetadata();
+        expect(updateAssetMetadata).not.toHaveBeenCalled();
+      });
+
+      it('shows an error status when the save fails', async () => {
+        updateAssetMetadata.mockRejectedValueOnce(new Error('boom'));
+        modal.metaTitleInput.value = 'New title';
+        modal.metaTitleInput.dispatchEvent(new Event('input'));
+
+        await modal.flushPendingMetadata();
+
+        expect(modal.metaStatus.classList.contains('is-error')).toBe(true);
+        expect(modal.metaStatus.textContent).toContain('Error');
+      });
+
+      it('does nothing when no asset is selected', async () => {
+        modal.selectedAsset = null;
+        modal._metaDirty.add('description');
+        await modal.flushPendingMetadata();
+        expect(updateAssetMetadata).not.toHaveBeenCalled();
+      });
+
+      it('flushes pending metadata before inserting an asset', async () => {
+        modal.onSelectCallback = vi.fn();
+        modal.metaDescriptionInput.value = 'Pending';
+        modal.metaDescriptionInput.dispatchEvent(new Event('input'));
+        // Stub the parts of insert that need a real AssetManager
+        modal.assetManager.getAssetUrl = vi.fn(() => 'asset://a1.png');
+        modal.assetManager.getBlobURLSynced = vi.fn(() => 'blob:x');
+        modal.assetManager.blobURLCache = new Map();
+        modal.assetManager.reverseBlobCache = new Map();
+        modal.close = vi.fn();
+
+        await modal.insertSelectedAsset();
+
+        expect(updateAssetMetadata).toHaveBeenCalledWith('a1', { description: 'Pending' });
+      });
+    });
+
+    it('does not clobber a field the local user is editing on a remote refresh', () => {
+      const asset = { id: 'a1', mime: 'image/png', description: 'local draft', author: 'old' };
+      modal.selectedAsset = asset;
+      modal.populateEditMetadata(asset);
+
+      // User starts editing the description (marks it dirty)
+      modal.metaDescriptionInput.value = 'local draft';
+      modal.metaDescriptionInput.dispatchEvent(new Event('input'));
+
+      // A remote update arrives for the same asset changing author + description
+      modal.populateEditMetadata({ id: 'a1', mime: 'image/png', description: 'remote value', author: 'new' });
+
+      // Dirty field preserved, non-dirty field updated from remote
+      expect(modal.metaDescriptionInput.value).toBe('local draft');
+      expect(modal.metaAuthorInput.value).toBe('new');
+    });
+
+    it('renders the metadata section before the details and usage sections', () => {
+      const sections = Array.from(
+        modal.modalElement.querySelectorAll('.media-library-section')
+      ).map(el => el.className);
+      expect(sections[0]).toContain('media-library-section-metadata');
+      expect(sections[1]).toContain('media-library-section-details');
+      expect(sections[2]).toContain('media-library-section-usage');
+
+      // Metadata is expanded by default; details/usage collapsed.
+      expect(modal.modalElement.querySelector('.media-library-section-metadata').open).toBe(true);
+      expect(modal.modalElement.querySelector('.media-library-section-details').open).toBe(false);
+      expect(modal.modalElement.querySelector('.media-library-section-usage').open).toBe(false);
+    });
+
+    it('openMetadataEditor opens the sheet and expands the metadata section', () => {
+      modal.metadataSection.open = false;
+      modal.openMetadataEditor();
+      expect(modal.metadataSection.open).toBe(true);
+      expect(modal.sidebar.classList.contains('is-open')).toBe(true);
+    });
+
+    it('the mobile "Edit metadata" action opens the metadata editor', () => {
+      const spy = vi.spyOn(modal, 'openMetadataEditor');
+      modal.mobileActionsWrapper
+        .querySelector('[data-mobile-action="edit-metadata"]')
+        .click();
+      expect(spy).toHaveBeenCalled();
     });
   });
 });

@@ -35,23 +35,28 @@ function mapAssetLicenseToCaptionCode(license) {
  * the reusable centralized metadata as sensible defaults for a newly inserted image.
  *
  *   alt            ← asset.altText, falling back to asset.description
- *   title          ← asset.title, falling back to the filename
+ *   attr_imagetitle← asset.title         (exeimage "Caption text" — the image name)
  *   authorname     ← asset.author        (exeimage "Source/Author" field)
  *   captionlicense ← asset.license mapped (exeimage "License" listbox)
+ *
+ * The asset's title is the human-readable image name, so it seeds the *caption text*
+ * ("Title and caption" tab), NOT the HTML `title` accessibility attribute. The
+ * accessibility `title` is left empty so the editor/user controls it.
  *
  * The exeimage plugin's formFillFromMeta2 reads these meta keys and only applies the
  * non-empty ones, so user-typed values are never clobbered. This only seeds defaults
  * when the asset is picked/reselected from the File Manager.
  * Pure function (no DOM/TinyMCE access) so it can be unit-tested directly.
  * @param {{id?: string, filename?: string, altText?: string, description?: string, title?: string, author?: string, license?: string}} asset
- * @returns {{title: string, text: string, alt: string, authorname: string, captionlicense: string, 'data-asset-id': string|undefined}}
+ * @returns {{title: string, text: string, alt: string, attr_imagetitle: string, authorname: string, captionlicense: string, 'data-asset-id': string|undefined}}
  */
 function buildImagePickerMeta(asset) {
     const a = asset || {};
     return {
-        title: a.title || a.filename || '',
+        title: '',
         text: a.filename || '',
         alt: a.altText || a.description || '',
+        attr_imagetitle: a.title || '',
         authorname: a.author || '',
         captionlicense: mapAssetLicenseToCaptionCode(a.license),
         'data-asset-id': a.id,

@@ -277,11 +277,17 @@ describe('ExeImage Plugin - formFillFromMeta2 attribution pre-fill', () => {
   // File Manager picker pre-fills the exeimage attribution fields. Only non-empty
   // meta values are applied so user-typed values are never overwritten.
   const isString = (v) => typeof v === 'string';
+  const isBoolean = (v) => typeof v === 'boolean';
   function fillFromMeta(data, meta) {
     if (isString(meta.alt)) data.alt = meta.alt;
     if (isString(meta.title) && meta.title !== '') data.title = meta.title;
+    if (isString(meta.attr_imagetitle) && meta.attr_imagetitle !== '') {
+      data.attr_imagetitle = meta.attr_imagetitle;
+      data.caption = true;
+    }
     if (isString(meta.authorname) && meta.authorname !== '') data.authorname = meta.authorname;
     if (isString(meta.captionlicense) && meta.captionlicense !== '') data.captionlicense = meta.captionlicense;
+    if (isBoolean(meta.caption)) data.caption = meta.caption;
     return data;
   }
 
@@ -299,11 +305,21 @@ describe('ExeImage Plugin - formFillFromMeta2 attribution pre-fill', () => {
     expect(data.captionlicense).toBe('CC-BY-SA');
   });
 
+  it('applies the asset title to the caption text and enables the caption', () => {
+    const data = { alt: '', title: '', attr_imagetitle: '', caption: false };
+    fillFromMeta(data, { attr_imagetitle: 'Mountain Sunset' });
+    expect(data.attr_imagetitle).toBe('Mountain Sunset');
+    expect(data.caption).toBe(true);
+    // The HTML title attribute is left untouched (the image name is a caption).
+    expect(data.title).toBe('');
+  });
+
   it('does not overwrite existing values with empty meta', () => {
-    const data = { alt: 'kept', title: 'kept', authorname: 'kept', captionlicense: 'CC-BY' };
-    fillFromMeta(data, { title: '', authorname: '', captionlicense: '' });
+    const data = { alt: 'kept', title: 'kept', authorname: 'kept', captionlicense: 'CC-BY', attr_imagetitle: 'kept' };
+    fillFromMeta(data, { title: '', authorname: '', captionlicense: '', attr_imagetitle: '' });
     expect(data.title).toBe('kept');
     expect(data.authorname).toBe('kept');
     expect(data.captionlicense).toBe('CC-BY');
+    expect(data.attr_imagetitle).toBe('kept');
   });
 });

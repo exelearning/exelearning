@@ -1851,6 +1851,37 @@ describe('AssetManager', () => {
       expect(ok).toBe(false);
     });
 
+    it('field-level merge: a single-field patch preserves other metadata fields', async () => {
+      // Simulates a remote collaborator having set author/title; a local debounced
+      // save of only `description` must not clobber those concurrently-set fields.
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 100,
+        title: 'Remote title',
+        author: 'Remote author',
+        description: 'old',
+      });
+
+      await assetManager.updateAssetMetadata('a1', { description: 'mine' });
+
+      const meta = mockYjsBridge._assetsMap.get('a1');
+      expect(meta.description).toBe('mine');
+      expect(meta.title).toBe('Remote title');
+      expect(meta.author).toBe('Remote author');
+    });
+
+    it('updateAssetMetadata wraps the read-modify-write in a Yjs transaction', async () => {
+      const transactSpy = vi.fn((fn) => fn());
+      mockYjsBridge.getAssetsMap().doc.transact = transactSpy;
+      mockYjsBridge._assetsMap.set('a1', { filename: 'p.jpg', mime: 'image/jpeg', size: 1 });
+
+      await assetManager.updateAssetMetadata('a1', { title: 'T' });
+
+      expect(transactSpy).toHaveBeenCalled();
+      expect(mockYjsBridge._assetsMap.get('a1').title).toBe('T');
+    });
+
     it('does not call the server when not in a collaborative session', async () => {
       delete global.window.eXeLearning;
       mockYjsBridge._assetsMap.set('a1', { filename: 'photo.jpg', mime: 'image/jpeg', size: 1 });
