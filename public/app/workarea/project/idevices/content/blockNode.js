@@ -3,6 +3,7 @@ import {
     buildComponentFileName,
     buildComponentStorageKey,
 } from './componentDownloadHelper.js';
+import { parseCssClassList } from './cssClassHelper.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -266,14 +267,9 @@ export default class IdeviceBlockNode {
         }
         this.updateVisibilityIndicator();
         // css classes
-        if (this.properties.cssClass.value != '') {
-            let cssClasses = this.properties.cssClass.value
-                ? this.properties.cssClass.value.split(' ')
-                : [];
-            cssClasses.forEach((cls) => {
-                this.blockContent.classList.add(cls);
-            });
-        }
+        parseCssClassList(this.properties.cssClass.value).forEach((cls) => {
+            this.blockContent.classList.add(cls);
+        });
         // teacher only - workarea visual indicator (separate class to avoid export hide rule)
         if (this.properties.teacherOnly?.value == 'true') {
             this.blockContent.classList.add('exe-teacher-highlight');
