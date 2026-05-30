@@ -68,6 +68,7 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'true-or-false',
         'scrambled-list',
         'magnifier',
+        'adaptative-quiz',
         'slide',
         'three-d-viewer',
         'markdown-text',

@@ -27,6 +27,9 @@ var $adaptativequiz = {
     previousScores: {},
     userName: '',
     isInExe: false,
+    mScorm: null,
+    scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
+    scormFunctions: 'libs/SCOFunctions.js',
     LEVELS_BY_COUNT: { 3: [1, 2, 3], 4: [1, 2, 3, 4], 5: [1, 2, 3, 4, 5] },
     DEFAULT_NUM_LEVELS: 3,
     CONSEC_THRESHOLD: 2,
@@ -273,7 +276,6 @@ var $adaptativequiz = {
         data.questions = this.normalizeQuestions(rawQuestions, data.numLevels);
         data.questionsGame = data.questions;
         data.shuffle = data.shuffle !== false;
-        data.immediateFeedback = data.immediateFeedback !== false;
         // Word-type answer-matching options (default = lenient: ignore
         // case and ignore accents, matching pre-feature behaviour).
         data.caseSensitive = data.caseSensitive === true;
@@ -319,8 +321,10 @@ var $adaptativequiz = {
         data.errors = 0;
         data.score = 0;
         data.scorerp = 0;
+        data.obtainedClue = false;
         data.gameOver = false;
         data.gameStarted = false;
+        data.scormReady = false;
         data.counter = data.time > 0 ? data.time * 60 : 0;
         data.clockInterval = null;
         data.currentLevel = data.initialLevel;
@@ -330,6 +334,7 @@ var $adaptativequiz = {
         data.currentQuestionIndex = -1;
         data.answeredIndexes = [];
         data.roundCount = 0;
+        data.progressSaveMarker = '';
         data.optionOrder = [];
         data.main = 'adaptativeQuizMainContainer-' + data.id;
         data.idevice = this.ideviceClass;
@@ -340,7 +345,6 @@ var $adaptativequiz = {
     createInterface: function (id) {
         const opts = this.options[id];
         const msgs = opts.msgs || {};
-        const iconPath = opts.idevicePath || '';
         const hasTime = opts.time > 0;
         const initialClock = hasTime ? this.formatTime(opts.time * 60) : '00:00';
 
@@ -357,6 +361,10 @@ var $adaptativequiz = {
                             <strong><span class="sr-av">${msgs.msgTime || 'Time'}:</span></strong>
                             <span id="adaptativeQuizTime-${id}" class="ADAPTATIVEQUIZ-Time">${initialClock}</span>
                         </span>
+                    </div>
+                    <div class="ADAPTATIVEQUIZ-ShowClue" id="adaptativeQuizShowClue-${id}" style="display:none" aria-live="polite">
+                        <span class="sr-av">${msgs.msgInformation || 'Information'}:</span>
+                        <p class="ADAPTATIVEQUIZ-ShowClueText" id="adaptativeQuizShowClueText-${id}"></p>
                     </div>
                     <div class="ADAPTATIVEQUIZ-StartGameDiv" id="adaptativeQuizStartGameDiv-${id}" style="display:none">
                         <p class="ADAPTATIVEQUIZ-Ready">${msgs.msgReady || 'Ready?'}</p>
@@ -376,7 +384,7 @@ var $adaptativequiz = {
                                 <input type="text" class="ADAPTATIVEQUIZ-CodeAccessInput form-control" id="adaptativeQuizCodeAccessInput-${id}" placeholder="${msgs.msgCodeAccess || 'Access code'}" />
                                 <a href="#" id="adaptativeQuizCodeAccessButton-${id}" title="${msgs.msgReply || 'Submit'}">
                                     <strong class="sr-av">${msgs.msgReply || 'Submit'}</strong>
-                                    <img src="${iconPath}exequextreply.svg" class="ADAPTATIVEQUIZ-IconSubmit" alt="" />
+                                    <img class="ADAPTATIVEQUIZ-IconSubmit" alt="" />
                                 </a>
                             </div>
                         </div>
@@ -414,7 +422,7 @@ var $adaptativequiz = {
      * hint into separate `.ADAPTATIVEQUIZ-WordHintWord` rows so each word
      * stays together (same pattern as the Guess iDevice).
      */
-    buildWordHint: function (word, percentage) {
+    buildWordHint: function (word, percentage, caseSensitive) {
         const text = String(word || '').trim();
         if (text.length === 0) return '';
         const pct = Math.max(0, Math.min(100, parseInt(percentage, 10) || 0));
@@ -451,7 +459,12 @@ var $adaptativequiz = {
                         const cls = r
                             ? 'ADAPTATIVEQUIZ-WordHintLetter ADAPTATIVEQUIZ-WordHintLetter--shown'
                             : 'ADAPTATIVEQUIZ-WordHintLetter ADAPTATIVEQUIZ-WordHintLetter--hidden';
-                        const inner = r ? this.escapeHtml(ch) : '';
+                        // Bake the letter case into the markup so the display
+                        // never depends on CSS (`text-transform` proved unreliable
+                        // in exported/preview builds): case-sensitive keeps the
+                        // original case, otherwise letters are shown uppercased.
+                        const shownChar = caseSensitive ? ch : ch.toUpperCase();
+                        const inner = r ? this.escapeHtml(shownChar) : '';
                         return `<span class="${cls}">${inner}</span>`;
                     })
                     .join('');
@@ -730,6 +743,20 @@ var $adaptativequiz = {
                     $btn.addClass('is-playing');
                 }
             });
+
+        // Clicking anywhere on an option that has audio also plays its sound
+        // (in addition to selecting it). The toggle button above stops
+        // propagation, so this never double-fires when the button is clicked.
+        $container
+            .off('click.adaptativeQuizOptionAudio', '.ADAPTATIVEQUIZ-Option--has-audio')
+            .on('click.adaptativeQuizOptionAudio', '.ADAPTATIVEQUIZ-Option--has-audio', function () {
+                const $btn = $(this).find('.ADAPTATIVEQUIZ-AudioToggle--option').eq(0);
+                const url = $btn.data('audio-url');
+                if (!url) return;
+                stopAll();
+                play(url);
+                $btn.addClass('is-playing');
+            });
         // Reference to self to avoid unused lint warning if future changes
         // need the helper; see updateConfig for the normalization flow.
         void this;
@@ -740,6 +767,8 @@ var $adaptativequiz = {
         const idx = opts.currentQuestionIndex;
         const question = opts.questions[idx];
         if (!question) return;
+        // A fresh question unlocks answering again (see checkAnswer).
+        opts.answerLocked = false;
 
         const tSel = Number.isInteger(question.typeSelect) ? question.typeSelect : 0;
         // Sort questions are always shuffled so the learner has something to
@@ -772,7 +801,7 @@ var $adaptativequiz = {
             //   q.question     -> the WORD (what the learner types; hint cells)
             //   q.solutionWord -> the DEFINITION (the prompt shown above the input)
             const inputId = `adaptativeQuizWord-${id}`;
-            const hintMarkup = this.buildWordHint(question.question || '', question.percentageShow);
+            const hintMarkup = this.buildWordHint(question.question || '', question.percentageShow, opts.caseSensitive);
             html += `<div class="ADAPTATIVEQUIZ-WordAnswer">`;
             if (hintMarkup) {
                 html += `<div class="ADAPTATIVEQUIZ-WordHint" aria-hidden="true">${hintMarkup}</div>`;
@@ -880,7 +909,9 @@ var $adaptativequiz = {
         $('#adaptativeQuizReport-' + id)
             .hide()
             .empty();
-        $('#adaptativeQuizBtnCheck-' + id).show();
+        $('#adaptativeQuizBtnCheck-' + id)
+            .prop('disabled', false)
+            .show();
         $('#adaptativeQuizRound-' + id).text(opts.roundCount + 1 + ' / ' + opts.numRound);
         this.updateLevelDisplay(id, opts);
     },
@@ -892,6 +923,8 @@ var $adaptativequiz = {
         opts.hits = 0;
         opts.errors = 0;
         opts.score = 0;
+        opts.obtainedClue = false;
+        opts.progressSaveMarker = '';
         opts.currentLevel = opts.initialLevel;
         opts.maxLevelReached = opts.initialLevel;
         opts.consecutiveCorrect = 0;
@@ -902,6 +935,8 @@ var $adaptativequiz = {
         $('#adaptativeQuizHits-' + id).text(0);
         $('#adaptativeQuizErrors-' + id).text(0);
         $('#adaptativeQuizScore-' + id).text(0);
+        $('#adaptativeQuizShowClue-' + id).hide();
+        $('#adaptativeQuizShowClueText-' + id).text('');
         $('#adaptativeQuizBtnNewGame-' + id).hide();
         $('#adaptativeQuizReport-' + id)
             .hide()
@@ -1040,6 +1075,11 @@ var $adaptativequiz = {
         const opts = this.options[id];
         const question = opts.questions[opts.currentQuestionIndex];
         if (!question) return;
+        // Prevent answering the same question twice (e.g. a second Enter key
+        // press or a repeated click) for every question type. Once a valid
+        // answer is committed below the question stays locked until the next one
+        // is rendered.
+        if (opts.answerLocked) return;
 
         const tSel = Number.isInteger(question.typeSelect) ? question.typeSelect : 0;
         const msgs = opts.msgs || {};
@@ -1108,52 +1148,58 @@ var $adaptativequiz = {
             chosen = answer;
         }
 
-        $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-OptionInput').prop('disabled', true);
+        // The question has been answered: lock every interactive control until
+        // the next question renders, so it can never be answered twice — the
+        // Check button, the word input box, the select/multi options and the
+        // sort/drag list.
+        opts.answerLocked = true;
+        $('#adaptativeQuizBtnCheck-' + id).prop('disabled', true);
+        const containerSel = '#adaptativeQuizQuestionContainer-' + id + ' ';
+        $(containerSel + '.ADAPTATIVEQUIZ-OptionInput, ' + containerSel + '.ADAPTATIVEQUIZ-WordInput').prop(
+            'disabled',
+            true,
+        );
         // Lock the sort list so the learner cannot reorder it after checking.
         $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-SortItem')
             .addClass('ADAPTATIVEQUIZ-SortItem--locked')
             .attr('draggable', 'false');
 
-        if (opts.immediateFeedback) {
-            if (opts.showSolution) {
-                if (tSel === 0) {
-                    const expectedSet = new Set(question.solutionMulti || []);
-                    $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-Option').each(function () {
-                        const orig = parseInt($(this).attr('data-orig-index'));
-                        if (expectedSet.has(orig)) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
-                    });
-                } else if (tSel === 1) {
-                    // Sort: reveal the correct rank for every item (its real
-                    // position in the expected order) and colour each row
-                    // green when its current visual position matches that
-                    // rank, red otherwise.
-                    const expected = (question.solutionOrder || []).slice(0, question.options.length);
-                    $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-SortItem').each(
-                        function (visualIndex) {
-                            const orig = parseInt($(this).attr('data-orig-index'), 10);
-                            const $rank = $(this).find('.ADAPTATIVEQUIZ-SortRank');
-                            const expectedRank = expected[orig];
-                            $rank.text(expectedRank).removeAttr('hidden');
-                            if (expectedRank === visualIndex + 1) {
-                                $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
-                            } else {
-                                $(this).addClass('ADAPTATIVEQUIZ-OptionIncorrect');
-                            }
-                        },
+        if (opts.showSolution) {
+            if (tSel === 0) {
+                const expectedSet = new Set(question.solutionMulti || []);
+                $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-Option').each(function () {
+                    const orig = parseInt($(this).attr('data-orig-index'));
+                    if (expectedSet.has(orig)) $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
+                });
+            } else if (tSel === 1) {
+                // Sort: reveal the correct rank for every item (its real
+                // position in the expected order) and colour each row
+                // green when its current visual position matches that
+                // rank, red otherwise.
+                const expected = (question.solutionOrder || []).slice(0, question.options.length);
+                $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-SortItem').each(
+                    function (visualIndex) {
+                        const orig = parseInt($(this).attr('data-orig-index'), 10);
+                        const $rank = $(this).find('.ADAPTATIVEQUIZ-SortRank');
+                        const expectedRank = expected[orig];
+                        $rank.text(expectedRank).removeAttr('hidden');
+                        if (expectedRank === visualIndex + 1) {
+                            $(this).addClass('ADAPTATIVEQUIZ-OptionCorrect');
+                        } else {
+                            $(this).addClass('ADAPTATIVEQUIZ-OptionIncorrect');
+                        }
+                    },
+                );
+            } else if (tSel === 2) {
+                // Word: reveal the full word in the hint cells and tint
+                // them green when the learner's answer was correct,
+                // blue when it was incorrect.
+                const fullHint = this.buildWordHint(question.question || '', 100, opts.caseSensitive);
+                const $hint = $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-WordHint');
+                if ($hint.length) {
+                    $hint.html(fullHint).addClass(
+                        isCorrect ? 'ADAPTATIVEQUIZ-WordHint--correct' : 'ADAPTATIVEQUIZ-WordHint--incorrect',
                     );
-                } else if (tSel === 2) {
-                    // Word: reveal the full word in the hint cells and tint
-                    // them green when the learner's answer was correct,
-                    // blue when it was incorrect.
-                    const fullHint = this.buildWordHint(question.question || '', 100);
-                    const $hint = $('#adaptativeQuizQuestionContainer-' + id + ' .ADAPTATIVEQUIZ-WordHint');
-                    if ($hint.length) {
-                        $hint.html(fullHint).addClass(
-                            isCorrect
-                                ? 'ADAPTATIVEQUIZ-WordHint--correct'
-                                : 'ADAPTATIVEQUIZ-WordHint--incorrect',
-                        );
-                    }
                 }
             }
         }
@@ -1169,34 +1215,49 @@ var $adaptativequiz = {
 
         const delta = this.applyAdaptation(opts, isCorrect);
 
-        if (opts.immediateFeedback) {
-            const pieces = [];
-            const feedbackAudio = isCorrect ? question.msgHitAudio : question.msgErrorAudio;
-            if (isCorrect) {
-                const primary = question.msgHit || this.pickRandom(msgs.msgSuccesses || 'Right!');
-                pieces.push(primary);
-            } else {
-                const primary = question.msgError || this.pickRandom(msgs.msgFailures || 'Incorrect!');
-                pieces.push(primary);
-            }
-            if (delta === 1) pieces.push('↑ ' + (msgs.msgLevelUp || 'Level up!'));
-            if (delta === -1) pieces.push('↓ ' + (msgs.msgLevelDown || 'Level down'));
-            const audioHtml = feedbackAudio ? this.renderMedia(opts, feedbackAudio, 'audio') : '';
-            this.setMessage(id, this.escapeHtml(pieces.join(' ')) + audioHtml, isCorrect ? 'success' : 'error', true);
+        // The correct/incorrect feedback message is always shown for a few
+        // seconds. Custom per-question messages (and their audio) are only used
+        // when "Show solutions" is enabled; with solutions hidden we show the
+        // generic success/failure message so no solution-related content leaks.
+        const pieces = [];
+        let feedbackAudio = '';
+        if (opts.showSolution) {
+            feedbackAudio = isCorrect ? question.msgHitAudio : question.msgErrorAudio;
+            pieces.push(
+                isCorrect
+                    ? question.msgHit || this.pickRandom(msgs.msgSuccesses || 'Right!')
+                    : question.msgError || this.pickRandom(msgs.msgFailures || 'Incorrect!'),
+            );
+        } else {
+            pieces.push(
+                isCorrect
+                    ? this.pickRandom(msgs.msgSuccesses || 'Right!')
+                    : this.pickRandom(msgs.msgFailures || 'Incorrect!'),
+            );
         }
+        if (delta === 1) pieces.push('↑ ' + (msgs.msgLevelUp || 'Level up!'));
+        if (delta === -1) pieces.push('↓ ' + (msgs.msgLevelDown || 'Level down'));
+        const audioHtml = feedbackAudio ? this.renderMedia(opts, feedbackAudio, 'audio') : '';
+        this.setMessage(id, this.escapeHtml(pieces.join(' ')) + audioHtml, isCorrect ? 'success' : 'error', true);
 
         opts.answeredIndexes.push(opts.currentQuestionIndex);
         opts.roundCount++;
-        opts.score = Math.round(((opts.hits * 10) / opts.numRound) * 100) / 100;
+        opts.score = Math.round(this.scoreRatio(opts.hits, opts.numRound) * 10 * 100) / 100;
 
         $('#adaptativeQuizHits-' + id).text(opts.hits);
         $('#adaptativeQuizErrors-' + id).text(opts.errors);
         $('#adaptativeQuizScore-' + id).text(opts.score);
         this.updateLevelDisplay(id, opts);
+        this.maybeRevealClue(id);
+        this.saveProgress(id);
 
         $('#adaptativeQuizBtnCheck-' + id).hide();
 
-        const minShown = Math.max(opts.minQuestionsShown || 0, 0);
+        // The activity always ends once the configured number of rounds is
+        // reached: `minQuestionsShown` can never push the game beyond
+        // `numRound`, otherwise `hits` could exceed `numRound` and the score
+        // would go over 100%.
+        const minShown = Math.min(Math.max(opts.minQuestionsShown || 0, 0), opts.numRound || 1);
         const answeredAll = opts.answeredIndexes.length >= opts.questions.length;
         const reachedRound = opts.roundCount >= opts.numRound;
         const shouldEnd = answeredAll || (reachedRound && opts.roundCount >= minShown);
@@ -1204,7 +1265,9 @@ var $adaptativequiz = {
         if (shouldEnd) {
             this.endGame(id);
         } else {
-            const delay = opts.showSolution ? (opts.timeShowSolution || 3) * 1000 : 1000;
+            // With solutions shown, wait the configured time; otherwise keep the
+            // correct/incorrect message on screen for a couple of seconds.
+            const delay = opts.showSolution ? (opts.timeShowSolution || 3) * 1000 : 2000;
             setTimeout(() => {
                 if (!opts.gameOver) this.nextQuestion(id);
             }, delay);
@@ -1218,6 +1281,47 @@ var $adaptativequiz = {
             .filter(s => s.length > 0);
         if (list.length === 0) return '';
         return list[Math.floor(Math.random() * list.length)];
+    },
+
+    /**
+     * Canonical score of the activity as a ratio in [0, 1]: correct answers
+     * (`hits`) over the configured number of rounds (`numRound`). Single source
+     * of truth for the live scoreboard, the SCORM score and the final report,
+     * so the three figures always agree. The game never runs more than
+     * `numRound` rounds (see `checkAnswer`), but the result is clamped
+     * defensively so the score can never exceed 100% nor drop below 0%.
+     */
+    scoreRatio: (hits, numRound) => {
+        const correct = Number(hits) || 0;
+        const rounds = Number(numRound) > 0 ? Number(numRound) : 1;
+        return Math.max(0, Math.min(1, correct / rounds));
+    },
+
+    /**
+     * Decide whether the itinerary clue must be revealed: the activity has a
+     * clue configured, the learner's hit percentage has reached the configured
+     * threshold and the clue has not been shown yet. Pure function so the
+     * threshold logic can be unit-tested without the DOM.
+     */
+    shouldRevealClue: function (opts) {
+        if (!opts) return false;
+        const itinerary = opts.itinerary || {};
+        if (!itinerary.showClue || opts.obtainedClue) return false;
+        const percentageHits = this.scoreRatio(opts.hits, opts.numRound) * 100;
+        return percentageHits >= (parseFloat(itinerary.percentageClue) || 0);
+    },
+
+    /**
+     * Reveal the itinerary clue once the learner reaches the configured hit
+     * percentage. The clue stays visible for the rest of the game.
+     */
+    maybeRevealClue: function (id) {
+        const opts = this.options[id];
+        if (!this.shouldRevealClue(opts)) return;
+        opts.obtainedClue = true;
+        const clueText = String((opts.itinerary || {}).clueGame || '');
+        $('#adaptativeQuizShowClueText-' + id).text(clueText);
+        $('#adaptativeQuizShowClue-' + id).show();
     },
 
     nextQuestion: function (id) {
@@ -1239,8 +1343,7 @@ var $adaptativequiz = {
     buildPedagogicalProfile: opts => {
         const msgs = opts.msgs || {};
         const maxLevel = opts.maxLevel || 3;
-        const total = Math.max(1, opts.roundCount);
-        const percent = (opts.hits / total) * 100;
+        const percent = $adaptativequiz.scoreRatio(opts.hits, opts.numRound) * 100;
         if (percent >= 80 && opts.maxLevelReached >= maxLevel) {
             return { key: 'high', text: msgs.msgReportHigh || 'Excellent.' };
         }
@@ -1253,8 +1356,7 @@ var $adaptativequiz = {
     renderFinalReport: function (id) {
         const opts = this.options[id];
         const msgs = opts.msgs || {};
-        const total = Math.max(1, opts.roundCount);
-        const percent = Math.round((opts.hits / total) * 100);
+        const percent = Math.round(this.scoreRatio(opts.hits, opts.numRound) * 100);
         const profile = this.buildPedagogicalProfile(opts);
 
         const html = `
@@ -1286,15 +1388,12 @@ var $adaptativequiz = {
 
         this.renderFinalReport(id);
 
-        if (opts.isScorm === 1) {
-            this.sendScore(true, id);
-        }
-        this.saveEvaluation(id);
+        this.saveProgress(id);
     },
 
     sendScore: function (auto, id) {
         const opts = this.options[id];
-        opts.scorerp = (10 * opts.hits) / (opts.numRound || 1);
+        opts.scorerp = this.scoreRatio(opts.hits, opts.numRound) * 10;
         opts.previousScore = this.previousScores[id] || '';
         opts.userName = this.userName;
 
@@ -1304,9 +1403,23 @@ var $adaptativequiz = {
         }
     },
 
+    saveProgress: function (id) {
+        const opts = this.options[id];
+        if (!opts) return;
+
+        const marker = [opts.roundCount || 0, opts.hits || 0, opts.errors || 0].join(':');
+        if (opts.progressSaveMarker === marker) return;
+
+        if (opts.isScorm === 1) {
+            this.sendScore(true, id);
+        }
+        this.saveEvaluation(id);
+        opts.progressSaveMarker = marker;
+    },
+
     saveEvaluation: function (id) {
         const opts = this.options[id];
-        opts.scorerp = (10 * opts.hits) / (opts.numRound || 1);
+        opts.scorerp = this.scoreRatio(opts.hits, opts.numRound) * 10;
 
         if ($exeDevices && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.report.saveEvaluation(opts, this.isInExe);
@@ -1327,7 +1440,9 @@ var $adaptativequiz = {
             opts.accessUnlocked = true;
             $('#adaptativeQuizCodeAccessDiv-' + id).hide();
             $('#adaptativeQuizCubierta-' + id).hide();
-            if (!opts.gameStarted) this.beginActivity(id);
+            if (!opts.gameStarted && (!this.isWaitingForScorm(opts) || opts.scormReady)) {
+                this.beginActivity(id);
+            }
             return;
         }
 
@@ -1343,6 +1458,16 @@ var $adaptativequiz = {
         const opts = this.options[id];
         const itinerary = opts.itinerary || {};
         opts.accessUnlocked = !itinerary.showCodeAccess;
+
+        // Resolve the submit-icon URL at runtime. The path baked into the markup
+        // by renderView is unreliable in the static/SCORM build (the idevice node
+        // is not in the DOM at render time), so set the `src` here from the
+        // runtime idevicePath - the same approach used by trueorfalse and
+        // az-quiz-game, which read `data-idevice-path` from the live DOM.
+        const iconBase = opts.idevicePath || '';
+        $('#adaptativeQuizCubierta-' + id)
+            .find('.ADAPTATIVEQUIZ-IconSubmit')
+            .attr('src', iconBase + 'exequextreply.svg');
 
         $('#adaptativeQuizBtnCheck-' + id)
             .off('click.adaptativeQuiz')
@@ -1397,11 +1522,17 @@ var $adaptativequiz = {
         $('#adaptativeQuizCubierta-' + id).hide();
         $('#adaptativeQuizCodeAccessDiv-' + id).hide();
 
+        // Inside a SCORM package the game start is deferred until the LMS API
+        // wrapper has loaded and initialised (see setupScorm/initScormData);
+        // otherwise the first answers would be processed before `pipwerks` is
+        // ready and their score would be silently dropped.
+        const inScormPackage = this.isWaitingForScorm(opts);
+        if (inScormPackage) opts.scormReady = false;
         if (itinerary.showCodeAccess) {
             $('#adaptativeQuizMessageCodeAccess-' + id).text(itinerary.messageCodeAccess || '');
             $('#adaptativeQuizCubierta-' + id).show();
             $('#adaptativeQuizCodeAccessDiv-' + id).show();
-        } else if (!opts.gameStarted && opts.questions.length > 0) {
+        } else if (!opts.gameStarted && opts.questions.length > 0 && !inScormPackage) {
             this.beginActivity(id);
         }
 
@@ -1424,7 +1555,98 @@ var $adaptativequiz = {
             $exeDevices.iDevice.gamification &&
             $exeDevices.iDevice.gamification.scorm
         ) {
-            $exeDevices.iDevice.gamification.scorm.registerActivity(opts);
+            this.setupScorm(id);
+        }
+    },
+
+    /**
+     * Wire up SCORM for this activity. Inside a SCORM package (`body.exe-scorm`)
+     * the LMS API wrapper (`pipwerks`/`scorm`) must be loaded and initialised
+     * before any score can be read or written; otherwise every scorm helper
+     * call is a no-op and the score stays at 0/100. Outside a package (HTML5
+     * preview/export) we just register the activity. Mirrors the flow used by
+     * the trueorfalse and scrambled-list iDevices.
+     */
+    setupScorm: function (id) {
+        const opts = this.options[id];
+        if (!$('html').is('#exe-index')) {
+            this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
+            this.scormFunctions = '../libs/SCOFunctions.js';
+        }
+
+        if (document.body.classList.contains('exe-scorm')) {
+            if (opts) opts.scormReady = false;
+            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
+                this.initScormData(id);
+            } else {
+                this.loadScormApiWrapper(id);
+            }
+        } else {
+            if (opts) opts.scormReady = true;
+            $exeDevices.iDevice.gamification.scorm.registerActivity(this.options[id]);
+        }
+    },
+
+    isWaitingForScorm: opts => !!(opts && opts.isScorm > 0 && document.body.classList.contains('exe-scorm')),
+
+    loadScormApiWrapper: function (id) {
+        if (typeof pipwerks === 'undefined') {
+            eXe.app.loadScript(this.scormAPIwrapper, '$adaptativequiz.loadScoFunctions("' + id + '")');
+        } else {
+            this.loadScoFunctions(id);
+        }
+    },
+
+    loadScoFunctions: function (id) {
+        if (typeof scorm === 'undefined') {
+            eXe.app.loadScript(this.scormFunctions, '$adaptativequiz.initSCORM("' + id + '")');
+        } else {
+            this.initSCORM(id);
+        }
+    },
+
+    initSCORM: function (id) {
+        $adaptativequiz.mScorm = typeof scorm !== 'undefined' ? scorm : window.scorm;
+        if ($adaptativequiz.mScorm && $adaptativequiz.mScorm.init()) {
+            $adaptativequiz.initScormData(id);
+        } else {
+            // SCORM could not be initialised: start the game anyway so it stays
+            // playable (the score just won't be reported to the LMS).
+            const opts = $adaptativequiz.options[id];
+            if (opts) opts.scormReady = true;
+            $adaptativequiz.maybeStartAfterScorm(id);
+        }
+    },
+
+    initScormData: function (id) {
+        const opts = $adaptativequiz.options[id];
+        if (!opts) return;
+        const scormApi = $exeDevices.iDevice.gamification.scorm;
+        $adaptativequiz.mScorm = window.scorm;
+        $adaptativequiz.userName = scormApi.getUserName($adaptativequiz.mScorm);
+        if ($adaptativequiz.mScorm && typeof $adaptativequiz.mScorm.SetScoreMax === 'function') {
+            $adaptativequiz.mScorm.SetScoreMax(100);
+            $adaptativequiz.mScorm.SetScoreMin(0);
+        }
+        opts.scormReady = true;
+        scormApi.registerActivity(opts);
+        $adaptativequiz.maybeStartAfterScorm(id);
+    },
+
+    /**
+     * Start the activity once SCORM has been wired up (deferred game start, see
+     * addEvents). No-op when an access code is required (the learner unlocks the
+     * game via enterCodeAccess) or when the game is already running.
+     */
+    maybeStartAfterScorm: function (id) {
+        const opts = this.options[id];
+        if (!opts) return;
+        if (this.isWaitingForScorm(opts) && !opts.scormReady) return;
+        const itinerary = opts.itinerary || {};
+        const hasQuestions = Array.isArray(opts.questions) && opts.questions.length > 0;
+        const accessUnlocked = !itinerary.showCodeAccess || opts.accessUnlocked;
+        if (accessUnlocked && !opts.gameStarted && hasQuestions) {
+            this.beginActivity(id);
         }
     },
 };

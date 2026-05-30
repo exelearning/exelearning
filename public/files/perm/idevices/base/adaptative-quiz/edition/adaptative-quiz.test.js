@@ -1,4 +1,8 @@
+import { readFileSync } from 'fs';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+const EDITION_SRC = 'public/files/perm/idevices/base/adaptative-quiz/edition/adaptative-quiz.js';
+const EDITION_CSS = 'public/files/perm/idevices/base/adaptative-quiz/edition/adaptative-quiz.css';
 
 describe('adaptative-quiz edition', () => {
     let idevice;
@@ -19,6 +23,76 @@ describe('adaptative-quiz edition', () => {
         expect(typeof idevice.createForm).toBe('function');
         expect(typeof idevice.insertAIContent).toBe('function');
         expect(typeof idevice.parseAIQuestionLine).toBe('function');
+    });
+
+    describe('image field', () => {
+        it('drops the orphan TitleImage label and ships an image reload control', () => {
+            const src = readFileSync(EDITION_SRC, 'utf-8');
+            expect(src).not.toContain('adaptativeQuizTitleImage');
+            expect(src).toContain('adaptativeQuizEReloadImage');
+            expect(typeof idevice.reloadImagePreview).toBe('function');
+        });
+
+        it('reloadImagePreview refreshes the preview from an external URL with a cache-buster', () => {
+            document.body.innerHTML = `
+                <input id="adaptativeQuizEURLImage" value="https://example.com/pic.png" />
+                <img id="adaptativeQuizEImagePreview" style="display:none" />
+                <img id="adaptativeQuizENoImage" />
+            `;
+
+            idevice.reloadImagePreview();
+
+            const preview = document.getElementById('adaptativeQuizEImagePreview');
+            expect(preview.getAttribute('src')).toContain('https://example.com/pic.png');
+            expect(preview.getAttribute('src')).toContain('_reload=');
+            expect(preview.style.display).not.toBe('none');
+            expect(document.getElementById('adaptativeQuizENoImage').style.display).toBe('none');
+        });
+
+        it('reloadImagePreview applies a local (asset://) URL verbatim, without a cache-buster', () => {
+            document.body.innerHTML = `
+                <input id="adaptativeQuizEURLImage" value="asset://abc-123.png" />
+                <img id="adaptativeQuizEImagePreview" style="display:none" />
+                <img id="adaptativeQuizENoImage" />
+            `;
+
+            idevice.reloadImagePreview();
+
+            const preview = document.getElementById('adaptativeQuizEImagePreview');
+            // A query string would break asset:// resolution, so it must be left intact.
+            expect(preview.getAttribute('src')).toBe('asset://abc-123.png');
+            expect(preview.getAttribute('src')).not.toContain('_reload=');
+            expect(preview.style.display).not.toBe('none');
+            expect(document.getElementById('adaptativeQuizENoImage').style.display).toBe('none');
+        });
+
+        it('keeps the preview image proportioned (object-fit: contain) so portrait images are not stretched', () => {
+            const css = readFileSync(EDITION_CSS, 'utf-8');
+            const mediaRule = css.match(/\.ADQ-EMedia\s*\{[\s\S]*?\}/)?.[0] || '';
+            expect(mediaRule).toContain('object-fit: contain');
+        });
+
+        it('reloadImagePreview shows the placeholder when the URL is empty', () => {
+            document.body.innerHTML = `
+                <input id="adaptativeQuizEURLImage" value="" />
+                <img id="adaptativeQuizEImagePreview" />
+                <img id="adaptativeQuizENoImage" style="display:none" />
+            `;
+
+            idevice.reloadImagePreview();
+
+            expect(document.getElementById('adaptativeQuizEImagePreview').style.display).toBe('none');
+            expect(document.getElementById('adaptativeQuizENoImage').style.display).not.toBe('none');
+        });
+    });
+
+    it('lays out the Custom texts tab inputs in two responsive columns (like guess)', () => {
+        const css = readFileSync(EDITION_CSS, 'utf-8');
+        const rule = css.match(/#adaptativeQuizIdeviceForm \.exe-form-tab:has\(> \.ci18n\)\s*\{[\s\S]*?\}/)?.[0] || '';
+        expect(rule).toContain('display: flex');
+        expect(rule).toContain('flex-wrap: wrap');
+        // Each ci18n row takes roughly half the width → two columns.
+        expect(css).toContain('.exe-form-tab:has(> .ci18n) > * {');
     });
 
     it('removes the question number prefix from validation messages', () => {
@@ -456,8 +530,10 @@ describe('adaptative-quiz edition', () => {
                         <input id="adaptativeQuizAudio-msgError" value="" />
                         <input id="adaptativeQuizNumRound" value="1" />
                         <input type="checkbox" id="adaptativeQuizShuffle" checked />
-                        <input type="checkbox" id="adaptativeQuizImmediateFeedback" checked />
-                        <input type="checkbox" id="adaptativeQuizECustomMessages" />
+                        <div id="adaptativeQuizCustomMessagesRow">
+                            <input type="checkbox" id="adaptativeQuizECustomMessages" />
+                        </div>
+                        <div class="ADQ-EOrders" id="adaptativeQuizEOrder"></div>
                         <select id="adaptativeQuizInitialLevel"><option value="2" selected>2</option></select>
                         <input id="adaptativeQuizLevelName1" value="Easy" />
                         <input id="adaptativeQuizLevelName2" value="Medium" />
@@ -839,6 +915,46 @@ describe('adaptative-quiz edition', () => {
             const result = idevice.save();
             expect(result.showSolution).toBe(true);
             expect(result.timeShowSolution).toBe(5);
+
+            document.getElementById('adaptativeQuizECustomMessages').checked = true;
+            show.checked = false;
+            const resultWithoutSolutions = idevice.save();
+            expect(resultWithoutSolutions.showSolution).toBe(false);
+            expect(resultWithoutSolutions.customMessages).toBe(false);
+        });
+
+        it('keeps custom messages hidden and unchecked when showSolution is disabled', () => {
+            // The real row carries the Bootstrap `d-flex` utility; visibility must
+            // be driven by swapping `d-flex`/`d-none`, not an inline display that
+            // `d-flex !important` would override.
+            document.body.innerHTML = `
+                <input type="checkbox" id="adaptativeQuizShowSolution" />
+                <input type="number" id="adaptativeQuizTimeShowSolution" value="3" />
+                <div id="adaptativeQuizCustomMessagesRow" class="d-flex align-items-center">
+                    <input type="checkbox" id="adaptativeQuizECustomMessages" checked />
+                </div>
+            `;
+            let showSelectOrderValue = null;
+            idevice.showSelectOrder = value => {
+                showSelectOrderValue = value;
+            };
+
+            idevice.updateSolutionFeedbackControls(false);
+
+            const row = document.getElementById('adaptativeQuizCustomMessagesRow');
+            expect(document.getElementById('adaptativeQuizTimeShowSolution').disabled).toBe(true);
+            expect(document.getElementById('adaptativeQuizECustomMessages').checked).toBe(false);
+            expect(row.classList.contains('d-none')).toBe(true);
+            expect(row.classList.contains('d-flex')).toBe(false);
+            expect(showSelectOrderValue).toBe(false);
+
+            document.getElementById('adaptativeQuizECustomMessages').checked = true;
+            idevice.updateSolutionFeedbackControls(true);
+
+            expect(document.getElementById('adaptativeQuizTimeShowSolution').disabled).toBe(false);
+            expect(row.classList.contains('d-none')).toBe(false);
+            expect(row.classList.contains('d-flex')).toBe(true);
+            expect(showSelectOrderValue).toBe(true);
         });
 
         it('rejects save when showSolution is on but timeShowSolution is 0', () => {
@@ -933,21 +1049,30 @@ describe('adaptative-quiz edition', () => {
             idevice.showQuestion = () => {};
             idevice.refreshTranslations();
             idevice.setMessagesInfo();
-            idevice.showSelectOrder = () => {};
+            let showSelectOrderValue = null;
+            idevice.showSelectOrder = value => {
+                showSelectOrderValue = value;
+            };
 
             idevice.updateFieldGame({
                 showSolution: false,
                 timeShowSolution: 99,
+                customMessages: true,
                 questionsGame: [idevice.getCuestionDefault()],
                 levelNames: ['Easy', 'Medium', 'Hard'],
             });
             expect(document.getElementById('adaptativeQuizShowSolution').checked).toBe(false);
             expect(document.getElementById('adaptativeQuizTimeShowSolution').value).toBe('9');
             expect(document.getElementById('adaptativeQuizTimeShowSolution').disabled).toBe(true);
+            expect(document.getElementById('adaptativeQuizECustomMessages').checked).toBe(false);
+            expect(document.getElementById('adaptativeQuizCustomMessagesRow').classList.contains('d-none')).toBe(true);
+            expect(document.getElementById('adaptativeQuizCustomMessagesRow').classList.contains('d-flex')).toBe(false);
+            expect(showSelectOrderValue).toBe(false);
 
             idevice.updateFieldGame({
                 showSolution: true,
                 timeShowSolution: undefined,
+                customMessages: true,
                 questionsGame: [idevice.getCuestionDefault()],
                 levelNames: ['Easy', 'Medium', 'Hard'],
             });
@@ -955,6 +1080,10 @@ describe('adaptative-quiz edition', () => {
             // Default value when stored value is missing.
             expect(document.getElementById('adaptativeQuizTimeShowSolution').value).toBe('3');
             expect(document.getElementById('adaptativeQuizTimeShowSolution').disabled).toBe(false);
+            expect(document.getElementById('adaptativeQuizECustomMessages').checked).toBe(true);
+            expect(document.getElementById('adaptativeQuizCustomMessagesRow').classList.contains('d-none')).toBe(false);
+            expect(document.getElementById('adaptativeQuizCustomMessagesRow').classList.contains('d-flex')).toBe(true);
+            expect(showSelectOrderValue).toBe(true);
         });
     });
 

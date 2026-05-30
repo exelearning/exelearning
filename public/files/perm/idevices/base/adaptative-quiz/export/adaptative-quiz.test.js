@@ -1,10 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Load the real shared gamification helper ($exeDevices) from common.js so the
+// SCORM auto-save path can be integration-tested end to end (registerActivity +
+// sendScoreNew + updateActivity + showFinalScore against an in-memory LMS API).
+require('../../../../../../app/common/common.js');
+const realExeDevices = global.$exeDevices;
 
 /**
  * The export iDevice declares `var $adaptativequiz = {...}`. We rewrite it to
@@ -58,6 +64,19 @@ describe('adaptative-quiz export', () => {
             expect(optionsGridRule).toContain('grid-template-columns: 1fr;');
             expect(sortListRule).toContain('display: flex;');
             expect(sortListRule).toContain('flex-direction: column;');
+        });
+
+        it('colours every correct option green, even when it was selected (beats the blue state)', () => {
+            const css = readFileSync(join(__dirname, 'adaptative-quiz.css'), 'utf-8');
+            // The green "correct" rule must mirror the blue selected rule's
+            // `input[type="…"]` shape so its specificity matches (and wins by
+            // source order); `:has(input)` alone is less specific and a selected
+            // correct option would stay blue.
+            expect(css).toContain(
+                '.ADAPTATIVEQUIZ-Option.ADAPTATIVEQUIZ-OptionCorrect:has(input[type="checkbox"])',
+            );
+            // Regression guard against the lower-specificity form.
+            expect(css).not.toContain('.ADAPTATIVEQUIZ-Option.ADAPTATIVEQUIZ-OptionCorrect:has(input) {');
         });
     });
 
@@ -170,6 +189,972 @@ describe('adaptative-quiz export', () => {
             expect(html).not.toContain('ADAPTATIVEQUIZ-BtnNext');
             expect(html).not.toContain('adaptativeQuizBtnNext-');
             expect(html).toContain('ADAPTATIVEQUIZ-BtnCheck');
+        });
+    });
+
+    describe('progress and SCORM persistence', () => {
+        it('saves progress and automatic SCORM when the learner answers a question', () => {
+            const id = 'progress-answer';
+            document.body.innerHTML = `
+                <div id="adaptativeQuizQuestionContainer-${id}">
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="0">
+                        <input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="0" type="checkbox" checked />
+                    </label>
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="1">
+                        <input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="1" type="checkbox" />
+                    </label>
+                </div>
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizLevel-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+            `;
+
+            adq.options[id] = {
+                id,
+                questions: [
+                    {
+                        typeSelect: 0,
+                        options: [{ text: 'A' }, { text: 'B' }],
+                        solutionMulti: [0],
+                        difficulty: 1,
+                    },
+                ],
+                currentQuestionIndex: 0,
+                hits: 0,
+                errors: 0,
+                score: 0,
+                scorerp: 0,
+                numRound: 1,
+                minQuestionsShown: 0,
+                roundCount: 0,
+                answeredIndexes: [],
+                currentLevel: 1,
+                maxLevel: 3,
+                maxLevelReached: 1,
+                consecutiveCorrect: 0,
+                consecutiveWrong: 0,
+                showSolution: false,
+                gameStarted: true,
+                gameOver: false,
+                isScorm: 1,
+                msgs: adq.msgs,
+            };
+
+            const sendScoreSpy = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+            const saveEvaluationSpy = vi.spyOn(adq, 'saveEvaluation').mockImplementation(() => {});
+
+            adq.checkAnswer(id);
+
+            expect(sendScoreSpy).toHaveBeenCalledOnce();
+            expect(sendScoreSpy).toHaveBeenCalledWith(true, id);
+            expect(saveEvaluationSpy).toHaveBeenCalledOnce();
+            expect(saveEvaluationSpy).toHaveBeenCalledWith(id);
+            expect(adq.options[id].hits).toBe(1);
+            expect(adq.options[id].progressSaveMarker).toBe('1:1:0');
+        });
+
+        it('does not duplicate progress persistence for the same answered state', () => {
+            const id = 'progress-once';
+            adq.options[id] = {
+                id,
+                roundCount: 1,
+                hits: 1,
+                errors: 0,
+                isScorm: 1,
+            };
+            const sendScoreSpy = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+            const saveEvaluationSpy = vi.spyOn(adq, 'saveEvaluation').mockImplementation(() => {});
+
+            adq.saveProgress(id);
+            adq.saveProgress(id);
+
+            expect(sendScoreSpy).toHaveBeenCalledOnce();
+            expect(saveEvaluationSpy).toHaveBeenCalledOnce();
+        });
+
+        it('resets the progress persistence marker when starting a new game', () => {
+            const id = 'progress-reset';
+            document.body.innerHTML = `
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizShowClue-${id}"></div>
+                <div id="adaptativeQuizShowClueText-${id}"></div>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+                <div id="adaptativeQuizStartGameDiv-${id}"></div>
+                <div id="adaptativeQuizQuestionContainer-${id}"></div>
+                <div id="adaptativeQuizButtonsContainer-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                questions: [{ difficulty: 1 }],
+                hits: 1,
+                errors: 0,
+                score: 10,
+                obtainedClue: true,
+                progressSaveMarker: '1:1:0',
+                initialLevel: 1,
+                currentLevel: 2,
+                maxLevelReached: 2,
+                consecutiveCorrect: 1,
+                consecutiveWrong: 1,
+                answeredIndexes: [0],
+                roundCount: 1,
+            };
+            vi.spyOn(adq, 'pickNextQuestionIndex').mockReturnValue(0);
+            const renderSpy = vi.spyOn(adq, 'renderCurrentQuestion').mockImplementation(() => {});
+
+            adq.startGame(id);
+
+            expect(adq.options[id].progressSaveMarker).toBe('');
+            expect(adq.options[id].hits).toBe(0);
+            expect(adq.options[id].roundCount).toBe(0);
+            expect(renderSpy).toHaveBeenCalledWith(id);
+        });
+    });
+
+    describe('scoreRatio', () => {
+        beforeEach(() => {
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        scorm: { sendScoreNew: vi.fn() },
+                        report: { saveEvaluation: vi.fn() },
+                    },
+                },
+            };
+        });
+
+        afterEach(() => {
+            delete global.$exeDevices;
+        });
+
+        it('returns correct answers over the number of rounds', () => {
+            expect(adq.scoreRatio(3, 6)).toBe(0.5);
+            expect(adq.scoreRatio(6, 6)).toBe(1);
+            expect(adq.scoreRatio(0, 6)).toBe(0);
+        });
+
+        it('never exceeds 100% even if hits is greater than the rounds', () => {
+            expect(adq.scoreRatio(5, 3)).toBe(1);
+        });
+
+        it('falls back to a denominator of 1 when numRound is missing or zero', () => {
+            expect(adq.scoreRatio(0, 0)).toBe(0);
+            expect(adq.scoreRatio(1, 0)).toBe(1);
+            expect(adq.scoreRatio(0, undefined)).toBe(0);
+        });
+
+        it('treats missing or non-numeric hits as zero', () => {
+            expect(adq.scoreRatio(undefined, 4)).toBe(0);
+            expect(adq.scoreRatio('abc', 4)).toBe(0);
+        });
+
+        it('feeds the SCORM score (scorerp) on the 0-10 scale', () => {
+            const id = 'score-rp';
+            adq.options[id] = { id, hits: 3, numRound: 6, previousScores: {} };
+            adq.previousScores = {};
+            adq.sendScore(true, id);
+            expect(adq.options[id].scorerp).toBe(5);
+        });
+    });
+
+    describe('feedback message vs showSolution', () => {
+        function setupFeedbackGame(id, overrides) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizQuestionContainer-${id}">
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="0">
+                        <input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="0" type="checkbox" checked />
+                    </label>
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="1">
+                        <input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="1" type="checkbox" />
+                    </label>
+                    <div class="ADAPTATIVEQUIZ-Messages" id="adaptativeQuizMessages-${id}"></div>
+                </div>
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizLevel-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                questions: [
+                    {
+                        typeSelect: 0,
+                        options: [{ text: 'A' }, { text: 'B' }],
+                        solutionMulti: [0],
+                        difficulty: 1,
+                        msgHit: 'CUSTOM_CORRECT',
+                        msgError: 'CUSTOM_WRONG',
+                    },
+                ],
+                currentQuestionIndex: 0,
+                hits: 0,
+                errors: 0,
+                score: 0,
+                scorerp: 0,
+                numRound: 1,
+                minQuestionsShown: 0,
+                roundCount: 0,
+                answeredIndexes: [],
+                currentLevel: 1,
+                maxLevel: 3,
+                maxLevelReached: 1,
+                consecutiveCorrect: 0,
+                consecutiveWrong: 0,
+                gameStarted: true,
+                gameOver: false,
+                isScorm: 0,
+                msgs: { ...adq.msgs, msgSuccesses: 'GENERIC_CORRECT', msgFailures: 'GENERIC_WRONG' },
+                ...overrides,
+            };
+            vi.spyOn(adq, 'saveProgress').mockImplementation(() => {});
+            return adq.options[id];
+        }
+
+        it('shows the generic correct message (not the custom one) and no solution when solutions are hidden', () => {
+            const id = 'fb-hidden';
+            setupFeedbackGame(id, { showSolution: false });
+
+            adq.checkAnswer(id);
+
+            const msg = document.getElementById(`adaptativeQuizMessages-${id}`).textContent;
+            expect(msg).toContain('GENERIC_CORRECT');
+            expect(msg).not.toContain('CUSTOM_CORRECT');
+            // Solution is not revealed: the correct option is not highlighted.
+            const correctOption = document.querySelector(`#adaptativeQuizQuestionContainer-${id} .ADAPTATIVEQUIZ-Option[data-orig-index="0"]`);
+            expect(correctOption.classList.contains('ADAPTATIVEQUIZ-OptionCorrect')).toBe(false);
+        });
+
+        it('uses the custom message and reveals the solution when solutions are shown', () => {
+            const id = 'fb-shown';
+            setupFeedbackGame(id, { showSolution: true });
+
+            adq.checkAnswer(id);
+
+            const msg = document.getElementById(`adaptativeQuizMessages-${id}`).textContent;
+            expect(msg).toContain('CUSTOM_CORRECT');
+            const correctOption = document.querySelector(`#adaptativeQuizQuestionContainer-${id} .ADAPTATIVEQUIZ-Option[data-orig-index="0"]`);
+            expect(correctOption.classList.contains('ADAPTATIVEQUIZ-OptionCorrect')).toBe(true);
+        });
+    });
+
+    describe('answer locking (prevents double answer)', () => {
+        function setupLockGame(id, overrides) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizQuestionContainer-${id}">
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="0">
+                        <input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="0" type="checkbox" checked />
+                    </label>
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="1">
+                        <input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="1" type="checkbox" />
+                    </label>
+                    <input class="ADAPTATIVEQUIZ-WordInput" id="adaptativeQuizWord-${id}" />
+                    <div class="ADAPTATIVEQUIZ-Messages" id="adaptativeQuizMessages-${id}"></div>
+                </div>
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizLevel-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                questions: [
+                    { typeSelect: 0, options: [{ text: 'A' }, { text: 'B' }], solutionMulti: [0], difficulty: 1 },
+                    { typeSelect: 0, options: [{ text: 'A' }, { text: 'B' }], solutionMulti: [0], difficulty: 1 },
+                ],
+                currentQuestionIndex: 0,
+                hits: 0,
+                errors: 0,
+                score: 0,
+                scorerp: 0,
+                numRound: 2,
+                minQuestionsShown: 0,
+                roundCount: 0,
+                answeredIndexes: [],
+                currentLevel: 1,
+                maxLevel: 3,
+                maxLevelReached: 1,
+                consecutiveCorrect: 0,
+                consecutiveWrong: 0,
+                showSolution: false,
+                gameStarted: true,
+                gameOver: false,
+                isScorm: 0,
+                msgs: adq.msgs,
+                ...overrides,
+            };
+            vi.spyOn(adq, 'saveProgress').mockImplementation(() => {});
+            return adq.options[id];
+        }
+
+        it('locks every control after a valid answer', () => {
+            const id = 'lock1';
+            setupLockGame(id);
+
+            adq.checkAnswer(id);
+
+            expect(adq.options[id].answerLocked).toBe(true);
+            expect(document.getElementById(`adaptativeQuizBtnCheck-${id}`).disabled).toBe(true);
+            expect(document.getElementById(`adaptativeQuizWord-${id}`).disabled).toBe(true);
+            expect(
+                document.querySelector(`#adaptativeQuizQuestionContainer-${id} .ADAPTATIVEQUIZ-OptionInput`).disabled,
+            ).toBe(true);
+        });
+
+        it('ignores a second answer attempt while the question is locked', () => {
+            const id = 'lock2';
+            setupLockGame(id);
+
+            adq.checkAnswer(id);
+            const hitsAfterFirst = adq.options[id].hits;
+            const roundAfterFirst = adq.options[id].roundCount;
+            adq.checkAnswer(id); // second Enter key / click
+
+            expect(adq.options[id].hits).toBe(hitsAfterFirst);
+            expect(adq.options[id].roundCount).toBe(roundAfterFirst);
+        });
+
+        it('unlocks and re-enables the check button on the next question', () => {
+            const id = 'lock3';
+            setupLockGame(id);
+
+            adq.checkAnswer(id);
+            adq.options[id].currentQuestionIndex = 1;
+            adq.renderCurrentQuestion(id);
+
+            expect(adq.options[id].answerLocked).toBe(false);
+            expect(document.getElementById(`adaptativeQuizBtnCheck-${id}`).disabled).toBe(false);
+        });
+    });
+
+    describe('case-sensitive word hint', () => {
+        function renderWord(id, caseSensitive) {
+            document.body.innerHTML = `<div id="adaptativeQuizQuestionContainer-${id}"></div>`;
+            adq.options[id] = {
+                id,
+                questions: [
+                    { typeSelect: 2, question: 'AbC', solutionWord: 'def', percentageShow: 100, options: [] },
+                ],
+                currentQuestionIndex: 0,
+                shuffle: false,
+                caseSensitive,
+                roundCount: 0,
+                msgs: adq.msgs,
+            };
+            adq.renderCurrentQuestion(id);
+            return document.getElementById(`adaptativeQuizQuestionContainer-${id}`).innerHTML;
+        }
+
+        it('buildWordHint bakes the original case into the markup when case-sensitive', () => {
+            const html = adq.buildWordHint('AbC', 100, true);
+            expect(html).toContain('>A<');
+            expect(html).toContain('>b<');
+            expect(html).toContain('>C<');
+        });
+
+        it('buildWordHint uppercases the letters in the markup when not case-sensitive', () => {
+            const html = adq.buildWordHint('AbC', 100, false);
+            expect(html).toContain('>A<');
+            expect(html).toContain('>B<');
+            expect(html).toContain('>C<');
+            expect(html).not.toContain('>b<');
+        });
+
+        it('renders every word of a multi-word answer with its original case (case-sensitive)', () => {
+            const id = 'cs-multi';
+            document.body.innerHTML = `<div id="adaptativeQuizQuestionContainer-${id}"></div>`;
+            adq.options[id] = {
+                id,
+                questions: [
+                    { typeSelect: 2, question: 'Hola Mundo Adios', solutionWord: 'd', percentageShow: 100, options: [] },
+                ],
+                currentQuestionIndex: 0,
+                shuffle: false,
+                caseSensitive: true,
+                roundCount: 0,
+                msgs: adq.msgs,
+            };
+            adq.renderCurrentQuestion(id);
+            const html = document.getElementById(`adaptativeQuizQuestionContainer-${id}`).innerHTML;
+            // Every word keeps its original case — not just the first one. The
+            // case is baked into the markup, so it never depends on CSS.
+            expect(html).toContain('>H<');
+            expect(html).toContain('>M<');
+            expect(html).toContain('>A<');
+            expect(html).toContain('>o<');
+            expect(html).toContain('>u<');
+            expect(html).not.toContain('>U<'); // "Mundo" must not become "MUNDO"
+        });
+
+        it('uppercases the letters when caseSensitive is off', () => {
+            const html = renderWord('cs-off', false);
+            expect(html).toContain('>A<');
+            expect(html).toContain('>B<');
+            expect(html).not.toContain('>b<');
+        });
+
+        it('the hint cells no longer rely on CSS text-transform', () => {
+            const css = readFileSync(join(__dirname, 'adaptative-quiz.css'), 'utf-8');
+            const rule = css.match(/\.ADAPTATIVEQUIZ-WordHintLetter\s*\{[^}]*\}/)?.[0] || '';
+            expect(rule).not.toContain('text-transform');
+        });
+    });
+
+    describe('select-type solution colours', () => {
+        it('marks every correct option green (even if selected) and leaves a wrong selected option unmarked', () => {
+            const id = 'colour';
+            document.body.innerHTML = `
+                <div id="adaptativeQuizQuestionContainer-${id}">
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="0"><input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="0" type="checkbox" checked /></label>
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="1"><input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="1" type="checkbox" /></label>
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="2"><input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="2" type="checkbox" checked /></label>
+                    <div class="ADAPTATIVEQUIZ-Messages" id="adaptativeQuizMessages-${id}"></div>
+                </div>
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizLevel-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                questions: [
+                    { typeSelect: 0, options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }], solutionMulti: [0, 1], difficulty: 1 },
+                ],
+                currentQuestionIndex: 0,
+                hits: 0,
+                errors: 0,
+                score: 0,
+                scorerp: 0,
+                numRound: 1,
+                minQuestionsShown: 0,
+                roundCount: 0,
+                answeredIndexes: [],
+                currentLevel: 1,
+                maxLevel: 3,
+                maxLevelReached: 1,
+                consecutiveCorrect: 0,
+                consecutiveWrong: 0,
+                showSolution: true,
+                gameStarted: true,
+                gameOver: false,
+                isScorm: 0,
+                msgs: adq.msgs,
+            };
+            vi.spyOn(adq, 'saveProgress').mockImplementation(() => {});
+
+            adq.checkAnswer(id);
+
+            const opt = i =>
+                document.querySelector(`#adaptativeQuizQuestionContainer-${id} .ADAPTATIVEQUIZ-Option[data-orig-index="${i}"]`);
+            // Both correct options are green — including the one that was selected.
+            expect(opt(0).classList.contains('ADAPTATIVEQUIZ-OptionCorrect')).toBe(true);
+            expect(opt(1).classList.contains('ADAPTATIVEQUIZ-OptionCorrect')).toBe(true);
+            // The wrong but selected option is not recoloured: it keeps its
+            // checked (blue) state, no correct/incorrect class added.
+            expect(opt(2).classList.contains('ADAPTATIVEQUIZ-OptionCorrect')).toBe(false);
+            expect(opt(2).classList.contains('ADAPTATIVEQUIZ-OptionIncorrect')).toBe(false);
+            expect(opt(2).querySelector('input').checked).toBe(true);
+        });
+    });
+
+    describe('option audio on click', () => {
+        afterEach(() => {
+            delete global.$exeDevices;
+        });
+
+        it('plays the option sound when an option with audio is clicked', () => {
+            const id = 'optaudio';
+            const playSound = vi.fn();
+            const stopSound = vi.fn();
+            global.$exeDevices = {
+                iDevice: { gamification: { media: { playSound, stopSound } } },
+            };
+            document.body.innerHTML = `
+                <div id="adaptativeQuizQuestionContainer-${id}">
+                    <label class="ADAPTATIVEQUIZ-Option ADAPTATIVEQUIZ-Option--has-audio" data-orig-index="0">
+                        <input class="ADAPTATIVEQUIZ-OptionInput" type="checkbox" />
+                        <button class="ADAPTATIVEQUIZ-AudioToggle ADAPTATIVEQUIZ-AudioToggle--option" data-audio-url="sounds/a.mp3"></button>
+                    </label>
+                </div>
+            `;
+
+            adq.bindMediaToggle(id);
+            document
+                .querySelector(`#adaptativeQuizQuestionContainer-${id} .ADAPTATIVEQUIZ-Option--has-audio`)
+                .click();
+
+            expect(playSound).toHaveBeenCalledWith('sounds/a.mp3');
+        });
+    });
+
+    describe('itinerary clue', () => {
+        function clueOpts(overrides) {
+            return {
+                hits: 0,
+                numRound: 4,
+                obtainedClue: false,
+                itinerary: { showClue: true, percentageClue: 50, clueGame: 'Look behind the door' },
+                ...overrides,
+            };
+        }
+
+        it('does not reveal the clue when the activity has no clue configured', () => {
+            const opts = clueOpts({ hits: 4, itinerary: { showClue: false, percentageClue: 0 } });
+            expect(adq.shouldRevealClue(opts)).toBe(false);
+        });
+
+        it('does not reveal the clue without activity options', () => {
+            expect(adq.shouldRevealClue()).toBe(false);
+        });
+
+        it('does not reveal the clue while the hit percentage is below the threshold', () => {
+            const opts = clueOpts({ hits: 1 }); // 25% < 50%
+            expect(adq.shouldRevealClue(opts)).toBe(false);
+        });
+
+        it('reveals the clue once the hit percentage reaches the threshold', () => {
+            const opts = clueOpts({ hits: 2 }); // 50% >= 50%
+            expect(adq.shouldRevealClue(opts)).toBe(true);
+        });
+
+        it('does not reveal the clue again once it has been obtained', () => {
+            const opts = clueOpts({ hits: 4, obtainedClue: true });
+            expect(adq.shouldRevealClue(opts)).toBe(false);
+        });
+
+        it('maybeRevealClue shows the clue text in the DOM and marks it as obtained', () => {
+            const id = 'clue-dom';
+            document.body.innerHTML = `
+                <div id="adaptativeQuizShowClue-${id}" style="display:none"></div>
+                <p id="adaptativeQuizShowClueText-${id}"></p>
+            `;
+            adq.options[id] = clueOpts({ hits: 2 });
+
+            adq.maybeRevealClue(id);
+
+            expect(adq.options[id].obtainedClue).toBe(true);
+            expect(document.getElementById(`adaptativeQuizShowClueText-${id}`).textContent).toBe(
+                'Look behind the door',
+            );
+            expect(document.getElementById(`adaptativeQuizShowClue-${id}`).style.display).not.toBe('none');
+        });
+    });
+
+    describe('setupScorm', () => {
+        let registerActivitySpy;
+        let originalExe;
+
+        beforeEach(() => {
+            registerActivitySpy = vi.fn();
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        scorm: { registerActivity: registerActivitySpy, getUserName: () => 'Ada' },
+                    },
+                },
+            };
+            originalExe = global.eXe;
+            document.body.className = '';
+        });
+
+        afterEach(() => {
+            delete global.$exeDevices;
+            delete window.scorm;
+            global.eXe = originalExe;
+            document.body.className = '';
+        });
+
+        it('registers the activity directly when not inside a SCORM package', () => {
+            const id = 'no-scorm';
+            adq.options[id] = { id, isScorm: 1 };
+
+            adq.setupScorm(id);
+
+            expect(registerActivitySpy).toHaveBeenCalledWith(adq.options[id]);
+        });
+
+        it('initialises the LMS connection and registers the activity when the API is ready', () => {
+            const id = 'scorm-ready';
+            adq.options[id] = { id, isScorm: 1 };
+            document.body.classList.add('exe-scorm');
+            const setMax = vi.fn();
+            const setMin = vi.fn();
+            window.scorm = { init: () => true, SetScoreMax: setMax, SetScoreMin: setMin };
+
+            adq.setupScorm(id);
+
+            expect(setMax).toHaveBeenCalledWith(100);
+            expect(setMin).toHaveBeenCalledWith(0);
+            expect(registerActivitySpy).toHaveBeenCalledWith(adq.options[id]);
+        });
+
+        it('loads the SCORM API wrapper when the LMS API is not yet available', () => {
+            const id = 'scorm-deferred';
+            adq.options[id] = { id, isScorm: 1 };
+            document.body.classList.add('exe-scorm');
+            delete window.scorm;
+            const loadScriptSpy = vi.fn();
+            global.eXe = { app: { loadScript: loadScriptSpy, isInExe: () => false } };
+
+            adq.setupScorm(id);
+
+            expect(loadScriptSpy).toHaveBeenCalledOnce();
+            expect(loadScriptSpy.mock.calls[0][1]).toContain('$adaptativequiz.loadScoFunctions');
+            expect(registerActivitySpy).not.toHaveBeenCalled();
+        });
+
+        it('starts the game only after SCORM has been initialised (deferred start)', () => {
+            const id = 'deferred-start';
+            adq.options[id] = { id, isScorm: 1, questions: [{ difficulty: 1 }], itinerary: {} };
+            document.body.classList.add('exe-scorm');
+            window.scorm = { init: () => true, SetScoreMax: vi.fn(), SetScoreMin: vi.fn() };
+            const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+
+            adq.setupScorm(id);
+
+            expect(registerActivitySpy).toHaveBeenCalledWith(adq.options[id]);
+            expect(beginSpy).toHaveBeenCalledWith(id);
+        });
+    });
+
+    describe('maybeStartAfterScorm', () => {
+        afterEach(() => {
+            document.body.className = '';
+            document.body.innerHTML = '';
+        });
+
+        it('starts the game when there are questions and no access-code gate', () => {
+            const id = 'start-ok';
+            adq.options[id] = { id, gameStarted: false, questions: [{ difficulty: 1 }], itinerary: {} };
+            const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+
+            adq.maybeStartAfterScorm(id);
+
+            expect(beginSpy).toHaveBeenCalledWith(id);
+        });
+
+        it('does not start the game when an access code is required', () => {
+            const id = 'start-gated';
+            adq.options[id] = {
+                id,
+                gameStarted: false,
+                questions: [{ difficulty: 1 }],
+                itinerary: { showCodeAccess: true },
+            };
+            const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+
+            adq.maybeStartAfterScorm(id);
+
+            expect(beginSpy).not.toHaveBeenCalled();
+        });
+
+        it('does not restart a game that is already running', () => {
+            const id = 'start-running';
+            adq.options[id] = { id, gameStarted: true, questions: [{ difficulty: 1 }], itinerary: {} };
+            const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+
+            adq.maybeStartAfterScorm(id);
+
+            expect(beginSpy).not.toHaveBeenCalled();
+        });
+
+        it('waits for SCORM readiness before starting an access-code game', () => {
+            const id = 'start-gated-scorm';
+            document.body.classList.add('exe-scorm');
+            document.body.innerHTML = `
+                <input id="adaptativeQuizCodeAccessInput-${id}" value="open" />
+                <div id="adaptativeQuizCodeAccessDiv-${id}"></div>
+                <div id="adaptativeQuizCubierta-${id}"></div>
+                <div id="adaptativeQuizMessageCodeAccess-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                gameStarted: false,
+                isScorm: 1,
+                scormReady: false,
+                questions: [{ difficulty: 1 }],
+                itinerary: { showCodeAccess: true, codeAccess: 'open' },
+            };
+            const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+
+            adq.enterCodeAccess(id);
+            adq.maybeStartAfterScorm(id);
+
+            expect(adq.options[id].accessUnlocked).toBe(true);
+            expect(beginSpy).not.toHaveBeenCalled();
+
+            adq.options[id].scormReady = true;
+            adq.maybeStartAfterScorm(id);
+
+            expect(beginSpy).toHaveBeenCalledWith(id);
+        });
+    });
+
+    describe('submit icon path resolution', () => {
+        it('sets the submit-icon src from the runtime idevicePath in addEvents', () => {
+            const id = 'icon';
+            document.body.innerHTML = `
+                <div id="adaptativeQuizCubierta-${id}">
+                    <a id="adaptativeQuizCodeAccessButton-${id}">
+                        <img src="exequextreply.svg" class="ADAPTATIVEQUIZ-IconSubmit" alt="" />
+                    </a>
+                </div>
+                <div id="adaptativeQuizMainContainer-${id}"></div>
+                <input id="adaptativeQuizCodeAccessInput-${id}" />
+                <div id="adaptativeQuizCodeAccessDiv-${id}"></div>
+                <div id="adaptativeQuizMessageCodeAccess-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <button id="adaptativeQuizBtnStart-${id}"></button>
+            `;
+            adq.options[id] = {
+                id,
+                idevicePath: '/exe/idevices/adaptative-quiz/export/',
+                itinerary: { showCodeAccess: true, messageCodeAccess: '' },
+                questions: [],
+                isScorm: 0,
+                evaluation: false,
+            };
+
+            adq.addEvents(id);
+
+            const src = document
+                .querySelector(`#adaptativeQuizCubierta-${id} .ADAPTATIVEQUIZ-IconSubmit`)
+                .getAttribute('src');
+            expect(src).toBe('/exe/idevices/adaptative-quiz/export/exequextreply.svg');
+        });
+    });
+
+    describe('SCORM auto-save per answer (integration with real helper)', () => {
+        let store;
+
+        beforeEach(() => {
+            // Restore the real $exeDevices helper (other suites stub/delete it).
+            global.$exeDevices = realExeDevices;
+            // In-memory SCORM 1.2 data model.
+            store = {};
+            global.pipwerks = {
+                SCORM: {
+                    get: key => (key in store ? store[key] : ''),
+                    set: (key, value) => {
+                        store[key] = String(value);
+                        return true;
+                    },
+                },
+            };
+
+            document.body.className = 'exe-scorm';
+            document.body.innerHTML = `
+                <div class="page-content">
+                    <article class="idevice_node" id="adq-node">
+                        <header><div class="box-title">My quiz</div></header>
+                        <div id="adaptativeQuizMainContainer-INT"></div>
+                        <div class="Games-BottonContainer">
+                            <div class="Games-GetScore"><span class="Games-RepeatActivity"></span></div>
+                        </div>
+                    </article>
+                </div>
+            `;
+        });
+
+        afterEach(() => {
+            delete global.pipwerks;
+            document.body.className = '';
+            document.body.innerHTML = '';
+        });
+
+        it('persists cmi.core.score.raw and refreshes the display after every answered question', () => {
+            const id = 'INT';
+            adq.options[id] = {
+                id,
+                main: 'adaptativeQuizMainContainer-INT',
+                idevice: 'adaptative-quiz-IDevice',
+                isScorm: 1,
+                weighted: 100,
+                numRound: 2,
+                hits: 0,
+                errors: 0,
+                scorerp: 0,
+                gameStarted: true,
+                gameOver: false,
+                roundCount: 0,
+                progressSaveMarker: '',
+                evaluation: false,
+                msgs: adq.msgs,
+            };
+            adq.previousScores = {};
+
+            // Register the activity: initial saved score is 0.
+            realExeDevices.iDevice.gamification.scorm.registerActivity(adq.options[id]);
+            expect(parseFloat(store['cmi.core.score.raw'] || '0')).toBe(0);
+
+            // First correct answer -> 1/2 -> 50/100.
+            adq.options[id].hits = 1;
+            adq.options[id].roundCount = 1;
+            adq.saveProgress(id);
+            expect(parseFloat(store['cmi.core.score.raw'])).toBe(50);
+
+            // Second correct answer -> 2/2 -> 100/100.
+            adq.options[id].hits = 2;
+            adq.options[id].roundCount = 2;
+            adq.saveProgress(id);
+            expect(parseFloat(store['cmi.core.score.raw'])).toBe(100);
+            expect(store['cmi.core.lesson_status']).toBe('passed');
+
+            // The "below the activity" element shows the latest score (0-10 scale).
+            const repeatText = document.querySelector('.Games-RepeatActivity').textContent;
+            expect(repeatText).toContain('10.00');
+        });
+    });
+
+    describe('checkAnswer end-of-game boundary', () => {
+        beforeEach(() => {
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        scorm: { sendScoreNew: vi.fn() },
+                        report: { saveEvaluation: vi.fn() },
+                    },
+                },
+            };
+        });
+
+        afterEach(() => {
+            delete global.$exeDevices;
+        });
+
+        function setupSingleQuestionGame(id, overrides) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizQuestionContainer-${id}">
+                    <label class="ADAPTATIVEQUIZ-Option" data-orig-index="0">
+                        <input class="ADAPTATIVEQUIZ-OptionInput" name="adaptativeQuizAnswer-${id}" value="0" type="checkbox" checked />
+                    </label>
+                </div>
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizLevel-${id}"></div>
+                <div id="adaptativeQuizMessages-${id}"></div>
+                <button id="adaptativeQuizBtnCheck-${id}"></button>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                questions: [
+                    { typeSelect: 0, options: [{ text: 'A' }], solutionMulti: [0], difficulty: 1 },
+                    { typeSelect: 0, options: [{ text: 'B' }], solutionMulti: [0], difficulty: 1 },
+                ],
+                currentQuestionIndex: 0,
+                hits: 0,
+                errors: 0,
+                score: 0,
+                scorerp: 0,
+                roundCount: 0,
+                answeredIndexes: [],
+                currentLevel: 1,
+                maxLevel: 3,
+                maxLevelReached: 1,
+                consecutiveCorrect: 0,
+                consecutiveWrong: 0,
+                showSolution: false,
+                gameStarted: true,
+                gameOver: false,
+                isScorm: 0,
+                msgs: adq.msgs,
+                ...overrides,
+            };
+            return adq.options[id];
+        }
+
+        it('ends the game at numRound even when minQuestionsShown is larger', () => {
+            const id = 'boundary';
+            // numRound is 1 but minQuestionsShown defaults higher: the game must
+            // still end after the single configured round, so a perfect answer
+            // yields exactly 100% and never overshoots.
+            const opts = setupSingleQuestionGame(id, { numRound: 1, minQuestionsShown: 5 });
+            const endGameSpy = vi.spyOn(adq, 'endGame');
+
+            adq.checkAnswer(id);
+
+            expect(endGameSpy).toHaveBeenCalledOnce();
+            expect(opts.roundCount).toBe(1);
+            expect(opts.hits).toBe(1);
+            expect(adq.scoreRatio(opts.hits, opts.numRound)).toBe(1);
+        });
+
+        it('uses showSolution to display feedback and reveal the correct option', () => {
+            const id = 'show-feedback';
+            setupSingleQuestionGame(id, {
+                numRound: 1,
+                minQuestionsShown: 0,
+                showSolution: true,
+                questions: [
+                    {
+                        typeSelect: 0,
+                        options: [{ text: 'A' }],
+                        solutionMulti: [0],
+                        difficulty: 1,
+                        msgHit: 'Great answer',
+                    },
+                ],
+            });
+
+            adq.checkAnswer(id);
+
+            expect(document.getElementById(`adaptativeQuizMessages-${id}`).textContent).toContain('Great answer');
+            expect(
+                document
+                    .querySelector(`#adaptativeQuizQuestionContainer-${id} .ADAPTATIVEQUIZ-Option`)
+                    .classList.contains('ADAPTATIVEQUIZ-OptionCorrect'),
+            ).toBe(true);
+        });
+
+        it('shows a generic message but no custom message or solution when showSolution is disabled', () => {
+            const id = 'hide-feedback';
+            setupSingleQuestionGame(id, {
+                numRound: 1,
+                minQuestionsShown: 0,
+                showSolution: false,
+                questions: [
+                    {
+                        typeSelect: 0,
+                        options: [{ text: 'A' }],
+                        solutionMulti: [0],
+                        difficulty: 1,
+                        msgHit: 'Great answer',
+                    },
+                ],
+            });
+
+            adq.checkAnswer(id);
+
+            // A generic correct/incorrect message is still shown for a few
+            // seconds, but the custom per-question message is not used and the
+            // solution is not revealed.
+            const msg = document.getElementById(`adaptativeQuizMessages-${id}`).textContent;
+            expect(msg).not.toBe('');
+            expect(msg).not.toContain('Great answer');
+            expect(
+                document
+                    .querySelector(`#adaptativeQuizQuestionContainer-${id} .ADAPTATIVEQUIZ-Option`)
+                    .classList.contains('ADAPTATIVEQUIZ-OptionCorrect'),
+            ).toBe(false);
         });
     });
 

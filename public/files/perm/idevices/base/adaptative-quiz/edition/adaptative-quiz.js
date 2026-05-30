@@ -266,37 +266,13 @@ var $exeDevice = {
                                 </select>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="adaptativeQuizNumRound" class="mb-0">${_('Questions per round')}:</label>
+                                <label for="adaptativeQuizNumRound" class="mb-0">${_('Number of questions')}:</label>
                                 <input type="number" id="adaptativeQuizNumRound" class="form-control form-control-sm ADQ-ENumberInput" value="6" min="1" />
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="adaptativeQuizETime" class="mb-0">${_('Time (minutes)')}:</label>
                                 <input type="number" id="adaptativeQuizETime" class="form-control form-control-sm ADQ-ENumberInput" value="0" min="0" max="59" />
                                 <small class="text-muted">${_('Set to 0 to disable the time limit.')}</small>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizShuffle" class="toggle-input" checked/><span class="toggle-visual"></span></span>
-                                    <label for="adaptativeQuizShuffle" class="toggle-label">${_('Shuffle answer options at runtime')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizImmediateFeedback" class="toggle-input" checked/><span class="toggle-visual"></span></span>
-                                    <label for="adaptativeQuizImmediateFeedback" class="toggle-label">${_('Show immediate feedback after each answer')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizCaseSensitive" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="adaptativeQuizCaseSensitive" class="toggle-label">${_('Case-sensitive answer matching (word type)')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <div class="toggle-item">
-                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizAccentSensitive" class="toggle-input"/><span class="toggle-visual"></span></span>
-                                    <label for="adaptativeQuizAccentSensitive" class="toggle-label">${_('Require correct accents (word type)')}</label>
-                                </div>
                             </div>
                             <div class="adaptativeQuizShowSolutionRow d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item m-0">
@@ -309,10 +285,28 @@ var $exeDevice = {
                                 <input type="number" class="form-control form-control-sm" id="adaptativeQuizTimeShowSolution" value="3" min="1" max="9" style="width:5rem;text-align:center" />
                                 <span>${_('seconds')}</span>
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <div id="adaptativeQuizCustomMessagesRow" class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                 <div class="toggle-item">
                                     <span class="toggle-control"><input type="checkbox" id="adaptativeQuizECustomMessages" class="toggle-input"/><span class="toggle-visual"></span></span>
                                     <label for="adaptativeQuizECustomMessages" class="toggle-label">${_('Custom messages')}.</label>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizShuffle" class="toggle-input" checked/><span class="toggle-visual"></span></span>
+                                    <label for="adaptativeQuizShuffle" class="toggle-label">${_('Shuffle answer options at runtime')}</label>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizCaseSensitive" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="adaptativeQuizCaseSensitive" class="toggle-label">${_('Case-sensitive answer matching (word type)')}</label>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="adaptativeQuizAccentSensitive" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="adaptativeQuizAccentSensitive" class="toggle-label">${_('Require correct accents (word type)')}</label>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
@@ -364,6 +358,7 @@ var $exeDevice = {
                                     <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizInputImage">
                                         <label class="sr-av" for="adaptativeQuizEURLImage">${_('Image URL')}</label>
                                         <input type="text" class="exe-image-picker w-100 form-control me-0 ADQ-EImageInput" id="adaptativeQuizEURLImage"/>
+                                        <a href="#" class="ADQ-ENavigationButton ADQ-EImageReload" id="adaptativeQuizEReloadImage" title="${_('Reload image')}" aria-label="${_('Reload image')}"><img src="${path}quextIEPlay.png" alt="${_('Reload image')}" class="ADQ-ENavigationButton" /></a>
                                     </div>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizEOptionsNumberDiv">
                                         <span>${_('Options Number')}:</span>
@@ -398,7 +393,6 @@ var $exeDevice = {
                                         <label for="adaptativeQuizDifficulty">${_('Difficulty')}:</label>
                                         <select id="adaptativeQuizDifficulty" class="form-control form-control-sm ADQ-EDifficulty" style="width:auto"></select>
                                     </div>
-                                    <span id="adaptativeQuizTitleImage" style="display:none">${_('Image URL')}</span>
                                 </div>
                                 <div class="ADQ-EMultiMediaOption">
                                     <div class="ADQ-EMultimedia" id="adaptativeQuizMultimedia">
@@ -605,10 +599,8 @@ var $exeDevice = {
 
         if (q.type === 1) {
             $('#adaptativeQuizInputImage').removeClass('d-none').addClass('d-flex');
-            $('#adaptativeQuizTitleImage').show();
         } else {
             $('#adaptativeQuizInputImage').removeClass('d-flex').addClass('d-none');
-            $('#adaptativeQuizTitleImage').hide();
         }
         $('#adaptativeQuizEURLImage').val(q.url || '');
         this.updateImagePreview(q.url || '');
@@ -960,6 +952,27 @@ var $exeDevice = {
         }
     },
 
+    updateSolutionFeedbackControls: function (showSolution) {
+        const enabled = !!showSolution;
+        $('#adaptativeQuizTimeShowSolution').prop('disabled', !enabled);
+
+        const $customMessages = $('#adaptativeQuizECustomMessages');
+        // The row uses the Bootstrap `d-flex` utility (display: flex !important),
+        // so an inline `display:none` from .toggle()/.hide() is overridden and the
+        // row never hides. Swap the `d-flex`/`d-none` utilities instead.
+        $('#adaptativeQuizCustomMessagesRow')
+            .toggleClass('d-flex', enabled)
+            .toggleClass('d-none', !enabled);
+
+        if (!enabled) {
+            $customMessages.prop('checked', false);
+            this.showSelectOrder(false);
+            return;
+        }
+
+        this.showSelectOrder($customMessages.is(':checked'));
+    },
+
     updateImagePreview: url => {
         const $img = $('#adaptativeQuizEImagePreview');
         const $noImg = $('#adaptativeQuizENoImage');
@@ -970,6 +983,32 @@ var $exeDevice = {
             $img.hide().attr('src', '');
             $noImg.show();
         }
+    },
+
+    /**
+     * Reload the image preview from the current URL field. Only the preview
+     * `src` is affected — the saved question URL is left untouched.
+     *
+     * External `http(s)` images are force re-fetched with a cache-busting query
+     * param. Local images (`asset://`, `blob:`, `data:`, relative paths) MUST
+     * be applied verbatim: appending a query string breaks their resolution
+     * (e.g. `asset://uuid?_reload=…` no longer matches the asset resolver), so
+     * the cache-buster is only used for external URLs.
+     */
+    reloadImagePreview: () => {
+        const url = ($('#adaptativeQuizEURLImage').val() || '').trim();
+        const $img = $('#adaptativeQuizEImagePreview');
+        const $noImg = $('#adaptativeQuizENoImage');
+        if (url.length === 0) {
+            $img.hide().attr('src', '');
+            $noImg.show();
+            return;
+        }
+        const isExternal = /^https?:\/\//i.test(url);
+        const src = isExternal ? `${url}${url.indexOf('?') === -1 ? '?' : '&'}_reload=${Date.now()}` : url;
+        // Clear first so re-applying the same local src still re-renders.
+        $img.attr('src', '').attr('src', src).show();
+        $noImg.hide();
     },
 
     readQuestionFromDom: function () {
@@ -1281,7 +1320,6 @@ var $exeDevice = {
         $('#adaptativeQuizNumRound').val(dataGame.numRound ?? this.DEFAULT_MIN_PLAY);
         $('#adaptativeQuizETime').val(Math.max(0, Math.min(59, parseInt(dataGame.time, 10) || 0)));
         $('#adaptativeQuizShuffle').prop('checked', dataGame.shuffle !== false);
-        $('#adaptativeQuizImmediateFeedback').prop('checked', dataGame.immediateFeedback !== false);
         // Word-type answer-matching options. Default to case- and
         // accent-insensitive so existing activities behave as before.
         $('#adaptativeQuizCaseSensitive').prop('checked', dataGame.caseSensitive === true);
@@ -1290,9 +1328,8 @@ var $exeDevice = {
         $('#adaptativeQuizShowSolution').prop('checked', showSolution);
         const timeShowSolution = Math.max(1, Math.min(9, parseInt(dataGame.timeShowSolution, 10) || 3));
         $('#adaptativeQuizTimeShowSolution').val(timeShowSolution);
-        $('#adaptativeQuizTimeShowSolution').prop('disabled', !showSolution);
-        $('#adaptativeQuizECustomMessages').prop('checked', !!dataGame.customMessages);
-        this.showSelectOrder(!!dataGame.customMessages);
+        $('#adaptativeQuizECustomMessages').prop('checked', showSolution && !!dataGame.customMessages);
+        this.updateSolutionFeedbackControls(showSolution);
         const storedLevelsRaw = parseInt(dataGame.numLevels, 10);
         const storedLevels = storedLevelsRaw === 5 ? 5 : storedLevelsRaw === 4 ? 4 : this.DEFAULT_NUM_LEVELS;
         this.applyNumLevels(storedLevels);
@@ -1450,7 +1487,6 @@ var $exeDevice = {
         const time = Math.max(0, Math.min(59, parseInt($('#adaptativeQuizETime').val(), 10) || 0));
 
         const shuffle = $('#adaptativeQuizShuffle').is(':checked');
-        const immediateFeedback = $('#adaptativeQuizImmediateFeedback').is(':checked');
         const caseSensitive = $('#adaptativeQuizCaseSensitive').is(':checked');
         const accentSensitive = $('#adaptativeQuizAccentSensitive').is(':checked');
         const showSolution = $('#adaptativeQuizShowSolution').is(':checked');
@@ -1459,7 +1495,7 @@ var $exeDevice = {
             this.showMessage(this.msgs.msgProvideTimeSolution);
             return false;
         }
-        const customMessages = $('#adaptativeQuizECustomMessages').is(':checked');
+        const customMessages = showSolution && $('#adaptativeQuizECustomMessages').is(':checked');
         const numLevelsRaw = parseInt($('input[name="adqnumlevels"]:checked').val(), 10);
         const numLevels = numLevelsRaw === 5 ? 5 : numLevelsRaw === 4 ? 4 : 3;
         let initialLevel = parseInt($('#adaptativeQuizInitialLevel').val()) || 2;
@@ -1527,7 +1563,6 @@ var $exeDevice = {
             numRound: numRound,
             time: time,
             shuffle: shuffle,
-            immediateFeedback: immediateFeedback,
             caseSensitive: caseSensitive,
             accentSensitive: accentSensitive,
             showSolution: showSolution,
@@ -1950,7 +1985,9 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#adaptativeQuizECustomMessages').on('change', function () {
-            $exeDevice.showSelectOrder($(this).is(':checked'));
+            const showSolution = $('#adaptativeQuizShowSolution').is(':checked');
+            if (!showSolution) $(this).prop('checked', false);
+            $exeDevice.showSelectOrder(showSolution && $(this).is(':checked'));
         });
 
         $('input[name="adqtype"]').on('change', () => {
@@ -1958,10 +1995,8 @@ var $exeDevice = {
             const type = parseInt($('input[name="adqtype"]:checked').val()) || 0;
             if (type === 1) {
                 $('#adaptativeQuizInputImage').removeClass('d-none').addClass('d-flex');
-                $('#adaptativeQuizTitleImage').show();
             } else {
                 $('#adaptativeQuizInputImage').removeClass('d-flex').addClass('d-none');
-                $('#adaptativeQuizTitleImage').hide();
                 $('#adaptativeQuizEURLImage').val('');
                 this.updateImagePreview('');
             }
@@ -1992,6 +2027,11 @@ var $exeDevice = {
             this.updateImagePreview($('#adaptativeQuizEURLImage').val());
         });
 
+        $('#adaptativeQuizEReloadImage').on('click', e => {
+            e.preventDefault();
+            this.reloadImagePreview();
+        });
+
         $('#adaptativeQuizNumRound').on('focusout', () => {
             const el = document.getElementById('adaptativeQuizNumRound');
             if (!el) return;
@@ -2005,7 +2045,7 @@ var $exeDevice = {
         });
 
         $('#adaptativeQuizShowSolution').on('change', function () {
-            $('#adaptativeQuizTimeShowSolution').prop('disabled', !$(this).is(':checked'));
+            $exeDevice.updateSolutionFeedbackControls($(this).is(':checked'));
         });
 
         $('#adaptativeQuizTimeShowSolution').on('focusout', () => {
