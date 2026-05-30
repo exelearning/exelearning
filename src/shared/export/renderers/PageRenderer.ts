@@ -104,6 +104,7 @@ export class PageRenderer {
             bodyClass = '',
             extraHeadScripts = '',
             onLoadScript = '',
+            onUnloadScript = '',
             detectedLibraries: providedDetectedLibraries = [],
             // Theme files (CSS/JS from theme root directory)
             themeFiles = [],
@@ -150,9 +151,7 @@ export class PageRenderer {
         // Build body class
         const bodyClassStr = bodyClass || 'exe-export exe-web-site';
         const onLoadAttr = onLoadScript ? ` onload="${onLoadScript}"` : '';
-        // Issue #1831: no `onunload`/`onbeforeunload` — Chrome blocks the deprecated `unload`
-        // event under a Permissions Policy (e.g. Moodle iframes). SCORM session finalization
-        // is registered via pagehide/visibilitychange inside SCOFunctions.js instead.
+        const onUnloadAttr = onUnloadScript ? ` onunload="${onUnloadScript}" onbeforeunload="${onUnloadScript}"` : '';
 
         // Build page header (with optional page counter)
         const pageHeaderHtml = this.renderPageHeader(page, {
@@ -190,7 +189,7 @@ export class PageRenderer {
 <head>
 ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
-<body class="${bodyClassStr}"${onLoadAttr}>
+<body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">${bodyClassStr.includes('exe-web-site') ? `<a href="#${page.id}" id="skipNav">${trans('Skip to content', {}, language)}</a> ` : ''}${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">

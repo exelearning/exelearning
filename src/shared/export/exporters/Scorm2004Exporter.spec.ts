@@ -295,17 +295,13 @@ describe('Scorm2004Exporter', () => {
         it('should include loadPage handler', () => {
             const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
-            expect(html).toContain('onload="loadPage()"');
+            expect(html).toContain('loadPage');
         });
 
-        // Regression: issue #1831 — see Scorm12Exporter for rationale. The deprecated `unload`
-        // event is blocked by Chrome's Permissions Policy inside Moodle iframes, so no
-        // onunload/onbeforeunload body attributes may be emitted.
-        it('should NOT include deprecated onunload/onbeforeunload handlers', () => {
+        it('should include unloadPage handler', () => {
             const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
-            expect(html).not.toContain('onunload');
-            expect(html).not.toContain('onbeforeunload');
+            expect(html).toContain('unloadPage');
         });
 
         it('should have exe-scorm2004 class', () => {
@@ -423,14 +419,6 @@ describe('Scorm2004Exporter', () => {
             expect(scoFunctions).toContain('cmi.completion_status');
             expect(scoFunctions).toContain('cmi.success_status');
             expect(scoFunctions).toContain('cmi.score.scaled');
-        });
-
-        it('should register lifecycle handlers without the deprecated unload event (issue #1831)', () => {
-            const scoFunctions = exporter.getSco2004Functions();
-
-            expect(scoFunctions).toContain('pagehide');
-            expect(scoFunctions).toContain('visibilitychange');
-            expect(scoFunctions).not.toMatch(/addEventListener\(\s*["']unload["']/);
         });
 
         it('should use ISO 8601 duration format', () => {

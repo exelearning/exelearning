@@ -636,9 +636,7 @@ export interface PageRenderOptions {
     bodyClass?: string;
     extraHeadScripts?: string;
     onLoadScript?: string;
-    // Note: there is intentionally no `onUnloadScript` — the deprecated `unload`/`onunload`
-    // path was removed in issue #1831. SCORM finalization is registered via
-    // pagehide/visibilitychange inside SCOFunctions.js.
+    onUnloadScript?: string;
 
     // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
     /** Hide the navigation menu (default: false) */
