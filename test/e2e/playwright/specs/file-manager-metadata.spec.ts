@@ -62,27 +62,39 @@ test.describe('File Manager - centralized asset metadata', () => {
         // The image-specific alt-text row is visible for images.
         await expect(page.locator('#modalFileManager .metadata-edit-alt-row')).toBeVisible();
 
-        // Fill and save metadata.
-        await page.locator('#modalFileManager .media-library-meta-description').fill('A scenic mountain sunset');
-        await page.locator('#modalFileManager .media-library-meta-alt').fill('Sunset over mountains');
-        await page.locator('#modalFileManager .media-library-meta-title').fill('Mountain Sunset');
-        await page.locator('#modalFileManager .media-library-meta-author').fill('Ada Lovelace');
+        // Fill metadata — there is no Save button: changes autosave on blur/debounce.
+        // Edit each field and wait for the "Saved" status before the next one. The
+        // status only flips to "Saved" after the flush completes (which awaits both the
+        // Yjs write and the best-effort server sync), so this is deterministic and
+        // avoids races between rapid autosaves.
+        const status = page.locator('#modalFileManager .media-library-meta-status');
+        const editField = async (selector: string, value: string): Promise<void> => {
+            await page.locator(selector).fill(value);
+            await page.locator(selector).blur();
+            await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
+        };
+        await editField('#modalFileManager .media-library-meta-description', 'A scenic mountain sunset');
+        await editField('#modalFileManager .media-library-meta-alt', 'Sunset over mountains');
+        await editField('#modalFileManager .media-library-meta-title', 'Mountain Sunset');
         await page.locator('#modalFileManager .media-library-meta-license').selectOption('Creative Commons BY');
-        await page.locator('#modalFileManager .media-library-meta-save-btn').click();
-
-        // "Metadata saved" status appears.
-        await expect(page.locator('#modalFileManager .media-library-meta-status')).toHaveText(/saved|guardad/i, {
-            timeout: 5000,
-        });
+        await expect(status).toHaveText(/saved|guardad/i, { timeout: 5000 });
+        await editField('#modalFileManager .media-library-meta-author', 'Ada Lovelace');
 
         // Search by description finds the image.
         await page.locator('#modalFileManager .media-library-search').fill('mountain');
         await page.waitForTimeout(400);
         await expect(page.locator('#modalFileManager .media-library-item:not(.media-library-folder)')).toHaveCount(1);
 
+        // Search by author also finds the image (search spans all metadata fields).
+        await page.locator('#modalFileManager .media-library-search').fill('lovelace');
+        await page.waitForTimeout(400);
+        await expect(page.locator('#modalFileManager .media-library-item:not(.media-library-folder)')).toHaveCount(1);
+
         // Clear search, reopen the panel and confirm persistence.
         await page.locator('#modalFileManager .media-library-search').fill('');
         await page.waitForTimeout(300);
+        // Let the debounced autosave + best-effort server PATCH settle before reopening.
+        await page.waitForTimeout(800);
         await closeFileManager(page);
         await openFileManagerFromUtilitiesMenu(page);
         await selectFirstFile(page);

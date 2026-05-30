@@ -4,7 +4,7 @@
             <div class="modal-header">
                 <div class="modal-title">{{ 'File manager' | trans }}</div>
                 <div class="media-library-header-search d-none d-md-block">
-                    <input type="search" class="form-control media-library-search" placeholder="{{ 'Search by name or description' | trans }}">
+                    <input type="search" class="form-control media-library-search" placeholder="{{ 'Search by name, title, description, alt text, author or license' | trans }}">
                 </div>
                 <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
                     <span aria-hidden="true">&times;</span>
@@ -60,18 +60,19 @@
                             {{ 'Show references' | trans }}
                         </label>
                     </div>
-
-                    <div class="media-library-file-count d-none d-md-block">
-                        <span class="media-library-count-value">0</span> {{ 'files' | trans }}
-                    </div>
                 </div>
 
                 <div class="media-library-container">
                     <div class="media-library-main">
-                        <div class="media-library-breadcrumbs ps-2">
-                            <span class="breadcrumb-item" data-path="" title="{{ 'Root' | trans }}">
-                                <span class="exe-icon">home</span>
-                            </span>
+                        <div class="media-library-nav-bar">
+                            <div class="media-library-breadcrumbs ps-2">
+                                <span class="breadcrumb-item" data-path="" title="{{ 'Root' | trans }}">
+                                    <span class="exe-icon">home</span>
+                                </span>
+                            </div>
+                            <div class="media-library-file-count text-muted small ms-auto pe-2">
+                                <span class="media-library-count-value">0</span> {{ 'files' | trans }}
+                            </div>
                         </div>
                         <div class="media-library-search-indicator ps-2 d-none">
                             <span class="breadcrumb-home exe-icon" title="{{ 'Go to root' | trans }}">home</span>
@@ -107,91 +108,110 @@
                     </div>
 
                     <div class="media-library-sidebar">
+                        <button type="button" class="media-library-sheet-close d-md-none" aria-label="{{ 'Close' | trans }}">
+                            <span class="exe-icon" aria-hidden="true">expand_more</span>
+                        </button>
                         <div class="media-library-sidebar-empty">
                             <p>{{ 'Select an item to view details' | trans }}</p>
                         </div>
                         <div class="media-library-sidebar-content" style="display:none;">
-                            <div class="media-library-preview">
-                                <img src="" alt="" class="media-library-preview-img">
-                                <video src="" class="media-library-preview-video" controls style="display:none;"></video>
-                                <audio src="" class="media-library-preview-audio" controls style="display:none;"></audio>
-                                <div class="media-library-preview-file" style="display:none;">
-                                    <span class="exe-icon file-icon">description</span>
+                            <!-- Preview: collapsible so it can be folded away to free space -->
+                            <details class="media-library-section media-library-section-preview" open>
+                                <summary class="media-library-section-summary">{{ 'Preview' | trans }}</summary>
+                                <div class="media-library-preview">
+                                    <img src="" alt="" class="media-library-preview-img">
+                                    <video src="" class="media-library-preview-video" controls style="display:none;"></video>
+                                    <audio src="" class="media-library-preview-audio" controls style="display:none;"></audio>
+                                    <div class="media-library-preview-file" style="display:none;">
+                                        <span class="exe-icon file-icon">description</span>
+                                    </div>
                                 </div>
-                            </div>
+                            </details>
+
                             <div class="media-library-metadata">
-                                <div class="metadata-row metadata-filename">
-                                    <span class="media-library-filename"></span>
-                                </div>
-                                <div class="metadata-row">
-                                    <label>{{ 'Type' | trans }}:</label>
-                                    <span class="media-library-type"></span>
-                                </div>
-                                <div class="metadata-row">
-                                    <label>{{ 'Size:' | trans }}</label>
-                                    <span class="media-library-size"></span>
-                                </div>
-                                <div class="metadata-row media-library-dimensions-row">
-                                    <label>{{ 'Dimensions:' | trans }}</label>
-                                    <span class="media-library-dimensions"></span>
-                                </div>
-                                <div class="metadata-row">
-                                    <label>{{ 'Added:' | trans }}</label>
-                                    <span class="media-library-date"></span>
-                                </div>
-                                <div class="metadata-row media-library-usage-row">
-                                    <label>{{ 'Usage:' | trans }}</label>
-                                    <span class="badge bg-light text-dark border media-library-usage">{{ '0 iDevices' | trans }}</span>
-                                </div>
-                                <div class="metadata-row media-library-usage-locations-row">
-                                    <label>{{ 'Used in' | trans }}</label>
-                                    <ul class="media-library-usage-locations" aria-live="polite"></ul>
-                                </div>
-                                <div class="metadata-row media-library-location-row" style="display: none;">
-                                    <label>{{ 'Location:' | trans }}</label>
-                                    <div class="d-flex align-items-center gap-1 flex-grow-1 min-w-0">
-                                        <span class="media-library-location-value text-truncate flex-grow-1">/</span>
-                                        <button type="button" class="btn btn-sm btn-link media-library-open-folder-btn p-0" title="{{ 'Open containing folder' | trans }}">
-                                            <span class="exe-icon">folder_open</span>
-                                        </button>
+                                <!-- Editable metadata: first-class, expanded by default.
+                                     Field labels alone are enough — no sub-group headings. -->
+                                <details class="media-library-section media-library-section-metadata" open>
+                                    <summary class="media-library-section-summary">{{ 'Metadata' | trans }}</summary>
+                                    <form class="media-library-edit-metadata" style="display:none;">
+                                        <span class="media-library-meta-status small" role="status" aria-live="polite"></span>
+                                        <div class="metadata-row metadata-edit-row metadata-edit-alt-row">
+                                            <label for="media-library-meta-alt">{{ 'Alternative text' | trans }}</label>
+                                            <input type="text" id="media-library-meta-alt" class="form-control form-control-sm media-library-meta-alt">
+                                        </div>
+                                        <div class="metadata-row metadata-edit-row">
+                                            <label for="media-library-meta-title">{{ 'Title' | trans }}</label>
+                                            <input type="text" id="media-library-meta-title" class="form-control form-control-sm media-library-meta-title">
+                                        </div>
+                                        <div class="metadata-row metadata-edit-row">
+                                            <label for="media-library-meta-description">{{ 'Description' | trans }}</label>
+                                            <textarea id="media-library-meta-description" class="form-control form-control-sm media-library-meta-description" rows="2"></textarea>
+                                        </div>
+                                        <div class="metadata-row metadata-edit-row">
+                                            <label for="media-library-meta-license">{{ 'License' | trans }}</label>
+                                            <select id="media-library-meta-license" class="form-select form-select-sm media-library-meta-license"></select>
+                                        </div>
+                                        <div class="metadata-row metadata-edit-row">
+                                            <label for="media-library-meta-author">{{ 'Author' | trans }}</label>
+                                            <input type="text" id="media-library-meta-author" class="form-control form-control-sm media-library-meta-author">
+                                        </div>
+                                    </form>
+                                </details>
+
+                                <!-- Read-only technical details, collapsed by default -->
+                                <details class="media-library-section media-library-section-details">
+                                    <summary class="media-library-section-summary">{{ 'Details' | trans }}</summary>
+                                    <div class="metadata-row metadata-filename">
+                                        <label>{{ 'Name' | trans }}:</label>
+                                        <span class="media-library-filename"></span>
                                     </div>
-                                </div>
-                                <div class="metadata-row metadata-url-row">
-                                    <label>{{ 'URL:' | trans }}</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control media-library-url" readonly>
-                                        <button type="button" class="btn btn-secondary media-library-copy-url-btn" title="{{ 'Copy URL' | trans }}">
-                                            <span class="exe-icon">content_copy</span>
-                                        </button>
+                                    <div class="metadata-row">
+                                        <label>{{ 'Type' | trans }}:</label>
+                                        <span class="media-library-type"></span>
                                     </div>
-                                </div>
-                                <form class="media-library-edit-metadata" style="display:none;">
-                                    <h4 class="media-library-edit-metadata-title">{{ 'Metadata' | trans }}</h4>
-                                    <div class="metadata-row metadata-edit-row">
-                                        <label for="media-library-meta-description">{{ 'Description' | trans }}</label>
-                                        <textarea id="media-library-meta-description" class="form-control form-control-sm media-library-meta-description" rows="2"></textarea>
+                                    <div class="metadata-row">
+                                        <label>{{ 'Size:' | trans }}</label>
+                                        <span class="media-library-size"></span>
                                     </div>
-                                    <div class="metadata-row metadata-edit-row metadata-edit-alt-row">
-                                        <label for="media-library-meta-alt">{{ 'Alternative text' | trans }}</label>
-                                        <input type="text" id="media-library-meta-alt" class="form-control form-control-sm media-library-meta-alt">
+                                    <div class="metadata-row media-library-dimensions-row">
+                                        <label>{{ 'Dimensions:' | trans }}</label>
+                                        <span class="media-library-dimensions"></span>
                                     </div>
-                                    <div class="metadata-row metadata-edit-row">
-                                        <label for="media-library-meta-title">{{ 'Title' | trans }}</label>
-                                        <input type="text" id="media-library-meta-title" class="form-control form-control-sm media-library-meta-title">
+                                    <div class="metadata-row">
+                                        <label>{{ 'Added:' | trans }}</label>
+                                        <span class="media-library-date"></span>
                                     </div>
-                                    <div class="metadata-row metadata-edit-row">
-                                        <label for="media-library-meta-license">{{ 'License' | trans }}</label>
-                                        <select id="media-library-meta-license" class="form-select form-select-sm media-library-meta-license"></select>
+                                    <div class="metadata-row media-library-location-row" style="display: none;">
+                                        <label>{{ 'Location:' | trans }}</label>
+                                        <div class="d-flex align-items-center gap-1 flex-grow-1 min-w-0">
+                                            <span class="media-library-location-value text-truncate flex-grow-1">/</span>
+                                            <button type="button" class="btn btn-sm btn-link media-library-open-folder-btn p-0" title="{{ 'Open containing folder' | trans }}">
+                                                <span class="exe-icon">folder_open</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="metadata-row metadata-edit-row">
-                                        <label for="media-library-meta-author">{{ 'Author' | trans }}</label>
-                                        <input type="text" id="media-library-meta-author" class="form-control form-control-sm media-library-meta-author">
+                                    <div class="metadata-row metadata-url-row">
+                                        <label>{{ 'URL:' | trans }}</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control media-library-url" readonly>
+                                            <button type="button" class="btn btn-secondary media-library-copy-url-btn" title="{{ 'Copy URL' | trans }}">
+                                                <span class="exe-icon">content_copy</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="metadata-row metadata-edit-actions">
-                                        <button type="submit" class="btn btn-sm btn-primary media-library-meta-save-btn">{{ 'Save metadata' | trans }}</button>
-                                        <span class="media-library-meta-status text-success small" role="status" aria-live="polite"></span>
+                                </details>
+
+                                <!-- Usage / references, collapsed by default -->
+                                <details class="media-library-section media-library-section-usage">
+                                    <summary class="media-library-section-summary">{{ 'Usage' | trans }}</summary>
+                                    <div class="metadata-row media-library-usage-row">
+                                        <span class="badge bg-light text-dark border media-library-usage">{{ '0 iDevices' | trans }}</span>
                                     </div>
-                                </form>
+                                    <div class="metadata-row media-library-usage-locations-row">
+                                        <label>{{ 'Used in' | trans }}</label>
+                                        <ul class="media-library-usage-locations" aria-live="polite"></ul>
+                                    </div>
+                                </details>
                             </div>
                         </div>
                     </div>
@@ -242,6 +262,10 @@
                             <span class="exe-icon">more_vert</span> {{ 'Actions' | trans }}
                         </button>
                         <ul class="dropdown-menu">
+                            <li><a class="dropdown-item media-library-edit-metadata-action" href="#" data-mobile-action="edit-metadata">
+                                <span class="exe-icon">tune</span> {{ 'Edit metadata' | trans }}
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-danger" href="#" data-mobile-action="delete">
                                 <span class="exe-icon">delete</span> {{ 'Delete' | trans }}
                             </a></li>

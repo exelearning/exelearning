@@ -661,6 +661,13 @@
         }
     }
 
+    /* Breadcrumb row with the file count tucked to the right. */
+    .media-library-nav-bar {
+        display: flex;
+        align-items: center;
+        gap: var(--margin-m);
+    }
+
     /* Main container */
     .media-library-container {
         display: flex;
@@ -1025,21 +1032,23 @@
         flex-direction: column;
         flex: 1;
         min-height: 0;
-        overflow: hidden;
+        overflow-y: auto; /* the whole panel scrolls; preview can be collapsed to free space */
+        padding: var(--margin-m) 0;
     }
 
     /* Preview */
     .media-library-preview {
-        padding: var(--margin-l);
+        padding: var(--margin-s) 0 0;
         background: var(--bg-light-gray);
+        border-radius: var(--radius);
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 180px;
+        min-height: 120px;
 
         img, video {
             max-width: 100%;
-            max-height: 160px;
+            max-height: 150px;
             object-fit: contain;
             border-radius: var(--radius);
         }
@@ -1063,10 +1072,8 @@
 
     /* Metadata */
     .media-library-metadata {
-        padding: var(--margin-l);
-        flex: 1;
-        overflow-y: auto;
-        min-height: 0;
+        padding: 0;
+        flex: 0 0 auto;
 
         .metadata-row {
             display: flex;
@@ -1095,19 +1102,76 @@
         }
     }
 
-    /* Editable centralized metadata — lives inside the scrollable .media-library-metadata
-       so it flows directly after the read-only info and scrolls together with it. */
-    .media-library-edit-metadata {
-        margin-top: var(--margin-m);
-        padding-top: var(--margin-m);
-        border-top: 1px solid var(--elements-hover);
+    /* Collapsible sidebar sections (Preview / Metadata / Details / Usage) using native
+       <details>/<summary> so they are keyboard-accessible without extra JS. Every
+       section is inset by the same horizontal margin so all headers — and the dividers
+       between them — line up at the same left edge. */
+    .media-library-section {
+        margin: 0 var(--margin-l);
 
-        .media-library-edit-metadata-title {
+        > .media-library-section-summary {
+            cursor: pointer;
             font-size: 12px;
+            font-weight: 600;
             text-transform: uppercase;
             color: var(--icon-gray);
-            margin: 0 0 var(--margin-m);
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: var(--margin-s) 0;
+            user-select: none;
+
+            &::-webkit-details-marker {
+                display: none;
+            }
+
+            /* Disclosure caret: a plain Unicode triangle (not an icon-font ligature,
+               which does not reliably form inside a ::before pseudo-element). */
+            &::before {
+                content: '\25B8'; /* ▸ */
+                display: inline-block;
+                font-size: 11px;
+                line-height: 1;
+                color: var(--icon-gray);
+                transition: transform 0.15s ease;
+            }
+
+            &:hover {
+                color: var(--body-text-color);
+            }
+
+            &:focus-visible {
+                outline: 2px solid var(--main-color, #2664d8);
+                outline-offset: 2px;
+                border-radius: 2px;
+            }
         }
+
+        &[open] > .media-library-section-summary::before {
+            transform: rotate(90deg);
+        }
+    }
+
+    .media-library-section-preview {
+        flex: 0 0 auto;
+        border-bottom: 1px solid var(--elements-hover);
+        padding-bottom: var(--margin-s);
+    }
+
+    /* Subtle dividers between the metadata/details/usage sections. The section margin
+       insets the lines so they never reach the panel edges. */
+    .media-library-metadata > .media-library-section {
+        border-top: 1px solid var(--elements-hover);
+
+        &:first-child {
+            border-top: none;
+        }
+    }
+
+    /* Editable centralized metadata form. */
+    .media-library-edit-metadata {
+        padding-bottom: var(--margin-s);
 
         .metadata-edit-row {
             display: flex;
@@ -1136,14 +1200,31 @@
             }
         }
 
-        .metadata-edit-actions {
-            display: flex;
-            align-items: center;
-            gap: var(--margin-m);
-        }
-
+        /* Autosave status: icon + text, state reinforced by colour (not colour alone). */
         .media-library-meta-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 18px;
             font-size: 12px;
+            margin-bottom: var(--margin-s);
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 14px;
+            }
+
+            &.is-saving {
+                color: var(--icon-gray);
+            }
+
+            &.is-saved {
+                color: var(--success-color, #2e7d32);
+            }
+
+            &.is-error {
+                color: var(--danger-color, #c62828);
+            }
         }
     }
 
@@ -3338,16 +3419,51 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
         }
     }
 
-    /* File manager: hide preview sidebar on mobile, let main pane take the full width */
+    /* File manager on mobile: the grid/list takes the full width and the asset detail
+       panel becomes a bottom sheet that slides up when an asset is selected. */
     #modalFileManager {
-        .media-library-sidebar {
-            display: none !important;
-        }
         .media-library-main {
             width: 100% !important;
             max-width: 100% !important;
             flex: 1 1 100% !important;
         }
+
+        .media-library-sidebar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1060;
+            max-height: 85dvh;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+            background: var(--bg-white, #fff);
+            transform: translateY(100%);
+            transition: transform 0.25s ease;
+            overflow-y: auto;
+
+            &.is-open {
+                transform: translateY(0);
+            }
+        }
+
+        .media-library-sheet-close {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            border: 0;
+            background: transparent;
+            padding: 6px 0 2px;
+            color: var(--icon-gray);
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 28px;
+            }
+        }
+
         .media-library-footer {
             flex-wrap: wrap;
             gap: 8px;
@@ -4095,9 +4211,8 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     font-size: 16px;
 }
 
-/* File count indicator in toolbar */
+/* File count indicator (sits at the right of the breadcrumb nav bar) */
 .media-library-file-count {
-    margin-left: auto;
     font-size: 13px;
     color: #6c757d;
     white-space: nowrap;

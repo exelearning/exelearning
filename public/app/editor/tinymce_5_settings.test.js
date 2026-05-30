@@ -609,9 +609,10 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith('asset://abc123/file.png', {
-        title: 'file.png',
+        title: '',
         text: 'file.png',
         alt: '',
+        attr_imagetitle: '',
         authorname: '',
         captionlicense: '',
         'data-asset-id': 'abc123',
@@ -642,9 +643,10 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith('asset://file.png', {
-        title: 'file.png',
+        title: '',
         text: 'file.png',
         alt: '',
+        attr_imagetitle: '',
         authorname: '',
         captionlicense: '',
         'data-asset-id': 'abc123',
@@ -673,9 +675,10 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith(`asset://${assetUUID}/image.jpg`, {
-        title: 'image.jpg',
+        title: '',
         text: 'image.jpg',
         alt: '',
+        attr_imagetitle: '',
         authorname: '',
         captionlicense: '',
         'data-asset-id': assetUUID,
@@ -712,9 +715,10 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith(`asset://${assetUUID}/video.mp4`, {
-        title: 'video.mp4',
+        title: '',
         text: 'video.mp4',
         alt: '',
+        attr_imagetitle: '',
         authorname: '',
         captionlicense: '',
         'data-asset-id': assetUUID,
@@ -2676,7 +2680,7 @@ describe('TinyMCE 5 Settings', () => {
   describe('buildImagePickerMeta', () => {
     const buildImagePickerMeta = tinyMCEModule.buildImagePickerMeta;
 
-    it('pre-fills alt from altText and title from the asset title', () => {
+    it('pre-fills alt from altText and the asset title into the caption text', () => {
       const meta = buildImagePickerMeta({
         id: 'a1',
         filename: 'photo.jpg',
@@ -2684,7 +2688,9 @@ describe('TinyMCE 5 Settings', () => {
         title: 'Sunset',
       });
       expect(meta.alt).toBe('A sunset');
-      expect(meta.title).toBe('Sunset');
+      // The image name belongs in the footer caption, not the HTML title attribute.
+      expect(meta.attr_imagetitle).toBe('Sunset');
+      expect(meta.title).toBe('');
       expect(meta['data-asset-id']).toBe('a1');
       expect(meta.text).toBe('photo.jpg');
     });
@@ -2705,9 +2711,10 @@ describe('TinyMCE 5 Settings', () => {
       expect(meta.alt).toBe('desc only');
     });
 
-    it('falls back to filename for the title when no title exists', () => {
+    it('leaves the caption text empty when the asset has no title', () => {
       const meta = buildImagePickerMeta({ id: 'a1', filename: 'p.jpg' });
-      expect(meta.title).toBe('p.jpg');
+      expect(meta.attr_imagetitle).toBe('');
+      expect(meta.title).toBe('');
       expect(meta.alt).toBe('');
     });
 
@@ -2717,6 +2724,7 @@ describe('TinyMCE 5 Settings', () => {
         title: '',
         text: '',
         alt: '',
+        attr_imagetitle: '',
         authorname: '',
         captionlicense: '',
         'data-asset-id': undefined,

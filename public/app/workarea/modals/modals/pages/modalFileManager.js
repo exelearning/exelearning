@@ -1,5 +1,6 @@
 import Modal from '../modal.js';
 import { getLicenseOptions } from '../../../../common/licenseOptions.js';
+import { debounce } from '../../../../search/SearchEngine.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -77,6 +78,7 @@ export default class ModalFilemanager extends Modal {
         this.listTbody = this.listTable?.querySelector('tbody');
         this.emptyState = this.modalElement.querySelector('.media-library-empty');
         this.sidebar = this.modalElement.querySelector('.media-library-sidebar');
+        this.sheetCloseBtn = this.modalElement.querySelector('.media-library-sheet-close');
         this.sidebarEmpty = this.modalElement.querySelector('.media-library-sidebar-empty');
         this.sidebarContent = this.modalElement.querySelector('.media-library-sidebar-content');
         this.uploadBtn = this.modalElement.querySelector('.media-library-upload-btn');
@@ -122,6 +124,12 @@ export default class ModalFilemanager extends Modal {
                 if (!item) return;
                 event.preventDefault();
                 if (item.classList.contains('disabled') || item.classList.contains('d-none')) return;
+                // "Edit metadata" has no footer-button equivalent: open the metadata
+                // section (and the bottom sheet on mobile) and focus the first field.
+                if (item.dataset.mobileAction === 'edit-metadata') {
+                    this.openMetadataEditor();
+                    return;
+                }
                 const target = this.mobileActionTargets[item.dataset.mobileAction];
                 if (target && !target.disabled) {
                     target.click();
@@ -215,7 +223,34 @@ export default class ModalFilemanager extends Modal {
         this.metaLicenseSelect = this.modalElement.querySelector('.media-library-meta-license');
         this.metaAuthorInput = this.modalElement.querySelector('.media-library-meta-author');
         this.metaStatus = this.modalElement.querySelector('.media-library-meta-status');
+        // Collapsible section wrapping the editable metadata (expanded by default).
+        this.metadataSection = this.modalElement.querySelector('.media-library-section-metadata');
+
+        // Autosave state: fields edited since the last populate (field-level updates).
+        this._metaDirty = new Set();
+        // Id of the asset currently populated in the form (to distinguish a fresh
+        // selection — full repopulate — from a remote refresh — preserve pending edits).
+        this._metaPopulatedId = null;
+        // Debounced autosave; flushes pending field changes after the user pauses typing.
+        this.scheduleMetadataSave = debounce(() => {
+            this.flushPendingMetadata();
+        }, 600);
+
         this.populateLicenseOptions();
+    }
+
+    /**
+     * Map of editable metadata field key -> input element. Used to wire autosave
+     * events and to collect the patch of changed fields.
+     * @returns {Array<[string, HTMLElement]>}
+     */
+    getMetadataFieldEntries() {
+        return [
+            ['description', this.metaDescriptionInput],
+            ['altText', this.metaAltInput],
+            ['title', this.metaTitleInput],
+            ['author', this.metaAuthorInput],
+        ];
     }
 
     /**
@@ -237,11 +272,13 @@ export default class ModalFilemanager extends Modal {
      * Set up event handlers
      */
     initBehaviour() {
-        // Save centralized metadata for the currently selected image
-        if (this.editMetadataForm) {
-            this.editMetadataForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await this.saveAssetMetadata();
+        // Centralized metadata autosaves: there is no explicit "Save" button.
+        this.bindMetadataInputs();
+
+        // Mobile bottom sheet: dismiss the asset detail panel.
+        if (this.sheetCloseBtn) {
+            this.sheetCloseBtn.addEventListener('click', () => {
+                this.sidebar?.classList.remove('is-open');
             });
         }
 
@@ -985,16 +1022,17 @@ export default class ModalFilemanager extends Modal {
                 const category = this.getAssetTypeCategory(asset.mime, asset.filename);
                 if (category !== this.typeFilter) return false;
             }
-            // Filter by search term (filename, description or alt text — case-insensitive)
+            // Filter by search term across filename + all centralized metadata
+            // (title, description, alt text, author, license) — case-insensitive.
             if (!searchTerm) return true;
-            const filename = (asset.filename || '').toLowerCase();
-            const description = (asset.description || '').toLowerCase();
-            const altText = (asset.altText || '').toLowerCase();
-            return (
-                filename.includes(searchTerm) ||
-                description.includes(searchTerm) ||
-                altText.includes(searchTerm)
-            );
+            return [
+                asset.filename,
+                asset.title,
+                asset.description,
+                asset.altText,
+                asset.author,
+                asset.license,
+            ].some(field => (field || '').toLowerCase().includes(searchTerm));
         });
 
         // Update file count
@@ -1959,6 +1997,8 @@ export default class ModalFilemanager extends Modal {
     showSidebarEmpty() {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'block';
         if (this.sidebarContent) this.sidebarContent.style.display = 'none';
+        // Close the mobile bottom sheet when nothing is selected.
+        this.sidebar?.classList.remove('is-open');
         this.updateButtonStates();
     }
 
@@ -1973,6 +2013,8 @@ export default class ModalFilemanager extends Modal {
 
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
+        // Slide up the mobile bottom sheet to reveal the selected asset's details.
+        this.sidebar?.classList.add('is-open');
 
         // Get blob URL (using synced method to ensure reverseBlobCache consistency)
         let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
@@ -2118,6 +2160,10 @@ export default class ModalFilemanager extends Modal {
      * Available for every file type; the image-specific "Alternative text" row is
      * only shown for images. Reads the asset's centralized metadata
      * (description / altText / title / license / author) from Yjs.
+     *
+     * When this is a refresh of the asset already shown (e.g. a remote collaborator
+     * edited it), fields the local user is currently editing — focused or with a
+     * pending unsaved change — are preserved so their input is never clobbered.
      * @param {Object} asset
      */
     populateEditMetadata(asset) {
@@ -2125,16 +2171,31 @@ export default class ModalFilemanager extends Modal {
 
         // Metadata applies to all asset types.
         this.editMetadataForm.style.display = 'block';
-        if (this.metaStatus) this.metaStatus.textContent = '';
+
+        // Distinguish a fresh selection (full repopulate, reset dirty/status) from a
+        // refresh of the same asset (preserve fields the user is actively editing).
+        const sameAsset = this._metaPopulatedId === asset.id;
+        const preserve = sameAsset && this._metaDirty && this._metaDirty.size > 0;
+        if (!preserve) {
+            this._metaDirty = new Set();
+            this.setMetaStatus('', '');
+        }
+        this._metaPopulatedId = asset.id;
 
         // Alt text is image-specific accessibility metadata: only relevant for images.
         const isImage = !!(asset.mime && asset.mime.startsWith('image/'));
-        if (this.metaAltRow) this.metaAltRow.style.display = isImage ? 'flex' : 'none';
+        if (this.metaAltRow) this.metaAltRow.style.display = isImage ? '' : 'none';
 
-        if (this.metaDescriptionInput) this.metaDescriptionInput.value = asset.description || '';
-        if (this.metaAltInput) this.metaAltInput.value = asset.altText || '';
-        if (this.metaTitleInput) this.metaTitleInput.value = asset.title || '';
-        if (this.metaAuthorInput) this.metaAuthorInput.value = asset.author || '';
+        // Set a field unless the user is actively editing it (focused or dirty).
+        const setField = (key, el, value) => {
+            if (!el) return;
+            if (preserve && (this._metaDirty.has(key) || document.activeElement === el)) return;
+            el.value = value;
+        };
+        setField('description', this.metaDescriptionInput, asset.description || '');
+        setField('altText', this.metaAltInput, asset.altText || '');
+        setField('title', this.metaTitleInput, asset.title || '');
+        setField('author', this.metaAuthorInput, asset.author || '');
         if (this.metaLicenseSelect) {
             const license = asset.license || '';
             // If the stored license is not one of the known options, add it so the
@@ -2146,26 +2207,101 @@ export default class ModalFilemanager extends Modal {
                 option.textContent = license;
                 this.metaLicenseSelect.appendChild(option);
             }
-            this.metaLicenseSelect.value = license;
+            if (!(preserve && (this._metaDirty.has('license') || document.activeElement === this.metaLicenseSelect))) {
+                this.metaLicenseSelect.value = license;
+            }
         }
     }
 
     /**
-     * Persist the editable metadata for the currently selected image asset.
-     * Trims values, writes to the AssetManager (Yjs source of truth + best-effort
-     * server sync), refreshes local state and shows a "Metadata saved" status.
+     * Wire autosave for the editable metadata fields: typing schedules a debounced
+     * save, losing focus (blur) or changing the license flushes immediately. There
+     * is no explicit "Save" button — Insert is the single primary action.
      */
-    async saveAssetMetadata() {
-        const asset = this.selectedAsset;
-        if (!asset || !this.assetManager) return;
+    bindMetadataInputs() {
+        for (const [key, el] of this.getMetadataFieldEntries()) {
+            if (!el) continue;
+            el.addEventListener('input', () => {
+                this._metaDirty.add(key);
+                this.setMetaStatus(_('Saving…'), 'saving');
+                this.scheduleMetadataSave();
+            });
+            el.addEventListener('blur', () => {
+                this.flushPendingMetadata();
+            });
+        }
+        if (this.metaLicenseSelect) {
+            this.metaLicenseSelect.addEventListener('change', () => {
+                this._metaDirty.add('license');
+                this.setMetaStatus(_('Saving…'), 'saving');
+                this.flushPendingMetadata();
+            });
+        }
+    }
 
-        const patch = {
+    /**
+     * Update the small non-intrusive autosave status indicator. State is conveyed by
+     * an icon + text (not colour alone) for accessibility; aria-live announces it.
+     * @param {string} text - status text ('' clears the indicator)
+     * @param {'saving'|'saved'|'error'|''} state
+     */
+    setMetaStatus(text, state) {
+        if (!this.metaStatus) return;
+        this.metaStatus.classList.remove('is-saving', 'is-saved', 'is-error');
+        if (!text) {
+            this.metaStatus.textContent = '';
+            return;
+        }
+        const icons = { saving: 'sync', saved: 'check', error: 'error' };
+        const icon = icons[state];
+        this.metaStatus.classList.add(`is-${state}`);
+        this.metaStatus.innerHTML = '';
+        if (icon) {
+            const iconEl = document.createElement('span');
+            iconEl.className = 'exe-icon';
+            iconEl.setAttribute('aria-hidden', 'true');
+            iconEl.textContent = icon;
+            this.metaStatus.appendChild(iconEl);
+        }
+        this.metaStatus.appendChild(document.createTextNode(` ${text}`));
+    }
+
+    /**
+     * Collect the patch of metadata fields the user has changed since the last
+     * populate (field-level updates). Returns an empty object when nothing is dirty
+     * so a flush with no pending changes is a no-op.
+     * @returns {{description?: string, altText?: string, title?: string, license?: string, author?: string}}
+     */
+    collectMetadataPatch() {
+        if (!this._metaDirty || this._metaDirty.size === 0) return {};
+        const values = {
             description: (this.metaDescriptionInput?.value || '').trim(),
             altText: (this.metaAltInput?.value || '').trim(),
             title: (this.metaTitleInput?.value || '').trim(),
             license: this.metaLicenseSelect?.value || '',
             author: (this.metaAuthorInput?.value || '').trim(),
         };
+        const patch = {};
+        for (const key of this._metaDirty) {
+            patch[key] = values[key];
+        }
+        return patch;
+    }
+
+    /**
+     * Flush any pending metadata edits to the Yjs-backed AssetManager. Cancels the
+     * debounce timer, writes only the changed fields (so concurrent remote edits to
+     * other fields are not clobbered), refreshes local state and shows a status.
+     * Idempotent and safe to call when nothing is pending (e.g. before Insert).
+     * @returns {Promise<void>}
+     */
+    async flushPendingMetadata() {
+        if (this.scheduleMetadataSave?.cancel) this.scheduleMetadataSave.cancel();
+        const asset = this.selectedAsset;
+        if (!asset || !this.assetManager) return;
+
+        const patch = this.collectMetadataPatch();
+        if (Object.keys(patch).length === 0) return;
 
         try {
             await this.assetManager.updateAssetMetadata(asset.id, patch);
@@ -2174,15 +2310,25 @@ export default class ModalFilemanager extends Modal {
             Object.assign(asset, patch);
             const listed = this.assets.find(a => a.id === asset.id);
             if (listed) Object.assign(listed, patch);
-            if (this.metaStatus) this.metaStatus.textContent = _('Metadata saved');
+            this._metaDirty.clear();
+            this.setMetaStatus(_('Saved'), 'saved');
         } catch (e) {
             Logger.warn('[MediaLibrary] Failed to save asset metadata:', e?.message || e);
-            if (this.metaStatus) {
-                this.metaStatus.classList.remove('text-success');
-                this.metaStatus.classList.add('text-danger');
-                this.metaStatus.textContent = _('Could not save metadata');
-            }
+            this.setMetaStatus(_('Error saving metadata'), 'error');
         }
+    }
+
+    /**
+     * Open the editable metadata section and focus its first field. On small screens
+     * this also opens the sidebar bottom sheet so the form is reachable.
+     */
+    openMetadataEditor() {
+        if (this.sidebar) this.sidebar.classList.add('is-open');
+        if (this.metadataSection) this.metadataSection.open = true;
+        const firstField = this.getMetadataFieldEntries()
+            .map(([, el]) => el)
+            .find(el => el && el.offsetParent !== null);
+        if (firstField) firstField.focus();
     }
 
     /**
@@ -3118,6 +3264,12 @@ export default class ModalFilemanager extends Modal {
      * Insert selected asset(s) into editor
      */
     async insertSelectedAsset() {
+        // Flush any pending (debounced) metadata edits first so Insert never loses
+        // unsaved changes and the inserted asset carries up-to-date metadata.
+        if (this._metaDirty && this._metaDirty.size > 0) {
+            await this.flushPendingMetadata();
+        }
+
         const assetsToInsert = this.multiSelect ? this.selectedAssets : (this.selectedAsset ? [this.selectedAsset] : []);
         if (assetsToInsert.length === 0) return;
 
