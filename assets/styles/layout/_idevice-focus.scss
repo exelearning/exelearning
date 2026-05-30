@@ -34,20 +34,18 @@ body.exe-idevice-focus-editing {
         margin-right: auto;
     }
 
-    /* Hide every block except the one holding the edited iDevice. Using a
-     * universal child selector (not just .box) also hides any placeholder /
-     * empty-state nodes that sit directly under #node-content. */
-    #node-content > *:not(:has(.idevice-node--focused-editing)) {
-        display: none !important;
-    }
-
     /* The block that contains the edited iDevice fills the workarea. It is a
      * direct child of #node-content (static), so inset:0 resolves to the
-     * positioned #node-content-container regardless of how deep the iDevice is. */
+     * positioned #node-content-container regardless of how deep the iDevice is.
+     *
+     * The opaque overlay covers the sibling blocks visually, so we intentionally
+     * do NOT `display:none` them: keeping them in the layout means tooling and
+     * assistive tech that query existing nodes (e.g. "the first text iDevice")
+     * still find them, while the user only sees the focused editor. */
     #node-content > .box:has(.idevice-node--focused-editing) {
         position: absolute;
         inset: 0;
-        z-index: 1;
+        z-index: 5;
         margin: 0;
         padding: 0;
         border: 0 !important;

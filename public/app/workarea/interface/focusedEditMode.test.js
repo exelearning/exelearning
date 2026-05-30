@@ -58,7 +58,9 @@ describe('FocusedEditMode', () => {
             return 0;
         });
         buildDom();
-        window.eXeLearning = { config: {} };
+        // Enabled by default in this suite so the enter/exit behaviour can be
+        // exercised; the isEnabled describe block overrides the flag per test.
+        window.eXeLearning = { config: { experimentalIdeviceFocusedEditMode: true } };
         mode = new FocusedEditMode(window.eXeLearning.app);
     });
 
@@ -71,18 +73,59 @@ describe('FocusedEditMode', () => {
     });
 
     describe('isEnabled', () => {
-        it('is on by default when the flag is absent', () => {
-            window.eXeLearning.config = {};
-            expect(FocusedEditMode.isEnabled()).toBe(true);
+        let originalLocalStorage;
+
+        beforeEach(() => {
+            // localStorage is not available in this test runner, so provide a
+            // minimal in-memory stub for the opt-in cases.
+            originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+            const store = {};
+            Object.defineProperty(window, 'localStorage', {
+                configurable: true,
+                value: {
+                    getItem: k => (k in store ? store[k] : null),
+                    setItem: (k, v) => {
+                        store[k] = String(v);
+                    },
+                    removeItem: k => {
+                        delete store[k];
+                    },
+                },
+            });
         });
 
-        it('is on when the flag is explicitly true', () => {
+        afterEach(() => {
+            if (originalLocalStorage) {
+                Object.defineProperty(window, 'localStorage', originalLocalStorage);
+            } else {
+                delete window.localStorage;
+            }
+        });
+
+        it('is off by default when the flag is absent', () => {
+            window.eXeLearning.config = {};
+            expect(FocusedEditMode.isEnabled()).toBe(false);
+        });
+
+        it('is on when the config flag is explicitly true', () => {
             window.eXeLearning.config.experimentalIdeviceFocusedEditMode = true;
             expect(FocusedEditMode.isEnabled()).toBe(true);
         });
 
-        it('is off only when the flag is explicitly false', () => {
+        it('is off when the config flag is explicitly false', () => {
             window.eXeLearning.config.experimentalIdeviceFocusedEditMode = false;
+            expect(FocusedEditMode.isEnabled()).toBe(false);
+        });
+
+        it('can be opted in via localStorage when no config flag is set', () => {
+            window.eXeLearning.config = {};
+            window.localStorage.setItem('exe.experimentalIdeviceFocusedEditMode', '1');
+            expect(FocusedEditMode.isEnabled()).toBe(true);
+        });
+
+        it('config flag takes precedence over localStorage opt-in', () => {
+            window.eXeLearning.config.experimentalIdeviceFocusedEditMode = false;
+            window.localStorage.setItem('exe.experimentalIdeviceFocusedEditMode', '1');
             expect(FocusedEditMode.isEnabled()).toBe(false);
         });
     });

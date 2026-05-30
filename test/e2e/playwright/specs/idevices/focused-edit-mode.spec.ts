@@ -71,6 +71,20 @@ async function confirmModal(page): Promise<void> {
     await confirmBtn.click();
 }
 
+/**
+ * Opt into the experiment (it is OFF by default). Must be called before
+ * navigating to the workarea so the flag is present when the app boots.
+ */
+async function enableFocusMode(page): Promise<void> {
+    await page.addInitScript(() => {
+        try {
+            window.localStorage.setItem('exe.experimentalIdeviceFocusedEditMode', '1');
+        } catch {
+            /* ignore */
+        }
+    });
+}
+
 async function waitForFocusActive(page): Promise<void> {
     await page.waitForFunction(cls => document.body.classList.contains(cls), BODY_CLASS, {
         timeout: 10000,
@@ -89,6 +103,7 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         createProject,
     }) => {
         const page = authenticatedPage;
+        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - enter');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -119,6 +134,7 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
 
     test('the focused editor fills the content workarea', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
+        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - layout');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -144,6 +160,7 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         createProject,
     }) => {
         const page = authenticatedPage;
+        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - save');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -163,6 +180,7 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
 
     test('discarding changes exits focused mode', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
+        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - discard');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -188,6 +206,7 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
 
     test('deleting the iDevice exits focused mode', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
+        await enableFocusMode(page);
         const projectUuid = await createProject(page, 'Focused Edit - delete');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -205,16 +224,12 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         await waitForFocusInactive(page);
     });
 
-    test('experiment can be disabled at runtime (kill switch)', async ({ authenticatedPage, createProject }) => {
+    test('is off by default (no opt-in) and does not alter editing', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
+        // NOTE: enableFocusMode() is intentionally NOT called here.
         const projectUuid = await createProject(page, 'Focused Edit - disabled');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
-
-        // Tear down the focused-edit observer to emulate the feature being off.
-        await page.evaluate(() => {
-            window.eXeLearning?.app?.interface?.focusedEditMode?.destroy();
-        });
 
         await addTextIdevice(page);
         const ideviceId = await getTextIdeviceId(page);

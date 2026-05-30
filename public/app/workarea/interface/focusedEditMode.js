@@ -64,13 +64,23 @@ export default class FocusedEditMode {
     }
 
     /**
-     * Whether the experiment is active. On by default; only an explicit
-     * `false` disables it, so it works with no server-side config change.
+     * Whether the experiment is active.
+     *
+     * Off by default so the existing editing behaviour is unchanged. Opt in
+     * either by setting `window.eXeLearning.config.experimentalIdeviceFocusedEditMode`
+     * (boolean) or, for quick trials/tests, the localStorage key
+     * `exe.experimentalIdeviceFocusedEditMode = '1'`.
      *
      * @returns {boolean}
      */
     static isEnabled() {
-        return window.eXeLearning?.config?.experimentalIdeviceFocusedEditMode !== false;
+        const cfg = window.eXeLearning?.config?.experimentalIdeviceFocusedEditMode;
+        if (typeof cfg === 'boolean') return cfg;
+        try {
+            return window.localStorage.getItem('exe.experimentalIdeviceFocusedEditMode') === '1';
+        } catch {
+            return false;
+        }
     }
 
     /**
