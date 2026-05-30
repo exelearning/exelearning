@@ -70,9 +70,7 @@ test.describe('File Manager usage & replace (#1817)', () => {
 
         const usageLocations = page.locator('#modalFileManager .media-library-usage-locations li');
         await expect(usageLocations.first()).toBeVisible({ timeout: 5000 });
-        await expect(page.locator('#modalFileManager .media-library-usage-locations')).not.toContainText(
-            /Not used/i,
-        );
+        await expect(page.locator('#modalFileManager .media-library-usage-locations')).not.toContainText(/Not used/i);
 
         // 4. Sort by references (most used first) works without error.
         await page.locator('#modalFileManager .media-library-sort').selectOption('references-desc');
@@ -83,7 +81,9 @@ test.describe('File Manager usage & replace (#1817)', () => {
 
         // 5. Replace the file content (same broad type) — references must be preserved.
         await selectFirstFile(page);
-        await page.locator('#modalFileManager .media-library-replace-input').setInputFiles('test/fixtures/sample-3.jpg');
+        await page
+            .locator('#modalFileManager .media-library-replace-input')
+            .setInputFiles('test/fixtures/sample-3.jpg');
         // Wait for the replace to complete (assets reload).
         await page.waitForTimeout(1500);
 
