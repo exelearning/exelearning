@@ -1,0 +1,18 @@
+/* Resource Report iDevice — editor styles */
+.resource-report-form .exe-field {
+    margin-bottom: 0.8em;
+}
+
+.resource-report-form .resource-report-toggles {
+    margin-top: 0.5em;
+}
+
+.resource-report-form .exe-checkbox-field {
+    display: block;
+    margin: 0.3em 0;
+    font-weight: normal;
+}
+
+.resource-report-form textarea.ideviceTextfield {
+    width: 100%;
+}

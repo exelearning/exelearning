@@ -668,6 +668,115 @@ class AssetManager {
   }
 
   /**
+   * Resolve the project Y.Doc (via the attached bridge or the global app bridge).
+   * @returns {Object|null} Yjs document or null
+   * @private
+   */
+  _getProjectYDoc() {
+    return (
+      this.yjsBridge?.documentManager?.ydoc ||
+      window.eXeLearning?.app?.project?._yjsBridge?.documentManager?.ydoc ||
+      null
+    );
+  }
+
+  /**
+   * Serialize a component's searchable content (htmlContent/htmlView + saved properties)
+   * into a single string for asset-reference matching.
+   * @param {Object} compMap - Yjs component map
+   * @returns {string}
+   * @private
+   */
+  _componentSearchableText(compMap) {
+    if (!compMap) return '';
+    let text = '';
+    // htmlContent is refreshed on every save; htmlView is a legacy fallback only
+    // populated during initial ELP import (issue #1674).
+    const htmlContent = compMap.get('htmlContent') || compMap.get('htmlView');
+    if (htmlContent) {
+      text += htmlContent.toString ? htmlContent.toString() : String(htmlContent);
+    }
+    for (const key of ['jsonProperties', 'ideviceProperties', 'properties']) {
+      const props = compMap.get(key);
+      if (props) {
+        text += JSON.stringify(props.toJSON ? props.toJSON() : props);
+      }
+    }
+    return text;
+  }
+
+  /**
+   * Iterate every component (iDevice) in the project, invoking the callback with its
+   * searchable text. Shared by countAssetReferences and getReferencedAssetIds.
+   * @param {(text: string) => void} callback
+   * @private
+   */
+  _forEachComponentText(callback) {
+    const ydoc = this._getProjectYDoc();
+    if (!ydoc) return;
+    const navigation = ydoc.getArray('navigation');
+    if (!navigation) return;
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const blocks = pageMap?.get('blocks');
+      if (!blocks) continue;
+      for (let j = 0; j < blocks.length; j++) {
+        const blockMap = blocks.get(j);
+        const components = blockMap?.get('components');
+        if (!components) continue;
+        for (let k = 0; k < components.length; k++) {
+          const compMap = components.get(k);
+          if (compMap) callback(this._componentSearchableText(compMap));
+        }
+      }
+    }
+  }
+
+  /**
+   * Count how many components (iDevices) reference an asset by its id.
+   * Single source of truth for File Manager usage badges and the Resource Report
+   * "used in project" filter.
+   * @param {string} assetId
+   * @returns {number}
+   */
+  countAssetReferences(assetId) {
+    if (!assetId) return 0;
+    try {
+      const assetRegex = new RegExp(`asset://${assetId}`, 'i');
+      let count = 0;
+      this._forEachComponentText(text => {
+        if (text && assetRegex.test(text)) count++;
+      });
+      return count;
+    } catch (e) {
+      console.warn('[AssetManager] Error counting asset references:', e?.message || e);
+      return 0;
+    }
+  }
+
+  /**
+   * Get the set of asset ids referenced anywhere in the project (single pass).
+   * Ids are normalized (extension stripped) to match getAllAssetsMetadata ids.
+   * @returns {Set<string>}
+   */
+  getReferencedAssetIds() {
+    const ids = new Set();
+    try {
+      const tokenRegex = /asset:\/\/([a-z0-9-]+?)(?:\.[a-z0-9]+)?(?=["'\s)\\]|$)/gi;
+      this._forEachComponentText(text => {
+        if (!text) return;
+        let match;
+        while ((match = tokenRegex.exec(text)) !== null) {
+          if (match[1]) ids.add(match[1]);
+        }
+      });
+    } catch (e) {
+      console.warn('[AssetManager] Error collecting referenced asset ids:', e?.message || e);
+    }
+    return ids;
+  }
+
+  /**
    * Generate asset URL in simplified format: asset://uuid.ext
    *
    * This format stores only the UUID and extension, making URLs:

@@ -1,0 +1,110 @@
+/* Resource Report iDevice — exported/preview styles */
+.resource-report-IDevice .resource-report-title {
+    margin: 0 0 0.4em;
+}
+
+.resource-report-IDevice .resource-report-intro {
+    margin: 0 0 1em;
+}
+
+.resource-report-IDevice .resource-report-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.resource-report-IDevice .resource-report-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1em;
+    padding: 0.8em 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.resource-report-IDevice .resource-report-item:last-child {
+    border-bottom: 0;
+}
+
+.resource-report-IDevice .resource-report-thumb {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.resource-report-IDevice .resource-report-img {
+    max-width: 64px;
+    max-height: 64px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.resource-report-IDevice .resource-report-icon {
+    color: #555;
+}
+
+.resource-report-IDevice .resource-report-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.resource-report-IDevice .resource-report-item-title {
+    display: block;
+    font-weight: bold;
+}
+
+.resource-report-IDevice .resource-report-filename {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+    word-break: break-all;
+}
+
+.resource-report-IDevice .resource-report-desc {
+    margin: 0.3em 0;
+}
+
+.resource-report-IDevice .resource-report-meta {
+    font-size: 0.85em;
+    color: #555;
+    margin: 0.2em 0;
+}
+
+.resource-report-IDevice .resource-report-actions {
+    margin-top: 0.4em;
+    display: flex;
+    gap: 0.8em;
+    flex-wrap: wrap;
+}
+
+.resource-report-IDevice .resource-report-empty {
+    font-style: italic;
+    color: #666;
+}
+
+/* Card grid layout */
+.resource-report-IDevice .resource-report-layout-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1em;
+}
+
+.resource-report-IDevice .resource-report-layout-cards .resource-report-item {
+    flex-direction: column;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    padding: 0.8em;
+}
+
+.resource-report-IDevice .resource-report-layout-cards .resource-report-thumb {
+    width: 100%;
+    height: 120px;
+}
+
+.resource-report-IDevice .resource-report-layout-cards .resource-report-img {
+    max-width: 100%;
+    max-height: 120px;
+}

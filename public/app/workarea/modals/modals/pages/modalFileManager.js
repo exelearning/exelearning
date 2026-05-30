@@ -2547,94 +2547,12 @@ export default class ModalFilemanager extends Modal {
      * @returns {number} Number of iDevices referencing this asset
      */
     countAssetReferences(assetId) {
-        if (!assetId) return 0;
-
-        try {
-            const yjsBridge = window.eXeLearning?.app?.project?._yjsBridge;
-            if (!yjsBridge?.documentManager?.ydoc) return 0;
-
-            const navigation = yjsBridge.documentManager.ydoc.getArray('navigation');
-            if (!navigation) return 0;
-
-            let count = 0;
-            const assetRegex = new RegExp(`asset://${assetId}`, 'gi');
-
-            // Traverse all pages
-            for (let i = 0; i < navigation.length; i++) {
-                const pageMap = navigation.get(i);
-                if (!pageMap) continue;
-
-                const blocks = pageMap.get('blocks');
-                if (!blocks) continue;
-
-                // Traverse all blocks in the page
-                for (let j = 0; j < blocks.length; j++) {
-                    const blockMap = blocks.get(j);
-                    if (!blockMap) continue;
-
-                    const components = blockMap.get('components');
-                    if (!components) continue;
-
-                    // Traverse all components (iDevices) in the block
-                    for (let k = 0; k < components.length; k++) {
-                        const compMap = components.get(k);
-                        if (!compMap) continue;
-
-                        let found = false;
-
-                        // Check htmlContent (Y.Text or string) or htmlView (legacy fallback).
-                        // htmlContent is refreshed on every save; htmlView is only populated
-                        // during initial ELP import and never updated after edits, so reading
-                        // it first causes stale reference counts after image deletion in
-                        // iDevices whose save path only touches jsonProperties/htmlContent
-                        // (issue #1674).
-                        const htmlContent = compMap.get('htmlContent') || compMap.get('htmlView');
-                        if (htmlContent) {
-                            const content = htmlContent.toString ? htmlContent.toString() : String(htmlContent);
-                            if (assetRegex.test(content)) {
-                                found = true;
-                            }
-                            assetRegex.lastIndex = 0; // Reset for reuse
-                        }
-
-                        // Check jsonProperties or ideviceProperties (Y.Map)
-                        if (!found) {
-                            const ideviceProperties = compMap.get('jsonProperties') || compMap.get('ideviceProperties');
-                            if (ideviceProperties) {
-                                const propsStr = JSON.stringify(
-                                    ideviceProperties.toJSON ? ideviceProperties.toJSON() : ideviceProperties
-                                );
-                                if (assetRegex.test(propsStr)) {
-                                    found = true;
-                                }
-                                assetRegex.lastIndex = 0; // Reset for reuse
-                            }
-                        }
-
-                        // Also check properties (another possible location)
-                        if (!found) {
-                            const properties = compMap.get('properties');
-                            if (properties) {
-                                const propsStr = JSON.stringify(
-                                    properties.toJSON ? properties.toJSON() : properties
-                                );
-                                if (assetRegex.test(propsStr)) {
-                                    found = true;
-                                }
-                                assetRegex.lastIndex = 0; // Reset for reuse
-                            }
-                        }
-
-                        if (found) count++;
-                    }
-                }
-            }
-
-            return count;
-        } catch (err) {
-            Logger.warn('[MediaLibrary] Error counting asset references:', err);
-            return 0;
+        // Delegate to AssetManager — the single source of truth for asset-reference
+        // scanning (also consumed by the Resource Report iDevice "used" filter).
+        if (this.assetManager?.countAssetReferences) {
+            return this.assetManager.countAssetReferences(assetId);
         }
+        return 0;
     }
 
     /**
