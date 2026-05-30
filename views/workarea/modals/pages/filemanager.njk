@@ -19,6 +19,7 @@
                         <span class="exe-icon">create_new_folder</span>
                     </button>
                     <input type="file" class="media-library-upload-input" accept="image/*,video/*,audio/*,.pdf,.zip,.gz,.tgz,.tar,.tar.gz,.elp,.elpx,.glb,.gltf,.stl,.obj,.fbx,.3ds,.pdb,.sdf,.mol2,.xyz,.cif,.mmcif,.mmtf,.gro,.pqr,.prmtop,.vasp,.cube" multiple style="display:none;">
+                    <input type="file" class="media-library-replace-input" aria-label="{{ 'Select replacement file' | trans }}" style="display:none;">
 
 
                     <div class="media-library-view-controls">
@@ -41,6 +42,8 @@
                             <option value="size-asc">{{ 'Smallest first' | trans }}</option>
                             <option value="type-asc">{{ 'Type A-Z' | trans }}</option>
                             <option value="type-desc">{{ 'Type Z-A' | trans }}</option>
+                            <option value="references-desc">{{ 'References: most used first' | trans }}</option>
+                            <option value="references-asc">{{ 'References: least used first' | trans }}</option>
                         </select>
                     </div>
 
@@ -94,7 +97,7 @@
                                         <th class="col-location d-none">{{ 'Location' | trans }}</th>
                                         <th class="col-type" data-sort="type">{{ 'Type' | trans }}</th>
                                         <th class="col-size" data-sort="size">{{ 'Size' | trans }}</th>
-                                        <th class="col-date" data-sort="date">{{ 'Date' | trans }}</th>
+                                        <th class="col-date" data-sort="date">{{ 'Added' | trans }}</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -133,12 +136,16 @@
                                     <span class="media-library-dimensions"></span>
                                 </div>
                                 <div class="metadata-row">
-                                    <label>{{ 'Date:' | trans }}</label>
+                                    <label>{{ 'Added:' | trans }}</label>
                                     <span class="media-library-date"></span>
                                 </div>
                                 <div class="metadata-row media-library-usage-row">
                                     <label>{{ 'Usage:' | trans }}</label>
                                     <span class="badge bg-light text-dark border media-library-usage">{{ '0 iDevices' | trans }}</span>
+                                </div>
+                                <div class="metadata-row media-library-usage-locations-row">
+                                    <label>{{ 'Used in' | trans }}</label>
+                                    <ul class="media-library-usage-locations" aria-live="polite"></ul>
                                 </div>
                                 <div class="metadata-row media-library-location-row" style="display: none;">
                                     <label>{{ 'Location:' | trans }}</label>
@@ -214,6 +221,9 @@
                             <span class="exe-icon">more_horiz</span>
                         </button>
                         <ul class="dropdown-menu">
+                            <li><a class="dropdown-item media-library-replace-btn" href="#">
+                                <span class="exe-icon">find_replace</span> {{ 'Replace file' | trans }}
+                            </a></li>
                             <li><a class="dropdown-item media-library-extract-btn d-none" href="#">
                                 <span class="exe-icon">folder_zip</span> {{ 'Extract ZIP' | trans }}
                             </a></li>

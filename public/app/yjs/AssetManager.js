@@ -706,12 +706,13 @@ class AssetManager {
   }
 
   /**
-   * Iterate every component (iDevice) in the project, invoking the callback with its
-   * searchable text. Shared by countAssetReferences and getReferencedAssetIds.
-   * @param {(text: string) => void} callback
+   * Iterate every component (iDevice) in the project, invoking the callback with the
+   * component Y.Map plus its page/block context. Single shared traversal used by all
+   * asset-reference helpers (count, referenced ids, per-id counts, usage locations).
+   * @param {(ctx: {compMap: Object, pageMap: Object, blockMap: Object, pageIndex: number, blockIndex: number}) => void} callback
    * @private
    */
-  _forEachComponentText(callback) {
+  _forEachComponent(callback) {
     const ydoc = this._getProjectYDoc();
     if (!ydoc) return;
     const navigation = ydoc.getArray('navigation');
@@ -726,10 +727,20 @@ class AssetManager {
         if (!components) continue;
         for (let k = 0; k < components.length; k++) {
           const compMap = components.get(k);
-          if (compMap) callback(this._componentSearchableText(compMap));
+          if (compMap) callback({ compMap, pageMap, blockMap, pageIndex: i, blockIndex: j });
         }
       }
     }
+  }
+
+  /**
+   * Iterate every component, invoking the callback with its searchable text.
+   * Thin wrapper over {@link _forEachComponent}.
+   * @param {(text: string) => void} callback
+   * @private
+   */
+  _forEachComponentText(callback) {
+    this._forEachComponent(({ compMap }) => callback(this._componentSearchableText(compMap)));
   }
 
   /**
@@ -774,6 +785,140 @@ class AssetManager {
       console.warn('[AssetManager] Error collecting referenced asset ids:', e?.message || e);
     }
     return ids;
+  }
+
+  /**
+   * Compute reference counts for ALL assets in a SINGLE traversal of the project.
+   * Each component is counted at most once per asset id (matching countAssetReferences
+   * semantics: "number of iDevices referencing the asset"). Lets the File Manager sort
+   * by usage without rescanning the whole project once per asset.
+   * @returns {Map<string, number>} assetId -> usage count
+   */
+  getAllAssetReferenceCounts() {
+    const counts = new Map();
+    try {
+      const tokenRegex = /asset:\/\/([a-z0-9-]+?)(?:\.[a-z0-9]+)?(?=["'\s)\\]|$)/gi;
+      this._forEachComponentText(text => {
+        if (!text) return;
+        const seenInComponent = new Set();
+        let match;
+        while ((match = tokenRegex.exec(text)) !== null) {
+          const id = match[1];
+          if (id && !seenInComponent.has(id)) {
+            seenInComponent.add(id);
+            counts.set(id, (counts.get(id) || 0) + 1);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('[AssetManager] Error computing asset reference counts:', e?.message || e);
+    }
+    return counts;
+  }
+
+  /**
+   * Resolve a human-readable iDevice display title from its type, using the installed
+   * iDevices registry; falls back to the type id.
+   * @param {string} ideviceType
+   * @returns {string}
+   * @private
+   */
+  _resolveIdeviceTitle(ideviceType) {
+    if (!ideviceType) return '';
+    const installed =
+      (typeof window !== 'undefined' && window.eXeLearning?.app?.idevices?.list?.installed) || {};
+    return installed[ideviceType]?.title || ideviceType;
+  }
+
+  /**
+   * List the locations where an asset is used, with human-readable context
+   * (page / block / iDevice). Reuses the same traversal as the reference counters so
+   * the count and the "Used in" list always agree.
+   * @param {string} assetId
+   * @returns {Array<{pageId: string, pageTitle: string, blockId: string, blockTitle: string, ideviceId: string, ideviceTitle: string, ideviceType: string}>}
+   */
+  getAssetUsageLocations(assetId) {
+    const locations = [];
+    if (!assetId) return locations;
+    try {
+      const assetRegex = new RegExp(`asset://${assetId}`, 'i');
+      this._forEachComponent(({ compMap, pageMap, blockMap }) => {
+        const text = this._componentSearchableText(compMap);
+        if (!text || !assetRegex.test(text)) return;
+        const ideviceType = compMap.get('ideviceType') || compMap.get('type') || '';
+        const customTitle = compMap.get('title');
+        locations.push({
+          pageId: pageMap?.get('id') || pageMap?.get('pageId') || '',
+          pageTitle: pageMap?.get('pageName') || '',
+          blockId: blockMap?.get('id') || blockMap?.get('blockId') || '',
+          blockTitle: blockMap?.get('blockName') || '',
+          ideviceId: compMap.get('ideviceId') || compMap.get('id') || '',
+          ideviceTitle: customTitle || this._resolveIdeviceTitle(ideviceType),
+          ideviceType,
+        });
+      });
+    } catch (e) {
+      console.warn('[AssetManager] Error collecting asset usage locations:', e?.message || e);
+    }
+    return locations;
+  }
+
+  /**
+   * Replace the binary content of an existing asset while preserving its identity
+   * (same id/clientId), so existing references (asset://id) and centralized metadata
+   * (description/altText/title/license/author) stay intact. The new file's mime/size/
+   * hash/filename are applied; createdAt is preserved. Server persistence happens on the
+   * next save (idempotent overwrite by clientId), like a normal upload.
+   * @param {string} assetId
+   * @param {File|Blob} file
+   * @param {{keepFilename?: boolean}} [options]
+   * @returns {Promise<{success: boolean, assetUrl?: string, filename?: string, mime?: string, size?: number, error?: string}>}
+   */
+  async replaceAssetContent(assetId, file, options = {}) {
+    const metadata = this.getAssetMetadata(assetId);
+    if (!metadata) {
+      Logger.warn(`[AssetManager] replaceAssetContent: asset ${assetId} not found`);
+      return { success: false, error: 'not-found' };
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: file.type });
+    const hash = await this.calculateHash(blob);
+    const mime = file.type || this.getMimeType(file.name || metadata.filename || '');
+    const filename = options.keepFilename ? metadata.filename : file.name || metadata.filename;
+
+    // Drop the stale cached blob/URL so the DOM + preview pick up the new content.
+    await this.invalidateLocalBlob(assetId, { reason: 'replace-asset-content' });
+
+    // Store the new content under the SAME id, preserving centralized metadata + createdAt.
+    await this.putAsset({
+      id: assetId,
+      projectId: this.projectId,
+      blob,
+      mime,
+      hash,
+      size: blob.size,
+      uploaded: false,
+      createdAt: metadata.createdAt,
+      filename,
+      folderPath: metadata.folderPath || '',
+      description: metadata.description,
+      altText: metadata.altText,
+      title: metadata.title,
+      license: metadata.license,
+      author: metadata.author,
+    });
+
+    // Refresh any DOM media using this asset and let peers fetch the new blob.
+    try {
+      await this.updateDomImagesForAsset(assetId);
+    } catch (e) {
+      Logger.warn(`[AssetManager] replaceAssetContent: DOM refresh failed for ${assetId}: ${e?.message || e}`);
+    }
+    this._scheduleAssetAvailabilityAnnouncement('replaceAssetContent');
+
+    Logger.log(`[AssetManager] Replaced content for ${assetId.substring(0, 8)}... (${filename}, ${blob.size} bytes)`);
+    return { success: true, assetUrl: this.getAssetUrl(assetId, filename), filename, mime, size: blob.size };
   }
 
   /**

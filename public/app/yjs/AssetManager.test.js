@@ -1930,21 +1930,51 @@ describe('AssetManager', () => {
   describe('asset reference scanning', () => {
     // Build a mock Y.Doc: one page → one block → N components.
     // Each component is { html, props } searched for asset:// references.
-    function setMockYDoc(components) {
-      const compMaps = components.map(c => ({
-        get: k =>
-            k === 'htmlContent'
-                ? c.html
-                : k === 'jsonProperties'
-                  ? c.props
-                  : k === 'properties'
-                    ? c.properties
-                    : undefined,
+    function setMockYDoc(components, ctx = {}) {
+      const compFields = { id: 'b1', blockName: 'Main content', pageName: 'Introduction', pageId: 'p1', ...ctx };
+      const compMaps = components.map((c, idx) => ({
+        get: k => {
+          switch (k) {
+            case 'htmlContent':
+              return c.html;
+            case 'jsonProperties':
+              return c.props;
+            case 'properties':
+              return c.properties;
+            case 'ideviceType':
+              return c.ideviceType;
+            case 'title':
+              return c.title;
+            case 'id':
+            case 'ideviceId':
+              return c.id || `comp-${idx}`;
+            default:
+              return undefined;
+          }
+        },
       }));
       const arr = items => ({ length: items.length, get: i => items[i] });
       const componentsArr = arr(compMaps);
-      const blockMap = { get: k => (k === 'components' ? componentsArr : undefined) };
-      const pageMap = { get: k => (k === 'blocks' ? arr([blockMap]) : undefined) };
+      const blockMap = {
+        get: k =>
+          k === 'components'
+            ? componentsArr
+            : k === 'blockName'
+              ? compFields.blockName
+              : k === 'id'
+                ? compFields.id
+                : undefined,
+      };
+      const pageMap = {
+        get: k =>
+          k === 'blocks'
+            ? arr([blockMap])
+            : k === 'pageName'
+              ? compFields.pageName
+              : k === 'id'
+                ? compFields.pageId
+                : undefined,
+      };
       const ydoc = { getArray: name => (name === 'navigation' ? arr([pageMap]) : null) };
       global.window.eXeLearning = { app: { project: { _yjsBridge: { documentManager: { ydoc } } } } };
     }
@@ -1990,6 +2020,119 @@ describe('AssetManager', () => {
       delete global.window.eXeLearning;
       expect(assetManager.countAssetReferences('a1')).toBe(0);
       expect(assetManager.getReferencedAssetIds().size).toBe(0);
+    });
+
+    it('getAllAssetReferenceCounts tallies every asset in a single pass', () => {
+      setMockYDoc([
+        { html: '<img src="asset://a1.jpg"> <img src="asset://b2.png">' },
+        { props: { img: 'asset://a1.jpg' } },
+        { html: '<p>nothing</p>' },
+      ]);
+      const counts = assetManager.getAllAssetReferenceCounts();
+      expect(counts.get('a1')).toBe(2);
+      expect(counts.get('b2')).toBe(1);
+      expect(counts.has('zzz')).toBe(false);
+    });
+
+    it('getAssetUsageLocations returns page/block/iDevice context', () => {
+      setMockYDoc(
+        [
+          { html: '<img src="asset://a1.jpg">', ideviceType: 'image-gallery', id: 'comp-1' },
+          { html: '<p>no asset</p>', ideviceType: 'text', id: 'comp-2' },
+        ],
+        { pageName: 'Activity 1', blockName: 'Gallery block', pageId: 'pg-1' },
+      );
+      // Provide the installed-iDevices registry alongside the project (same window object).
+      global.window.eXeLearning.app.idevices = {
+        list: { installed: { 'image-gallery': { title: 'Image Gallery' } } },
+      };
+      const locations = assetManager.getAssetUsageLocations('a1');
+      expect(locations.length).toBe(1);
+      expect(locations[0]).toMatchObject({
+        pageTitle: 'Activity 1',
+        blockTitle: 'Gallery block',
+        ideviceType: 'image-gallery',
+        ideviceTitle: 'Image Gallery',
+        ideviceId: 'comp-1',
+        pageId: 'pg-1',
+      });
+    });
+
+    it('getAssetUsageLocations falls back to the type when not installed, and is empty when unused', () => {
+      setMockYDoc([{ html: '<img src="asset://a1.jpg">', ideviceType: 'custom-type', id: 'c1' }]);
+      const used = assetManager.getAssetUsageLocations('a1');
+      expect(used[0].ideviceTitle).toBe('custom-type');
+      expect(assetManager.getAssetUsageLocations('missing')).toEqual([]);
+      expect(assetManager.getAssetUsageLocations('')).toEqual([]);
+    });
+  });
+
+  describe('replaceAssetContent', () => {
+    beforeEach(() => {
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'old.png',
+        folderPath: 'images',
+        mime: 'image/png',
+        size: 10,
+        hash: 'oldhash',
+        uploaded: true,
+        createdAt: '2020-01-01T00:00:00Z',
+        description: 'A description',
+        altText: 'Alt',
+        title: 'Title',
+        license: 'Creative Commons BY',
+        author: 'Ada',
+      });
+      // Avoid real DOM/network side effects
+      assetManager.invalidateLocalBlob = mock(async () => {});
+      assetManager.updateDomImagesForAsset = mock(async () => 0);
+      assetManager._scheduleAssetAvailabilityAnnouncement = mock(() => {});
+      assetManager.calculateHash = mock(async () => 'newhash0000000000000000000000000000000000000000000000000000000000');
+    });
+
+    function fakeFile(name, type, bytes = [1, 2, 3, 4]) {
+      const blob = new Blob([new Uint8Array(bytes)], { type });
+      blob.name = name;
+      blob.arrayBuffer = async () => new Uint8Array(bytes).buffer;
+      return blob;
+    }
+
+    it('preserves id + metadata + createdAt while updating mime/size/filename', async () => {
+      const putSpy = spyOn(assetManager, 'putAsset').mockResolvedValue(undefined);
+
+      const result = await assetManager.replaceAssetContent('a1', fakeFile('new.jpg', 'image/jpeg', [9, 9, 9]));
+
+      expect(result.success).toBe(true);
+      expect(assetManager.invalidateLocalBlob).toHaveBeenCalledWith('a1', expect.anything());
+      const stored = putSpy.mock.calls[0][0];
+      expect(stored.id).toBe('a1');
+      expect(stored.mime).toBe('image/jpeg');
+      expect(stored.filename).toBe('new.jpg');
+      expect(stored.size).toBe(3);
+      expect(stored.hash).toBe('newhash0000000000000000000000000000000000000000000000000000000000');
+      expect(stored.uploaded).toBe(false);
+      // Preserved
+      expect(stored.createdAt).toBe('2020-01-01T00:00:00Z');
+      expect(stored.folderPath).toBe('images');
+      expect(stored.description).toBe('A description');
+      expect(stored.altText).toBe('Alt');
+      expect(stored.title).toBe('Title');
+      expect(stored.license).toBe('Creative Commons BY');
+      expect(stored.author).toBe('Ada');
+      expect(assetManager._scheduleAssetAvailabilityAnnouncement).toHaveBeenCalled();
+    });
+
+    it('keeps the original filename when keepFilename is set', async () => {
+      const putSpy = spyOn(assetManager, 'putAsset').mockResolvedValue(undefined);
+      await assetManager.replaceAssetContent('a1', fakeFile('new.jpg', 'image/jpeg'), { keepFilename: true });
+      expect(putSpy.mock.calls[0][0].filename).toBe('old.png');
+    });
+
+    it('returns not-found for a missing asset without storing anything', async () => {
+      const putSpy = spyOn(assetManager, 'putAsset').mockResolvedValue(undefined);
+      const result = await assetManager.replaceAssetContent('missing', fakeFile('x.jpg', 'image/jpeg'));
+      expect(result).toEqual({ success: false, error: 'not-found' });
+      expect(putSpy).not.toHaveBeenCalled();
     });
   });
 

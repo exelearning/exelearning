@@ -92,10 +92,14 @@ describe('ModalFilemanager', () => {
         <span class="media-library-size"></span>
         <div class="media-library-dimensions-row"><span class="media-library-dimensions"></span></div>
         <span class="media-library-date"></span>
+        <div class="media-library-usage-row"><span class="media-library-usage"></span></div>
+        <div class="media-library-usage-locations-row"><ul class="media-library-usage-locations"></ul></div>
         <div class="url-input-group">
           <input class="media-library-url" readonly>
           <button class="media-library-copy-url-btn"><span class="exe-icon">content_copy</span></button>
         </div>
+        <input type="file" class="media-library-replace-input">
+        <a class="media-library-replace-btn" href="#"></a>
         <form class="media-library-edit-metadata" style="display:none;">
           <h4 class="media-library-edit-metadata-title">Metadata</h4>
           <textarea class="media-library-meta-description"></textarea>
@@ -2724,19 +2728,20 @@ describe('getMimeTypeFromFilename', () => {
       modal.assetUsageCounts = new Map();
     });
 
-    it('should calculate usage counts for all assets with IDs', () => {
-      const countSpy = vi.spyOn(modal, 'countAssetReferences').mockReturnValue(2);
+    it('should calculate usage counts for all assets with IDs (single shared pass)', () => {
+      const countsSpy = vi.fn(() => new Map([['asset-1', 2], ['asset-2', 2]]));
+      modal.assetManager = { getAllAssetReferenceCounts: countsSpy };
 
       modal.calculateAllAssetUsages();
 
-      expect(countSpy).toHaveBeenCalledTimes(2); // Only for assets with IDs
+      expect(countsSpy).toHaveBeenCalledTimes(1); // One project traversal, not one per asset
       expect(modal.assetUsageCounts.get('asset-1')).toBe(2);
       expect(modal.assetUsageCounts.get('asset-2')).toBe(2);
     });
 
     it('should clear previous cache', () => {
       modal.assetUsageCounts.set('old-asset', 5);
-      vi.spyOn(modal, 'countAssetReferences').mockReturnValue(1);
+      modal.assetManager = { getAllAssetReferenceCounts: () => new Map([['asset-1', 1]]) };
 
       modal.calculateAllAssetUsages();
 
@@ -4120,6 +4125,120 @@ describe('getMimeTypeFromFilename', () => {
       await modal.saveAssetMetadata();
 
       expect(updateAssetMetadata).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('usability improvements (#1817)', () => {
+    describe('sort by references', () => {
+      beforeEach(() => {
+        modal.assets = [
+          { id: 'a', filename: 'a.png' },
+          { id: 'b', filename: 'b.png' },
+          { id: 'c', filename: 'c.png' },
+        ];
+        modal.assetManager = {
+          getAllAssetReferenceCounts: () => new Map([['a', 2], ['b', 0], ['c', 5]]),
+          countAssetReferences: () => 0,
+        };
+        modal.calculateAllAssetUsages();
+        modal.filteredAssets = [...modal.assets];
+      });
+
+      it('orders most-used first for references-desc', () => {
+        modal.sortBy = 'references-desc';
+        modal.sortAssets();
+        expect(modal.filteredAssets.map((a) => a.id)).toEqual(['c', 'a', 'b']);
+      });
+
+      it('orders least-used first for references-asc', () => {
+        modal.sortBy = 'references-asc';
+        modal.sortAssets();
+        expect(modal.filteredAssets.map((a) => a.id)).toEqual(['b', 'a', 'c']);
+      });
+
+      it('computes all counts in a single pass via the shared scanner', () => {
+        const spy = vi.fn(() => new Map([['a', 1]]));
+        modal.assetManager.getAllAssetReferenceCounts = spy;
+        modal.calculateAllAssetUsages();
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(modal.getAssetUsageCount('a')).toBe(1);
+        expect(modal.getAssetUsageCount('b')).toBe(0);
+      });
+    });
+
+    describe('renderUsageLocations ("Used in")', () => {
+      it('lists page/iDevice/block context for a used asset', () => {
+        modal.assetManager = {
+          getAssetUsageLocations: () => [
+            { pageTitle: 'Introduction', ideviceTitle: 'Text', blockTitle: 'Main content' },
+          ],
+        };
+        modal.renderUsageLocations({ id: 'a1' });
+        const items = modal.usageLocations.querySelectorAll('li');
+        expect(items.length).toBe(1);
+        expect(items[0].textContent).toContain('Introduction');
+        expect(items[0].textContent).toContain('Text');
+        expect(items[0].textContent).toContain('Main content');
+      });
+
+      it('shows "Not used in this project" when there are no usages', () => {
+        modal.assetManager = { getAssetUsageLocations: () => [] };
+        modal.renderUsageLocations({ id: 'a1' });
+        expect(modal.usageLocations.textContent).toContain('Not used in this project');
+      });
+
+      it('caps the list and shows "+ N more"', () => {
+        const many = Array.from({ length: 13 }, (_v, i) => ({ pageTitle: `P${i}`, ideviceTitle: 'Text' }));
+        modal.assetManager = { getAssetUsageLocations: () => many };
+        modal.renderUsageLocations({ id: 'a1' });
+        const items = modal.usageLocations.querySelectorAll('li');
+        expect(items.length).toBe(11); // 10 + "more"
+        expect(modal.usageLocations.querySelector('.media-library-usage-more').textContent).toContain('3');
+      });
+    });
+
+    describe('replaceSelectedAsset', () => {
+      function fakeFile(name, type) {
+        const blob = new Blob(['x'], { type });
+        blob.name = name;
+        return blob;
+      }
+
+      beforeEach(() => {
+        modal.selectedAsset = { id: 'a1', filename: 'old.png', mime: 'image/png' };
+        modal.loadAssets = vi.fn().mockResolvedValue();
+        modal.showSidebarContent = vi.fn().mockResolvedValue();
+        modal.assets = [{ id: 'a1', filename: 'new.jpg', mime: 'image/jpeg' }];
+      });
+
+      it('replaces via AssetManager and shows a success toast', async () => {
+        modal.assetManager = { replaceAssetContent: vi.fn().mockResolvedValue({ success: true }) };
+        const file = fakeFile('new.jpg', 'image/jpeg');
+
+        await modal.replaceSelectedAsset(file);
+
+        expect(modal.assetManager.replaceAssetContent).toHaveBeenCalledWith('a1', file);
+        expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+          expect.objectContaining({ icon: 'success' }),
+        );
+      });
+
+      it('rejects a different broad file type without calling replace', async () => {
+        modal.assetManager = { replaceAssetContent: vi.fn() };
+        await modal.replaceSelectedAsset(fakeFile('doc.pdf', 'application/pdf'));
+        expect(modal.assetManager.replaceAssetContent).not.toHaveBeenCalled();
+        expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+          expect.objectContaining({ icon: 'error' }),
+        );
+      });
+
+      it('shows an error toast when replacement fails', async () => {
+        modal.assetManager = { replaceAssetContent: vi.fn().mockResolvedValue({ success: false }) };
+        await modal.replaceSelectedAsset(fakeFile('new.jpg', 'image/jpeg'));
+        expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+          expect.objectContaining({ icon: 'error' }),
+        );
+      });
     });
   });
 });

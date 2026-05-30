@@ -95,9 +95,13 @@ export default class ModalFilemanager extends Modal {
         this.moreBtn = footer?.querySelector('.media-library-more-btn');
 
         // More options dropdown items
+        this.replaceBtn = footer?.querySelector('.media-library-replace-btn');
         this.extractBtn = footer?.querySelector('.media-library-extract-btn');
         this.dropdownCopyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
         this.fullSizeBtn = footer?.querySelector('.media-library-fullsize-btn');
+
+        // Hidden input used by the "Replace file" action
+        this.replaceInput = this.modalElement.querySelector('.media-library-replace-input');
 
         // Mobile-only collapsed actions dropdown
         this.mobileActionsWrapper = footer?.querySelector('.media-library-mobile-actions');
@@ -192,6 +196,8 @@ export default class ModalFilemanager extends Modal {
         this.dateSpan = this.modalElement.querySelector('.media-library-date');
         this.usageRow = this.modalElement.querySelector('.media-library-usage-row');
         this.usageSpan = this.modalElement.querySelector('.media-library-usage');
+        this.usageLocationsRow = this.modalElement.querySelector('.media-library-usage-locations-row');
+        this.usageLocations = this.modalElement.querySelector('.media-library-usage-locations');
         this.urlInput = this.modalElement.querySelector('.media-library-url');
         this.locationRow = this.modalElement.querySelector('.media-library-location-row');
         this.locationValue = this.modalElement.querySelector('.media-library-location-value');
@@ -424,6 +430,25 @@ export default class ModalFilemanager extends Modal {
         if (this.moveBtn) {
             this.moveBtn.addEventListener('click', () => {
                 this.showMoveDialog();
+            });
+        }
+
+        // Replace file action (preserves asset identity + references + metadata)
+        if (this.replaceBtn) {
+            this.replaceBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (this.replaceInput && this.selectedAsset) {
+                    this.replaceInput.click();
+                }
+            });
+        }
+        if (this.replaceInput) {
+            this.replaceInput.addEventListener('change', async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                    await this.replaceSelectedAsset(file);
+                }
+                this.replaceInput.value = '';
             });
         }
 
@@ -680,6 +705,9 @@ export default class ModalFilemanager extends Modal {
             this.assets = await this.assetManager.getProjectAssets();
             Logger.log(`[MediaLibrary] Loaded ${this.assets.length} assets`);
             this.currentPage = 1;
+            // Refresh usage counts once (single project traversal) so badges and the
+            // "sort by references" option are accurate and don't rescan per asset.
+            this.calculateAllAssetUsages();
             this.updateFilterOptions();
             this.loadFolderContents(this.currentPath);
         } catch (err) {
@@ -1057,6 +1085,14 @@ export default class ModalFilemanager extends Modal {
                     valA = (a.mime || '').toLowerCase();
                     valB = (b.mime || '').toLowerCase();
                     return valA.localeCompare(valB) * modifier;
+                case 'references':
+                    valA = this.getAssetUsageCount(a.id);
+                    valB = this.getAssetUsageCount(b.id);
+                    // Tie-break by filename so order is stable among equal usage counts
+                    if (valA === valB) {
+                        return (a.filename || '').toLowerCase().localeCompare((b.filename || '').toLowerCase());
+                    }
+                    return (valA - valB) * modifier;
                 default:
                     return 0;
             }
@@ -2035,6 +2071,9 @@ export default class ModalFilemanager extends Modal {
             this.usageSpan.textContent = _('%1 iDevices').replace('%1', usageCount);
         }
 
+        // Usage locations ("Used in")
+        this.renderUsageLocations(asset);
+
         // URL
         if (this.urlInput) {
             this.urlInput.value = this.assetManager.getAssetUrl(asset.id, asset.filename);
@@ -2176,6 +2215,7 @@ export default class ModalFilemanager extends Modal {
         if (this.dimensionsRow) this.dimensionsRow.style.display = 'none';
         if (this.dateSpan) this.dateSpan.textContent = '-';
         if (this.usageSpan) this.usageSpan.textContent = '-';
+        if (this.usageLocationsRow) this.usageLocationsRow.style.display = 'none';
         if (this.urlInput) this.urlInput.value = '';
         if (this.locationRow) this.locationRow.style.display = 'none';
         if (this.editMetadataForm) this.editMetadataForm.style.display = 'none';
@@ -2560,10 +2600,13 @@ export default class ModalFilemanager extends Modal {
      */
     calculateAllAssetUsages() {
         this.assetUsageCounts.clear();
+        // Single project traversal for ALL assets (avoids one scan per asset).
+        const counts = this.assetManager?.getAllAssetReferenceCounts
+            ? this.assetManager.getAllAssetReferenceCounts()
+            : new Map();
         for (const asset of this.assets) {
             if (asset.id) {
-                const count = this.countAssetReferences(asset.id);
-                this.assetUsageCounts.set(asset.id, count);
+                this.assetUsageCounts.set(asset.id, counts.get(asset.id) || 0);
             }
         }
     }
@@ -2580,6 +2623,106 @@ export default class ModalFilemanager extends Modal {
         const count = this.countAssetReferences(assetId);
         this.assetUsageCounts.set(assetId, count);
         return count;
+    }
+
+    /**
+     * Render the "Used in" list for the selected asset, reusing the centralized
+     * usage-location scanner in AssetManager. Shows page / iDevice / block context,
+     * capped at 10 entries with a "+ N more" line, or a "Not used" message.
+     * @param {Object} asset
+     */
+    renderUsageLocations(asset) {
+        if (!this.usageLocations) return;
+        if (this.usageLocationsRow) this.usageLocationsRow.style.display = '';
+        this.usageLocations.innerHTML = '';
+
+        const locations = this.assetManager?.getAssetUsageLocations
+            ? this.assetManager.getAssetUsageLocations(asset.id)
+            : [];
+
+        if (!locations.length) {
+            const li = document.createElement('li');
+            li.className = 'media-library-usage-empty';
+            li.textContent = _('Not used in this project');
+            this.usageLocations.appendChild(li);
+            return;
+        }
+
+        const MAX = 10;
+        for (const loc of locations.slice(0, MAX)) {
+            const li = document.createElement('li');
+            const parts = [];
+            if (loc.pageTitle) parts.push(`${_('Page')}: ${loc.pageTitle}`);
+            if (loc.ideviceTitle) parts.push(`${_('iDevice')}: ${loc.ideviceTitle}`);
+            if (loc.blockTitle) parts.push(`${_('Block')}: ${loc.blockTitle}`);
+            li.textContent = parts.join(' · ') || _('Untitled');
+            this.usageLocations.appendChild(li);
+        }
+
+        if (locations.length > MAX) {
+            const li = document.createElement('li');
+            li.className = 'media-library-usage-more';
+            li.textContent = _('+ %1 more').replace('%1', locations.length - MAX);
+            this.usageLocations.appendChild(li);
+        }
+    }
+
+    /**
+     * Replace the binary content of the selected asset while preserving its identity,
+     * references and centralized metadata. Validates that the replacement is the same
+     * broad file type, then delegates to AssetManager.replaceAssetContent and refreshes
+     * the File Manager. Shows a success/error toast.
+     * @param {File} file
+     */
+    async replaceSelectedAsset(file) {
+        const asset = this.selectedAsset;
+        if (!asset || !file || !this.assetManager?.replaceAssetContent) return;
+
+        // Keep references/previews coherent: only allow same broad category.
+        const oldCategory = this.getAssetTypeCategory(asset.mime, asset.filename);
+        const newCategory = this.getAssetTypeCategory(file.type, file.name);
+        if (oldCategory !== newCategory) {
+            eXeLearning.app.toasts.createToast({
+                title: _('Could not replace file'),
+                body: _('Only files of the same type can be used as replacement'),
+                icon: 'error',
+                modal: true,
+                remove: 5000,
+            });
+            return;
+        }
+
+        try {
+            const result = await this.assetManager.replaceAssetContent(asset.id, file);
+            if (!result || !result.success) {
+                throw new Error(result?.error || 'replace-failed');
+            }
+
+            // Refresh local state + UI (recomputes usage counts in one pass).
+            await this.loadAssets();
+            const updated = this.assets.find((a) => a.id === asset.id);
+            if (updated) {
+                this.selectedAsset = updated;
+                await this.showSidebarContent(updated);
+            }
+
+            eXeLearning.app.toasts.createToast({
+                title: _('Success'),
+                body: _('File replaced successfully'),
+                icon: 'success',
+                modal: true,
+                remove: 4000,
+            });
+        } catch (e) {
+            Logger.warn('[MediaLibrary] Replace failed:', e?.message || e);
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Could not replace file'),
+                icon: 'error',
+                modal: true,
+                remove: 5000,
+            });
+        }
     }
 
     /**
