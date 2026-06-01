@@ -21,12 +21,16 @@ const LEGACY_ICON_MAP = {
     keypoints: 'bookmark',
 };
 
+// Fallback tint for Material ("General") icons, matched to each theme's own
+// "Style" icon artwork so both groups look identical in the picker and content.
+// Multicolor themes (neo, universal) ship multi-hued style icons that cannot be
+// matched by a single tint, so their Material icons keep the theme accent color.
 const THEME_ICON_COLOR_MAP = {
-    base: '#cb744c',
-    flux: '#e3ac3b',
-    nova: '#e3ac3b',
+    base: '#d86e41',
+    flux: '#eda900',
+    nova: '#f5c200',
     neo: '#e3ac3b',
-    zen: '#c32957',
+    zen: '#d40055',
     universal: '#0d2953',
 };
 

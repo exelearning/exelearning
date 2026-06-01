@@ -105,6 +105,10 @@
             mask-position: center;
             -webkit-mask-size: contain;
             mask-size: contain;
+            // Material glyphs sit in a 24x24 viewBox with ~2px of built-in
+            // padding, so they render optically smaller than the edge-to-edge
+            // theme (Style) icons next to them. Scale up to match their size.
+            transform: scale(1.2);
         }
 
         .option-block-icon .exe-material-icon-sprite {
@@ -112,6 +116,8 @@
             height: 100%;
             display: block;
             fill: currentColor;
+            // Match the optical size of the edge-to-edge theme (Style) icons.
+            transform: scale(1.2);
         }
         .box-icon-value {
             height: 100%;

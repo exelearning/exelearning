@@ -385,11 +385,11 @@ body#tinymce {
 }
 
 .exe-content {
-    --exe-icon-color: #e3ac3b;
+    --exe-icon-color: #eda900;
 }
 
 .exe-content .box-head .box-icon {
-    color: var(--exe-icon-color, #e3ac3b);
+    color: var(--exe-icon-color, #eda900);
 }
 
 /* Teacher mode visual indicator */

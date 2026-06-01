@@ -110,11 +110,11 @@ article.box.idevice-element-in-content[mode="export"] .idevice_node {
 }
 
 .exe-content {
-    --exe-icon-color: #cb744c;
+    --exe-icon-color: #d86e41;
 }
 
 .exe-content .box-head .box-icon {
-    color: var(--exe-icon-color, #cb744c);
+    color: var(--exe-icon-color, #d86e41);
 }
 
 .exe-content .box-head .exe-icon {

@@ -1682,7 +1682,27 @@ describe('IdeviceBlockNode', () => {
             block.headElement = null;
             block.blockNameElementText = null;
             eXeLearning.app.themes.selected = { id: 'flux' };
-            expect(block.getCurrentThemeIconColor()).toBe('#e3ac3b');
+            expect(block.getCurrentThemeIconColor()).toBe('#eda900');
+        });
+
+        it('falls back to each theme style-icon color so General icons match Style icons', () => {
+            block.headElement = null;
+            block.blockNameElementText = null;
+            block.iconElement = null;
+
+            const expectedByTheme = {
+                base: '#d86e41',
+                flux: '#eda900',
+                nova: '#f5c200',
+                zen: '#d40055',
+                // Multicolor themes keep the theme accent (cannot match a single hue).
+                neo: '#e3ac3b',
+                universal: '#0d2953',
+            };
+            for (const [id, color] of Object.entries(expectedByTheme)) {
+                eXeLearning.app.themes.selected = { id };
+                expect(block.getCurrentThemeIconColor()).toBe(color);
+            }
         });
     });
 

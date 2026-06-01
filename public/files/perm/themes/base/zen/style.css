@@ -335,11 +335,11 @@ body#tinymce {
 }
 
 .exe-content {
-    --exe-icon-color: #c32957;
+    --exe-icon-color: #d40055;
 }
 
 .exe-content .box-head .box-icon {
-    color: var(--exe-icon-color, #c32957);
+    color: var(--exe-icon-color, #d40055);
 }
 
 .exe-content .box-head .exe-icon {
