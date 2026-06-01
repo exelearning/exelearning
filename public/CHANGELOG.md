@@ -1,5 +1,70 @@
 # CHANGELOG
 
+## v4.0.1 – 2026-06-01
+
+### Added
+
+- New Adaptative Quiz iDevice: adaptive assessment that adjusts question difficulty based on learner performance, with selection, ordering and word/definition question types, optional timer, immediate feedback, SCORM tracking and AI-assisted question generation
+- New Markdown Text iDevice with GitHub Flavored Markdown and LaTeX support
+- New 3D Viewer iDevice for embedding and exploring interactive 3D model files
+- New 3DMol iDevice for interactive 3D molecular visualisation
+- New Electrical and Electronic Circuits iDevice
+- New LOMLOE Curriculum Concretion iDevice for Spanish curriculum alignment
+- 360° Panorama Viewer: transformed into a virtual-tour authoring tool with multiple scenes, hotspot navigation and accessible modal dialogs
+- Slide iDevice: rebuilt on Fabric.js, replacing the tldraw prototype
+- 3D Viewer: authorship and alternative text fields added to the model
+- Code highlighter: Bash, PowerShell and CMD added as supported languages
+- Preview panel: mobile and desktop viewport toggle added
+- Workarea: .elpx and .elp files can now be opened by dragging and dropping them onto the editor
+- Advanced folder mode for opening and saving unpacked .elpx projects directly on the filesystem
+- Screenshot selector is now visible in the project properties dialog
+- Preferences: users can now set a personal default style applied to all new projects
+- Admin panel: site themes can now be re-uploaded to update them in place
+- Spanish state-level LOMLOE curriculum dataset added
+
+### Fixed
+
+- Security: ZIP extraction is now hardened against path traversal attacks
+- Security: several internal API endpoints now require authentication; the overall authentication flow has been hardened
+- Auth: disabled users can no longer log in using password authentication
+- Auth: CAS integration demo server URL updated to `casserverpac4j.dev`
+- Export: each asset is now bundled only once in saved and exported packages, reducing file size
+- Export: FileSystemAssetProvider no longer crashes when the assets directory is missing
+- Export: single-page export now correctly includes the license footer
+- Export: screenshot.png is now correctly embedded in browser-side .elpx exports
+- BASE_PATH: all workarea assets (theme CSS, TinyMCE, code editor sub-assets, icon URLs, save screenshot) now resolve correctly when a base path is configured
+- TinyMCE: `document.baseURI` is now passed as `document_base_url`, fixing relative URL resolution inside the editor
+- Legacy .elp import: indentation inside `<pre>` blocks is now preserved
+- ELPX import: escaped script-like content (e.g. `<script>` tags inside code blocks) is now preserved correctly
+- Page, block and iDevice IDs are now stable and consistent across save and export operations
+- Platform export: the asset provider is now initialised before a client-side platform export; a warning is shown when falling back to legacy mode
+- Platform export: Moodle ODE packages are now generated in the browser before being forwarded to the platform
+- Non-ASCII characters in downloaded filenames are now correctly encoded in the `Content-Disposition` header
+- Desktop: downloading a file asset no longer opens two simultaneous save dialogs
+- Preview: ELPX source download handler now works correctly
+- Workarea: CSS class values with leading, trailing or extra whitespace no longer cause a page render crash
+- Flux theme: submenu collapse behaviour and sidebar state have been improved
+- Nova theme: improvements ported from Flux; the "Menú" label is now shown in the navigation sidebar
+- Select Media Files iDevice: audio speaker icon now displays correctly
+- Quick Questions iDevice: shuffle is now correctly applied to order-type options
+- API v1: `updateComponent` route handler call signature corrected
+- API v1: projects now use the UUID returned by `createProject` rather than a separately generated one
+
+### Upgraded
+
+- electron: 41.5.0 → 42.0.0
+- fabric (Slide iDevice): 6.9.1 → 7.4.0
+- http-proxy-middleware: 3.0.5 → 4.0.0
+- kysely: 0.28.17 → 0.29.2
+- pdfjs-dist: 5.6.205 → 5.7.284
+
+### Removed
+
+- Dropbox and Google Drive upload integrations
+- Legacy Node.js Docker support
+
+---
+
 ## v4.0.0 – 2026-04-30
 
 eXeLearning 4.0 is a complete rebuild of the application. Every part of the stack has been rethought, from the server runtime to the collaboration engine, the distribution model and the user interface. The following summarises the most significant changes since version 3.
