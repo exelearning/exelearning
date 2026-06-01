@@ -81,8 +81,8 @@
     *   Copyright: Kent C. Dodds
     *   License: MIT
 *   Package: dompurify
-    *   Copyright: Mario Heiderich and DOMPurify contributors
-    *   License: Apache-2.0 OR MPL-2.0
+    *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
+    *   License: (MPL-2.0 OR Apache-2.0)
 *   Package: dotenv
     *   Copyright: 2015, Scott Motte
     *   License: BSD-2-Clause
@@ -99,7 +99,7 @@
     *   Copyright: Evan Wallace
     *   License: MIT
 *   Package: fabric
-    *   Copyright: Juriy Zaytsev and Fabric.js contributors
+    *   Copyright: Juriy Zaytsev
     *   License: MIT
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta
@@ -158,9 +158,6 @@
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
     *   License: MIT
-*   Package: tikzjax
-    *   Copyright: Jim Fowler (kisonecat)
-    *   License: LPPL-1.3c
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0
