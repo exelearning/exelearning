@@ -736,6 +736,9 @@ button.toggler:focus {
 .exe-export .box-icon .exe-material-icon {
     width: 40px;
     height: 40px;
+    /* Material glyphs only fill ~75% of their box (mask-size: contain), so they
+       render smaller than the edge-to-edge Style icons. Scale to match. */
+    transform: scale(1.333);
 }
 
 .exe-export .box-title {
