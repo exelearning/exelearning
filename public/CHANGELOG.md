@@ -15,7 +15,7 @@
 - Code highlighter: added support for Arduino, Bash, Batch, C#, Docker, Git, Less, Markdown, Markup Templating, Mermaid, PowerShell, Twig and TypeScript
 - Code highlighter: updated dark mode theme
 - Preview panel: added mobile and desktop viewport toggle
-- Workarea: support for opening .elpx and .elp files by drag and drop
+- Workarea: support for opening .elpx, .elp and .zip files by drag and drop
 - Advanced folder mode for opening and saving .elpx projects as unpacked directories
 - Screenshot selector added to the Project Properties dialog
 - Preferences: personal default style for new projects
