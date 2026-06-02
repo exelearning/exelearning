@@ -2240,11 +2240,6 @@ var $eXeCrucigrama = {
             'unload.eXeCrucigrama beforeunload.eXeCrucigrama',
             function () {
                 $exeDevices.iDevice.gamification.media.stopSound();
-                if ($eXeCrucigrama.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeCrucigrama.mScorm
-                    );
-                }
             }
         );
 

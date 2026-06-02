@@ -941,6 +941,7 @@ var $eXeIdentifica = {
     gameOver: function (instance) {
         let mOptions = $eXeIdentifica.options[instance];
         mOptions.gameStarted = false;
+        mOptions.gameOver = true;
         $eXeIdentifica.showCluesLinks(0, instance);
         $('#idfLinkAudio-' + instance).hide();
         $exeDevices.iDevice.gamification.media.stopSound();

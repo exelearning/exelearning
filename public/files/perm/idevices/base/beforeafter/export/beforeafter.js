@@ -517,7 +517,6 @@ var $eXeBeforeAfter = {
         $(`#bfafLinkMinimize-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessButton-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessE-${instance}`).off('keydown');
-        $(window).off('unload.eXeBeforeAfter beforeunload.eXeBeforeAfter');
     },
 
     addEvents: function (instance) {
@@ -578,17 +577,6 @@ var $eXeBeforeAfter = {
                 value = Math.max(0, Math.min(value, 100));
                 this.value = value;
             });
-
-        $(window).on(
-            'unload.eXeBeforeAfter beforeunload.eXeBeforeAfter',
-            function () {
-                if ($eXeBeforeAfter.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeBeforeAfter.mScorm
-                    );
-                }
-            }
-        );
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $('#bfafAuthorGame-' + instance).html(

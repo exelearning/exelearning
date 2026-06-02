@@ -202,6 +202,45 @@ describe('classify iDevice export', () => {
       );
       expect($eXeClasifica.options[instance].gameStarted).toBe(true);
     });
+
+    it('marks the completed game before sending the final SCORM score', () => {
+      const instance = 0;
+      document.body.innerHTML = `
+        <div id="clasificaMultimedia-${instance}"></div>
+        <div id="clasificaSlide-${instance}"></div>
+      `;
+      $eXeClasifica.options[instance] = {
+        attempts: 1,
+        cardsGame: [{}],
+        counterClock: 1,
+        gameLevel: 0,
+        gameOver: false,
+        gameStarted: true,
+        hits: 1,
+        isScorm: 1,
+        msgs: {
+          msgYouScore: 'Your score',
+        },
+        numberQuestions: 1,
+      };
+
+      vi.spyOn($eXeClasifica, 'gameOverLevel0').mockImplementation(() => {
+        $eXeClasifica.sendScore(true, instance);
+      });
+      vi.spyOn($eXeClasifica, 'checkClueGame').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showFeedBack').mockImplementation(() => {});
+
+      $eXeClasifica.gameOver(instance);
+
+      expect(global.$exeDevices.iDevice.gamification.scorm.sendScoreNew).toHaveBeenCalledWith(
+        true,
+        expect.objectContaining({
+          gameOver: true,
+          gameStarted: false,
+          scorerp: 10,
+        })
+      );
+    });
   });
 
   describe('setupTouchDragAndDrop', () => {

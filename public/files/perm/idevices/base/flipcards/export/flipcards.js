@@ -1563,13 +1563,6 @@ var $eXeFlipCards = {
 
         $('#flcdsPNumber-' + instance).text(mOptions.realNumberCards);
 
-        $(window).on('unload.eXeFlipCards', () => {
-            if ($eXeFlipCards.mScorm)
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeFlipCards.mScorm
-                );
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1700,7 +1693,6 @@ var $eXeFlipCards = {
         $('#flcdsMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
-        $(window).off('unload.eXeFlipCards');
         $('#flcdsClueButton-' + instance).off('click');
         $('#flcdsNextCard-' + instance).off('click');
         $('#flcdsPreviousCard-' + instance).off('click');

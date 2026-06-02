@@ -850,7 +850,6 @@ var $eXeDragDrop = {
         $('#dadPLinkMinimize-' + instance).off('click');
         $('#dadPCodeAccessButton-' + instance).off('click');
         $('#dadPCodeAccessE-' + instance).off('keydown');
-        $(window).off('unload.eXeDragDrop beforeunload.eXeDragDrop');
         $('#dadPMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
@@ -916,17 +915,6 @@ var $eXeDragDrop = {
         });
 
         $('#dadPPNumber-' + instance).text(mOptions.realNumberCards);
-
-        $(window).on(
-            'unload.eXeDragDrop beforeunload.eXeDragDrop',
-            function () {
-                if ($eXeDragDrop.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeDragDrop.mScorm
-                    );
-                }
-            }
-        );
 
         $('#dadPMainContainer-' + instance)
             .closest('.idevice_node')

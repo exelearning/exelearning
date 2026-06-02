@@ -421,9 +421,6 @@ var $eXeDesafio = {
         $(window).on('unload.eXeChallenger beforeunload.eXeChallenger', () => {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeDesafio.saveDataStorage(instance);
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeDesafio.mScorm
-                );
             }
         });
         $(`#desafioSolutionDiv-${instance}`).hide();

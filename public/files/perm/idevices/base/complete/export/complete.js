@@ -259,8 +259,6 @@ var $eXeCompleta = {
 
         $(document).off('mousemove.eXeCompleta');
         $(document).off('mouseup.eXeCompleta');
-        $(window).off('unload.eXeCompleta beforeunload.eXeCompleta');
-
         const gameContainer = document.querySelector(
             `#cmptGameContainer-${instance}`
         );
@@ -427,17 +425,6 @@ var $eXeCompleta = {
 
         $(`#cmptLinkMaximize-${instance}`).focus();
         $(`#cmptPShowClue-${instance}`).hide();
-
-        $(window).on(
-            'unload.eXeCompleta beforeunload.eXeCompleta',
-            function () {
-                if (typeof $eXeCompleta.mScorm !== 'undefined') {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeCompleta.mScorm
-                    );
-                }
-            }
-        );
 
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(

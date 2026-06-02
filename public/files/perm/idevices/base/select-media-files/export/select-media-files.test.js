@@ -218,6 +218,8 @@ describe('select-media-files iDevice export', () => {
         expect(global.$exeDevices.iDevice.gamification.scorm.sendScoreNew).toHaveBeenCalledWith(
             true,
             expect.objectContaining({
+                gameOver: true,
+                gameStarted: false,
                 scorerp: 5,
             })
         );

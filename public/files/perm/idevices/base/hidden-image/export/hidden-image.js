@@ -426,12 +426,6 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance];
         $eXeHiddenImage.removeEvents(instance);
 
-        $(window).on('unload.eXehiP beforeunload.eXehiP', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeHiddenImage.mScorm
-            );
-        });
-
         $('#hiPLinkMaximize-' + instance).on('click touchstart', (e) => {
             e.preventDefault();
             $('#hiPGameContainer-' + instance).show();
@@ -601,8 +595,6 @@ var $eXeHiddenImage = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXehiP beforeunload.eXehiP');
-
         $('#hiPLinkMaximize-' + instance).off('click touchstart');
         $('#hiPLinkMinimize-' + instance).off('click touchstart');
         $('#hiPMainContainer-' + instance)
