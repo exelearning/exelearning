@@ -297,6 +297,7 @@ window.$exeExport = {
                 'form',
                 'image-gallery',
                 'magnifier',
+                'three-sixty-viewer',
                 'trueorfalse',
                 'adaptative-quiz',
             ];
