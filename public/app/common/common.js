@@ -1333,23 +1333,34 @@ var $exeDevices = {
                     const newFinalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
                     const passed = newFinalScore >= 50;
 
-                    // SCORM 1.2 stores everything under cmi.core.* and combines completion+success
-                    // in cmi.core.lesson_status; SCORM 2004 splits them and uses cmi.* (no .core.),
-                    // plus a normalized cmi.score.scaled. Branching on pipwerks.SCORM.version keeps
-                    // the score reaching the right CMI keys for both LMS profiles.
-                    if (pipwerks.SCORM.version === "2004") {
-                        pipwerks.SCORM.set("cmi.score.raw", newFinalScore);
-                        pipwerks.SCORM.set("cmi.score.min", 0);
-                        pipwerks.SCORM.set("cmi.score.max", 100);
-                        pipwerks.SCORM.set("cmi.score.scaled", newFinalScore / 100);
-                        pipwerks.SCORM.set("cmi.completion_status", game.gameOver ? "completed" : "incomplete");
-                        pipwerks.SCORM.set("cmi.success_status", game.gameOver ? (passed ? "passed" : "failed") : "unknown");
-                    } else {
-                        // SCORM 1.2 folds completion+success into cmi.core.lesson_status, so keep it
-                        // non-terminal ("incomplete") while the game is in progress and only mark
-                        // passed/failed once the game is over, mirroring the 2004 branch above.
-                        pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-                        pipwerks.SCORM.set("cmi.core.lesson_status", game.gameOver ? (passed ? "passed" : "failed") : "incomplete");
+                    // Only push score/status to the LMS once the learner has engaged with the activity
+                    // in this session (started a new attempt or finished it). On a plain reopen neither
+                    // flag is set, so we must NOT touch the LMS data model: a learner who only reviews an
+                    // already-completed activity keeps the persisted "completed/passed". The status drops
+                    // to "incomplete" only when they restart the game (gameStarted) without finishing it,
+                    // and returns to "completed"/"passed"/"failed" once the game is over (gameOver). This
+                    // mirrors the gate used by sendScoreNew so review-only visits never downgrade a SCO.
+                    const sessionActive = game.gameStarted || game.gameOver;
+
+                    if (sessionActive) {
+                        // SCORM 1.2 stores everything under cmi.core.* and combines completion+success
+                        // in cmi.core.lesson_status; SCORM 2004 splits them and uses cmi.* (no .core.),
+                        // plus a normalized cmi.score.scaled. Branching on pipwerks.SCORM.version keeps
+                        // the score reaching the right CMI keys for both LMS profiles.
+                        if (pipwerks.SCORM.version === "2004") {
+                            pipwerks.SCORM.set("cmi.score.raw", newFinalScore);
+                            pipwerks.SCORM.set("cmi.score.min", 0);
+                            pipwerks.SCORM.set("cmi.score.max", 100);
+                            pipwerks.SCORM.set("cmi.score.scaled", newFinalScore / 100);
+                            pipwerks.SCORM.set("cmi.completion_status", game.gameOver ? "completed" : "incomplete");
+                            pipwerks.SCORM.set("cmi.success_status", game.gameOver ? (passed ? "passed" : "failed") : "unknown");
+                        } else {
+                            // SCORM 1.2 folds completion+success into cmi.core.lesson_status, so keep it
+                            // non-terminal ("incomplete") while the game is in progress and only mark
+                            // passed/failed once the game is over, mirroring the 2004 branch above.
+                            pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
+                            pipwerks.SCORM.set("cmi.core.lesson_status", game.gameOver ? (passed ? "passed" : "failed") : "incomplete");
+                        }
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);

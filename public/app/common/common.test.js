@@ -1855,6 +1855,131 @@ describe('common.js $exeDevices', () => {
       }
     });
 
+    it('showFinalScore does not downgrade an already-completed SCORM 2004 SCO on a review-only reopen', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        // Reopen scenario: the game has not been restarted (no gameStarted) nor finished
+        // (no gameOver), but suspend_data still holds a passing score from a prior attempt.
+        scorm.showFinalScore(
+          { 1: { title: 'Activity', score: 80, weighted: 100 } },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        // The previous score is still shown to the learner...
+        expect(document.querySelector('#eXeScoreNodeScore').textContent).toBe('Score: 80/100');
+        // ...but the LMS data model must be left untouched so the persisted
+        // "completed/passed" is preserved while the learner only reviews.
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('showFinalScore does not downgrade an already-completed SCORM 1.2 SCO on a review-only reopen', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.showFinalScore(
+          { 1: { title: 'Activity', score: 80, weighted: 100 } },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        expect(document.querySelector('#eXeScoreNodeScore').textContent).toBe('Score: 80/100');
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.score.raw', expect.anything());
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('showFinalScore marks the SCO incomplete once the learner restarts without finishing', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        // The learner has started a fresh attempt (gameStarted) but has not finished it yet.
+        scorm.showFinalScore(
+          { 1: { title: 'Activity', score: 80, weighted: 100 } },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            gameStarted: true,
+            gameOver: false,
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'incomplete');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'unknown');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
     it('endScorm does not throw', () => {
       const scorm = getScorm();
       expect(() => scorm.endScorm({})).not.toThrow();
