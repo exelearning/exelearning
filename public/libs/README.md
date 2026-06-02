@@ -158,9 +158,6 @@
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
     *   License: MIT
-*   Package: tikzjax
-    *   Copyright: Jim Fowler (kisonecat)
-    *   License: LPPL-1.3c
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0
@@ -345,6 +342,21 @@
 *   Files: /public/style/workarea/fonts/\Inter*
     *   Copyright: The Inter Project Authors. Designed by Rasmus Andersson
     *   License: SIL Open Font License version 1.1
-*   Files: /public/files/perm/idevices/base/3dmol/export/3Dmol-min.js and /public/files/perm/idevices/base/3dmol/edition/3Dmol-min.js
+*   File: /public/files/perm/idevices/base/3dmol/export/3Dmol-min.js (3Dmol.js)
     *   Copyright: 2014, University of Pittsburgh and contributors
-    *   License: BSD-3-Clause (https://github.com/3dmol/3Dmol.js/blob/master/LICENSE)
+    *   License: BSD-3-Clause
+*   Files: /public/files/perm/idevices/base/electrical-circuits/edition/tikzjax.js and /public/files/perm/idevices/base/electrical-circuits/export/tikzjax.js
+    *   Copyright: Jim Fowler (kisonecat)
+    *   License: LPPL-1.3c
+*   Files: /public/files/perm/idevices/base/electrical-circuits/edition/fonts/*.ttf and /public/files/perm/idevices/base/electrical-circuits/export/fonts/*.ttf (BaKoMa Fonts Collection)
+    *   Copyright: 1994, 1995, Basil K. Malyshev
+    *   License: BaKoMa Fonts Licence
+*   Package: circuitikz
+    *   Copyright: Massimo Redaelli, Stefan Erhardt, Stefan Lindner, Romano Giannetti
+    *   License: LPPL / GPL
+*   Package: amsmath
+    *   Copyright: American Mathematical Society and LaTeX3 Project
+    *   License: LPPL-1.3c
+*   Package: amssymb / amsfonts
+    *   Copyright: American Mathematical Society
+    *   License: SIL Open Font License
