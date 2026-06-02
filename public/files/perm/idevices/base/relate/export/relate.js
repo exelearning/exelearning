@@ -641,7 +641,14 @@ var $eXeRelaciona = {
         $eXeRelaciona.showScoreGame(instance);
         mOptions.gameStarted = true;
         mOptions.gameOver = false;
-
+        const nodeGame = document.querySelector('#rlcContainerGame-' + instance);
+        if (nodeGame) {
+            if ($exeDevices.iDevice.gamification.math.hasLatex(nodeGame.innerHTML)) {
+                $exeDevices.iDevice.gamification.math.updateLatex(
+                    '#rlcContainerGame-' + instance,
+                );
+            }
+        }
         $('#rlcMessage-' + instance).hide();
     },
 

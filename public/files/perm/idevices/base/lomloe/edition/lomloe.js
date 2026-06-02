@@ -610,20 +610,20 @@ var $exeDevice = (function () {
             // ── Header ───────────────────────────────────────────
             '<div class="lomloe-header">',
             '  <label>',
-            '    <span>' + _('Marco legal:') + '</span>',
+            '    <span>' + _('Legal framework:') + '</span>',
             '    <select id="lomloe-fw-' + uid + '" disabled>',
             '      <option value="lomloe">LOMLOE (España)</option>',
             '    </select>',
             '  </label>',
             '  <label>',
-            '    <span>' + _('Concreción:') + '</span>',
+            '    <span>' + _('Specification:') + '</span>',
             '    <select id="lomloe-ds-' + uid + '">' + datasetOptions + '</select>',
             '  </label>',
             '</div>',
 
             // ── Dataset not-available notice (shown when needed) ─
             '<div class="lomloe-dataset-notice" id="lomloe-notice-' + uid + '" hidden>',
-            '  ⚠️ ' + _('Este conjunto de datos no está disponible todavía. Se añadirá en una próxima versión.'),
+            '  ⚠️ ' + _('This dataset is not available yet. It will be added in an upcoming version.'),
             '</div>',
 
             // ── Two-column layout ────────────────────────────────
@@ -631,8 +631,8 @@ var $exeDevice = (function () {
 
             //   LEFT: browser panel
             '  <section class="lomloe-panel lomloe-browser" id="lomloe-browser-' + uid + '">',
-            '    <div class="lomloe-panel-header">' + _('Selector de elementos curriculares') + '</div>',
-            '    <div id="lomloe-loading-' + uid + '" class="lomloe-loading">' + _('Cargando datos curriculares…') + '</div>',
+            '    <div class="lomloe-panel-header">' + _('Curriculum elements selector') + '</div>',
+            '    <div id="lomloe-loading-' + uid + '" class="lomloe-loading">' + _('Loading curriculum data…') + '</div>',
             '    <div id="lomloe-browser-body-' + uid + '" class="lomloe-browser-body" hidden>',
             '      <!-- Etapa buttons -->',
             '      <div class="lomloe-etapa-bar" id="lomloe-etapas-' + uid + '"></div>',
@@ -642,21 +642,21 @@ var $exeDevice = (function () {
             '      <div class="lomloe-materia-content">',
             '        <div class="lomloe-materia-col">',
             '          <input class="lomloe-materia-search" id="lomloe-mat-search-' + uid + '"',
-            '            type="search" placeholder="' + _('Filtrar…') + '" autocomplete="off">',
+            '            type="search" placeholder="' + _('Filter…') + '" autocomplete="off">',
             '          <ul class="lomloe-materia-list" id="lomloe-mat-list-' + uid + '"></ul>',
             '        </div>',
             '        <div class="lomloe-content-col">',
             '          <div class="lomloe-tabs">',
             '            <button class="lomloe-tab-btn active" data-tab="competencias" id="lomloe-tab-comp-' + uid + '">',
-            '              🎯 ' + _('Criterios de evaluación'),
+            '              🎯 ' + _('Assessment criteria'),
             '            </button>',
             '            <button class="lomloe-tab-btn" data-tab="saberes" id="lomloe-tab-sab-' + uid + '">',
-            '              📚 ' + _('Saberes Básicos'),
+            '              📚 ' + _('Basic knowledge'),
             '            </button>',
             '          </div>',
             '          <div class="lomloe-tab-content" id="lomloe-content-' + uid + '">',
             '            <div class="lomloe-no-materia" id="lomloe-no-mat-' + uid + '">',
-            '              ← ' + _('Selecciona una materia'),
+            '              ← ' + _('Select a subject'),
             '            </div>',
             '            <div id="lomloe-items-' + uid + '" hidden></div>',
             '          </div>',
@@ -668,18 +668,18 @@ var $exeDevice = (function () {
             //   RIGHT: selections panel
             '  <aside class="lomloe-panel lomloe-selected-panel">',
             '    <div class="lomloe-selected-header">',
-            '      <span>' + _('Seleccionados') + '</span>',
+            '      <span>' + _('Selected') + '</span>',
             '      <span class="lomloe-selected-count" id="lomloe-sel-count-' + uid + '">0</span>',
             '    </div>',
             '    <div class="lomloe-selected-list" id="lomloe-sel-list-' + uid + '">',
-            '      <div class="lomloe-selected-empty">' + _('Aún no hay elementos seleccionados.') + '</div>',
+            '      <div class="lomloe-selected-empty">' + _('No elements selected yet.') + '</div>',
             '    </div>',
             '    <div class="lomloe-actions">',
             '      <button class="lomloe-btn lomloe-btn-primary" id="lomloe-preview-' + uid + '" disabled>',
-            '        👁 ' + _('Vista previa del resumen'),
+            '        👁 ' + _('Summary preview'),
             '      </button>',
             '      <button class="lomloe-btn lomloe-btn-secondary" id="lomloe-reset-' + uid + '">',
-            '        🔄 ' + _('Restablecer selección'),
+            '        🔄 ' + _('Reset selection'),
             '      </button>',
             '    </div>',
             '  </aside>',
@@ -690,8 +690,8 @@ var $exeDevice = (function () {
             '<div class="lomloe-modal-overlay" id="lomloe-modal-' + uid + '" hidden role="dialog" aria-modal="true">',
             '  <div class="lomloe-modal-box">',
             '    <div class="lomloe-modal-top">',
-            '      <h2>' + _('Resumen de la fundamentación curricular') + '</h2>',
-            '      <button class="lomloe-modal-close" id="lomloe-modal-close-' + uid + '" aria-label="' + _('Cerrar') + '">✕</button>',
+            '      <h2>' + _('Curriculum foundations summary') + '</h2>',
+            '      <button class="lomloe-modal-close" id="lomloe-modal-close-' + uid + '" aria-label="' + _('Close') + '">✕</button>',
             '    </div>',
             '    <div class="lomloe-modal-body" id="lomloe-modal-body-' + uid + '"></div>',
             '  </div>',
@@ -1024,7 +1024,7 @@ var $exeDevice = (function () {
 
     function onReset() {
         if (selections.size === 0) return;
-        if (!window.confirm(_('¿Restablecer toda la selección? Se perderán los cambios.'))) return;
+        if (!window.confirm(_('Reset all selections? Changes will be lost.'))) return;
         selections.clear();
         // Uncheck all visible checkboxes
         qa('input[type="checkbox"][data-id]').forEach(function (cb) { cb.checked = false; });
@@ -1088,7 +1088,7 @@ var $exeDevice = (function () {
         if (!list) return;
         if (!selectedEtapa || !selectedNivel) {
             list.innerHTML = '<li class="lomloe-materia-placeholder">' +
-                _('Selecciona etapa y nivel') + '</li>';
+                _('Select stage and level') + '</li>';
             return;
         }
         var materias = getMaterias(selectedEtapa, selectedNivel);
@@ -1101,7 +1101,7 @@ var $exeDevice = (function () {
         }
         if (!materias.length) {
             list.innerHTML = '<li class="lomloe-materia-placeholder">' +
-                _('Sin resultados') + '</li>';
+                _('No results') + '</li>';
             return;
         }
         list.innerHTML = materias.map(function (m) {
@@ -1157,7 +1157,7 @@ var $exeDevice = (function () {
         var bloques = getSabereBloques(selectedEtapa, selectedNivel, selectedMateria.codArea);
         var bloqueKeys = Object.keys(bloques);
         if (!bloqueKeys.length) {
-            return '<div class="lomloe-no-materia">' + _('No hay saberes básicos para esta materia.') + '</div>';
+            return '<div class="lomloe-no-materia">' + _('No basic knowledge for this subject.') + '</div>';
         }
         return bloqueKeys.map(function (bloque) {
             var items = bloques[bloque];
@@ -1200,7 +1200,7 @@ var $exeDevice = (function () {
         var comps = getCompetencias(selectedEtapa, selectedNivel, selectedMateria.codArea);
         var compKeys = Object.keys(comps);
         if (!compKeys.length) {
-            return '<div class="lomloe-no-materia">' + _('No hay competencias específicas para esta materia.') + '</div>';
+            return '<div class="lomloe-no-materia">' + _('No specific competencies for this subject.') + '</div>';
         }
         // Only Canarias has an authoritative per-criterio descriptor mapping;
         // for the other datasets the descriptors are competencia-level, so we
@@ -1257,7 +1257,7 @@ var $exeDevice = (function () {
 
         if (count === 0) {
             listEl.innerHTML = '<div class="lomloe-selected-empty">' +
-                _('Aún no hay elementos seleccionados.') + '</div>';
+                _('No elements selected yet.') + '</div>';
             return;
         }
 
@@ -1336,7 +1336,7 @@ var $exeDevice = (function () {
                 '  <div class="lomloe-sel-meta">',
                 '    <label class="lomloe-sel-partial-label">',
                 '      <input type="checkbox" class="lomloe-partial-cb" data-selid="' + esc(sel.id) + '"' + (sel.partial ? ' checked' : '') + '>',
-                '      ' + _('Parcial'),
+                '      ' + _('Partial'),
                 '    </label>',
                 '  </div>',
                 buildDescriptorPickerHtml(sel)
@@ -1350,7 +1350,7 @@ var $exeDevice = (function () {
             '    <div class="lomloe-sel-label"' + tipAttr(tooltip) + '>',
             '      <span class="lomloe-sel-code">' + esc(code) + '</span>',
             '    </div>',
-            '    <button class="lomloe-sel-remove" data-selid="' + esc(sel.id) + '" title="' + _('Eliminar') + '">✕</button>',
+            '    <button class="lomloe-sel-remove" data-selid="' + esc(sel.id) + '" title="' + _('Remove') + '">✕</button>',
             '  </div>',
             metaHtml,
             '</div>'
@@ -1376,15 +1376,15 @@ var $exeDevice = (function () {
 
     function getCompClaveHeader(etapa) {
         if (isInfantil(etapa)) {
-            return _('Comp. Clave');
+            return _('Key Comp.');
         }
-        return _('Descriptores operativos');
+        return _('Operational descriptors');
     }
 
     function generateSummaryHtml() {
         var sels = Array.from(selections.values());
         if (!sels.length) {
-            return '<p>' + _('No hay elementos curriculares seleccionados.') + '</p>';
+            return '<p>' + _('No curriculum elements selected.') + '</p>';
         }
 
         var ds = getDataset(currentDataset);
@@ -1394,14 +1394,14 @@ var $exeDevice = (function () {
         var saberes = sels.filter(function (s) { return s.type === 'saber'; });
 
         var html = '';
-        html += '<h3 class="lomloe-export-title">' + _('Fundamentación Curricular LOMLOE') + '</h3>';
+        html += '<h3 class="lomloe-export-title">' + _('LOMLOE Curriculum Foundations') + '</h3>';
         html += '<p class="lomloe-export-meta">';
-        html += _('Fundamentación') + ': <strong>' + esc(datasetLabel) + '</strong>';
-        html += ' &nbsp;|&nbsp; ' + _('Elementos seleccionados') + ': <strong>' + sels.length + '</strong>';
-        if (criterios.length) html += ' (' + criterios.length + ' ' + _('criterios');
-        if (saberes.length && criterios.length) html += ', ' + saberes.length + ' ' + _('saberes') + ')';
+        html += _('Foundations') + ': <strong>' + esc(datasetLabel) + '</strong>';
+        html += ' &nbsp;|&nbsp; ' + _('Selected elements') + ': <strong>' + sels.length + '</strong>';
+        if (criterios.length) html += ' (' + criterios.length + ' ' + _('criteria');
+        if (saberes.length && criterios.length) html += ', ' + saberes.length + ' ' + _('knowledge') + ')';
         else if (criterios.length) html += ')';
-        else if (saberes.length) html += ' (' + saberes.length + ' ' + _('saberes') + ')';
+        else if (saberes.length) html += ' (' + saberes.length + ' ' + _('knowledge') + ')';
         html += '</p>';
 
         if (criterios.length) {
@@ -1427,15 +1427,15 @@ var $exeDevice = (function () {
 
             html += '<table class="lomloe-export-table">';
             html += '<thead><tr>';
-            html += '<th' + tipAttr(_('Competencias Específicas')) + '>' + _('Comp. Específica') + '</th>';
+            html += '<th' + tipAttr(_('Specific Competencies')) + '>' + _('Spec. Comp.') + '</th>';
             if (infantil) {
-                html += '<th' + tipAttr(_('Competencias Clave')) + '>' + esc(ccHeader) + '</th>';
-                html += '<th' + tipAttr(_('Criterios de evaluación')) + '>' + _('Criterios de Eval.') + '</th>';
+                html += '<th' + tipAttr(_('Key Competencies')) + '>' + esc(ccHeader) + '</th>';
+                html += '<th' + tipAttr(_('Assessment criteria')) + '>' + _('Eval. Criteria') + '</th>';
             } else {
-                html += '<th' + tipAttr(_('Criterios de evaluación')) + '>' + _('Criterios de Eval.') + '</th>';
-                html += '<th' + tipAttr(_('Descriptores operativos')) + '>' + esc(ccHeader) + '</th>';
+                html += '<th' + tipAttr(_('Assessment criteria')) + '>' + _('Eval. Criteria') + '</th>';
+                html += '<th' + tipAttr(_('Operational descriptors')) + '>' + esc(ccHeader) + '</th>';
             }
-            if (hasSaberes) html += '<th>' + _('Saberes Básicos') + '</th>';
+            if (hasSaberes) html += '<th>' + _('Basic knowledge') + '</th>';
             html += '</tr></thead><tbody>';
 
             var isFirstCriterioRow = true;
@@ -1455,7 +1455,7 @@ var $exeDevice = (function () {
                     var criterioCell = '<td>';
                     criterioCell += '<span class="lomloe-criterio-code-badge"' + tipAttr(sel.descripcionCriterio) + '>' + esc(sel.codigoCriterio) + '</span>';
                     if (sel.partial) {
-                        criterioCell += ' <span class="lomloe-partial-indicator">(' + _('parcial') + ')</span>';
+                        criterioCell += ' <span class="lomloe-partial-indicator">(' + _('partial') + ')</span>';
                     }
                     criterioCell += '</td>';
                     var ccCell = '<td>';
@@ -1492,7 +1492,7 @@ var $exeDevice = (function () {
         if (saberes.length && !criterios.length) {
             html += '<table class="lomloe-export-table">';
             html += '<thead><tr>';
-            html += '<th>' + _('Saberes Básicos') + '</th>';
+            html += '<th>' + _('Basic knowledge') + '</th>';
             html += '</tr></thead><tbody>';
 
             saberes.forEach(function (sel) {
@@ -1553,7 +1553,7 @@ var $exeDevice = (function () {
             renderSelectedPanel();
         }).catch(function (err) {
             var loading = q('lomloe-loading-' + instanceId);
-            if (loading) loading.innerHTML = '❌ ' + _('Error al cargar los datos: ') + esc(err.message);
+            if (loading) loading.innerHTML = '❌ ' + _('Error loading data: ') + esc(err.message);
         });
     }
 

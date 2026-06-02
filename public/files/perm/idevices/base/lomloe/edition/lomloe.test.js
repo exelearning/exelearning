@@ -469,8 +469,8 @@ describe('toggleCriterio descriptor modes via browse panel (issue #1832)', () =>
     });
 
     // Issue #1832 follow-up: after the Infantil backfill, a non-Canarias Infantil
-    // criterio offers the competencias clave as checkboxes, captioned "Comp. Clave".
-    it('Infantil (non-Canarias) renders the picker captioned "Comp. Clave"', async () => {
+    // criterio offers the competencias clave as checkboxes, captioned "Key Comp.".
+    it('Infantil (non-Canarias) renders the picker captioned "Key Comp."', async () => {
         const INF_COMP = {
             'Educación Infantil': {
                 'Primer ciclo (0-3 años)': {
@@ -512,7 +512,7 @@ describe('toggleCriterio descriptor modes via browse panel (issue #1832)', () =>
         const boxes = el.querySelectorAll('.lomloe-desc-cb');
         expect(boxes).toHaveLength(2);
         const caption = el.querySelector('.lomloe-sel-descriptors-caption');
-        expect(caption.textContent).toBe('Comp. Clave:');
+        expect(caption.textContent).toBe('Key Comp.:');
     });
 });
 
@@ -733,7 +733,7 @@ describe('Summary HTML generation', () => {
         expect(saved.lomloeSummaryHtml).toContain('lomloe-saber-link-badge');
         expect(saved.lomloeSummaryHtml).toContain('PM01SBI.1.1');
         // Saberes header column present
-        expect(saved.lomloeSummaryHtml).toContain('>Saberes Básicos<');
+        expect(saved.lomloeSummaryHtml).toContain('>Basic knowledge<');
     });
 
     it('no Saberes column when no saberes are selected', async () => {
@@ -758,7 +758,7 @@ describe('Summary HTML generation', () => {
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
-        expect(saved.lomloeSummaryHtml).not.toContain('Saberes Básicos');
+        expect(saved.lomloeSummaryHtml).not.toContain('Basic knowledge');
         expect(saved.lomloeSummaryHtml).not.toContain('lomloe-saberes-cell');
     });
 
@@ -797,7 +797,7 @@ describe('Summary HTML generation', () => {
         expect(saved.lomloeSummaryHtml).toContain('STEM3');
     });
 
-    it('partial: true produces "(parcial)" in summary HTML', async () => {
+    it('partial: true produces "(partial)" in summary HTML', async () => {
         const selId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
@@ -819,11 +819,11 @@ describe('Summary HTML generation', () => {
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
-        expect(saved.lomloeSummaryHtml).toContain('parcial');
+        expect(saved.lomloeSummaryHtml).toContain('partial');
         expect(saved.lomloeSummaryHtml).toContain('lomloe-partial-indicator');
     });
 
-    it('partial: false does not produce "(parcial)" in summary HTML', async () => {
+    it('partial: false does not produce "(partial)" in summary HTML', async () => {
         const selId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
@@ -845,10 +845,10 @@ describe('Summary HTML generation', () => {
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
-        expect(saved.lomloeSummaryHtml).not.toContain('parcial');
+        expect(saved.lomloeSummaryHtml).not.toContain('partial');
     });
 
-    it('uses "Descriptores operativos" header for Primaria with Criterio first', async () => {
+    it('uses "Operational descriptors" header for Primaria with Criterio first', async () => {
         const selId = makeCriterioSelId('Educación Primaria', '1º Primaria', 'MAT', 'PMC1', 'PM01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
@@ -870,18 +870,18 @@ describe('Summary HTML generation', () => {
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
-        expect(saved.lomloeSummaryHtml).toContain('Descriptores operativos');
-        expect(saved.lomloeSummaryHtml).not.toContain('>Comp. Clave<');
-        // Column order: Criterio before Descriptores operativos
-        const critIdx = saved.lomloeSummaryHtml.indexOf('>Criterios de Eval.<');
-        const descIdx = saved.lomloeSummaryHtml.indexOf('>Descriptores operativos<');
+        expect(saved.lomloeSummaryHtml).toContain('Operational descriptors');
+        expect(saved.lomloeSummaryHtml).not.toContain('>Key Comp.<');
+        // Column order: Criterio before Operational descriptors
+        const critIdx = saved.lomloeSummaryHtml.indexOf('>Eval. Criteria<');
+        const descIdx = saved.lomloeSummaryHtml.indexOf('>Operational descriptors<');
         expect(critIdx).toBeLessThan(descIdx);
-        // "Comp. Específica" header with tooltip
-        expect(saved.lomloeSummaryHtml).toContain('Comp. Específica');
-        expect(saved.lomloeSummaryHtml).toContain('data-lomloe-tip="Competencias Específicas"');
+        // "Spec. Comp." header with tooltip
+        expect(saved.lomloeSummaryHtml).toContain('Spec. Comp.');
+        expect(saved.lomloeSummaryHtml).toContain('data-lomloe-tip="Specific Competencies"');
     });
 
-    it('uses "Comp. Clave" header for Infantil with Comp. Clave first', async () => {
+    it('uses "Key Comp." header for Infantil with Key Comp. first', async () => {
         const selId = makeCriterioSelId('Educación Infantil', '4º Infantil de 3 años', 'CYR', 'CYR_C1', 'CYR01CE1.1');
         $exeDevice.init(el, {
             lomloeDataset: 'ES-CN',
@@ -903,16 +903,16 @@ describe('Summary HTML generation', () => {
         });
         await new Promise(r => setTimeout(r, 50));
         const saved = $exeDevice.save();
-        expect(saved.lomloeSummaryHtml).toContain('Comp. Clave');
-        expect(saved.lomloeSummaryHtml).not.toContain('Descriptores operativos');
-        // Column order: Comp. Clave before Criterio
-        const ccIdx = saved.lomloeSummaryHtml.indexOf('>Comp. Clave<');
-        const critIdx = saved.lomloeSummaryHtml.indexOf('>Criterios de Eval.<');
+        expect(saved.lomloeSummaryHtml).toContain('Key Comp.');
+        expect(saved.lomloeSummaryHtml).not.toContain('Operational descriptors');
+        // Column order: Key Comp. before Criterio
+        const ccIdx = saved.lomloeSummaryHtml.indexOf('>Key Comp.<');
+        const critIdx = saved.lomloeSummaryHtml.indexOf('>Eval. Criteria<');
         expect(ccIdx).toBeLessThan(critIdx);
-        // "Comp. Específica" header with tooltip
-        expect(saved.lomloeSummaryHtml).toContain('Comp. Específica');
-        // Comp. Clave header has Bootstrap tooltip
-        expect(saved.lomloeSummaryHtml).toContain('data-lomloe-tip="Competencias Clave"');
+        // "Spec. Comp." header with tooltip
+        expect(saved.lomloeSummaryHtml).toContain('Spec. Comp.');
+        // Key Comp. header has Bootstrap tooltip
+        expect(saved.lomloeSummaryHtml).toContain('data-lomloe-tip="Key Competencies"');
     });
 });
 

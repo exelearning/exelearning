@@ -3977,17 +3977,9 @@
         <source>Please enter the project title:</source>
         <target>~Bonvolu enigi la titolon de la projekto:</target>
       </trans-unit>
-      <trans-unit id="cPW6CJ0" resname="Google Drive error">
-        <source>Google Drive error</source>
-        <target>~Eraro en Google Drive</target>
-      </trans-unit>
       <trans-unit id="KEhkI6s" resname="Unknown">
         <source>Unknown</source>
         <target>~Nekonata</target>
-      </trans-unit>
-      <trans-unit id="crz7e6x" resname="Dropbox error">
-        <source>Dropbox error</source>
-        <target>~Eraro en Dropbox</target>
       </trans-unit>
       <trans-unit id="d2WU0Ah" resname="Error opening">
         <source>Error opening</source>
@@ -4396,22 +4388,6 @@
       <trans-unit id="4oyaNcE" resname="Upload">
         <source>Upload</source>
         <target>~Elŝuti</target>
-      </trans-unit>
-      <trans-unit id="JcEtEhk" resname="Upload to Dropbox">
-        <source>Upload to Dropbox</source>
-        <target>~Elŝuti al Dropbox</target>
-      </trans-unit>
-      <trans-unit id="JOFdorq" resname="Select the Dropbox directory where the project will be uploaded:">
-        <source>Select the Dropbox directory where the project will be uploaded:</source>
-        <target>~Elektu la Dropbox-dosierujon kie la projekto estos alŝutita:</target>
-      </trans-unit>
-      <trans-unit id="9a1eDpd" resname="Upload to Google Drive">
-        <source>Upload to Google Drive</source>
-        <target>~Elŝuti al Google Drive</target>
-      </trans-unit>
-      <trans-unit id="HMP7DeK" resname="Select the Google Drive directory where the project will be uploaded:">
-        <source>Select the Google Drive directory where the project will be uploaded:</source>
-        <target>~Elektu la Google Drive-dosierujon kie la projekto estos alŝutita:</target>
       </trans-unit>
       <trans-unit id="9Mm2eRT" resname="An error occurred while saving block's properties in database">
         <source>An error occurred while saving block's properties in database</source>
@@ -11249,10 +11225,6 @@
         <source>Changelog</source>
         <target>~Ĝisdonaĵoj</target>
       </trans-unit>
-      <trans-unit id="rFqGW9s" resname="Upload to Drive">
-        <source>Upload to Drive</source>
-        <target>~Alŝuti al Drive</target>
-      </trans-unit>
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
         <target>~Sistemo</target>
@@ -14224,6 +14196,866 @@
       <trans-unit id="21qeoch" resname="Your score will be automatically saved after each change.">
         <source>Your score will be automatically saved after each change.</source>
         <target>~Via poentaro estos aŭtomate konservita post ĉiu ŝanĝo.</target>
+      </trans-unit>
+      <trans-unit id="2dmkqos" resname="Use the default style of the site">
+        <source>Use the default style of the site</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7n2p1wc" resname="Pick a style that will be preselected when you create a new project. Overrides the site default.">
+        <source>Pick a style that will be preselected when you create a new project. Overrides the site default.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2is7uwd" resname="Toggle mobile preview">
+        <source>Toggle mobile preview</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4p1i3wq" resname="Open from folder">
+        <source>Open from folder</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9x3ogy8" resname="Save to folder">
+        <source>Save to folder</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="i1xa5kf" resname="3D Model">
+        <source>3D Model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="sh771g1" resname="3D Models">
+        <source>3D Models</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zxr74ll" resname="The selected folder is not a valid eXeLearning project.">
+        <source>The selected folder is not a valid eXeLearning project.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u2ax50l" resname="Not supported">
+        <source>Not supported</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v5k4vlj" resname="Opening a project from a folder is not available in this browser.">
+        <source>Opening a project from a folder is not available in this browser.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="he4a6pi" resname="Folder save requires the Yjs export pipeline.">
+        <source>Folder save requires the Yjs export pipeline.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="b0ffrjd" resname="Generating folder project...">
+        <source>Generating folder project...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="z1xceyw" resname="Saving to a folder is not available in this browser.">
+        <source>Saving to a folder is not available in this browser.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4zxqbfc" resname="Folder saved.">
+        <source>Folder saved.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="apq0z0q" resname="An error occurred while exporting the project: ">
+        <source>An error occurred while exporting the project: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ned79sw" resname="Sending to the platform...">
+        <source>Sending to the platform...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3serw6f" resname="Could not send the project to the platform: ">
+        <source>Could not send the project to the platform: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="50debki" resname="TikZ code">
+        <source>TikZ code</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j8rcqrb" resname="One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.">
+        <source>One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2aje58y" resname="Simple resistor circuit">
+        <source>Simple resistor circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tvbwljv" resname="What is the resistance value?">
+        <source>What is the resistance value?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cwdyfvp" resname="Battery and lamp circuit">
+        <source>Battery and lamp circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="623gi23" resname="What happens when the switch is closed?">
+        <source>What happens when the switch is closed?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="z9zp06f" resname="Nothing">
+        <source>Nothing</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cm6ewbi" resname="The lamp turns on">
+        <source>The lamp turns on</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ieiu5ij" resname="The battery drains">
+        <source>The battery drains</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3hl9ljt" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="z57mgwp" resname="Drop an .elpx file here to open it">
+        <source>Drop an .elpx file here to open it</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="393s194" resname="360° panorama viewer">
+        <source>360° panorama viewer</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ig1yto1" resname="Scene">
+        <source>Scene</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3ch8ki0" resname="Hotspot">
+        <source>Hotspot</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wsawxsz" resname="Initial view">
+        <source>Initial view</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0986d67" resname="Yaw">
+        <source>Yaw</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="t0rbnaw" resname="Pitch">
+        <source>Pitch</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="sem6wi1" resname="Field of view">
+        <source>Field of view</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ggg95i6" resname="Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.">
+        <source>Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8eoxbji" resname="Scenes">
+        <source>Scenes</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="irv173b" resname="Add scene">
+        <source>Add scene</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mylp0mp" resname="Active scene">
+        <source>Active scene</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7n250in" resname="Panorama image">
+        <source>Panorama image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bs1zzvv" resname="Choose image…">
+        <source>Choose image…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tla93uk" resname="No image selected">
+        <source>No image selected</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wfcb0fg" resname="Clear">
+        <source>Clear</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="c6xzgbv" resname="360° panorama image">
+        <source>360° panorama image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="t6wi5v8" resname="Uncheck for a regular flat photo (no 360° effect).">
+        <source>Uncheck for a regular flat photo (no 360° effect).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="60f20ze" resname="Hotspots">
+        <source>Hotspots</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d9w0eae" resname="Click on the image to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the image to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jh6900z" resname="Click on the panorama to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the panorama to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="foja27s" resname="Place hotspot by clicking">
+        <source>Place hotspot by clicking</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ippl4t4" resname="…or add at current view">
+        <source>…or add at current view</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rx57i0d" resname="Controls">
+        <source>Controls</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="02eqbim" resname="Auto-rotate">
+        <source>Auto-rotate</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zdq653h" resname="Speed">
+        <source>Speed</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="122kx37" resname="Allow zoom">
+        <source>Allow zoom</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hqa6q3r" resname="Show fullscreen button">
+        <source>Show fullscreen button</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4j737mt" resname="Show hotspot labels">
+        <source>Show hotspot labels</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7ulct16" resname="Show navigation arrows">
+        <source>Show navigation arrows</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9qninea" resname="Select an image to see a live preview.">
+        <source>Select an image to see a live preview.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="piw4i8e" resname="Scene actions">
+        <source>Scene actions</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zddqm2w" resname="Set as start scene">
+        <source>Set as start scene</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mgyjce7" resname="Duplicate scene">
+        <source>Duplicate scene</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0840yr4" resname="Remove scene">
+        <source>Remove scene</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0y8hql7" resname="No hotspots in this scene yet.">
+        <source>No hotspots in this scene yet.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f6ydf06" resname="Label">
+        <source>Label</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x80ik84" resname="Remove hotspot">
+        <source>Remove hotspot</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wlnvx86" resname="Action">
+        <source>Action</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f2xm69y" resname="Go to scene">
+        <source>Go to scene</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l11dv5m" resname="External link">
+        <source>External link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xzgwee5" resname="Target scene">
+        <source>Target scene</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tu3eri1" resname="Video URL">
+        <source>Video URL</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zv1ahpj" resname="Choose video…">
+        <source>Choose video…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ildawz5" resname="Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.">
+        <source>Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r84vj2g" resname="Open in a new tab">
+        <source>Open in a new tab</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ec8uugz" resname="Loading 3D preview…">
+        <source>Loading 3D preview…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tnt610b" resname="Drag to move">
+        <source>Drag to move</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="c9zjxld" resname="Pan navigation">
+        <source>Pan navigation</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6gg7ulk" resname="Pan left">
+        <source>Pan left</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8unx04s" resname="Pan up">
+        <source>Pan up</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6dvdu57" resname="Pan down">
+        <source>Pan down</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vwbwqdj" resname="Pan right">
+        <source>Pan right</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ky1rsp8" resname="3D Viewer">
+        <source>3D Viewer</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="go5aulh" resname="Exit fullscreen">
+        <source>Exit fullscreen</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="whobotp" resname="Select a 3D model to preview">
+        <source>Select a 3D model to preview</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="g3eg6pk" resname="Rotate model">
+        <source>Rotate model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="om6oh04" resname="Rotate left">
+        <source>Rotate left</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="g89jkap" resname="Tilt up">
+        <source>Tilt up</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bixqiag" resname="Tilt down">
+        <source>Tilt down</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pygeq59" resname="Rotate right">
+        <source>Rotate right</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="amds0nx" resname="Select a GLB, GLTF or STL file">
+        <source>Select a GLB, GLTF or STL file</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="o64bsvu" resname="Describe the 3D model for accessibility">
+        <source>Describe the 3D model for accessibility</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tw1x374" resname="Describe the 3D model for screen readers and accessibility">
+        <source>Describe the 3D model for screen readers and accessibility</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j1ihcub" resname="Display Options">
+        <source>Display Options</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rww53qx" resname="Choose background color">
+        <source>Choose background color</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="47cpjps" resname="STL model color">
+        <source>STL model color</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="yhp45db" resname="Choose STL model color">
+        <source>Choose STL model color</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9pny0cd" resname="Only used for STL files; ignored for GLB/GLTF (materials come from the model).">
+        <source>Only used for STL files; ignored for GLB/GLTF (materials come from the model).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6reci5g" resname="Enable camera controls">
+        <source>Enable camera controls</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bphedlo" resname="Auto-rotate model">
+        <source>Auto-rotate model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="o3fjoz6" resname="Show navigation controls (fullscreen + arrows)">
+        <source>Show navigation controls (fullscreen + arrows)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qmf7yf7" resname="Mutually exclusive with auto-rotate.">
+        <source>Mutually exclusive with auto-rotate.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uf7jdu2" resname="Animation">
+        <source>Animation</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4byaxoj" resname="Play animation">
+        <source>Play animation</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ciijtw4" resname="Animation paused">
+        <source>Animation paused</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5dmwn1s" resname="Playing animation">
+        <source>Playing animation</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="atjy7s3" resname="Please select a 3D model file">
+        <source>Please select a 3D model file</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="53msd3t" resname="Please select a valid 3D model file (GLB, GLTF, or STL)">
+        <source>Please select a valid 3D model file (GLB, GLTF, or STL)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vgmvvnz" resname="Loading editor…">
+        <source>Loading editor…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0gsmsff" resname="Could not load the slide editor. Please reload the page.">
+        <source>Could not load the slide editor. Please reload the page.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="re4h2bm" resname="Markdown text">
+        <source>Markdown text</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ycqr6uu" resname="Markdown content">
+        <source>Markdown content</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1gfclqp" resname="Electrical Circuits">
+        <source>Electrical Circuits</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="c2mqcn0" resname="Please write the question">
+        <source>Please write the question</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0593bc6" resname="Please complete all options">
+        <source>Please complete all options</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="h8ibt28" resname="Please write the word/phrase">
+        <source>Please write the word/phrase</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="af2kmes" resname="The selected file is not a valid game">
+        <source>The selected file is not a valid game</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tvn8e7g" resname="Please indicate the time to display the solution">
+        <source>Please indicate the time to display the solution</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dg8w45c" resname="Please provide the word or phrase">
+        <source>Please provide the word or phrase</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2phs5kq" resname="Create quiz activities based on electrical circuit diagrams drawn with TikZ.">
+        <source>Create quiz activities based on electrical circuit diagrams drawn with TikZ.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5q8wnmg" resname="&amp;percnt; right to see the feedback">
+        <source>&amp;percnt; right to see the feedback</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="aj51xg5" resname="% Questions">
+        <source>% Questions</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="19t540j" resname="No circuit">
+        <source>No circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ea5a82z" resname="Circuit code (TikZ)">
+        <source>Circuit code (TikZ)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r8duy90" resname="Preview circuit">
+        <source>Preview circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zrqyk0a" resname="You answered all the questions.">
+        <source>You answered all the questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rhnj9vp" resname="You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.">
+        <source>You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nckzhup" resname="The score can not be saved because this page is not part of a SCORM package.">
+        <source>The score can not be saved because this page is not part of a SCORM package.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8h3mvk3" resname="You can only save the score once">
+        <source>You can only save the score once</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="o393xnv" resname="Please start the activity before saving your score.">
+        <source>Please start the activity before saving your score.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x81d7tz" resname="Electrical Circuits Quiz">
+        <source>Electrical Circuits Quiz</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ctnbm1s" resname="Observe the electrical circuit and answer the questions.">
+        <source>Observe the electrical circuit and answer the questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3r9hpww" resname="What type of circuit is shown?">
+        <source>What type of circuit is shown?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="spdplg0" resname="Series circuit">
+        <source>Series circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="oxa4444" resname="Parallel circuit">
+        <source>Parallel circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9x8jkoc" resname="Mixed circuit">
+        <source>Mixed circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zouxnrn" resname="Open circuit">
+        <source>Open circuit</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ra55qez" resname="Circuit with a battery connected in series with two resistors">
+        <source>Circuit with a battery connected in series with two resistors</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="i36z8df" resname="3Dmol">
+        <source>3Dmol</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7ckwnw9" resname="Please upload a valid 3D model file">
+        <source>Please upload a valid 3D model file</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="i9iha4l" resname="Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz">
+        <source>Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pq4eu6o" resname="Could not render the selected 3D model">
+        <source>Could not render the selected 3D model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bpsdltw" resname="Large model file. This may affect performance.">
+        <source>Large model file. This may affect performance.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2zc9zer" resname="3D model">
+        <source>3D model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fq7szgb" resname="No 3D model">
+        <source>No 3D model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="y65u0pv" resname="Camera enabled">
+        <source>Camera enabled</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="usr5r5l" resname="Click to disable">
+        <source>Click to disable</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6dcnpho" resname="Camera disabled">
+        <source>Camera disabled</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1l3vjeb" resname="Click to enable">
+        <source>Click to enable</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l3w6b9r" resname="Dark background">
+        <source>Dark background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zd0rkfl" resname="Click to switch to light">
+        <source>Click to switch to light</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="k1kq8xw" resname="Light background">
+        <source>Light background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ldgc2no" resname="Click to switch to dark">
+        <source>Click to switch to dark</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j8arl6m" resname="Atom legend visible">
+        <source>Atom legend visible</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="naxmcrx" resname="Click to hide">
+        <source>Click to hide</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="49dl1pn" resname="Atom legend hidden">
+        <source>Atom legend hidden</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nnb74v8" resname="Click to show">
+        <source>Click to show</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tt96fno" resname="Create quiz activities based on interactive 3D models.">
+        <source>Create quiz activities based on interactive 3D models.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wz0w8rx" resname="3D model preview">
+        <source>3D model preview</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="863qpv9" resname="Molecule style">
+        <source>Molecule style</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hlwpd2x" resname="Smaller">
+        <source>Smaller</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="632k7bf" resname="Bigger">
+        <source>Bigger</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hhbog03" resname="Reset camera view">
+        <source>Reset camera view</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ep03efi" resname="Save initial view">
+        <source>Save initial view</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5ccfqcs" resname="Download image">
+        <source>Download image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="iv7ar47" resname="3D model file">
+        <source>3D model file</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="i0zy3fv" resname="Preview model">
+        <source>Preview model</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9r60x5d" resname="Line">
+        <source>Line</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2z7sgal" resname="Cross">
+        <source>Cross</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="m0gm9h6" resname="Stick">
+        <source>Stick</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dtjx6za" resname="Sphere">
+        <source>Sphere</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9n9aujn" resname="Cartoon">
+        <source>Cartoon</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cmcmrsm" resname="Surface">
+        <source>Surface</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ci75c2e" resname="Toggle background">
+        <source>Toggle background</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1qy9g63" resname="3D Model Quiz">
+        <source>3D Model Quiz</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j3akqrt" resname="Chemical composition">
+        <source>Chemical composition</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bdx6dkg" resname="Observe the 3D model and answer the questions.">
+        <source>Observe the 3D model and answer the questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="97fp5m6" resname="You can rotate the 3D model by clicking on it and dragging.">
+        <source>You can rotate the 3D model by clicking on it and dragging.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="lzuwk2v" resname="What is the central atom in the model?">
+        <source>What is the central atom in the model?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x2cw8qx" resname="How many hydroxyl groups (–OH) does a glucose molecule have?">
+        <source>How many hydroxyl groups (–OH) does a glucose molecule have?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cfwjutq" resname="Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.">
+        <source>Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ui66upm" resname="Default style for new documents">
+        <source>Default style for new documents</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1y9aqxi" resname="Only STL files use this color; the current file is not STL">
+        <source>Only STL files use this color; the current file is not STL</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ca269zo" resname="Please select the correct answer for each question">
+        <source>Please select the correct answer for each question</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j3zkuxt" resname="Enter TikZ circuit code…">
+        <source>Enter TikZ circuit code…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vj6742l" resname="Legal framework:">
+        <source>Legal framework:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="459658r" resname="Specification:">
+        <source>Specification:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8drknzb" resname="This dataset is not available yet. It will be added in an upcoming version.">
+        <source>This dataset is not available yet. It will be added in an upcoming version.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="72jv3z5" resname="Curriculum elements selector">
+        <source>Curriculum elements selector</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tbi7q3a" resname="Loading curriculum data…">
+        <source>Loading curriculum data…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zc23s20" resname="Filter…">
+        <source>Filter…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u0qhspn" resname="Basic knowledge">
+        <source>Basic knowledge</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="q94r3mv" resname="Select a subject">
+        <source>Select a subject</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="41ho4qx" resname="No elements selected yet.">
+        <source>No elements selected yet.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="93nb0ay" resname="Summary preview">
+        <source>Summary preview</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bwbsihh" resname="Curriculum foundations summary">
+        <source>Curriculum foundations summary</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gbo93pl" resname="Reset all selections? Changes will be lost.">
+        <source>Reset all selections? Changes will be lost.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="yh6dese" resname="Select stage and level">
+        <source>Select stage and level</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="45y37cp" resname="No results">
+        <source>No results</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9mkpp5m" resname="No basic knowledge for this subject.">
+        <source>No basic knowledge for this subject.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="325aio6" resname="No specific competencies for this subject.">
+        <source>No specific competencies for this subject.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bh130z3" resname="Partial">
+        <source>Partial</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="etr8q03" resname="Key Comp.">
+        <source>Key Comp.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kte1h07" resname="Operational descriptors">
+        <source>Operational descriptors</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jyg3na1" resname="No curriculum elements selected.">
+        <source>No curriculum elements selected.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mqw9zvn" resname="LOMLOE Curriculum Foundations">
+        <source>LOMLOE Curriculum Foundations</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fkj38h6" resname="Foundations">
+        <source>Foundations</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ypftg3k" resname="Selected elements">
+        <source>Selected elements</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2s6akda" resname="criteria">
+        <source>criteria</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="imd1ql3" resname="knowledge">
+        <source>knowledge</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4kcpfbk" resname="Specific Competencies">
+        <source>Specific Competencies</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v7eqjjc" resname="Spec. Comp.">
+        <source>Spec. Comp.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="oafbbxs" resname="Key Competencies">
+        <source>Key Competencies</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fypnn6x" resname="Eval. Criteria">
+        <source>Eval. Criteria</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3wrs9io" resname="partial">
+        <source>partial</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dm92m3e" resname="Error loading data: ">
+        <source>Error loading data: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ag4u5l2" resname="Only .elpx, .elp or .zip project files can be opened by dragging them here.">
+        <source>Only .elpx, .elp or .zip project files can be opened by dragging them here.</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>
