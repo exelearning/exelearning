@@ -14281,22 +14281,6 @@
         <source>What is the resistance value?</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="g6zzeo0" resname="1 kΩ">
-        <source>1 kΩ</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="p9xx4uk" resname="2 kΩ">
-        <source>2 kΩ</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="le3otny" resname="500 Ω">
-        <source>500 Ω</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="lussk59" resname="10 kΩ">
-        <source>10 kΩ</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="82eu8gv" resname="Battery and lamp circuit">
         <source>Battery and lamp circuit</source>
         <target></target>
