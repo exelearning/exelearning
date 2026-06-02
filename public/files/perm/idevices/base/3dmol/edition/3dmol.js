@@ -1518,7 +1518,7 @@ var $exeDevice = {
             author: '',
             alt: '',
             quextion: c_('How many hydroxyl groups (–OH) does a glucose molecule have?'),
-            options: [c_('5'), c_('4'), c_('3'), c_('6')],
+            options: ['5', '4', '3', '6'],
             solution: 'A',
             solutionQuestion: '',
             percentageShow: 35,
