@@ -2252,6 +2252,124 @@ describe('AssetUrlResolver', () => {
       document.body.removeChild(link);
     });
 
+    describe('Electron blob download (single save dialog, issue #1875)', () => {
+      let fetchMock;
+
+      afterEach(() => {
+        delete window.electronAPI;
+        delete global.fetch;
+        delete window.fetch;
+      });
+
+      function setupElectron(saveBufferAs) {
+        window.electronAPI = { saveBufferAs };
+        const buffer = new Uint8Array([1, 2, 3, 4]).buffer;
+        fetchMock = vi.fn(() =>
+          Promise.resolve({ arrayBuffer: () => Promise.resolve(buffer) }),
+        );
+        global.fetch = fetchMock;
+        window.fetch = fetchMock;
+      }
+
+      it('routes non-image blob downloads through saveBufferAs to avoid the double dialog', async () => {
+        const blobUrl = 'blob:app://localhost/a61add6d-a090-4e22-883e-2da07a032e50';
+        const assetId = 'rar12345-def6-7890-abcd-ef1234567890';
+        const saveBufferAs = vi.fn(() => Promise.resolve('/tmp/archive.rar'));
+        setupElectron(saveBufferAs);
+        window.__currentProjectId = 'project-xyz';
+
+        const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+        assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+        assetManager.getAssetMetadata = vi.fn(() => ({
+          filename: 'archive.rar',
+          mime: 'application/vnd.rar',
+        }));
+
+        const link = document.createElement('a');
+        link.setAttribute('href', blobUrl);
+        document.body.appendChild(link);
+
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        // The default <a download> navigation is suppressed so Electron's
+        // will-download handler never fires a second native dialog.
+        expect(event.defaultPrevented).toBe(true);
+
+        // Note: each test re-imports the module, accumulating click listeners
+        // on the shared document, so we assert "called" rather than an exact
+        // count. In the real app the IIFE registers a single listener.
+        await vi.waitFor(() => expect(saveBufferAs).toHaveBeenCalled());
+        expect(fetchMock).toHaveBeenCalledWith(blobUrl);
+        const [bytes, projectKey, filename] = saveBufferAs.mock.calls[0];
+        expect(bytes).toBeInstanceOf(Uint8Array);
+        expect(projectKey).toBe('project-xyz');
+        expect(filename).toBe('archive.rar');
+
+        document.body.removeChild(link);
+        delete window.__currentProjectId;
+      });
+
+      it('falls back to a default project key when none is set and logs save failures', async () => {
+        const blobUrl = 'blob:app://localhost/b71add6d-a090-4e22-883e-2da07a032e51';
+        const assetId = 'rar67890-def6-7890-abcd-ef1234567890';
+        const saveBufferAs = vi.fn(() => Promise.reject(new Error('user cancelled')));
+        setupElectron(saveBufferAs);
+        delete window.__currentProjectId;
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+        assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+        assetManager.getAssetMetadata = vi.fn(() => ({
+          filename: 'data.zip',
+          mime: 'application/zip',
+        }));
+
+        const link = document.createElement('a');
+        link.setAttribute('href', blobUrl);
+        document.body.appendChild(link);
+
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        await vi.waitFor(() => expect(saveBufferAs).toHaveBeenCalled());
+        expect(saveBufferAs.mock.calls[0][1]).toBe('asset-download');
+        await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled());
+        expect(errorSpy.mock.calls[0][0]).toContain('saveBufferAs failed');
+
+        errorSpy.mockRestore();
+        document.body.removeChild(link);
+      });
+
+      it('does not route image blob links through saveBufferAs (lightbox/new tab)', () => {
+        const blobUrl = 'blob:app://localhost/99cf3174-a4ae-4c3b-9f2b-0972b94b8f03';
+        const assetId = 'img12345-def6-7890-abcd-ef1234567890';
+        const saveBufferAs = vi.fn(() => Promise.resolve('/tmp/photo.jpg'));
+        setupElectron(saveBufferAs);
+
+        const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+        assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+        assetManager.getAssetMetadata = vi.fn(() => ({
+          filename: 'photo.jpg',
+          mime: 'image/jpeg',
+        }));
+
+        const link = document.createElement('a');
+        link.setAttribute('href', blobUrl);
+        document.body.appendChild(link);
+
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        expect(saveBufferAs).not.toHaveBeenCalled();
+        expect(event.defaultPrevented).toBe(false);
+        expect(link.getAttribute('target')).toBe('_blank');
+
+        document.body.removeChild(link);
+      });
+    });
+
     it('skips links inside TinyMCE editors', () => {
       const tinymceContainer = document.createElement('div');
       tinymceContainer.classList.add('tox-tinymce');
