@@ -14305,10 +14305,6 @@
         <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="u9kz4fn" resname="Only .elpx or .elp project files can be opened by dragging them here.">
-        <source>Only .elpx or .elp project files can be opened by dragging them here.</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="n736ysj" resname="Drop an .elpx file here to open it">
         <source>Drop an .elpx file here to open it</source>
         <target></target>
@@ -15055,6 +15051,10 @@
       </trans-unit>
       <trans-unit id="ftmh58w" resname="Error loading data: ">
         <source>Error loading data: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="30ntpfi" resname="Only .elpx, .elp or .zip project files can be opened by dragging them here.">
+        <source>Only .elpx, .elp or .zip project files can be opened by dragging them here.</source>
         <target></target>
       </trans-unit>
     </body>

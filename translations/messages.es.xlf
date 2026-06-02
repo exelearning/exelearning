@@ -14305,10 +14305,6 @@
         <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
         <target>~Genera 5 preguntas de opción múltiple sobre circuitos eléctricos. Una pregunta por línea. Cada línea debe contener todos los campos separados por #: una descripción corta, código TikZ (usando circuitikz) para el diagrama del circuito, la respuesta correcta en letras (p. ej.: A, AB), la pregunta y de 2 a 4 opciones de respuesta. No uses el carácter # dentro de ningún campo. No añadas saltos de línea dentro de una pregunta. IMPORTANTE: El código TikZ debe ser compatible con la versión 0.9.6 de circuitikz. Solo usa componentes disponibles en esta versión: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diodo), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (con t=A para amperímetro, t=V para voltímetro), and gate, or gate, not gate, nand gate, nor gate. NO uses componentes de circuitikz 1.0 o posterior como dipchip, qfpchip, muxdemux, flipflop, latch o pantallas de 7 segmentos.</target>
       </trans-unit>
-      <trans-unit id="jjcobxx" resname="Only .elpx or .elp project files can be opened by dragging them here.">
-        <source>Only .elpx or .elp project files can be opened by dragging them here.</source>
-        <target>Arrastrando, solo se pueden abrir archivos .elpx o .elp.</target>
-      </trans-unit>
       <trans-unit id="17n6nvs" resname="Drop an .elpx file here to open it">
         <source>Drop an .elpx file here to open it</source>
         <target>Suelta un archivo .elpx aquí para abrirlo</target>
@@ -15056,6 +15052,10 @@
       <trans-unit id="25v6xdx" resname="Error loading data: ">
         <source>Error loading data: </source>
         <target>Error al cargar los datos: </target>
+      </trans-unit>
+      <trans-unit id="a4fgw1h" resname="Only .elpx, .elp or .zip project files can be opened by dragging them here.">
+        <source>Only .elpx, .elp or .zip project files can be opened by dragging them here.</source>
+        <target>Arrastrando, solo se pueden abrir archivos .elpx, .elp o .zip.</target>
       </trans-unit>
     </body>
   </file>
