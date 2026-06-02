@@ -165,15 +165,53 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                         }
                     }
 
+                    // Enforce the total batch size BEFORE buffering any bytes into memory.
+                    // Blob/File expose `.size` and Buffer exposes `.length` without reading the
+                    // payload, so we can reject an oversized batch using the declared sizes and never
+                    // materialize the files. This closes a memory-amplification vector under concurrency
+                    // where many large batches would otherwise be fully buffered before the cap is hit.
+                    let declaredBatchBytes = 0;
+                    for (const file of files) {
+                        if (file instanceof Blob) {
+                            declaredBatchBytes += file.size;
+                        } else if (Buffer.isBuffer(file)) {
+                            declaredBatchBytes += file.length;
+                        }
+                        if (declaredBatchBytes > MAX_BATCH_BYTES) {
+                            set.status = 400;
+                            return {
+                                success: false,
+                                error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
+                            };
+                        }
+                    }
+
                     // Get base storage path using project UUID
                     const baseStoragePath = getProjectAssetsDir(session.projectId);
                     await fs.ensureDir(baseStoragePath);
 
                     // =====================================================
-                    // PHASE 1: Convert all files to buffers in parallel
+                    // PHASE 1: Convert files to buffers sequentially, aborting early
                     // Emit progress for each file as we process it
                     // =====================================================
-                    const fileDataPromises = files.map(async (file, i) => {
+                    // Buffer one file at a time and track the running total instead of materializing
+                    // the whole set with Promise.all. This bounds peak memory and lets us abort as soon
+                    // as the actual buffered bytes exceed MAX_BATCH_BYTES, even when a declared `.size`
+                    // was missing or under-reported above.
+                    type BufferedFile = {
+                        clientId: string;
+                        filename: string;
+                        mimeType: string;
+                        folderPath: string;
+                        fileBuffer: Buffer;
+                        filePath: string;
+                        flatFilename: string;
+                    };
+                    const fileData: BufferedFile[] = [];
+                    let bufferedBatchBytes = 0;
+
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
                         const fileMeta = metadata[i] || {
                             clientId: `file-${i}`,
                             filename: 'unknown',
@@ -194,6 +232,18 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                             fileBuffer = Buffer.from(file as unknown as ArrayBuffer);
                         }
 
+                        // Abort as soon as the actual buffered total exceeds the cap. Releasing the
+                        // already-buffered files (and not buffering the rest) keeps peak memory bounded.
+                        bufferedBatchBytes += fileBuffer.length;
+                        if (bufferedBatchBytes > MAX_BATCH_BYTES) {
+                            fileData.length = 0;
+                            set.status = 400;
+                            return {
+                                success: false,
+                                error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
+                            };
+                        }
+
                         // Use clientId as filename with original extension. clientId was validated as a
                         // safe path segment above; safeJoin re-validates and asserts containment so a
                         // crafted clientId or extension cannot escape the project assets directory.
@@ -201,7 +251,7 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                         const flatFilename = `${fileMeta.clientId}${ext}`;
                         const filePath = safeJoin(baseStoragePath, flatFilename);
 
-                        return {
+                        fileData.push({
                             clientId: fileMeta.clientId,
                             filename,
                             mimeType,
@@ -209,19 +259,7 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                             fileBuffer,
                             filePath,
                             flatFilename,
-                        };
-                    });
-
-                    const fileData = await Promise.all(fileDataPromises);
-
-                    // Check total batch size
-                    const totalBatchBytes = fileData.reduce((sum, f) => sum + f.fileBuffer.length, 0);
-                    if (totalBatchBytes > MAX_BATCH_BYTES) {
-                        set.status = 400;
-                        return {
-                            success: false,
-                            error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
-                        };
+                        });
                     }
 
                     // =====================================================

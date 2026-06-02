@@ -165,19 +165,122 @@ const defaultDependencies: AssetsDependencies = {
     priorityQueue: defaultPriorityQueue,
 };
 
+/**
+ * Tracked state for a single in-progress chunked upload.
+ */
+interface ChunkUploadEntry {
+    projectId: string;
+    filename: string;
+    totalChunks: number;
+    uploadedChunks: Set<number>;
+    chunkDir: string;
+    createdAt: Date;
+    initialized: boolean; // Flag to track if directory has been created
+}
+
 // In-memory storage for chunked uploads
-const chunkUploads = new Map<
-    string,
-    {
-        projectId: string;
-        filename: string;
-        totalChunks: number;
-        uploadedChunks: Set<number>;
-        chunkDir: string;
-        createdAt: Date;
-        initialized: boolean; // Flag to track if directory has been created
+const chunkUploads = new Map<string, ChunkUploadEntry>();
+
+// =====================================================
+// Chunked upload limits & abandoned-upload sweeper (BUG H9)
+// =====================================================
+
+/**
+ * Maximum accepted size for a single uploaded chunk (20 MB).
+ * Prevents an attacker from writing arbitrarily large files via one chunk.
+ */
+export const MAX_CHUNK_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Maximum number of chunks a single upload may declare (10000).
+ * Prevents an attacker from declaring an enormous chunk count that would
+ * never complete while keeping the Map entry and on-disk directory alive.
+ */
+export const MAX_TOTAL_CHUNKS = 10_000;
+
+/**
+ * Time-to-live for an in-progress chunked upload (1 hour). Uploads that are
+ * neither finalized nor explicitly cancelled within this window are considered
+ * abandoned and are reaped by the sweeper, freeing both the Map entry and the
+ * on-disk chunk directory.
+ */
+export const CHUNK_UPLOAD_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * How often the background sweeper runs (15 minutes).
+ */
+export const CHUNK_UPLOAD_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+
+/**
+ * Module-level handle for the background sweeper interval, if running.
+ */
+let chunkUploadSweeperHandle: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Remove abandoned chunked uploads whose `createdAt` is older than `ttlMs`.
+ * Deletes both the in-memory Map entry and the on-disk chunk directory.
+ * Pure-ish and directly callable so it can be unit tested without timers.
+ *
+ * @param now - Reference timestamp in ms (defaults to Date.now()).
+ * @param ttlMs - Maximum age before an upload is considered abandoned.
+ * @returns Number of upload entries swept.
+ */
+export function sweepStaleChunkUploads(now: number = Date.now(), ttlMs: number = CHUNK_UPLOAD_TTL_MS): number {
+    let swept = 0;
+    for (const [uploadKey, upload] of chunkUploads) {
+        const age = now - upload.createdAt.getTime();
+        if (age <= ttlMs) {
+            continue;
+        }
+        chunkUploads.delete(uploadKey);
+        swept += 1;
+        // Best-effort on-disk cleanup; ignore errors (dir may already be gone).
+        void fs.remove(upload.chunkDir).catch(() => {});
     }
->();
+    return swept;
+}
+
+/**
+ * Start the background sweeper that periodically reaps abandoned chunked
+ * uploads. Idempotent: a second call while running is a no-op. The interval is
+ * `unref()`'d (when available) so it never keeps the process alive on its own.
+ * The orchestrator (src/index.ts) is responsible for calling this on startup.
+ *
+ * @param intervalMs - Sweep cadence in ms (defaults to CHUNK_UPLOAD_SWEEP_INTERVAL_MS).
+ */
+export function startChunkUploadSweeper(intervalMs: number = CHUNK_UPLOAD_SWEEP_INTERVAL_MS): void {
+    if (chunkUploadSweeperHandle !== null) {
+        return;
+    }
+    chunkUploadSweeperHandle = setInterval(() => {
+        sweepStaleChunkUploads();
+    }, intervalMs);
+    // Avoid keeping the event loop (and the process) alive solely for sweeping.
+    if (typeof chunkUploadSweeperHandle.unref === 'function') {
+        chunkUploadSweeperHandle.unref();
+    }
+}
+
+/**
+ * Stop the background sweeper if it is running. Idempotent. The orchestrator
+ * (src/index.ts) is responsible for calling this on shutdown.
+ */
+export function stopChunkUploadSweeper(): void {
+    if (chunkUploadSweeperHandle === null) {
+        return;
+    }
+    clearInterval(chunkUploadSweeperHandle);
+    chunkUploadSweeperHandle = null;
+}
+
+/**
+ * Test-only accessor for the module-level chunkUploads Map. Lets specs seed
+ * entries, backdate `createdAt`, and assert on sweep behaviour without coupling
+ * to the HTTP layer. Not part of the public/runtime API surface.
+ */
+export function __getChunkUploadsForTest(): Map<string, ChunkUploadEntry> {
+    return chunkUploads;
+}
 
 /**
  * Factory function to create assets routes with injected dependencies
@@ -406,6 +509,31 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         return { success: false, error: 'Invalid identifier' };
                     }
 
+                    // Reject an absurd / non-numeric declared chunk count up front. An attacker
+                    // could otherwise declare an enormous totalChunks so the upload can never be
+                    // finalized, leaving the Map entry and on-disk chunks around indefinitely.
+                    if (!Number.isInteger(totalChunks) || totalChunks < 1 || totalChunks > MAX_TOTAL_CHUNKS) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid resumableTotalChunks' };
+                    }
+
+                    // Resolve the chunk buffer early so we can enforce the per-chunk size cap
+                    // BEFORE creating any tracking state or touching disk.
+                    let chunkBuffer: Buffer;
+                    if (chunk instanceof Blob) {
+                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
+                    } else if (Buffer.isBuffer(chunk)) {
+                        chunkBuffer = chunk;
+                    } else {
+                        chunkBuffer = Buffer.from(chunk as ArrayBuffer | Uint8Array);
+                    }
+
+                    // Cap the size of an individual chunk to bound disk/memory usage.
+                    if (chunkBuffer.length > MAX_CHUNK_BYTES) {
+                        set.status = 413;
+                        return { success: false, error: 'Chunk exceeds maximum allowed size' };
+                    }
+
                     const uploadKey = `${projectId}:${identifier}`;
 
                     // Initialize upload tracking SYNCHRONOUSLY to prevent race condition
@@ -432,16 +560,6 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     if (!upload.initialized) {
                         await fs.ensureDir(upload.chunkDir);
                         upload.initialized = true;
-                    }
-
-                    // Get chunk buffer
-                    let chunkBuffer: Buffer;
-                    if (chunk instanceof Blob) {
-                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
-                    } else if (Buffer.isBuffer(chunk)) {
-                        chunkBuffer = chunk;
-                    } else {
-                        chunkBuffer = Buffer.from(chunk);
                     }
 
                     // Write chunk to disk using Bun.write for optimal performance

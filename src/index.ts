@@ -8,7 +8,11 @@ import { staticPlugin } from '@elysiajs/static';
 import { healthRoutes, healthCheckAlias } from './routes/health';
 import { authRoutes } from './routes/auth';
 import { projectRoutes, symfonyCompatProjectRoutes } from './routes/project';
-import { assetsRoutes } from './routes/assets';
+import { assetsRoutes, startChunkUploadSweeper, stopChunkUploadSweeper } from './routes/assets';
+import {
+    startCleanupScheduler as startUploadSessionCleanup,
+    stopCleanupScheduler as stopUploadSessionCleanup,
+} from './services/upload-session-manager';
 import { fileManagerRoutes } from './routes/filemanager';
 import { exportRoutes } from './routes/export';
 import { convertRoutes } from './routes/convert';
@@ -812,6 +816,11 @@ async function bootstrap() {
     // 7. Start cleanup scheduler (for unsaved and guest projects)
     startCleanupScheduler(getCleanupConfigFromEnv());
 
+    // 7b. Start resource-bound sweepers: reap abandoned chunked uploads and
+    // expired upload sessions so neither disk nor memory grows unbounded.
+    startChunkUploadSweeper();
+    startUploadSessionCleanup();
+
     console.log(`Elysia server running at http://localhost:${PORT}`);
     console.log(`Pages: /login, /workarea`);
     console.log(`Auth endpoints: /api/auth/login, /api/auth/logout, /api/session/check`);
@@ -831,6 +840,8 @@ async function gracefulShutdown(signal: string) {
     console.log(`${signal} received, shutting down...`);
     stopWebSocket();
     stopCleanupScheduler();
+    stopChunkUploadSweeper();
+    stopUploadSessionCleanup();
     await disconnectRedis();
     await closeDb();
     process.exit(0);

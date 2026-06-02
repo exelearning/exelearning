@@ -1326,4 +1326,149 @@ describe('Asset Coordinator Service (DI)', () => {
             coordinator.cleanupProject('non-existent-project');
         });
     });
+
+    // =========================================================================
+    // DoS hardening — bounded awareness/pending state (BUG H8)
+    // =========================================================================
+    describe('DoS hardening - awareness update bounds', () => {
+        // Mirror of MAX_ASSETS_PER_AWARENESS in asset-coordinator.ts.
+        const MAX_ASSETS_PER_AWARENESS = 5000;
+        // Mirror of MAX_ASSET_ID_LENGTH in asset-coordinator.ts.
+        const MAX_ASSET_ID_LENGTH = 256;
+
+        it('should cap the number of assets ingested from a single awareness update', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('dos-project', 'flooder', socket);
+
+            // Announce far more distinct assets than the per-message cap allows.
+            const flood = Array.from({ length: MAX_ASSETS_PER_AWARENESS + 10000 }, (_, i) => `flood-asset-${i}`);
+            await coordinator.handleMessage('dos-project', 'flooder', {
+                type: 'awareness-update',
+                data: { availableAssets: flood },
+            });
+
+            // Tracked assets must be bounded by the per-message cap, not the
+            // size of the attacker-supplied array.
+            const stats = coordinator.getStats();
+            expect(stats.totalAssets).toBe(MAX_ASSETS_PER_AWARENESS);
+
+            coordinator.cleanupProject('dos-project');
+        });
+
+        it('should bound distinct assets per project across repeated awareness updates', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('dos-project', 'flooder', socket);
+
+            // Send several full-cap batches with disjoint id ranges. Each batch is
+            // at the per-message cap, so distinct project assets grow, but the
+            // per-project ceiling (MAX_ASSETS_PER_PROJECT, 50000) bounds the total
+            // and a few batches stay well under it while still proving growth is
+            // accounted, not unbounded per message.
+            for (let batch = 0; batch < 3; batch++) {
+                const ids = Array.from({ length: MAX_ASSETS_PER_AWARENESS }, (_, i) => `b${batch}-asset-${i}`);
+                await coordinator.handleMessage('dos-project', 'flooder', {
+                    type: 'awareness-update',
+                    data: { availableAssets: ids },
+                });
+            }
+
+            const stats = coordinator.getStats();
+            // 3 disjoint batches of the per-message cap = 15000 distinct ids,
+            // which is under the 50000 per-project ceiling.
+            expect(stats.totalAssets).toBe(3 * MAX_ASSETS_PER_AWARENESS);
+            expect(stats.totalAssets).toBeLessThanOrEqual(50000);
+
+            coordinator.cleanupProject('dos-project');
+        });
+
+        it('should reject over-long and non-string asset ids', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('dos-project', 'flooder', socket);
+
+            const overLongId = 'x'.repeat(MAX_ASSET_ID_LENGTH + 1);
+            await coordinator.handleMessage('dos-project', 'flooder', {
+                type: 'awareness-update',
+                data: {
+                    // Mix of invalid ids (over-long, non-string, traversal, separators)
+                    // and one valid id. Only the valid id must be tracked.
+                    availableAssets: [
+                        overLongId,
+                        42 as unknown as string,
+                        null as unknown as string,
+                        '../escape',
+                        'has/slash',
+                        'valid-asset-1',
+                    ],
+                },
+            });
+
+            const stats = coordinator.getStats();
+            expect(stats.totalAssets).toBe(1);
+
+            coordinator.cleanupProject('dos-project');
+        });
+
+        it('should accept an exactly max-length asset id', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('dos-project', 'client-1', socket);
+
+            const maxId = 'a'.repeat(MAX_ASSET_ID_LENGTH);
+            await coordinator.handleMessage('dos-project', 'client-1', {
+                type: 'awareness-update',
+                data: { availableAssets: [maxId] },
+            });
+
+            expect(coordinator.getStats().totalAssets).toBe(1);
+
+            coordinator.cleanupProject('dos-project');
+        });
+    });
+
+    describe('DoS hardening - unregisterClient prunes orphaned assets', () => {
+        it('should remove asset-id keys with no remaining referencing client', async () => {
+            const socket1 = createMockSocket();
+            const socket2 = createMockSocket();
+            coordinator.registerClient('prune-project', 'client-1', socket1);
+            coordinator.registerClient('prune-project', 'client-2', socket2);
+
+            // client-1 exclusively holds 3 assets; client-2 shares one.
+            await coordinator.handleMessage('prune-project', 'client-1', {
+                type: 'awareness-update',
+                data: { availableAssets: ['shared-asset', 'solo-asset-1', 'solo-asset-2'] },
+            });
+            await coordinator.handleMessage('prune-project', 'client-2', {
+                type: 'awareness-update',
+                data: { availableAssets: ['shared-asset'] },
+            });
+
+            expect(coordinator.getStats().totalAssets).toBe(3);
+
+            // client-1 leaves: its two solo assets must be reclaimed immediately,
+            // while the shared asset survives because client-2 still references it.
+            coordinator.unregisterClient('prune-project', 'client-1');
+
+            const stats = coordinator.getStats();
+            expect(stats.totalAssets).toBe(1);
+
+            coordinator.cleanupProject('prune-project');
+        });
+
+        it('should drop the project entry entirely when the last client leaves', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('prune-project', 'only-client', socket);
+
+            await coordinator.handleMessage('prune-project', 'only-client', {
+                type: 'awareness-update',
+                data: { availableAssets: ['a', 'b', 'c'] },
+            });
+            expect(coordinator.getStats().totalAssets).toBe(3);
+
+            coordinator.unregisterClient('prune-project', 'only-client');
+
+            // No lingering asset state pinned by the departed client.
+            expect(coordinator.getStats().totalAssets).toBe(0);
+
+            coordinator.cleanupProject('prune-project');
+        });
+    });
 });
