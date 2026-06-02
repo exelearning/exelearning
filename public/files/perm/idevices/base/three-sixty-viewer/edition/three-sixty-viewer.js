@@ -659,14 +659,14 @@ var $exeDevice = {
                 '<div class="property-row">' +
                 (isFlat
                     ? '<label>' +
-                      _('X') +
+                      'X' +
                       ' (%): <input type="number" class="form-control hotspot-x" data-index="' +
                       idx +
                       '" min="0" max="100" step="1" value="' +
                       h.x +
                       '" /></label>' +
                       '<label>' +
-                      _('Y') +
+                      'Y' +
                       ' (%): <input type="number" class="form-control hotspot-y" data-index="' +
                       idx +
                       '" min="0" max="100" step="1" value="' +
