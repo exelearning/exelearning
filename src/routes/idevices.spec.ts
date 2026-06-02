@@ -208,6 +208,61 @@ describe('iDevices Routes', () => {
             expect(body.apiVersion).toBeDefined();
             expect(body.componentType).toBeDefined();
         });
+
+        // Regression tests for path traversal (security audit H14): the raw
+        // `:ideviceId` param was joined into a filesystem path and the matching
+        // `config.xml` was read/parsed with no validation, enabling
+        // unauthenticated arbitrary file read and a filesystem existence oracle.
+        // A traversal id must be rejected with the route's normal 404 shape and
+        // must never read a file outside the iDevices base directories.
+        describe('path traversal hardening (H14)', () => {
+            // Encoded so the segment survives the HTTP layer; Elysia decodes
+            // `%2F` back into `/` before the handler sees the param.
+            const traversalIds = [
+                '..%2F..%2F..%2Fetc%2Fpasswd',
+                '..%2F..%2Fconfig%2Fsecrets',
+                '%2Fetc%2Fpasswd',
+                '..%2F..%2F..%2F..%2Fpackage',
+            ];
+
+            for (const encodedId of traversalIds) {
+                it(`should reject traversal id "${encodedId}" with 404 and read nothing outside base`, async () => {
+                    const res = await handle(new Request(`http://localhost/api/idevices/installed/${encodedId}`));
+
+                    expect(res.status).toBe(404);
+                    const body = await res.json();
+                    expect(body.error).toBe('Not Found');
+                    // Must not leak a parsed config from an out-of-base file.
+                    expect(body.id).toBeUndefined();
+                });
+            }
+
+            it('should reject ids containing a dot segment with 404', async () => {
+                // iDevice ids are slugs (alphanumeric/_/-); dotted values are not
+                // valid ids and must not reach the filesystem.
+                const res = await handle(new Request('http://localhost/api/idevices/installed/some.thing'));
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            });
+
+            it('should still resolve a normal slug id after hardening', async () => {
+                const listRes = await handle(new Request('http://localhost/api/idevices/installed'));
+                const listBody = await listRes.json();
+                // Prefer a hyphenated id to confirm hyphens still pass validation.
+                const hyphenated = listBody.idevices.find((i: any) => i.id.includes('-'))?.id;
+                const ideviceId = hyphenated || listBody.idevices[0]?.id;
+
+                if (!ideviceId) return;
+
+                const res = await handle(new Request(`http://localhost/api/idevices/installed/${ideviceId}`));
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.id).toBe(ideviceId);
+            });
+        });
     });
 
     describe('GET /api/idevices/download-file-resources', () => {

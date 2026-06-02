@@ -378,6 +378,106 @@ describe('Assets Routes', () => {
         });
     });
 
+    describe('path traversal protection (clientId / resumableIdentifier as on-disk names)', () => {
+        const TRAVERSAL = '../../../../tmp/pwned';
+
+        it('rejects a traversal clientId on simple upload with 400', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['x'], { type: 'text/plain' }), 'test.txt');
+            formData.append('clientId', TRAVERSAL);
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets`, { method: 'POST', body: formData }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid clientId');
+            // Nothing should have been written/created.
+            expect(mockAssets.size).toBe(0);
+        });
+
+        it('rejects a traversal resumableIdentifier on chunk upload with 400', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['chunk'], { type: 'application/octet-stream' }));
+            formData.append('resumableIdentifier', TRAVERSAL);
+            formData.append('resumableChunkNumber', '1');
+            formData.append('resumableTotalChunks', '1');
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/upload-chunk`, {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toContain('Invalid identifier');
+        });
+
+        it('rejects a traversal clientId on chunk finalize with 400', async () => {
+            const formData = new FormData();
+            formData.append('resumableIdentifier', 'some-id');
+            formData.append('clientId', TRAVERSAL);
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/upload-chunk/finalize`, {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toContain('Invalid clientId');
+        });
+
+        it('rejects a traversal clientId inside /sync metadata with 400', async () => {
+            const formData = new FormData();
+            formData.append('files', new Blob(['x'], { type: 'text/plain' }), 'a.txt');
+            formData.append(
+                'metadata',
+                JSON.stringify([{ clientId: TRAVERSAL, filename: 'a.txt', mimeType: 'text/plain' }]),
+            );
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/sync`, { method: 'POST', body: formData }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toContain('Invalid clientId');
+        });
+
+        it('rejects a traversal x-client-id header on /stream with 400', async () => {
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/stream`, {
+                    method: 'POST',
+                    headers: { 'x-client-id': TRAVERSAL, 'content-type': 'application/octet-stream' },
+                    body: 'streamed-bytes',
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toContain('Invalid clientId');
+        });
+
+        it('still accepts a normal UUID-style clientId', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['ok'], { type: 'text/plain' }), 'ok.txt');
+            formData.append('clientId', '550e8400-e29b-41d4-a716-446655440000');
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets`, { method: 'POST', body: formData }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+    });
+
     describe('GET /api/projects/:projectId/assets - List Assets', () => {
         it('should return empty array for project with no assets', async () => {
             const res = await handle(new Request(`http://localhost/api/projects/1/assets`));

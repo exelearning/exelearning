@@ -708,6 +708,162 @@ describe('Upload Session Routes - Edge Cases', () => {
     });
 });
 
+describe('Upload Session Routes - Path Traversal Security (C1)', () => {
+    let app: Elysia;
+    let sessionToken: string;
+    let mockQueries: ReturnType<typeof createMockQueries>;
+    const projectUuid = 'traversal-security-project';
+    const assetsDir = path.join(TEST_DIR, 'assets', projectUuid);
+
+    beforeEach(async () => {
+        await fs.ensureDir(TEST_DIR);
+        await fs.emptyDir(TEST_DIR);
+        process.env.ELYSIA_FILES_DIR = TEST_DIR;
+
+        mockQueries = {
+            createAssets: mock((_db: Kysely<Database>, assets: Array<{ client_id: string }>) =>
+                Promise.resolve(assets.map((a, i) => ({ id: i + 1000, client_id: a.client_id }))),
+            ),
+            findAssetsByClientIds: mock(() => Promise.resolve([])),
+            bulkUpdateAssets: mock(() => Promise.resolve()),
+            findProjectByUuid: mock(() => Promise.resolve({ id: 55, uuid: projectUuid, user_id: 1 })),
+        };
+
+        const result = await testSessionManager.createSession({
+            projectId: projectUuid,
+            projectIdNum: 55,
+            userId: 1,
+            clientId: 'traversal-security-client',
+            totalFiles: 5,
+            totalBytes: 5000,
+        });
+        sessionToken = result.sessionToken;
+
+        const routes = createUploadSessionRoutes({
+            db: createMockDb(),
+            queries: mockQueries as unknown as UploadSessionDependencies['queries'],
+        });
+        app = new Elysia().use(routes);
+
+        await fs.ensureDir(assetsDir);
+    });
+
+    afterEach(async () => {
+        await fs.remove(TEST_DIR);
+    });
+
+    it('should reject a batch whose clientId attempts path traversal and write nothing', async () => {
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([{ clientId: '../../../../tmp/evil', filename: 'pwn.txt', mimeType: 'text/plain' }]),
+        );
+        formData.append('files', new Blob(['malicious content'], { type: 'text/plain' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(400);
+        const data = await response.json();
+        expect(data.success).toBe(false);
+        expect(data.error).toBe('Invalid clientId in metadata');
+
+        // Nothing should have been written to disk and no DB inserts attempted.
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles.length).toBe(0);
+        expect(mockQueries.createAssets).not.toHaveBeenCalled();
+        expect(mockQueries.bulkUpdateAssets).not.toHaveBeenCalled();
+    });
+
+    it('should reject a batch when ANY clientId is unsafe (mixed with a valid one) and write nothing', async () => {
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([
+                { clientId: 'safe-asset', filename: 'ok.txt', mimeType: 'text/plain' },
+                { clientId: 'a/../../escape', filename: 'pwn.txt', mimeType: 'text/plain' },
+            ]),
+        );
+        formData.append('files', new Blob(['ok content'], { type: 'text/plain' }));
+        formData.append('files', new Blob(['evil content'], { type: 'text/plain' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(400);
+        const data = await response.json();
+        expect(data.success).toBe(false);
+        expect(data.error).toBe('Invalid clientId in metadata');
+
+        // The whole batch is rejected before any write, so even the "safe" file is not written.
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles.length).toBe(0);
+        expect(mockQueries.createAssets).not.toHaveBeenCalled();
+    });
+
+    it('should reject an absolute-path clientId and write nothing', async () => {
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([{ clientId: '/etc/cron.d/evil', filename: 'job', mimeType: 'text/plain' }]),
+        );
+        formData.append('files', new Blob(['cron payload'], { type: 'text/plain' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(400);
+        const data = await response.json();
+        expect(data.error).toBe('Invalid clientId in metadata');
+
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles.length).toBe(0);
+    });
+
+    it('should still accept a normal batch with safe clientIds and write the files', async () => {
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([
+                { clientId: 'safe-asset-1', filename: 'a.txt', mimeType: 'text/plain' },
+                { clientId: 'safe_asset-2', filename: 'b.png', mimeType: 'image/png' },
+            ]),
+        );
+        formData.append('files', new Blob(['content one'], { type: 'text/plain' }));
+        formData.append('files', new Blob(['content two'], { type: 'image/png' }));
+
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+
+        expect(response.status).toBe(200);
+        const data = await response.json();
+        expect(data.success).toBe(true);
+        expect(data.uploaded).toBe(2);
+        expect(data.failed).toBe(0);
+
+        // Files are written inside the project assets dir using the clientId + sanitized extension.
+        const assetFiles = await fs.readdir(assetsDir);
+        expect(assetFiles).toContain('safe-asset-1.txt');
+        expect(assetFiles).toContain('safe_asset-2.png');
+    });
+});
+
 describe('Upload Session Exports', () => {
     it('should export validateSession function', () => {
         expect(typeof validateSession).toBe('function');

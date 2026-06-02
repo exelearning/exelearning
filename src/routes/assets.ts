@@ -43,6 +43,7 @@ import {
 import { getSession as getSessionDefault } from '../services/session-manager';
 import { serverPriorityQueue as serverPriorityQueueDefault } from '../services/asset-priority-queue';
 import type { AssetUploadRequest } from './types/request-payloads';
+import { isSafePathSegment, safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 
 /**
  * File with optional name property (for Blob/File uploads)
@@ -269,6 +270,11 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const componentId = data.componentId;
                     // Support clientId from form body OR query parameter (bulk upload uses query param)
                     const clientId = data.clientId || (query as { clientId?: string }).clientId || uuidv4();
+                    // clientId becomes the on-disk filename; reject traversal/separators.
+                    if (!isSafePathSegment(clientId)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid clientId' };
+                    }
                     const folderPath = sanitizeFolderPath(data.folderPath);
 
                     // Get file data
@@ -296,9 +302,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     await fs.ensureDir(baseStoragePath);
 
                     // Use clientId as filename with original extension
-                    const ext = path.extname(filename).toLowerCase();
+                    const ext = sanitizeFileExtension(filename);
                     const flatFilename = `${clientId}${ext}`;
-                    const filePath = path.join(baseStoragePath, flatFilename);
+                    const filePath = safeJoin(baseStoragePath, flatFilename);
 
                     // Write file using Bun.write for optimal performance
                     if (typeof Bun !== 'undefined' && Bun.write) {
@@ -394,6 +400,12 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         return { success: false, error: 'Missing required parameters' };
                     }
 
+                    // identifier is used to build the on-disk chunk directory; reject traversal.
+                    if (!isSafePathSegment(identifier)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid identifier' };
+                    }
+
                     const uploadKey = `${projectId}:${identifier}`;
 
                     // Initialize upload tracking SYNCHRONOUSLY to prevent race condition
@@ -401,7 +413,8 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     // BEFORE any async operation, otherwise multiple chunks enter the if block
                     // and overwrite each other's uploadedChunks Set
                     if (!chunkUploads.has(uploadKey)) {
-                        const chunkDir = path.join(process.cwd(), 'data', 'chunks', projectId, identifier);
+                        const chunksRoot = path.join(process.cwd(), 'data', 'chunks');
+                        const chunkDir = safeJoin(chunksRoot, projectId, identifier);
                         chunkUploads.set(uploadKey, {
                             projectId,
                             filename,
@@ -468,6 +481,12 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const componentId = data.componentId;
                     const clientId = data.clientId || uuidv4();
 
+                    // clientId becomes the on-disk filename; reject traversal/separators.
+                    if (!isSafePathSegment(clientId)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid clientId' };
+                    }
+
                     const uploadKey = `${projectId}:${identifier}`;
                     const upload = chunkUploads.get(uploadKey);
 
@@ -497,9 +516,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     await fs.ensureDir(storagePath);
 
                     // Use clientId as filename with original extension
-                    const ext = path.extname(upload.filename).toLowerCase();
+                    const ext = sanitizeFileExtension(upload.filename);
                     const flatFilename = `${clientId}${ext}`;
-                    const finalPath = path.join(storagePath, flatFilename);
+                    const finalPath = safeJoin(storagePath, flatFilename);
 
                     // Write combined file with parallel chunk reads
                     const writeStream = fs.createWriteStream(finalPath);
@@ -867,6 +886,14 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         metadata = data.metadata;
                     }
 
+                    // Each clientId becomes an on-disk filename; reject traversal/separators up front.
+                    for (const meta of metadata) {
+                        if (!isSafePathSegment(meta?.clientId)) {
+                            set.status = 400;
+                            return { success: false, error: 'Invalid clientId in metadata' };
+                        }
+                    }
+
                     // Get files from FormData
                     let files: (Blob | Buffer)[] = [];
                     if (data.files) {
@@ -902,9 +929,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         // folderPath is only stored in database for UI/export, not on disk
 
                         // Use clientId as filename with original extension
-                        const ext = path.extname(filename).toLowerCase();
+                        const ext = sanitizeFileExtension(filename);
                         const flatFilename = `${fileMeta.clientId}${ext}`;
-                        const filePath = path.join(baseStoragePath, flatFilename);
+                        const filePath = safeJoin(baseStoragePath, flatFilename);
 
                         return {
                             clientId: fileMeta.clientId,
@@ -1074,6 +1101,11 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     }
 
                     const clientId = request.headers.get('x-client-id') || uuidv4();
+                    // clientId becomes the on-disk filename; reject traversal/separators.
+                    if (!isSafePathSegment(clientId)) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid clientId' };
+                    }
                     const filename = request.headers.get('x-filename') || 'uploaded_file';
                     const priority = parseInt(request.headers.get('x-priority') || '0', 10);
                     const contentType = request.headers.get('content-type') || 'application/octet-stream';
@@ -1099,9 +1131,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     await fs.ensureDir(baseStoragePath);
 
                     // Use clientId as filename with original extension
-                    const ext = path.extname(filename).toLowerCase();
+                    const ext = sanitizeFileExtension(filename);
                     const flatFilename = `${clientId}${ext}`;
-                    const filePath = path.join(baseStoragePath, flatFilename);
+                    const filePath = safeJoin(baseStoragePath, flatFilename);
 
                     // Stream body directly to disk
                     const body = request.body;
