@@ -14461,14 +14461,6 @@
         <source>Remove hotspot</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="kgvr0q8" resname="X">
-        <source>X</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="f551gbl" resname="Y">
-        <source>Y</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="bwhjcna" resname="Action">
         <source>Action</source>
         <target></target>

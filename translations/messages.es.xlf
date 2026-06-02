@@ -14461,14 +14461,6 @@
         <source>Remove hotspot</source>
         <target>Eliminar punto interactivo</target>
       </trans-unit>
-      <trans-unit id="08pvs8x" resname="X">
-        <source>X</source>
-        <target>~X</target>
-      </trans-unit>
-      <trans-unit id="dd73akw" resname="Y">
-        <source>Y</source>
-        <target>~Y</target>
-      </trans-unit>
       <trans-unit id="nf31ea8" resname="Action">
         <source>Action</source>
         <target>Acción</target>
