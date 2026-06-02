@@ -378,6 +378,8 @@ var $exeDevice = {
         $('#dmoleModelFileName').text(p.modelName || '');
         $('#dmoleModelFile').val(p.modelPath || '');
         $('#dmoleModelFile').removeData('blobUrl');
+        $('#dmoleModelAuthor').val(p.author || '');
+        $('#dmoleModelAlt').val(p.alt || '');
         $exeDevice.renderModelPreview();
 
         // Sync viewer toolbar to current question's settings
@@ -1068,6 +1070,8 @@ var $exeDevice = {
         $('#dmoleModelData').val('');
         $('#dmoleModelFormat').val('');
         $('#dmoleModelFileName').text('');
+        $('#dmoleModelAuthor').val('');
+        $('#dmoleModelAlt').val('');
         $('#dmoleModelSizeWarning').addClass('d-none');
         if ($exeDevice.modelViewer) {
             $exeDevice.modelViewer.clear();
@@ -1344,12 +1348,22 @@ var $exeDevice = {
                                             </a>
                                             <button type="button" id="dmoleResetCamera" class="DMOLE-EResetCamera btn btn-outline-secondary btn-sm" title="${_('Reset camera view')}">↺<span class="sr-av"> ${_('Reset camera view')}</span></button>
                                         </div>
+                                        <div class="DMOLE-EAuthorAlt d-flex align-items-center flex-nowrap gap-2 mb-3" id="dmoleAuthorAlt">
+                                            <div class="w-50" id="dmoleInputAuthor">
+                                                <label for="dmoleModelAuthor" class="form-label mb-1">${_('Authorship')}</label>
+                                                <input id="dmoleModelAuthor" type="text" class="form-control w-100" />
+                                            </div>
+                                            <div class="w-50" id="dmoleInputAlt">
+                                                <label for="dmoleModelAlt" class="form-label mb-1">${_('Alternative text')}</label>
+                                                <input id="dmoleModelAlt" type="text" class="form-control w-100" />
+                                            </div>
+                                        </div>
                                         <div id="dmoleModelFileName" class="small text-muted mb-2"></div>
                                         <p id="dmoleModelSizeWarning" class="d-none small text-warning mb-1"></p>
                                         <textarea id="dmoleModelData" class="d-none"></textarea>
                                         <input type="hidden" id="dmoleModelFormat" value="" />
                                     </div>
-                                </div>                               
+                                </div>
                             </div>
                             <div class="DMOLE-EContents" id="dmoleContents">
                                 <div id="dmoleSolitionOptions" class="DMOLE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="dmoleSolutionSelect">A</span></span></div>
@@ -1501,6 +1515,8 @@ var $exeDevice = {
                 sampleModel.modelName ||
                 $exeDevice.getModelFileNameFromPath(sampleModelPath),
             modelPath: sampleModelPath,
+            author: '',
+            alt: '',
             quextion: c_('How many hydroxyl groups (–OH) does a glucose molecule have?'),
             options: [c_('5'), c_('4'), c_('3'), c_('6')],
             solution: 'A',
@@ -1629,6 +1645,14 @@ var $exeDevice = {
                 typeof game.selectsGame[i].description == 'undefined'
                     ? ''
                     : game.selectsGame[i].description;
+            game.selectsGame[i].author =
+                typeof game.selectsGame[i].author == 'undefined'
+                    ? ''
+                    : game.selectsGame[i].author;
+            game.selectsGame[i].alt =
+                typeof game.selectsGame[i].alt == 'undefined'
+                    ? ''
+                    : game.selectsGame[i].alt;
             if (!game.selectsGame[i].modelFormat && game.selectsGame[i].modelName) {
                 game.selectsGame[i].modelFormat = $exeDevice.getModelFormatByName(
                     game.selectsGame[i].modelName
@@ -1739,6 +1763,8 @@ var $exeDevice = {
         p.modelFormat = $('#dmoleModelFormat').val().trim();
         p.modelName = $('#dmoleModelFileName').text().trim();
         p.modelPath = ($('#dmoleModelFile').val() || '').trim();
+        p.author = ($('#dmoleModelAuthor').val() || '').trim();
+        p.alt = ($('#dmoleModelAlt').val() || '').trim();
         p.description = $('#dmoleDescription').val().trim();
         p.modelStyle = $exeDevice.normalizeModelStyle($('#dmoleModelStyle').val());
         p.bgDark = $('#dmoleModelToggleBg').attr('aria-pressed') === 'true';
