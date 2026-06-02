@@ -1096,7 +1096,9 @@ var $eXeEC = {
         $(`#elcpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
-        $eXeEC.saveScormScore(instance);
+        if (mOptions.activityMode !== 'show') {
+            $eXeEC.saveScormScore(instance);
+        }
         $eXeEC.newQuestion(instance);
     },
 

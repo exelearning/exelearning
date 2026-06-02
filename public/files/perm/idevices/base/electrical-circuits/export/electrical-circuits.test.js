@@ -38,6 +38,7 @@ describe('electrical-circuits export', () => {
     });
 
     afterEach(() => {
+        vi.useRealTimers();
         vi.restoreAllMocks();
         document.body.innerHTML = '';
     });
@@ -70,5 +71,51 @@ describe('electrical-circuits export', () => {
 
         expect(sendScore).toHaveBeenCalledWith(true, 0);
         expect($('#elcpRepeatActivity-0').text()).toBe('Score: 5.00');
+    });
+
+    it('saves the initial SCORM score when the test game starts', () => {
+        vi.useFakeTimers();
+        const saveScormScore = vi
+            .spyOn($eXeEC, 'saveScormScore')
+            .mockImplementation(() => {});
+        vi.spyOn($eXeEC, 'updateLives').mockImplementation(() => {});
+        vi.spyOn($eXeEC, 'updateTime').mockImplementation(() => {});
+        vi.spyOn($eXeEC, 'newQuestion').mockImplementation(() => {});
+        $eXeEC.options[0] = {
+            activityMode: 'test',
+            gameStarted: false,
+            numberQuestions: 1,
+            numberLives: 1,
+            selectsGame: [{}],
+        };
+
+        $eXeEC.startGame(0);
+
+        expect(saveScormScore).toHaveBeenCalledWith(0);
+        expect($eXeEC.newQuestion).toHaveBeenCalledWith(0);
+    });
+
+    it('saves the SCORM score after answering a board question', () => {
+        const saveScormScore = vi
+            .spyOn($eXeEC, 'saveScormScore')
+            .mockImplementation(() => {});
+        vi.spyOn($eXeEC, 'updateScore').mockImplementation(() => {});
+        $eXeEC.options[0] = {
+            gameActived: true,
+            activeQuestion: 0,
+            activeCounter: true,
+            selectsGame: [{}],
+            showSolution: false,
+            timeShowSolution: 0,
+            numberQuestions: 1,
+            hits: 1,
+            errors: 0,
+            itinerary: { showClue: false },
+        };
+
+        $eXeEC.answerQuestionBoard(true, 0);
+
+        expect($eXeEC.updateScore).toHaveBeenCalledWith(true, 0);
+        expect(saveScormScore).toHaveBeenCalledWith(0);
     });
 });

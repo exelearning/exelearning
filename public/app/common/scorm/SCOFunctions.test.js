@@ -163,6 +163,14 @@ describe('SCOFunctions.js', () => {
       expect(callArg).toBe('0000:00:00.0'); // Zero time
     });
 
+    it('handles an uninitialized start date', () => {
+      setStartDate(undefined);
+
+      globalThis.computeTime();
+
+      expect(globalThis.pipwerks.SCORM.SetSessionTime).toHaveBeenCalledWith('0000:00:00.0');
+    });
+
     it('calculates elapsed time correctly', () => {
       // Set startDate to 65 seconds ago (1 min 5 sec)
       setStartDate(new Date().getTime() - 65000);

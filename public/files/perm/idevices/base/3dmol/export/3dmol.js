@@ -1654,7 +1654,9 @@ var $eXe3Dmol = {
         $(`#dmolpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
-        $eXe3Dmol.saveScormScore(instance);
+        if (mOptions.activityMode !== 'show') {
+            $eXe3Dmol.saveScormScore(instance);
+        }
         $eXe3Dmol.newQuestion(instance);
     },
 

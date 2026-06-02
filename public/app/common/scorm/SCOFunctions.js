@@ -124,7 +124,7 @@ function startTimer() {
  *
  */
 function computeTime() {
-  if (startDate != 0) {
+  if (startDate != null && startDate != 0) {
     var currentDate = new Date().getTime();
     var elapsedMiliSeconds = (currentDate - startDate);
     var formattedTime = pipwerks.UTILS.convertTotalMiliSeconds(elapsedMiliSeconds);

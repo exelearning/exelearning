@@ -38,6 +38,7 @@ describe('3dmol export', () => {
     });
 
     afterEach(() => {
+        vi.useRealTimers();
         vi.restoreAllMocks();
         document.body.innerHTML = '';
     });
@@ -70,5 +71,52 @@ describe('3dmol export', () => {
 
         expect(sendScore).toHaveBeenCalledWith(true, 0);
         expect($('#dmolpRepeatActivity-0').text()).toBe('Score: 5.00');
+    });
+
+    it('saves the initial SCORM score when the test game starts', () => {
+        vi.useFakeTimers();
+        const saveScormScore = vi
+            .spyOn($eXe3Dmol, 'saveScormScore')
+            .mockImplementation(() => {});
+        vi.spyOn($eXe3Dmol, 'setModelStyleControlVisibility').mockImplementation(() => {});
+        vi.spyOn($eXe3Dmol, 'updateLives').mockImplementation(() => {});
+        vi.spyOn($eXe3Dmol, 'updateTime').mockImplementation(() => {});
+        vi.spyOn($eXe3Dmol, 'newQuestion').mockImplementation(() => {});
+        $eXe3Dmol.options[0] = {
+            activityMode: 'test',
+            gameStarted: false,
+            numberQuestions: 1,
+            numberLives: 1,
+            selectsGame: [{}],
+        };
+
+        $eXe3Dmol.startGame(0);
+
+        expect(saveScormScore).toHaveBeenCalledWith(0);
+        expect($eXe3Dmol.newQuestion).toHaveBeenCalledWith(0);
+    });
+
+    it('saves the SCORM score after answering a board question', () => {
+        const saveScormScore = vi
+            .spyOn($eXe3Dmol, 'saveScormScore')
+            .mockImplementation(() => {});
+        vi.spyOn($eXe3Dmol, 'updateScore').mockImplementation(() => {});
+        $eXe3Dmol.options[0] = {
+            gameActived: true,
+            activeQuestion: 0,
+            activeCounter: true,
+            selectsGame: [{}],
+            showSolution: false,
+            timeShowSolution: 0,
+            numberQuestions: 1,
+            hits: 1,
+            errors: 0,
+            itinerary: { showClue: false },
+        };
+
+        $eXe3Dmol.answerQuestionBoard(true, 0);
+
+        expect($eXe3Dmol.updateScore).toHaveBeenCalledWith(true, 0);
+        expect(saveScormScore).toHaveBeenCalledWith(0);
     });
 });
