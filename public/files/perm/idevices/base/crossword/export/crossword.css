@@ -35,11 +35,14 @@
 /* Crucigrama */
 .CCGMP-Crucigrama {
 	display: grid;
+	/* Fallback only: the real track count is set inline from boardSize (JS). */
 	grid-template-columns: repeat(16, 1fr);
 	grid-template-rows: repeat(16, 1fr);
 	gap: 0px;
 	margin-bottom: 20px;
 	position: relative;
+	/* Size container so cell font-size (cqmin) scales with the board. */
+	container-type: size;
 	background-image: url('ccgmbackground.jpg');
 	background-size: cover;
 	background-position: center;
@@ -111,7 +114,12 @@ ul.CCGMP-SolutionsList input[type=text] {
 	height: 100%;
 	border: none;
 	text-align: center;
-	font-size: 1.2em;
+	/* ~55% of a cell: base / boardSize keeps the letter proportional to the
+	   cell for any board size, and cqmin scales it with the board width.
+	   The first declaration is a fallback for browsers without cqmin support
+	   (pre-2022 Safari/Chrome); the second overrides it where cqmin works. */
+	font-size: 0.8rem;
+	font-size: calc(55cqmin / var(--ccgm-board-size, 16));
 	box-sizing: border-box;
 	border: 1px solid #999;
 	background-color: #fff;
@@ -129,9 +137,11 @@ ul.CCGMP-SolutionsList input[type=text] {
 
 .CCGMP-Number {
 	position: absolute;
-	top: 2px;
-	left: 2px;
-	font-size: 0.8em;
+	top: 1px;
+	left: 1px;
+	/* Fallback first for browsers without cqmin; cqmin override second. */
+	font-size: 0.7em;
+	font-size: calc(32cqmin / var(--ccgm-board-size, 16));
 	color: #555;
 }
 
@@ -922,10 +932,6 @@ div:fullscreen .CCGMP-LinkMinimize {
 		font-size: 0.9rem;
 	}
 
-	.CCGMP-Cell input {
-		font-size: 0.8rem
-	}
-
 	.CCGMP-ActiveDefinition {
 		padding: 4px;
 		margin-bottom: 6px;
@@ -938,23 +944,11 @@ div:fullscreen .CCGMP-LinkMinimize {
 		max-width: 80vh;
 		height: auto;
 	}
-
-	.CCGMP-Number {
-		font-size: 0.7em;
-	}
 }
 
 @media screen and (max-width: 550px) {
 	.CCGMP-FullLinkImage {
 		display: none;
-	}
-
-	.CCGMP-Number {
-		font-size: 0.6em;
-	}
-
-	.CCGMP-Cell input {
-		font-size: 0.7rem
 	}
 
 	.CCGMP-LinkFullScreen {
@@ -987,14 +981,12 @@ div:fullscreen .CCGMP-LinkMinimize {
 
 	.CCGMP-Crucigrama input {
 		max-width: 100%;
-		font-size: 0.7rem;
 	}
 }
 
 @media screen and (max-width: 480px) {
 	.CCGMP-Crucigrama input {
 		max-width: 100%;
-		font-size: 0.65rem;
 	}
 
 	.CCGMP-LinkMinimize,
