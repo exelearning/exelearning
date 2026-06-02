@@ -10,9 +10,12 @@ import * as Y from 'yjs';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import { getDb as getDbDefault } from '../db/client';
 import {
+    checkProjectAccess as checkProjectAccessDefault,
+    findProjectById as findProjectByIdDefault,
     findProjectByUuid as findProjectByUuidDefault,
     findSnapshotByProjectId as findSnapshotByProjectIdDefault,
 } from '../db/queries';
+import { enforceProjectAccess, withJwtAuth } from '../utils/route-auth';
 
 // ============================================================================
 // DEPENDENCY INJECTION
@@ -22,6 +25,8 @@ export interface GamesRoutesDeps {
     getSession: (sessionId: string) => ProjectSession | undefined;
     getDb: typeof getDbDefault;
     findProjectByUuid: typeof findProjectByUuidDefault;
+    findProjectById: typeof findProjectByIdDefault;
+    checkProjectAccess: typeof checkProjectAccessDefault;
     findSnapshotByProjectId: typeof findSnapshotByProjectIdDefault;
 }
 
@@ -29,6 +34,8 @@ const defaultDeps: GamesRoutesDeps = {
     getSession: getSessionDefault,
     getDb: getDbDefault,
     findProjectByUuid: findProjectByUuidDefault,
+    findProjectById: findProjectByIdDefault,
+    checkProjectAccess: checkProjectAccessDefault,
     findSnapshotByProjectId: findSnapshotByProjectIdDefault,
 };
 
@@ -521,6 +528,12 @@ function extractIdevicesFromYjsDoc(sessionId: string, ydoc: Y.Doc): SessionIdevi
  * Games routes - endpoints used by game iDevices
  */
 export const gamesRoutes = new Elysia({ prefix: '/api/games' })
+    // Auth: this endpoint returns the full flattened iDevice structure of a
+    // project (including each component's rendered HTML), so it must never be
+    // reachable anonymously. `withJwtAuth` derives a nullable `jwtPayload`
+    // (from the `Authorization` header or the same-origin `auth` cookie) and
+    // bubbles it to the route via `.as('scoped')`.
+    .use(withJwtAuth())
     /**
      * GET /api/games/:odeSessionId/idevices
      *
@@ -531,8 +544,27 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
      */
     .get(
         '/:odeSessionId/idevices',
-        async ({ params }) => {
+        async ({ params, jwtPayload, set }) => {
             const { odeSessionId } = params;
+
+            // Access control: `:odeSessionId` is a project UUID. Require an
+            // authenticated caller with access to the project (owner /
+            // collaborator / admin, or any authenticated user on public
+            // projects — same semantics as the Yjs WebSocket via
+            // checkProjectAccess). Returns 401/403/404 otherwise.
+            const access = await enforceProjectAccess(jwtPayload, odeSessionId, {
+                db: deps.getDb(),
+                queries: {
+                    findProjectByUuid: deps.findProjectByUuid,
+                    findProjectById: deps.findProjectById,
+                    checkProjectAccess: deps.checkProjectAccess,
+                },
+                acceptNumericId: false,
+            });
+            if ('status' in access) {
+                set.status = access.status;
+                return { success: false, error: access.message };
+            }
 
             // Get session from memory (using DI)
             const session = deps.getSession(odeSessionId);

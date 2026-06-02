@@ -902,10 +902,24 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
                 }
 
+                // Sharing info exposes owner/collaborator emails (PII). Require
+                // authentication and project access; previously this endpoint was
+                // unauthenticated and enumerable by sequential numeric id (M1).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const project = await findProjectById(db, projectId);
                 if (!project) {
                     set.status = 404;
                     return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                const sharingAccess = await checkProjectAccess(db, project, currentUser.id);
+                if (!sharingAccess.hasAccess) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Access denied' };
                 }
 
                 const owner = await findUserById(db, project.owner_id);
@@ -1181,16 +1195,17 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             .get('/api/projects/uuid/:uuid/sharing', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
 
+                // Sharing info exposes owner/collaborator emails (PII). Require
+                // authentication before resolving/creating or returning it (M1).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 let project = await findProjectByUuid(db, uuid);
 
                 // If project doesn't exist in DB, create it with current user as owner
                 if (!project) {
-                    // Require authentication to create project
-                    if (!currentUser) {
-                        set.status = 401;
-                        return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
-                    }
-
                     // Create the project in DB with current user as owner
                     project = await createProjectWithUuid(db, uuid, {
                         title: 'Untitled',
@@ -1200,6 +1215,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     });
 
                     console.log(`[Project] Created project ${uuid} for user ${currentUser.id} via sharing endpoint`);
+                } else {
+                    // Existing project: caller must have access to see its sharing/PII.
+                    const sharingAccess = await checkProjectAccess(db, project, currentUser.id);
+                    if (!sharingAccess.hasAccess) {
+                        set.status = 403;
+                        return { responseMessage: 'FORBIDDEN', detail: 'Access denied' };
+                    }
                 }
 
                 const owner = await findUserById(db, project.owner_id);
@@ -1388,10 +1410,25 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             .post('/api/projects/uuid/:uuid/duplicate', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
 
+                // Require authentication and access to the SOURCE project before
+                // copying its content. Previously any caller (even unauthenticated)
+                // could clone an arbitrary private project into their own account
+                // and then read/export it (IDOR, C4).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
+
                 const project = await findProjectByUuid(db, uuid);
                 if (!project) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Project not found' };
+                }
+
+                const duplicateAccess = await checkProjectAccess(db, project, currentUser.id);
+                if (!duplicateAccess.hasAccess) {
+                    set.status = 403;
+                    return { error: 'Forbidden', message: 'Access denied' };
                 }
 
                 // Generate new UUID for the duplicate

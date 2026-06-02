@@ -22,6 +22,26 @@ import type { Theme } from '../db/types';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'project-test');
 
+/**
+ * Sign a JWT for the given user id using the same secret the routes verify
+ * (process.env.JWT_SECRET = 'test-secret-for-testing-only', set in beforeEach).
+ * Module-level so every describe block can authenticate requests.
+ */
+async function createAuthToken(userId: number = 1): Promise<string> {
+    const jwt = await import('@elysiajs/jwt');
+    const jwtInstance = jwt.jwt({
+        name: 'jwt',
+        secret: 'test-secret-for-testing-only',
+    });
+    const tempApp = new Elysia().use(jwtInstance);
+    return tempApp.decorator.jwt.sign({
+        sub: userId,
+        email: mockUsers.get(userId)?.email || 'test@test.com',
+        roles: ['ROLE_USER'],
+        isGuest: false,
+    });
+}
+
 // Mock data - shared state for tests
 let mockUsers: Map<number, any>;
 let mockProjects: Map<number, any>;
@@ -509,7 +529,12 @@ describe('Project Routes', () => {
             mockProjects.set(1, project);
             mockProjectsByUuid.set('test-project-uuid', project);
 
-            const res = await app.handle(new Request('http://localhost/api/projects/1/sharing'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/1/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -532,13 +557,110 @@ describe('Project Routes', () => {
             mockProjects.set(1, project);
             mockProjectsByUuid.set('test-project-uuid', project);
 
-            const res = await app.handle(new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
             expect(body.project.uuid).toBe('test-project-uuid');
             expect(body.project.visibility).toBe('private');
+        });
+
+        it('should return 401 for sharing info by project ID without auth', async () => {
+            const project = {
+                id: 1,
+                uuid: 'test-project-uuid',
+                owner_id: 1,
+                title: 'Test Project',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1, project);
+            mockProjectsByUuid.set('test-project-uuid', project);
+
+            const res = await app.handle(new Request('http://localhost/api/projects/1/sharing'));
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for sharing info by project ID for non-owner on private project', async () => {
+            const project = {
+                id: 1,
+                uuid: 'test-project-uuid',
+                owner_id: 1,
+                title: 'Test Project',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1, project);
+            mockProjectsByUuid.set('test-project-uuid', project);
+
+            // User 3 is neither owner nor collaborator
+            const token = await createAuthToken(3);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/1/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('FORBIDDEN');
+        });
+
+        it('should return 401 for sharing info by UUID without auth on existing private project', async () => {
+            const project = {
+                id: 1,
+                uuid: 'test-project-uuid',
+                owner_id: 1,
+                title: 'Test Project',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1, project);
+            mockProjectsByUuid.set('test-project-uuid', project);
+
+            const res = await app.handle(new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing'));
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for sharing info by UUID for non-owner on existing private project', async () => {
+            const project = {
+                id: 1,
+                uuid: 'test-project-uuid',
+                owner_id: 1,
+                title: 'Test Project',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1, project);
+            mockProjectsByUuid.set('test-project-uuid', project);
+
+            // User 3 is neither owner nor collaborator
+            const token = await createAuthToken(3);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('FORBIDDEN');
         });
     });
 
@@ -1341,10 +1463,12 @@ describe('Project Routes', () => {
 
         it('should duplicate project', async () => {
             createTestProject(900, 'uuid-900', 1);
+            const token = await createAuthToken(1);
 
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-900/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1355,10 +1479,39 @@ describe('Project Routes', () => {
             expect(body.project.title).toContain('copy');
         });
 
+        it('should return 401 when duplicating without auth', async () => {
+            createTestProject(910, 'uuid-910', 1);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-910/duplicate', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should return 403 when non-owner duplicates a private project', async () => {
+            createTestProject(911, 'uuid-911', 1); // owner is user 1, visibility private
+            const token = await createAuthToken(3); // user 3 has no access
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-911/duplicate', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+        });
+
         it('should return 404 for non-existent project', async () => {
+            const token = await createAuthToken(1);
+
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/non-existent/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1386,9 +1539,11 @@ describe('Project Routes', () => {
                 updated_at: new Date().toISOString(),
             });
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-901-with-snapshot/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1432,9 +1587,11 @@ describe('Project Routes', () => {
                 },
             ]);
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-902-with-assets/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1454,10 +1611,12 @@ describe('Project Routes', () => {
 
         it('should handle project with no assets during duplication', async () => {
             createTestProject(903, 'uuid-903-no-assets', 1);
+            const token = await createAuthToken(1);
 
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-903-no-assets/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1489,9 +1648,11 @@ describe('Project Routes', () => {
                 },
             ]);
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-904-asset-no-clientid/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1562,9 +1723,11 @@ describe('Project Routes', () => {
                 updated_at: new Date().toISOString(),
             });
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-905-yjs-assets/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1626,9 +1789,11 @@ describe('Project Routes', () => {
                 })),
             );
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-906-multi-assets/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -2915,7 +3080,12 @@ describe('Project Routes', () => {
             mockCollaborators.set(1501, new Set([2]));
             mockUsers.set(2, { id: 2, email: 'collab@test.com', roles: 'ROLE_USER' });
 
-            const res = await app.handle(new Request('http://localhost/api/projects/uuid/uuid-sharing-test/sharing'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-sharing-test/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -3079,9 +3249,11 @@ describe('Project Routes', () => {
             mockProjectsByUuid.set('no-snapshot-project', project);
 
             // Use main app which doesn't have snapshot functions mocked
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/no-snapshot-project/duplicate', {
                     method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -3156,8 +3328,12 @@ describe('Project Routes', () => {
                 }),
             );
 
-            // Should still return 200 for public project even without valid auth
-            expect(res.status).toBe(200);
+            // An invalid token yields no authenticated user. Numeric sharing now
+            // requires authentication (M1), so an unverifiable token is rejected
+            // gracefully with 401 rather than leaking PII for the public project.
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
         });
     });
 
@@ -4010,7 +4186,12 @@ describe('Project Routes', () => {
         });
 
         it('should return 404 for non-existent project in sharing', async () => {
-            const res = await app.handle(new Request('http://localhost/api/projects/99999/sharing'));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/99999/sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
 
             expect(res.status).toBe(404);
             const body = await res.json();
