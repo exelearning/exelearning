@@ -246,23 +246,44 @@
 *   Files: /public/files/perm/idevices/\*/export/html2canvas.js
     *   Copyright: Niklas von Hertzen
     *   License: MIT
+*   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/electrical-circuits/electrical-circuits-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/fonts/* (Open Sans Font)
     *   Copyright: The Open Sans Project Authors. Designed by Steve Matteson
     *   License: SIL Open Font License version 1.1
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/images/\*
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/lomloe/lomloe-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/magnifier/export/mojomagnify.js
     *   Copyright: Jacob Seidelin and other contributors
     *   License: MIT
+*   File: public/files/perm/idevices/base/markdown-text/markdown-text-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/scrambled-list/export/scrambled-list.js and /public/files/perm/idevices/base/interactive-video/export/interactive-video.js
     *   HTML5 Sortable jQuery Plugin copyright: Ali Farhadi (maintained by Alexandru Badiu and Lukas Oppermann)
     *   License: MIT
+*   File: public/files/perm/idevices/base/slide/slide-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/three-d-viewer/three-d-viewer-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/three-d-viewer/export/three.module.min.js, ./OrbitControls.js and ./STLLoader.js
     *   Three.js (Three.js Authors)
     *   License: MIT
 *   File: /public/files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js
     *   model-viewer (Google)
+    *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/three-sixty-viewer/three-sixty-viewer-icon.svg
+    *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js and ./OrbitControls.js
     *   Three.js (Three.js Authors)
