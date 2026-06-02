@@ -111,11 +111,11 @@
       </trans-unit>
       <trans-unit id="5fEdNHr" resname="Play the sound when scrolling the mouse over the points.">
         <source>Play the sound when scrolling the mouse over the points.</source>
-        <target>Erreproduzitu soinua sagua puntuen gainean mugitzean</target>
+        <target>Erreproduzitu soinua sagua puntuen gainean mugitzean.</target>
       </trans-unit>
       <trans-unit id="zhQflEY" resname="Show when the mouse is over the icon or active area.">
         <source>Show when the mouse is over the icon or active area.</source>
-        <target>Erakutsi sagua ikonoaren edo area aktiboaren gainean dagoenean</target>
+        <target>Erakutsi sagua ikonoaren edo gune aktiboaren gainean dagoenean.</target>
       </trans-unit>
       <trans-unit id="IF0.2y." resname="Hide areas">
         <source>Hide areas</source>
@@ -435,7 +435,7 @@
       </trans-unit>
       <trans-unit id="7oKpSxb" resname="History">
         <source>History</source>
-        <target>Historia</target>
+        <target>Istorioa</target>
       </trans-unit>
       <trans-unit id="jgehxHV" resname="Computer Science">
         <source>Computer Science</source>
@@ -887,7 +887,7 @@
       </trans-unit>
       <trans-unit id="xHJHwx9" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target>Sortu egia-gezurra 10 galdera. Galdera bakoitzak soluzioa (0 = gezurra, 1 = egia), iradokizun bat eta feedback bat izan behar ditu, guztia #batez bereizita. Horrez gain, atzeraelikadurak ez du esplizituki adierazi behar erantzuna zuzena edo okerra den.</target>
+        <target>Sortu egia-gezurra 10 galdera. Galdera bakoitzak soluzioa (0 = gezurra, 1 = egia), iradokizun bat eta feedback bat izan behar ditu, guztia #batez bereizita. Horrez gain, atzeraelikadurak ez du esplizituki adierazi behar erantzuna zuzena edo okerra den</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
@@ -899,7 +899,7 @@
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition</source>
-        <target>10 hitz eta beren definizioak sortu eta # erabilita bereizi. Ez erabili # karakterea hitzean edo definizioan bertan.</target>
+        <target>10 hitz eta beren definizioak sortu eta # erabilita bereizi. Ez erabili # karakterea hitzean edo definizioan bertan</target>
       </trans-unit>
       <trans-unit id="wmZAGDi" resname="EdiCuaTeX - LaTeX Equation Editor">
         <source>EdiCuaTeX - LaTeX Equation Editor</source>
@@ -2423,7 +2423,7 @@
       </trans-unit>
       <trans-unit id="wsy3AnY" resname="Relative frequency">
         <source>Relative frequency</source>
-        <target>maiztasun erlatibo</target>
+        <target>Maiztasun erlatiboa</target>
       </trans-unit>
       <trans-unit id="926tIW3" resname="Cumulative frequency">
         <source>Cumulative frequency</source>
@@ -4011,7 +4011,7 @@
       </trans-unit>
       <trans-unit id="qOmQIdj" resname="An error occurred while generating the file.">
         <source>An error occurred while generating the file.</source>
-        <target>Errore bat izan da fitxategia sortzean.  </target>
+        <target>Errore bat izan da fitxategia sortzean.</target>
       </trans-unit>
       <trans-unit id="swQ_hb0" resname="Save as">
         <source>Save as</source>
@@ -4027,23 +4027,23 @@
       </trans-unit>
       <trans-unit id="a.vZ7kn" resname="An error occurred while exporting the project.">
         <source>An error occurred while exporting the project.</source>
-        <target>Errore bat gertatu da proiektua esportatzean.  </target>
+        <target>Errore bat gertatu da proiektua esportatzean.</target>
       </trans-unit>
       <trans-unit id="Q3Kq_T9" resname="This option is only available offline.">
         <source>This option is only available offline.</source>
-        <target>Aukera hau bakarrik offline erabilgarri dago.  </target>
+        <target>Aukera hau bakarrik offline erabilgarri dago.</target>
       </trans-unit>
       <trans-unit id="alnAuc." resname="Export canceled.">
         <source>Export canceled.</source>
-        <target>Esportazioa bertan behera geratu da.  </target>
+        <target>Esportazioa bertan behera geratu da.</target>
       </trans-unit>
       <trans-unit id="AzTECQQ" resname="Unexpected error.">
         <source>Unexpected error.</source>
-        <target>Errore ezezaguna.  </target>
+        <target>Errore ezezaguna.</target>
       </trans-unit>
       <trans-unit id="k8.XhRG" resname="The project properties have been exported.">
         <source>The project properties have been exported.</source>
-        <target>Proiektuaren propietateak esportatu dira.  </target>
+        <target>Proiektuaren propietateak esportatu dira.</target>
       </trans-unit>
       <trans-unit id="YZXIGpx" resname="Other users are connected.">
         <source>Other users are connected.</source>
@@ -4075,7 +4075,7 @@
       </trans-unit>
       <trans-unit id="TS9USrC" resname="Failed to edit the style ">
         <source>Failed to edit the style </source>
-        <target>Huts egin du estiloaren gai berriaren edizioak</target>
+        <target>Huts egin du estiloaren gai berriaren edizioak </target>
       </trans-unit>
       <trans-unit id="VCKlH0_" resname="Failed to remove style">
         <source>Failed to remove style</source>
@@ -4515,7 +4515,7 @@
       </trans-unit>
       <trans-unit id="fxYTEKl" resname="Failed to load the iDevice.">
         <source>Failed to load the iDevice.</source>
-        <target>Huts egin du iDevicearen kargak</target>
+        <target>Huts egin du iDevicearen kargak.</target>
       </trans-unit>
       <trans-unit id="uvlDjwW" resname="Failed to load the iDevice view.">
         <source>Failed to load the iDevice view.</source>
@@ -4675,7 +4675,7 @@
       </trans-unit>
       <trans-unit id="hiMrYNM" resname="You have got %1 hits and %2 misses">
         <source>You have got %1 hits and %2 misses</source>
-        <target> %1 asmatu d(it)uzu  eta %2 huts egin d(it)uzu</target>
+        <target> %1 asmatu d(it)uzu eta %2 huts egin d(it)uzu</target>
       </trans-unit>
       <trans-unit id="U7Ovl.y" resname="Play Again">
         <source>Play Again</source>
@@ -5195,7 +5195,7 @@
       </trans-unit>
       <trans-unit id="mFlaair" resname="Please complete the history">
         <source>Please complete the history</source>
-        <target>Mesedez, osatu historia</target>
+        <target>Mesedez, osatu istorioa</target>
       </trans-unit>
       <trans-unit id="ofUWEOP" resname="You must provide the text for each activity">
         <source>You must provide the text for each activity</source>
@@ -5363,11 +5363,11 @@
       </trans-unit>
       <trans-unit id="RMl8k5o" resname="You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing to monitor the completed activities.">
         <source>You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing to monitor the completed activities.</source>
-        <target>Kontrol-zerrenda bat erabil dezake hezkuntza-baliabide honetan iradokitako jarduerak modu egituratu eta erraz batean ulertzeko. Tresna baliagarria izango da ikasleen autoerregulaziorako, aukera emango baitio egindako jardueren jarraipena egiteko.\n</target>
+        <target>Kontrol-zerrenda bat erabil dezake hezkuntza-baliabide honetan iradokitako jarduerak modu egituratu eta erraz batean ulertzeko. Tresna baliagarria izango da ikasleen autoerregulaziorako, aukera emango baitio egindako jardueren jarraipena egiteko.</target>
       </trans-unit>
       <trans-unit id="ARVUhux" resname="Complete the checklist ticking the boxes for all finished activities.">
         <source>Complete the checklist ticking the boxes for all finished activities.</source>
-        <target>Kontrol-zerrenda osatu, jarduerak egitean laukitxoak markatuta</target>
+        <target>Kontrol-zerrenda osatu, jarduerak egitean laukitxoak markatuta.</target>
       </trans-unit>
       <trans-unit id="WfjgOQ2" resname="Caption">
         <source>Caption</source>
@@ -5539,7 +5539,7 @@
       </trans-unit>
       <trans-unit id="92C7f5q" resname="Great job! You have correctly classified most cards, %s, but you can do even better">
         <source>Great job! You have correctly classified most cards, %s, but you can do even better</source>
-        <target>Ederki! Karta gehienak ondo sailkatu dituzu,%s, baina oraindik hobeto egin dezakezu.</target>
+        <target>Ederki! Karta gehienak ondo sailkatu dituzu,%s, baina oraindik hobeto egin dezakezu</target>
       </trans-unit>
       <trans-unit id="GS3eQME" resname="Great job! Only %s cards left to be placed correctly. Strive for perfection!">
         <source>Great job! Only %s cards left to be placed correctly. Strive for perfection!</source>
@@ -5555,7 +5555,7 @@
       </trans-unit>
       <trans-unit id="h15xRoJ" resname="You can only save your score after finishing the game.">
         <source>You can only save your score after finishing the game.</source>
-        <target>Partida amaitutakoan soilik gorde dezakezu zure puntuazioa</target>
+        <target>Partida amaitutakoan soilik gorde dezakezu zure puntuazioa.</target>
       </trans-unit>
       <trans-unit id="JQTT0h4" resname="Please provide at least one question">
         <source>Please provide at least one question</source>
@@ -5715,7 +5715,7 @@
       </trans-unit>
       <trans-unit id="FHyr0rK" resname="Limit the words in each dropdown box. Write the possible options, starting with the correct one, separated by |">
         <source>Limit the words in each dropdown box. Write the possible options, starting with the correct one, separated by |</source>
-        <target>Mugatu kaxa zabalgarri bakoitzaren hitzak. Idatzi aukera posibleak | ikurraren bidez separatuta eta hasi hitz zuzenarekin.</target>
+        <target>Mugatu kaxa zabalgarri bakoitzaren hitzak. Idatzi aukera posibleak | ikurraren bidez separatuta eta hasi hitz zuzenarekin</target>
       </trans-unit>
       <trans-unit id="CIEuoPp" resname="Wrong words">
         <source>Wrong words</source>
@@ -5771,7 +5771,7 @@
       </trans-unit>
       <trans-unit id="A9eMGJG" resname="Show/hide definitions">
         <source>Show/hide definitions</source>
-        <target>Definizioak erakutsi/ezkutatu </target>
+        <target>Definizioak erakutsi/ezkutatu</target>
       </trans-unit>
       <trans-unit id="5xtnPdn" resname="Show/hide background image">
         <source>Show/hide background image</source>
@@ -6391,7 +6391,7 @@
       </trans-unit>
       <trans-unit id="gTioMsM" resname="If this option is checked, submitted answers with different capitalization will be marked as incorrect">
         <source>If this option is checked, submitted answers with different capitalization will be marked as incorrect</source>
-        <target>Aukera hau markatuta badago, maiuskula ezberdinak dituzten erantzunak oker gisa markatuko dira.</target>
+        <target>Aukera hau markatuta badago, maiuskula ezberdinak dituzten erantzunak oker gisa markatuko dira</target>
       </trans-unit>
       <trans-unit id="S82tf8I" resname="Are you sure you want to delete this question? This can't be undone.">
         <source>Are you sure you want to delete this question? This can't be undone.</source>
@@ -6423,7 +6423,7 @@
       </trans-unit>
       <trans-unit id="7JLBUj7" resname="Complete the questions in the following quiz">
         <source>Complete the questions in the following quiz</source>
-        <target>Osatu hurrengo probako galderak.</target>
+        <target>Osatu hurrengo probako galderak</target>
       </trans-unit>
       <trans-unit id="nqfJQkk" resname="Random questions">
         <source>Random questions</source>
@@ -7547,7 +7547,7 @@
       </trans-unit>
       <trans-unit id="0vtKYu1" resname="Define the domain of each variable">
         <source>Define the domain of each variable</source>
-        <target>Aldagai bakoitzaren eremua zehaztu.</target>
+        <target>Aldagai bakoitzaren eremua zehaztu</target>
       </trans-unit>
       <trans-unit id="F7TCatN" resname="Smallest number">
         <source>Smallest number</source>
@@ -7639,11 +7639,11 @@
       </trans-unit>
       <trans-unit id="acHCsww" resname="The symbol must contain one or two letters, starting with an uppercase letter">
         <source>The symbol must contain one or two letters, starting with an uppercase letter</source>
-        <target>Sinboloak letra bat edo bi izan behar ditu, letra larriz hasita.</target>
+        <target>Sinboloak letra bat edo bi izan behar ditu, letra larriz hasita</target>
       </trans-unit>
       <trans-unit id="5zzvdmW" resname="Select a group of chemical elements">
         <source>Select a group of chemical elements</source>
-        <target>Elementu kimiko multzo bat aukeratu.</target>
+        <target>Elementu kimiko multzo bat aukeratu</target>
       </trans-unit>
       <trans-unit id="ua0Wh3V" resname="Write a valid configuration based, if applicable, on the preceding noble gas">
         <source>Write a valid configuration based, if applicable, on the preceding noble gas</source>
@@ -8303,7 +8303,7 @@
       </trans-unit>
       <trans-unit id="xJ4l9P0" resname="The following table registers the results you have obtained in the completed, suggested and assessed activities in this educational resource.">
         <source>The following table registers the results you have obtained in the completed, suggested and assessed activities in this educational resource.</source>
-        <target>Hurrengo taulan, hezkuntza-baliabide honetan egindako jardueretan lortutako emaitzak jasotzen dira.\n</target>
+        <target>Hurrengo taulan, hezkuntza-baliabide honetan egindako jardueretan lortutako emaitzak jasotzen dira.</target>
       </trans-unit>
       <trans-unit id="NZqykoC" resname="Average score">
         <source>Average score</source>
@@ -8403,7 +8403,7 @@
       </trans-unit>
       <trans-unit id="tWiYaph" resname="Show type of iDevice">
         <source>Show type of iDevice</source>
-        <target>iDevice mota erakutsi</target>
+        <target>Erakutsi iDevice mota</target>
       </trans-unit>
       <trans-unit id="hslmn9f" resname="Link report activities">
         <source>Link report activities</source>
@@ -8415,7 +8415,7 @@
       </trans-unit>
       <trans-unit id="BVy_DUt" resname="All pages and only evaluable iDevices">
         <source>All pages and only evaluable iDevices</source>
-        <target>Orri guztiak eta iDevice ebaluagarriak bakarrik.</target>
+        <target>Orri guztiak eta iDevice ebaluagarriak bakarrik</target>
       </trans-unit>
       <trans-unit id="h0N_aPF" resname="Only pages with evaluable activities">
         <source>Only pages with evaluable activities</source>
@@ -8743,7 +8743,7 @@
       </trans-unit>
       <trans-unit id=".5JhlDs" resname="Create matching games with images, sounds and enriched texts.">
         <source>Create matching games with images, sounds and enriched texts.</source>
-        <target>Irudi, soinu eta testu aberastuekin jolasak sortu</target>
+        <target>Irudi, soinu eta testu aberastuekin jolasak sortu.</target>
       </trans-unit>
       <trans-unit id="gJ4zz09" resname="Relate">
         <source>Relate</source>
@@ -8783,7 +8783,7 @@
       </trans-unit>
       <trans-unit id="rxFYMTS" resname="Spanish ">
         <source>Spanish </source>
-        <target>Gaztelania</target>
+        <target>Gaztelania </target>
       </trans-unit>
       <trans-unit id="jVpqXrM" resname="New rubric">
         <source>New rubric</source>
@@ -8791,7 +8791,7 @@
       </trans-unit>
       <trans-unit id="dsEhesQ" resname="New rubric: ">
         <source>New rubric: </source>
-        <target>Errubrika berria:</target>
+        <target>Errubrika berria: </target>
       </trans-unit>
       <trans-unit id="kOCPDGr" resname="Example rubrics">
         <source>Example rubrics</source>
@@ -8955,7 +8955,7 @@
       </trans-unit>
       <trans-unit id="61_1EWE" resname="You must indicate an image, a text or/and an audio for each card">
         <source>You must indicate an image, a text or/and an audio for each card</source>
-        <target>Txartel bakoitzeko irudi bat, testu bat edota audio bat adierazi behar dituzu.</target>
+        <target>Txartel bakoitzeko irudi bat, testu bat edota audio bat adierazi behar dituzu</target>
       </trans-unit>
       <trans-unit id="vr2VDvg" resname="Maximum number of activities: 30">
         <source>Maximum number of activities: 30</source>
@@ -9727,7 +9727,7 @@
       </trans-unit>
       <trans-unit id="qHQWKfk" resname="Insert/Remove Bulleted List">
         <source>Insert/Remove Bulleted List</source>
-        <target>Buletin-zerrenda txertatu/kendu </target>
+        <target>Txertatu/kendu buletin-zerrenda</target>
       </trans-unit>
       <trans-unit id="BZsIjJH" resname="Remove Formatting">
         <source>Remove Formatting</source>
@@ -9939,7 +9939,7 @@
       </trans-unit>
       <trans-unit id="sYVovAR" resname="Insert/Edit Link">
         <source>Insert/Edit Link</source>
-        <target>Esteka txertatu/editatu </target>
+        <target>Txertatu/Editatu esteka</target>
       </trans-unit>
       <trans-unit id="sTNNwLQ" resname="The URL you entered seems to be an external link. Do you want to add the required http:// prefix?">
         <source>The URL you entered seems to be an external link. Do you want to add the required http:// prefix?</source>
@@ -10231,7 +10231,7 @@
       </trans-unit>
       <trans-unit id="jW7vf5R" resname="Rich Text Area. Press ALT-F9 for menu. Press ALT-F10 for toolbar. Press ALT-0 for help">
         <source>Rich Text Area. Press ALT-F9 for menu. Press ALT-F10 for toolbar. Press ALT-0 for help</source>
-        <target>Testu aberastuko area. Sakatu ALT-F9 menurako. Sakatu ALT-F10 tresna-barrarako. Sakatu ALT-0 laguntzarako</target>
+        <target>Testu aberastuko gunea. Sakatu ALT-F9 menurako. Sakatu ALT-F10 tresna-barrarako. Sakatu ALT-0 laguntzarako</target>
       </trans-unit>
       <trans-unit id="jCln1Bp" resname="Tools">
         <source>Tools</source>
@@ -10347,7 +10347,7 @@
       </trans-unit>
       <trans-unit id="F0nmOcS" resname=" Reformat">
         <source> Reformat</source>
-        <target>Birformateatu</target>
+        <target> Birformateatu</target>
       </trans-unit>
       <trans-unit id="HNsudfi" resname="A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List Button.">
         <source>A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List Button.</source>
@@ -10707,7 +10707,7 @@
       </trans-unit>
       <trans-unit id="cpeFILa" resname="Change the text of the tabs adding a title to each Heading 2 with the &quot;Insert/Edit Attributes&quot; option: ">
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
-        <target>Erlaitzetako testua aldatu Goiburua 2 izenburu bat gehituz "Atributuak txertatu/editatu" aukerarekin.</target>
+        <target>Erlaitzetako testua aldatu Goiburua 2 izenburu bat gehituz "Atributuak txertatu/editatu" aukerarekin. </target>
       </trans-unit>
       <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
         <source>From Wikipedia, the free encyclopedia.</source>
@@ -11363,7 +11363,7 @@
       </trans-unit>
       <trans-unit id="T_wgZpR" resname="Indicate, using commas, the correct order in which points must be clicked">
         <source>Indicate, using commas, the correct order in which points must be clicked</source>
-        <target>Adierazi, komak erabiliz, zein ordenatan klikatu behar diren puntuak.</target>
+        <target>Adierazi, komak erabiliz, zein ordenatan klikatu behar diren puntuak</target>
       </trans-unit>
       <trans-unit id="K.oLNZO" resname="Assessment">
         <source>Assessment</source>
@@ -11555,11 +11555,11 @@
       </trans-unit>
       <trans-unit id="L41w01C" resname="The question text and the formula should have the same variables">
         <source>The question text and the formula should have the same variables</source>
-        <target>Galderaren testuak eta formulak aldagai berberak izan beharko lituzkete.</target>
+        <target>Galderaren testuak eta formulak aldagai berberak izan beharko lituzkete</target>
       </trans-unit>
       <trans-unit id="3IL1weY" resname="Select the correct options and click on the 'Reply' button.">
         <source>Select the correct options and click on the 'Reply' button.</source>
-        <target>Hautatu aukera zuzenak eta sakatu 'Erantzun' botoia</target>
+        <target>Hautatu aukera zuzenak eta sakatu 'Erantzun' botoia.</target>
       </trans-unit>
       <trans-unit id="GySH111" resname="Show when the mouse is over the icon or active area">
         <source>Show when the mouse is over the icon or active area</source>
@@ -11571,15 +11571,15 @@
       </trans-unit>
       <trans-unit id="j5mwtQP" resname="The word cannot contain more than fourteen characters or white spaces">
         <source>The word cannot contain more than fourteen characters or white spaces</source>
-        <target>Hitzak ezin du izan hamalau karaktere edo espazio zuri baino gehiago.</target>
+        <target>Hitzak ezin du izan hamalau karaktere edo espazio zuri baino gehiago</target>
       </trans-unit>
       <trans-unit id="KAgEWOK" resname="You must select at least one type of data to complet">
         <source>You must select at least one type of data to complet</source>
-        <target>Bete beharreko datu mota bat aukeratu behar duzu gutxienez.</target>
+        <target>Bete beharreko datu mota bat aukeratu behar duzu gutxienez</target>
       </trans-unit>
       <trans-unit id="aGuMwTn" resname="You must select at least one group of elements">
         <source>You must select at least one group of elements</source>
-        <target>Elementu-multzo bat hautatu behar duzu gutxienez.</target>
+        <target>Elementu-multzo bat hautatu behar duzu gutxienez</target>
       </trans-unit>
       <trans-unit id="JTuD2Zp" resname="Your changes won\'t be saved until you click on &quot;Save&quot;.">
         <source>Your changes won\'t be saved until you click on "Save".</source>
@@ -11603,7 +11603,7 @@
       </trans-unit>
       <trans-unit id="Ovrtva0" resname="You must indicate the number of points for each item to be assesed">
         <source>You must indicate the number of points for each item to be assesed</source>
-        <target>Esleitu beharreko elementu bakoitzeko puntu kopurua adierazi behar duzu.</target>
+        <target>Esleitu beharreko elementu bakoitzeko puntu kopurua adierazi behar duzu</target>
       </trans-unit>
       <trans-unit id="Jm0CpVT" resname="Please write the challenge description.">
         <source>Please write the challenge description.</source>
@@ -11615,7 +11615,7 @@
       </trans-unit>
       <trans-unit id="PvsVjQU" resname="You must provide a definition, an image, and/or an audio for the word">
         <source>You must provide a definition, an image, and/or an audio for the word</source>
-        <target>Definizioa, irudia eta/edo audioa eskaini behar diozu hitzari.</target>
+        <target>Definizioa, irudia eta/edo audioa eskaini behar diozu hitzari</target>
       </trans-unit>
       <trans-unit id="Pf0uSOu" resname="The score can't be saved because this page is not part of a SCORM package">
         <source>The score can't be saved because this page is not part of a SCORM package</source>
@@ -11623,7 +11623,7 @@
       </trans-unit>
       <trans-unit id="nMiyKXf" resname="You must specify a number of rows and columns between three and five">
         <source>You must specify a number of rows and columns between three and five</source>
-        <target>Hiru eta bost arteko lerro eta zutabeak zehaztu behar dituzu.</target>
+        <target>Hiru eta bost arteko lerro eta zutabeak zehaztu behar dituzu</target>
       </trans-unit>
       <trans-unit id="jtqwRb5" resname="You must complete the text and add an image or video">
         <source>You must complete the text and add an image or video</source>
@@ -11823,7 +11823,7 @@
       </trans-unit>
       <trans-unit id="bHbHhew" resname="Please write the abbreviation and its meaning.">
         <source>Please write the abbreviation and its meaning.</source>
-        <target>Mesedez, idatzi laburdura eta haren esanahia</target>
+        <target>Mesedez, idatzi laburdura eta haren esanahia.</target>
       </trans-unit>
       <trans-unit id="ALh34kd" resname="The ACRONYM tag is not supported in HTML5.\n\nUse the ABBR tag instead?">
         <source>The ACRONYM tag is not supported in HTML5.\n\nUse the ABBR tag instead?</source>
@@ -11843,7 +11843,7 @@
       </trans-unit>
       <trans-unit id="H65O8eQ" resname="Please enable JavaScript to play this game.">
         <source>Please enable JavaScript to play this game.</source>
-        <target>Mesedez, gaitu JavaScript joko honetan jokatzeko</target>
+        <target>Mesedez, gaitu JavaScript joko honetan jokatzeko.</target>
       </trans-unit>
       <trans-unit id="d6JrxQ5" resname="Alphabet to Select From">
         <source>Alphabet to Select From</source>
@@ -12111,7 +12111,7 @@
       </trans-unit>
       <trans-unit id="ywaQ_Vp" resname="Preparing upload...">
         <source>Preparing upload...</source>
-        <target>goera prestatzen...</target>
+        <target>Igoera prestatzen...</target>
       </trans-unit>
       <trans-unit id="AVv4iei" resname="This may take a few moments for large files...">
         <source>This may take a few moments for large files...</source>
@@ -12243,7 +12243,7 @@
       </trans-unit>
       <trans-unit id="x22lyt6" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.</source>
-        <target>Incluir MathJax (funciones avanzadas)</target>
+        <target>Formulak errendatuko dira nahiz eta aukera hau ez gaitu. Gaitu aukera hau MathJax liburutegi osoa sartzeko (8 Mb inguru), bestak beste irisgarritasun funtzionalitate aurreratuak eta testuingu.meniak.</target>
       </trans-unit>
       <trans-unit id="ibs15bt" resname="Global font">
         <source>Global font</source>
@@ -12255,7 +12255,7 @@
       </trans-unit>
       <trans-unit id="oabo7em" resname="Style default">
         <source>Style default</source>
-        <target>Estiloaren lehenespena.</target>
+        <target>Estiloaren lehenespena</target>
       </trans-unit>
       <trans-unit id="sxiampw" resname="HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...">
         <source>HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...</source>
@@ -12891,7 +12891,7 @@
       </trans-unit>
       <trans-unit id="mc93s58" resname="A folder with this name already exists in the destination.">
         <source>A folder with this name already exists in the destination.</source>
-        <target>Helmugan karpeta batek badu izen hau jada</target>
+        <target>Helmugan karpeta batek badu izen hau jada.</target>
       </trans-unit>
       <trans-unit id="fzmes9k" resname="Failed to move folder">
         <source>Failed to move folder</source>
@@ -13031,7 +13031,7 @@
       </trans-unit>
       <trans-unit id="dhjw6wu" resname="No projects have been shared with you yet.">
         <source>No projects have been shared with you yet.</source>
-        <target>Oraindik ez dago zurekin partekatutako proiekturik</target>
+        <target>Oraindik ez dago zurekin partekatutako proiekturik.</target>
       </trans-unit>
       <trans-unit id="l85fqn6" resname="Shared by">
         <source>Shared by</source>
@@ -13483,7 +13483,7 @@
       </trans-unit>
       <trans-unit id="gh4sot4" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
-        <target>Errorea EPX fitxategia sortzean</target>
+        <target>Errorea EPX fitxategia sortzean.</target>
       </trans-unit>
       <trans-unit id="ggqvzq3" resname="Saving document...">
         <source>Saving document...</source>
@@ -13631,7 +13631,7 @@
       </trans-unit>
       <trans-unit id="nhi9tcr" resname="Generating...">
         <source>Generating...</source>
-        <target>Sortzen</target>
+        <target>Sortzen...</target>
       </trans-unit>
       <trans-unit id="mjaddx8" resname="The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.">
         <source>The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.</source>
@@ -13707,7 +13707,7 @@
       </trans-unit>
       <trans-unit id="gl13xb4" resname="Create a new set without loading external files.">
         <source>Create a new set without loading external files.</source>
-        <target>Sortu fitxategi kanpoko fitxategirik kargatu gabe</target>
+        <target>Sortu fitxategi kanpoko fitxategirik kargatu gabe.</target>
       </trans-unit>
       <trans-unit id="jz2w7qn" resname="Your set is empty. Use the &quot;+ Add Category&quot; button above to create the first category.">
         <source>Your set is empty. Use the "+ Add Category" button above to create the first category.</source>
@@ -13803,7 +13803,7 @@
       </trans-unit>
       <trans-unit id="pwbf29j" resname="YouTube videos cannot be embedded in preview mode. ">
         <source>YouTube videos cannot be embedded in preview mode. </source>
-        <target>YouTube bideoak ezin dira txertatu aurrebista moduan.</target>
+        <target>YouTube bideoak ezin dira txertatu aurrebista moduan. </target>
       </trans-unit>
       <trans-unit id="6vjgohu" resname="Invalid file content">
         <source>Invalid file content</source>
@@ -13983,7 +13983,7 @@
       </trans-unit>
       <trans-unit id="33a8sw0" resname="and ">
         <source>and </source>
-        <target>eta</target>
+        <target>eta </target>
       </trans-unit>
       <trans-unit id="rb7aiqb" resname="indicator">
         <source>indicator</source>
