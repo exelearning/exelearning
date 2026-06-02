@@ -1960,11 +1960,30 @@ describe('Project Routes', () => {
     });
 
     describe('Link Validation (brokenlinks)', () => {
-        it('should return no broken links for empty content', async () => {
+        // Brokenlinks endpoints now require authentication (bug H1); supply a token to each request.
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
+        it('should require authentication', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idevices: [] }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should return no broken links for empty content', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({ idevices: [] }),
                 }),
             );
@@ -1979,7 +1998,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2003,7 +2022,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2025,7 +2044,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2043,11 +2062,30 @@ describe('Project Routes', () => {
     });
 
     describe('Link Extraction (brokenlinks/extract)', () => {
-        it('should extract links without validating', async () => {
+        // Extract endpoint now requires authentication (bug H1); supply a token to each request.
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
+        it('should require authentication', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idevices: [{ html: '<a href="https://google.com">Google</a>' }] }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should extract links without validating', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2080,7 +2118,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [{ html: '<p>No links here</p>' }],
                     }),
@@ -2097,7 +2135,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2117,11 +2155,30 @@ describe('Project Routes', () => {
     });
 
     describe('Link Validation Stream (brokenlinks/validate-stream)', () => {
-        it('should stream validation results for exe-node links', async () => {
+        // Validate-stream endpoint now requires authentication (bug H1); supply a token to each request.
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
+        it('should require authentication', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ links: [] }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should stream validation results for exe-node links', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         links: [
                             {
@@ -2158,7 +2215,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         links: [
                             {
@@ -2187,7 +2244,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({ links: [] }),
                 }),
             );
@@ -3946,6 +4003,13 @@ describe('Project Routes', () => {
     });
 
     describe('Link Validation Extended Coverage', () => {
+        // Brokenlinks endpoint now requires authentication (bug H1); supply a token to each request.
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
         it('should return null (valid) for existing internal files/', async () => {
             // Create test file that exists
             const filesDir = path.join(testDir, 'files');
@@ -3955,7 +4019,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -3976,7 +4040,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -3997,7 +4061,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -4019,7 +4083,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -4039,7 +4103,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -4059,7 +4123,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -4080,7 +4144,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5246,13 +5310,20 @@ describe('Project Routes', () => {
     });
 
     describe('Link Validation Special Cases', () => {
+        // Brokenlinks endpoint now requires authentication (bug H1); supply a token to each request.
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
         it('should handle file path check throwing error', async () => {
             // This tests the catch block in file path validation (line 1769-1770)
             // We can't easily make fs.pathExists throw, but the test structure is here
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5273,7 +5344,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {

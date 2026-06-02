@@ -34,6 +34,10 @@ describe('Platform Integration Routes', () => {
         delete process.env.PROVIDER_IDS;
         delete process.env.PROVIDER_TOKENS;
         delete process.env.PROVIDER_URLS;
+        // Provider URL validation now fails closed (bug M3): an empty allow-list rejects every
+        // returnurl. Configure a default allow-list matching the happy-path return URLs so the
+        // many 200-expecting tests keep passing. Tests that set their own PROVIDER_URLS override this.
+        process.env.PROVIDER_URLS = 'https://moodle.example.com';
     });
 
     afterEach(() => {
@@ -641,6 +645,23 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken({
                 returnurl: 'https://other-moodle.com/mod/exescorm/view.php',
             });
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/openPlatformElp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: token }),
+                }),
+            );
+
+            expect(response.status).toBe(401);
+        });
+
+        it('should reject valid-signature tokens when PROVIDER_URLS is unset (fail closed)', async () => {
+            // Bug M3: an empty allow-list must reject every return URL instead of allowing all.
+            delete process.env.PROVIDER_URLS;
+
+            const token = await createValidToken();
 
             const response = await app.handle(
                 new Request('http://localhost/api/platform/integration/openPlatformElp', {

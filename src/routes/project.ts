@@ -36,7 +36,10 @@ import { jwt } from '@elysiajs/jwt';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import {
     extractLinksFromIdevices,
+    validateLink,
     validateLinksStream,
+    toBrokenLinkInfo,
+    type BrokenLinkInfo,
     type ExtractedLink,
     type IdeviceContent,
 } from '../services/link-validator';
@@ -1823,177 +1826,28 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // =====================================================
 
             // POST /api/ode-management/odes/session/brokenlinks - Validate links in content
-            .post('/api/ode-management/odes/session/brokenlinks', async ({ body }) => {
+            .post('/api/ode-management/odes/session/brokenlinks', async ({ body, set, currentUser }) => {
+                // Server-side link validation issues outbound requests; require
+                // authentication so it cannot be abused unauthenticated (H1). The
+                // shared validateLink() is SSRF-hardened (rejects internal hosts).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const data = body as UsedFilesRequest;
-                const idevices = data.idevices || [];
+                const idevices = (data.idevices || []) as IdeviceContent[];
                 const filesDir = getFilesDir();
 
-                interface BrokenLinkInfo {
-                    brokenLinks: string;
-                    nTimesBrokenLinks: number | null;
-                    brokenLinksError: string | null;
-                    pageNamesBrokenLinks: string;
-                    blockNamesBrokenLinks: string;
-                    typeComponentSyncBrokenLinks: string;
-                    orderComponentSyncBrokenLinks: string;
-                }
-
-                interface ExtractedLink {
-                    url: string;
-                    count: number;
-                }
-
-                // Extract links from HTML
-                const extractLinks = (html: string): ExtractedLink[] => {
-                    if (!html) return [];
-                    const regex = /(href|src)="([^"]*)"/gi;
-                    const links: ExtractedLink[] = [];
-                    let match: RegExpExecArray | null;
-                    while ((match = regex.exec(html)) !== null) {
-                        links.push({ url: match[2], count: 1 });
-                    }
-                    return links;
-                };
-
-                // Clean and count links
-                const cleanAndCountLinks = (links: ExtractedLink[]): ExtractedLink[] => {
-                    const urlCounts = new Map<string, number>();
-                    for (const link of links) {
-                        const cleanUrl = link.url.replace(/"/g, '');
-                        urlCounts.set(cleanUrl, (urlCounts.get(cleanUrl) || 0) + 1);
-                    }
-                    return Array.from(urlCounts.entries()).map(([url, count]) => ({ url, count }));
-                };
-
-                // Remove invalid links
-                const removeInvalidLinks = (links: ExtractedLink[]): ExtractedLink[] => {
-                    return links.filter(link => {
-                        if (!link.url || link.url.trim() === '') return false;
-                        if (link.url.startsWith('#')) return false;
-                        if (link.url.startsWith('javascript:')) return false;
-                        if (link.url.startsWith('data:')) return false;
-                        return true;
-                    });
-                };
-
-                // Deduplicate links
-                const deduplicateLinks = (links: ExtractedLink[]): ExtractedLink[] => {
-                    const uniqueLinks = new Map<string, ExtractedLink>();
-                    for (const link of links) {
-                        const existing = uniqueLinks.get(link.url);
-                        if (!existing || link.count > existing.count) {
-                            uniqueLinks.set(link.url, link);
-                        }
-                    }
-                    return Array.from(uniqueLinks.values());
-                };
-
-                // Validate a single link
-                const validateLink = async (url: string): Promise<string | null> => {
-                    // Internal page links (exe-node:) - consider valid
-                    if (url.startsWith('exe-node:')) {
-                        return null;
-                    }
-
-                    // Internal file links (files/...)
-                    if (url.startsWith('files/') || url.startsWith('files\\')) {
-                        try {
-                            const relativePath = url.substring(6);
-                            const fullPath = path.join(filesDir, relativePath);
-                            if (await fs.pathExists(fullPath)) {
-                                return null;
-                            }
-                            return '404';
-                        } catch {
-                            return '500';
-                        }
-                    }
-
-                    // Skip relative URLs that aren't files/
-                    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('//')) {
-                        return null;
-                    }
-
-                    // External link validation
-                    try {
-                        let normalizedUrl = url;
-                        if (url.startsWith('//')) {
-                            normalizedUrl = 'https:' + url;
-                        }
-
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-                        try {
-                            let response = await fetch(normalizedUrl, {
-                                method: 'HEAD',
-                                signal: controller.signal,
-                                redirect: 'follow',
-                                headers: {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                },
-                            });
-
-                            clearTimeout(timeoutId);
-
-                            // If HEAD returns 405, try GET
-                            if (response.status === 405) {
-                                const controller2 = new AbortController();
-                                const timeoutId2 = setTimeout(() => controller2.abort(), 10000);
-                                response = await fetch(normalizedUrl, {
-                                    method: 'GET',
-                                    signal: controller2.signal,
-                                    redirect: 'follow',
-                                    headers: {
-                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                        Range: 'bytes=0-0',
-                                    },
-                                });
-                                clearTimeout(timeoutId2);
-                            }
-
-                            // 301 is not broken
-                            if (response.status === 301) return null;
-                            if (response.ok) return null;
-                            return String(response.status);
-                        } catch (fetchError: unknown) {
-                            clearTimeout(timeoutId);
-                            const err = fetchError as { name?: string; message?: string; cause?: { code?: string } };
-                            if (err.name === 'AbortError') return 'Timeout';
-                            const cause = err.cause;
-                            if (cause?.code === 'ENOTFOUND') return 'Could not resolve host';
-                            if (cause?.code === 'ECONNREFUSED') return 'Connection refused';
-                            return err.message || 'Network error';
-                        }
-                    } catch {
-                        return 'URL using bad/illegal format';
-                    }
-                };
-
+                // Single source of truth: reuse the shared link-validator service
+                // (extraction + SSRF-safe validation) instead of a duplicated copy.
+                const links = extractLinksFromIdevices(idevices);
                 const allBrokenLinks: BrokenLinkInfo[] = [];
 
-                for (const idevice of idevices) {
-                    if (!idevice.html) continue;
-
-                    let links = extractLinks(idevice.html);
-                    links = cleanAndCountLinks(links);
-                    links = removeInvalidLinks(links);
-                    links = deduplicateLinks(links);
-
-                    for (const link of links) {
-                        const validationError = await validateLink(link.url);
-
-                        if (validationError) {
-                            allBrokenLinks.push({
-                                brokenLinks: link.url,
-                                nTimesBrokenLinks: link.count,
-                                brokenLinksError: validationError,
-                                pageNamesBrokenLinks: idevice.pageName || '',
-                                blockNamesBrokenLinks: idevice.blockName || '',
-                                typeComponentSyncBrokenLinks: idevice.ideviceType || '',
-                                orderComponentSyncBrokenLinks: String(idevice.order ?? ''),
-                            });
-                        }
+                for (const link of links) {
+                    const validationError = await validateLink(link.url, { filesDir });
+                    if (validationError) {
+                        allBrokenLinks.push(toBrokenLinkInfo(link, validationError));
                     }
                 }
 
@@ -2022,7 +1876,12 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/ode-management/odes/session/brokenlinks/extract - Extract links without validating (fast)
-            .post('/api/ode-management/odes/session/brokenlinks/extract', async ({ body }) => {
+            .post('/api/ode-management/odes/session/brokenlinks/extract', async ({ body, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const data = body as UsedFilesRequest;
                 const idevices = (data.idevices || []) as IdeviceContent[];
 
@@ -2036,25 +1895,33 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/ode-management/odes/session/brokenlinks/validate-stream - Validate links via SSE
-            .post('/api/ode-management/odes/session/brokenlinks/validate-stream', async function* ({ body }) {
-                const data = body as { links: ExtractedLink[] };
-                const links = data.links || [];
-                const filesDir = getFilesDir();
+            .post(
+                '/api/ode-management/odes/session/brokenlinks/validate-stream',
+                async function* ({ body, set, currentUser }) {
+                    if (!currentUser) {
+                        set.status = 401;
+                        return;
+                    }
 
-                // Stream validation results as SSE events
-                for await (const result of validateLinksStream(links, { filesDir, batchSize: 5 })) {
+                    const data = body as { links: ExtractedLink[] };
+                    const links = data.links || [];
+                    const filesDir = getFilesDir();
+
+                    // Stream validation results as SSE events
+                    for await (const result of validateLinksStream(links, { filesDir, batchSize: 5 })) {
+                        yield {
+                            event: 'link-validated',
+                            data: JSON.stringify(result),
+                        };
+                    }
+
+                    // Signal completion
                     yield {
-                        event: 'link-validated',
-                        data: JSON.stringify(result),
+                        event: 'done',
+                        data: JSON.stringify({ complete: true, totalValidated: links.length }),
                     };
-                }
-
-                // Signal completion
-                yield {
-                    event: 'done',
-                    data: JSON.stringify({ complete: true, totalValidated: links.length }),
-                };
-            })
+                },
+            )
 
             // =====================================================
             // Utilities: Resources Report (usedfiles)

@@ -8,6 +8,8 @@
  * - Platform JWT: signed with APP_SECRET or PROVIDER_TOKENS[i], payload {userid, cmid, returnurl, pkgtype}
  */
 import { jwtVerify } from 'jose';
+import { isIP } from 'node:net';
+import { isBlockedAddress } from './ssrf-guard';
 
 /**
  * Payload structure for platform JWT tokens
@@ -107,16 +109,25 @@ export function isValidProvider(providerId: string): boolean {
 }
 
 /**
- * Check if a URL belongs to a configured provider
+ * Check if a URL belongs to a configured provider.
+ *
+ * This is an allow-list, so it FAILS CLOSED: when no providers are configured
+ * (the shipped default), nothing is allowed. The previous behavior returned
+ * `true` for any URL when PROVIDER_URLS was empty, which — combined with the
+ * server deriving its callback target from the attacker-controlled JWT
+ * `returnurl` — let a holder of a valid platform JWT drive the server to fetch
+ * arbitrary internal hosts (SSRF). Deploying platform integration now requires
+ * an explicit PROVIDER_URLS allow-list.
+ *
  * @param url - The URL to validate
  * @returns true if URL is from an allowed provider, false otherwise
  */
 export function isAllowedProviderUrl(url: string): boolean {
     const config = getProviderConfig();
 
-    // If no providers configured, allow all
+    // No providers configured => empty allow-list => nothing is allowed.
     if (config.urls.length === 0) {
-        return true;
+        return false;
     }
 
     if (!url) {
@@ -124,6 +135,58 @@ export function isAllowedProviderUrl(url: string): boolean {
     }
 
     return config.urls.some(allowedUrl => url.startsWith(allowedUrl));
+}
+
+/**
+ * Synchronous guard for a platform return URL used to derive a server-side
+ * request target (see {@link buildIntegrationUrl} and platform callbacks).
+ *
+ * Rejects:
+ *   - URLs that do not parse,
+ *   - schemes other than http(s) (e.g. file:, gopher:, ftp:),
+ *   - hosts that are IP literals flagged by {@link isBlockedAddress}
+ *     (loopback / private / link-local — including cloud metadata
+ *     169.254.169.254 — CGNAT, multicast, reserved, unspecified).
+ *
+ * This is intentionally synchronous and does NOT perform DNS resolution, so it
+ * can run inside the synchronous URL-building path. The allow-list check in
+ * {@link isAllowedProviderUrl} is the primary control; this is defense in depth
+ * against an attacker-supplied IP-literal returnurl. For full DNS-aware egress
+ * filtering (including DNS rebinding), the outbound request should additionally
+ * go through `assertUrlAllowed` / `safeFetch` from `./ssrf-guard`.
+ *
+ * @param url - The return URL from the JWT payload
+ * @returns true if the URL is safe to use as a request target, false otherwise
+ */
+export function isSafeReturnUrl(url: string): boolean {
+    if (!url) {
+        return false;
+    }
+
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return false;
+    }
+
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return false;
+    }
+
+    // url.hostname keeps brackets for IPv6 literals; strip them for the IP check.
+    const host = parsed.hostname.replace(/^\[/, '').replace(/\]$/, '');
+    if (!host) {
+        return false;
+    }
+
+    // If the host is an IP literal, reject blocked ranges synchronously.
+    // Hostnames are left to the allow-list (and DNS-aware guard at fetch time).
+    if (isIP(host) !== 0 && isBlockedAddress(host)) {
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -232,6 +295,13 @@ export async function getPlatformIntegrationParams(
     const providerId = extractProviderId(payload);
     if (providerId && !isValidProvider(providerId)) {
         console.warn(`[PlatformJWT] Invalid provider ID in JWT: ${providerId}`);
+        return null;
+    }
+
+    // Reject obviously-unsafe return URLs (non-http(s) scheme, internal IP
+    // literal) before they can become a server-side request target (SSRF).
+    if (!isSafeReturnUrl(payload.returnurl)) {
+        console.warn(`[PlatformJWT] Unsafe return URL rejected: ${payload.returnurl}`);
         return null;
     }
 
