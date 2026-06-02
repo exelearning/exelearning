@@ -763,7 +763,7 @@ var $exeDevicesEdition = {
                             ],
                             explanation: `${c_('One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.')}`,
                             examples: [
-                                `${c_('Simple resistor circuit')}#\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}#${c_('A')}#${c_('What is the resistance value?')}#${c_('1 kΩ')}#${c_('2 kΩ')}#${c_('500 Ω')}#${c_('10 kΩ')}`,
+                                `${c_('Simple resistor circuit')}#\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}#${c_('A')}#${c_('What is the resistance value?')}#1 kΩ#2 kΩ#500 Ω#10 kΩ`,
                                 `${c_('Battery and lamp circuit')}#\\begin{circuitikz}\\draw (0,0) to[battery1] (2,0) to[lamp] (2,2) -- (0,2) to[switch] (0,0);\\end{circuitikz}#${c_('B')}#${c_('What happens when the switch is closed?')}#${c_('Nothing')}#${c_('The lamp turns on')}#${c_('The battery drains')}`
                             ],
                             allowRegex: /^([^#]+#[^#]+#([0-3]|[A-D]{1,4})#[^#]+#[^#]+(?:#[^#]*){1,3}|[^#]+#[^#]+)$/,
