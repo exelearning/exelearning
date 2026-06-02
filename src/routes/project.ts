@@ -5,6 +5,7 @@
  * Uses Dependency Injection pattern for testability
  */
 import { Elysia } from 'elysia';
+import { getJwtSecret } from './auth';
 import * as fsDefault from 'fs-extra';
 import * as pathDefault from 'path';
 
@@ -366,11 +367,6 @@ function serializeProjectSharing(
         updatedAt: project.updated_at,
     };
 }
-
-// Get JWT secret
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
-};
 
 // ============================================================================
 // Factory Functions

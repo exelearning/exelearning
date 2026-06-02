@@ -342,6 +342,7 @@ function createMockDependencies(): ProjectDependencies {
 describe('Project Routes', () => {
     let app: Elysia;
     let mockDeps: ProjectDependencies;
+    const originalEnv = { ...process.env };
 
     beforeEach(async () => {
         // Reset mock data
@@ -373,7 +374,11 @@ describe('Project Routes', () => {
             roles: '["ROLE_USER"]',
         });
 
-        // Set JWT secret
+        // Set JWT secret. The canonical resolver (auth.ts:getJwtSecret) prefers
+        // API_JWT_SECRET over JWT_SECRET, and the test env sets API_JWT_SECRET via
+        // .env, so we override API_JWT_SECRET to the value tokens are signed with.
+        // Routes are created below in this hook, after the env is set.
+        process.env.API_JWT_SECRET = 'test-secret-for-testing-only';
         process.env.JWT_SECRET = 'test-secret-for-testing-only';
 
         // Create mock dependencies
@@ -387,6 +392,9 @@ describe('Project Routes', () => {
     });
 
     afterEach(async () => {
+        // Restore env so the test secret never leaks into other suites in the
+        // same Bun process.
+        process.env = { ...originalEnv };
         if (await fs.pathExists(testDir)) {
             await fs.remove(testDir);
         }
