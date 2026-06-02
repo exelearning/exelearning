@@ -105,11 +105,12 @@
             mask-position: center;
             -webkit-mask-size: contain;
             mask-size: contain;
-            // Material glyphs only fill ~77% of their box, so they render
-            // optically smaller than the edge-to-edge theme (Style) icons next
-            // to them. Scaling by 1.3 makes the glyph ink match (measured: both
-            // render at 26px inside the 40px picker cell).
-            transform: scale(1.3);
+            // Material Symbols are drawn inside a 20px live area on a 24px grid,
+            // so with mask-size: contain the glyph ink fills only 20/24 ≈ 83.3%
+            // of the cell and renders optically smaller than the edge-to-edge
+            // theme (Style) icons next to it. Scale by 24/20 = 1.2 so the glyph
+            // ink matches the Style icon exactly.
+            transform: scale(1.2);
         }
 
         .option-block-icon .exe-material-icon-sprite {
@@ -117,8 +118,9 @@
             height: 100%;
             display: block;
             fill: currentColor;
-            // Match the optical size of the edge-to-edge theme (Style) icons.
-            transform: scale(1.3);
+            // Match the edge-to-edge theme (Style) icons: Material Symbols fill
+            // only their 20/24 live area, so scale by 24/20 = 1.2.
+            transform: scale(1.2);
         }
         .box-icon-value {
             height: 100%;

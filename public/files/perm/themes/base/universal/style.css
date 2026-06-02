@@ -290,9 +290,11 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     width: 40px;
     height: 40px;
     margin-right: 10px;
-    /* Material glyphs only fill ~75% of their box (mask-size: contain), so they
-       render smaller than the edge-to-edge Style icons. Scale to match. */
-    transform: scale(1.333);
+    /* Material Symbols are drawn inside a 20px live area on a 24px grid, so with
+       mask-size: contain the glyph ink fills only 20/24 = 83.3% of the box and
+       renders smaller than the edge-to-edge Style icons. Scale by 24/20 = 1.2 so
+       the glyph ink matches the Style icon exactly. */
+    transform: scale(1.2);
     background-color: currentColor;
     -webkit-mask-image: var(--exe-material-icon-url);
     mask-image: var(--exe-material-icon-url);

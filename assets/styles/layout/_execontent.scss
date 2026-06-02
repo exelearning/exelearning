@@ -249,11 +249,12 @@
             mask-position: center;
             -webkit-mask-size: contain;
             mask-size: contain;
-            // Material glyphs only fill ~75% of their box, so a mask-size of
-            // contain renders them smaller than the edge-to-edge theme (Style)
-            // icons. Scale up so the glyph ink matches (measured: both render at
-            // 40px in the block header).
-            transform: scale(1.333);
+            // Material Symbols are drawn inside a 20px live area on a 24px grid,
+            // so with mask-size: contain the glyph ink fills only 20/24 ≈ 83.3%
+            // of the box and renders smaller than the edge-to-edge theme (Style)
+            // icons. Scale by 24/20 = 1.2 so the glyph ink matches the Style icon
+            // exactly (verified in a real render: Style 100% vs Material 83.5%).
+            transform: scale(1.2);
         }
         .button-remove-box {
             .exe-icon {
