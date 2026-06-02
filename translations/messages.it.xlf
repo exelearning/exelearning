@@ -14641,150 +14641,6 @@
         <source>Markdown content</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="pahu0dv" resname="Marco legal:">
-        <source>Marco legal:</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="syx7s40" resname="Concreción:">
-        <source>Concreción:</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="o0h5m0d" resname="Este conjunto de datos no está disponible todavía. Se añadirá en una próxima versión.">
-        <source>Este conjunto de datos no está disponible todavía. Se añadirá en una próxima versión.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="pkko3b5" resname="Selector de elementos curriculares">
-        <source>Selector de elementos curriculares</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ycz9mom" resname="Cargando datos curriculares…">
-        <source>Cargando datos curriculares…</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="swlmbax" resname="Filtrar…">
-        <source>Filtrar…</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="cj74oke" resname="Criterios de evaluación">
-        <source>Criterios de evaluación</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="41dzbjm" resname="Saberes Básicos">
-        <source>Saberes Básicos</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="j5qfp7t" resname="Selecciona una materia">
-        <source>Selecciona una materia</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="evx3i1n" resname="Seleccionados">
-        <source>Seleccionados</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="7ozag9b" resname="Aún no hay elementos seleccionados.">
-        <source>Aún no hay elementos seleccionados.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="pex9mi5" resname="Vista previa del resumen">
-        <source>Vista previa del resumen</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="nb5alls" resname="Restablecer selección">
-        <source>Restablecer selección</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="q0dfxcv" resname="Resumen de la fundamentación curricular">
-        <source>Resumen de la fundamentación curricular</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="1srljfp" resname="Cerrar">
-        <source>Cerrar</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="fmkdd31" resname="¿Restablecer toda la selección? Se perderán los cambios.">
-        <source>¿Restablecer toda la selección? Se perderán los cambios.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="a93hwrs" resname="Selecciona etapa y nivel">
-        <source>Selecciona etapa y nivel</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="1rm1p9v" resname="Sin resultados">
-        <source>Sin resultados</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ps4zb31" resname="No hay saberes básicos para esta materia.">
-        <source>No hay saberes básicos para esta materia.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="3fqtflv" resname="No hay competencias específicas para esta materia.">
-        <source>No hay competencias específicas para esta materia.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ghs9w1x" resname="Parcial">
-        <source>Parcial</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="mfc65ep" resname="Eliminar">
-        <source>Eliminar</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="8k6tcb3" resname="Comp. Clave">
-        <source>Comp. Clave</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="tcn68la" resname="Descriptores operativos">
-        <source>Descriptores operativos</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="fm61u4w" resname="No hay elementos curriculares seleccionados.">
-        <source>No hay elementos curriculares seleccionados.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="xj7o6ut" resname="Fundamentación Curricular LOMLOE">
-        <source>Fundamentación Curricular LOMLOE</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="020ptqz" resname="Fundamentación">
-        <source>Fundamentación</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="76mhnt5" resname="Elementos seleccionados">
-        <source>Elementos seleccionados</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ke9xgpp" resname="criterios">
-        <source>criterios</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="9mizy4b" resname="saberes">
-        <source>saberes</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ev0z7d0" resname="Competencias Específicas">
-        <source>Competencias Específicas</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="8rfa00t" resname="Comp. Específica">
-        <source>Comp. Específica</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ntq2qdd" resname="Competencias Clave">
-        <source>Competencias Clave</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="he8jmv4" resname="Criterios de Eval.">
-        <source>Criterios de Eval.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="xpfpo1t" resname="parcial">
-        <source>parcial</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="8959mnk" resname="Error al cargar los datos: ">
-        <source>Error al cargar los datos: </source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="28bdeyq" resname="Electrical Circuits">
         <source>Electrical Circuits</source>
         <target></target>
@@ -15075,6 +14931,130 @@
       </trans-unit>
       <trans-unit id="kh5s9ay" resname="Enter TikZ circuit code…">
         <source>Enter TikZ circuit code…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1jwccuv" resname="Legal framework:">
+        <source>Legal framework:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wlhu5ro" resname="Specification:">
+        <source>Specification:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3qnq42s" resname="This dataset is not available yet. It will be added in an upcoming version.">
+        <source>This dataset is not available yet. It will be added in an upcoming version.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="benpa5d" resname="Curriculum elements selector">
+        <source>Curriculum elements selector</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="krzvuv9" resname="Loading curriculum data…">
+        <source>Loading curriculum data…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="b25lgzc" resname="Filter…">
+        <source>Filter…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6bcmiuu" resname="Basic knowledge">
+        <source>Basic knowledge</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hioyatk" resname="Select a subject">
+        <source>Select a subject</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="abgpt8c" resname="No elements selected yet.">
+        <source>No elements selected yet.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="shil2cv" resname="Summary preview">
+        <source>Summary preview</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wuyk90t" resname="Curriculum foundations summary">
+        <source>Curriculum foundations summary</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cioe710" resname="Reset all selections? Changes will be lost.">
+        <source>Reset all selections? Changes will be lost.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0c4dhzs" resname="Select stage and level">
+        <source>Select stage and level</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jojrrty" resname="No results">
+        <source>No results</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kir1rmc" resname="No basic knowledge for this subject.">
+        <source>No basic knowledge for this subject.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="g448igx" resname="No specific competencies for this subject.">
+        <source>No specific competencies for this subject.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6xtn5bj" resname="Partial">
+        <source>Partial</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fyq7nzt" resname="Key Comp.">
+        <source>Key Comp.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ecigwln" resname="Operational descriptors">
+        <source>Operational descriptors</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="47yiiil" resname="No curriculum elements selected.">
+        <source>No curriculum elements selected.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8r6qb06" resname="LOMLOE Curriculum Foundations">
+        <source>LOMLOE Curriculum Foundations</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3h6qy86" resname="Foundations">
+        <source>Foundations</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ufuoz53" resname="Selected elements">
+        <source>Selected elements</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="onwrq0m" resname="criteria">
+        <source>criteria</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="14u1j92" resname="knowledge">
+        <source>knowledge</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5lvfdrs" resname="Specific Competencies">
+        <source>Specific Competencies</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gqevsds" resname="Spec. Comp.">
+        <source>Spec. Comp.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tjkesat" resname="Key Competencies">
+        <source>Key Competencies</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7hqtq66" resname="Eval. Criteria">
+        <source>Eval. Criteria</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="909eey0" resname="partial">
+        <source>partial</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d48hp6a" resname="Error loading data: ">
+        <source>Error loading data: </source>
         <target></target>
       </trans-unit>
     </body>
