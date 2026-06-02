@@ -11,6 +11,8 @@
 *   License: LGPL-2.1
     *   On Debian systems and derivatives, the full text of the GNU Lesser General Public License version 2.1 can be found in the file '/common-licenses/LGPL-2.1'.
     *   For the rest of the systems, it is available online at [https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
+*   License: LPPL-1.3c
+    *   The text of the LaTeX Project Public License version 1.3c can be found at [https://www.latex-project.org/lppl/lppl-1-3c/](https://www.latex-project.org/lppl/lppl-1-3c/)
 *   License: MIT
     *   A template for the MIT license can be found at the OSI's site [https://opensource.org/license/mit](https://opensource.org/license/mit)
 *   License: Apache License 2.0
@@ -23,7 +25,9 @@
     *   The text of the Modified BSD License can be found at [The 3-Clause BSD License](https://opensource.org/license/BSD-3-clause)
 *   License: SIL Open Font License
     *   The text of the SIL Open Font License can be found at [https://openfontlicense.org/](https://openfontlicense.org/)
+*   License: BaKoMa Fonts Licence
+    *   The text of the BaKoMa Fonts Licence is included next to the bundled BaKoMa font files.
 *   License: ISC License
-    *   The text of the ISC License can be found at [https://opensource.org/license/isc)
+    *   The text of the ISC License can be found at [https://opensource.org/license/isc](https://opensource.org/license/isc)
 *   License: Public Domain
     *   Read more about Public Domain at [https://creativecommons.org/public-domain/](https://creativecommons.org/public-domain/)
