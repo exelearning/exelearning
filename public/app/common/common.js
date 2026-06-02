@@ -1342,11 +1342,14 @@ var $exeDevices = {
                         pipwerks.SCORM.set("cmi.score.min", 0);
                         pipwerks.SCORM.set("cmi.score.max", 100);
                         pipwerks.SCORM.set("cmi.score.scaled", newFinalScore / 100);
-                        pipwerks.SCORM.set("cmi.completion_status", "completed");
-                        pipwerks.SCORM.set("cmi.success_status", passed ? "passed" : "failed");
+                        pipwerks.SCORM.set("cmi.completion_status", game.gameOver ? "completed" : "incomplete");
+                        pipwerks.SCORM.set("cmi.success_status", game.gameOver ? (passed ? "passed" : "failed") : "unknown");
                     } else {
+                        // SCORM 1.2 folds completion+success into cmi.core.lesson_status, so keep it
+                        // non-terminal ("incomplete") while the game is in progress and only mark
+                        // passed/failed once the game is over, mirroring the 2004 branch above.
                         pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-                        pipwerks.SCORM.set("cmi.core.lesson_status", passed ? "passed" : "failed");
+                        pipwerks.SCORM.set("cmi.core.lesson_status", game.gameOver ? (passed ? "passed" : "failed") : "incomplete");
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);

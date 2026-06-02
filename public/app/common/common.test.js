@@ -1632,6 +1632,7 @@ describe('common.js $exeDevices', () => {
             title: 'Activity',
             scorerp: '8.50',
             weighted: 100,
+            gameOver: true,
             msgs: {
               msgScore: 'Score',
               msgWeight: 'Weight',
@@ -1679,6 +1680,7 @@ describe('common.js $exeDevices', () => {
             title: 'Activity',
             scorerp: '8.50',
             weighted: 100,
+            gameOver: true,
             msgs: {
               msgScore: 'Score',
               msgWeight: 'Weight',
@@ -1732,6 +1734,7 @@ describe('common.js $exeDevices', () => {
             title: 'Activity',
             scorerp: '3.00',
             weighted: 100,
+            gameOver: true,
             msgs: {
               msgScore: 'Score',
               msgWeight: 'Weight',
@@ -1744,6 +1747,105 @@ describe('common.js $exeDevices', () => {
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0.3);
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'failed');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('keeps SCORM 2004 activities non-terminal while the game is in progress', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '0.00',
+            weighted: 100,
+            gameStarted: true,
+            gameOver: false,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'incomplete');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'unknown');
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('keeps SCORM 1.2 activities non-terminal while the game is in progress', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '8.50',
+            weighted: 100,
+            gameStarted: true,
+            gameOver: false,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        // Even with a passing score, an unfinished SCORM 1.2 game must stay "incomplete":
+        // cmi.core.lesson_status folds completion+success, so it must not read as "passed" yet.
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 85);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
       } finally {
         if (typeof originalPipwerks === 'undefined') {
           delete global.pipwerks;
