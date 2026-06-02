@@ -14201,10 +14201,6 @@
         <source>Use the default style of the site</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="xi6n2dy" resname="Default style for the new documents">
-        <source>Default style for the new documents</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="7n2p1wc" resname="Pick a style that will be preselected when you create a new project. Overrides the site default.">
         <source>Pick a style that will be preselected when you create a new project. Overrides the site default.</source>
         <target></target>
@@ -14637,10 +14633,6 @@
         <source>Play animation</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="3hdbtsp" resname="Only STL files use this color; current file is not STL">
-        <source>Only STL files use this color; current file is not STL</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="ciijtw4" resname="Animation paused">
         <source>Animation paused</source>
         <target></target>
@@ -14821,10 +14813,6 @@
         <source>Electrical Circuits</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="2ug6axe" resname="Please select the correct answer for each option">
-        <source>Please select the correct answer for each option</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="c2mqcn0" resname="Please write the question">
         <source>Please write the question</source>
         <target></target>
@@ -14867,10 +14855,6 @@
       </trans-unit>
       <trans-unit id="ea5a82z" resname="Circuit code (TikZ)">
         <source>Circuit code (TikZ)</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="k35s0w9" resname="Enter TikZ circuit code...">
-        <source>Enter TikZ circuit code...</source>
         <target></target>
       </trans-unit>
       <trans-unit id="r8duy90" resname="Preview circuit">
@@ -15099,6 +15083,22 @@
       </trans-unit>
       <trans-unit id="cfwjutq" resname="Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.">
         <source>Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ui66upm" resname="Default style for new documents">
+        <source>Default style for new documents</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1y9aqxi" resname="Only STL files use this color; the current file is not STL">
+        <source>Only STL files use this color; the current file is not STL</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ca269zo" resname="Please select the correct answer for each question">
+        <source>Please select the correct answer for each question</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j3zkuxt" resname="Enter TikZ circuit code…">
+        <source>Enter TikZ circuit code…</source>
         <target></target>
       </trans-unit>
     </body>
