@@ -112,10 +112,29 @@ var $exeDevice = (function () {
             // descriptor set onto every criterio, so the teacher must pick
             // them explicitly (checkbox mode). See issue #1832.
             descriptorsPerCriterion: true
+        },
+        {
+            id: 'ES-NC',
+            isoCode: 'ES-NC',
+            label: 'LOMLOE — Comunidad Foral de Navarra',
+            labelEn: 'LOMLOE — Chartered Community of Navarre',
+            framework: 'LOMLOE',
+            community: 'Comunidad Foral de Navarra',
+            file: '../data/lomloe-ES-NC.json',
+            available: true
+        },
+        {
+            id: 'ES-VC',
+            isoCode: 'ES-VC',
+            label: 'LOMLOE — Comunitat Valenciana',
+            labelEn: 'LOMLOE — Valencian Community',
+            framework: 'LOMLOE',
+            community: 'Comunitat Valenciana',
+            file: '../data/lomloe-ES-VC.json',
+            available: true
         }
         // Future entries — add when data files are ready:
         // { id: 'ES-AN', isoCode: 'ES-AN', label: 'LOMLOE — Andalucía', ... }
-        // { id: 'ES-MD', isoCode: 'ES-MD', label: 'LOMLOE — Comunidad de Madrid', ... }
         // { id: 'ES-CT', isoCode: 'ES-CT', label: 'LOMLOE — Catalunya', ... }
     ];
 

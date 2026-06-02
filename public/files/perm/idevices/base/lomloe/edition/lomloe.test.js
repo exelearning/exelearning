@@ -1542,6 +1542,130 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
     });
 });
 
+// Shared structural assertions for an autonomous-community concretion. The data
+// is generated from the official curriculum decrees, so we check the schema
+// contract and the code invariants rather than specific wording.
+function assertConcretion(name, prefix, etapaNiveles) {
+    describe(name, () => {
+        const data = loadDataset(name.split(' ')[0]);
+
+        it('parses as a non-empty object with no placeholder notice', () => {
+            expect(typeof data).toBe('object');
+            expect(data).not.toBeNull();
+            expect(data.__notice__).toBeUndefined();
+            expect(Object.keys(data).length).toBeGreaterThan(0);
+        });
+
+        it('exposes the expected etapas with the exact nivel labels', () => {
+            for (const [etapa, niveles] of Object.entries(etapaNiveles)) {
+                expect(data[etapa], `missing etapa ${etapa}`).toBeDefined();
+                expect(Object.keys(data[etapa])).toEqual(niveles);
+            }
+        });
+
+        it('every area record has the iDevice schema shape', () => {
+            const sample = walkAreas(data).slice(0, 30);
+            expect(sample.length).toBeGreaterThan(0);
+            for (const { area, codArea, etapa, nivel } of sample) {
+                const ctx = `${etapa}/${nivel}/${codArea}`;
+                expect(area.denominacion, ctx).toBeTruthy();
+                expect(area.competencias_especificas, ctx).toBeDefined();
+                expect(area.saberes_basicos.bloques, ctx).toBeDefined();
+            }
+        });
+
+        it('has competencias with criterios and at least one saberes bloque', () => {
+            let comps = 0, criterios = 0, saberes = 0;
+            for (const { area } of walkAreas(data)) {
+                for (const comp of Object.values(area.competencias_especificas)) {
+                    comps++;
+                    expect(comp.descripcion).toBeTruthy();
+                    for (const cr of comp.criterios_evaluacion) {
+                        criterios++;
+                        expect(cr.codigo).toBeTruthy();
+                        expect(cr.descripcion).toBeTruthy();
+                        expect(Array.isArray(cr.competencias_clave)).toBe(true);
+                    }
+                }
+                for (const items of Object.values(area.saberes_basicos.bloques)) {
+                    saberes += items.length;
+                }
+            }
+            expect(comps).toBeGreaterThan(0);
+            expect(criterios).toBeGreaterThan(0);
+            expect(saberes).toBeGreaterThan(0);
+        });
+
+        it(`every code uses the ${prefix} namespace and embeds its area code`, () => {
+            let checked = false;
+            for (const { area, codArea } of walkAreas(data)) {
+                for (const code of Object.keys(area.competencias_especificas)) {
+                    expect(code.startsWith(prefix)).toBe(true);
+                    expect(code.split('-')[3]).toBe(codArea);
+                    checked = true;
+                }
+            }
+            expect(checked).toBe(true);
+        });
+
+        it('competencia codes are unique within each (nivel, area)', () => {
+            for (const { area, codArea, etapa, nivel } of walkAreas(data)) {
+                const codes = Object.keys(area.competencias_especificas);
+                expect(new Set(codes).size, `${etapa}/${nivel}/${codArea}`).toBe(codes.length);
+            }
+        });
+
+        it('saberes nombres are globally unique inside the dataset', () => {
+            const seen = new Set();
+            const dupes = [];
+            for (const { area } of walkAreas(data)) {
+                for (const items of Object.values(area.saberes_basicos.bloques)) {
+                    for (const item of items) {
+                        if (seen.has(item.nombre)) dupes.push(item.nombre);
+                        seen.add(item.nombre);
+                    }
+                }
+            }
+            expect(dupes).toEqual([]);
+        });
+    });
+}
+
+assertConcretion(
+    'lomloe-ES-NC.json (Navarra concretion — official Spanish extraction)',
+    'ES-NC-',
+    {
+        'Educación Infantil': ['Primer ciclo (0-3 años)', 'Segundo ciclo (3-6 años)'],
+        'Educación Primaria': [
+            '1º de Educación Primaria', '2º de Educación Primaria', '3º de Educación Primaria',
+            '4º de Educación Primaria', '5º de Educación Primaria', '6º de Educación Primaria'],
+        'Educación Secundaria Obligatoria': ['1º de ESO', '2º de ESO', '3º de ESO', '4º de ESO'],
+        'Bachillerato': ['1º de Bachillerato', '2º de Bachillerato'],
+    },
+);
+
+assertConcretion(
+    'lomloe-ES-VC.json (Comunitat Valenciana concretion — official Valencian extraction)',
+    'ES-VC-',
+    {
+        'Educació Infantil': ['Primer cicle (0-3 anys)', 'Segon cicle (3-6 anys)'],
+        'Educació Primària': [
+            "1r d'Educació Primària", "2n d'Educació Primària", "3r d'Educació Primària",
+            "4t d'Educació Primària", "5é d'Educació Primària", "6é d'Educació Primària"],
+        'Educació Secundària Obligatòria': ["1r d'ESO", "2n d'ESO", "3r d'ESO", "4t d'ESO"],
+        'Batxillerat': ['1r de Batxillerat', '2n de Batxillerat'],
+    },
+);
+
+describe('lomloe-ES-VC.json (Valencian wording integrity)', () => {
+    const data = loadDataset('lomloe-ES-VC.json');
+    it('preserves Valencian etapa labels and accented characters', () => {
+        const blob = JSON.stringify(data);
+        expect(blob).toMatch(/Educació|Primària|Secundària|Batxillerat/);
+        expect(blob).toMatch(/[àèòïçé·]/);
+    });
+});
+
 describe('DATASETS registry (regression guard)', () => {
     // DATASETS is var-scoped inside the iDevice IIFE and not exported, so we
     // assert against the source string. Catches accidental flips of the
@@ -1588,6 +1712,20 @@ describe('DATASETS registry (regression guard)', () => {
         expect(m, "ES-GA entry missing").not.toBeNull();
         expect(m[1]).toBe('true');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-GA.json'");
+    });
+
+    it('declares ES-NC with available:true and the lomloe-ES-NC.json file', () => {
+        const m = entryFor('ES-NC');
+        expect(m, "ES-NC entry missing").not.toBeNull();
+        expect(m[1]).toBe('true');
+        expect(lomloeSrc).toContain("file: '../data/lomloe-ES-NC.json'");
+    });
+
+    it('declares ES-VC with available:true and the lomloe-ES-VC.json file', () => {
+        const m = entryFor('ES-VC');
+        expect(m, "ES-VC entry missing").not.toBeNull();
+        expect(m[1]).toBe('true');
+        expect(lomloeSrc).toContain("file: '../data/lomloe-ES-VC.json'");
     });
 
     it('leaves ES-CN unchanged (available:true)', () => {
