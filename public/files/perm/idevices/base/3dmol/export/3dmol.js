@@ -225,6 +225,7 @@ var $eXe3Dmol = {
                 </div>
                 <div class="DMOLP-AtomLegend" id="dmolpAtomLegend-${instance}" aria-hidden="true"></div>
                 </div>
+                <div class="DMOLP-ModelAuthor" id="dmolpModelAuthor-${instance}" style="display:none"></div>
                 <div class="DMOLP-ShowFullScreenRow" id="dmolpShowFullScreenRow-${instance}">
                     <a href="#" class="DMOLP-ShowFullScreenBtn" id="dmolpShowFullScreen-${instance}" title="${msgs.msgFullScreen}">
                         <div class="exeQuextIcons exeQuextIcons-FullScreen" aria-hidden="true"></div>
@@ -436,6 +437,14 @@ var $eXe3Dmol = {
                 typeof mOptions.selectsGame[i].description == 'undefined'
                     ? ''
                     : mOptions.selectsGame[i].description;
+            mOptions.selectsGame[i].author =
+                typeof mOptions.selectsGame[i].author == 'undefined'
+                    ? ''
+                    : mOptions.selectsGame[i].author;
+            mOptions.selectsGame[i].alt =
+                typeof mOptions.selectsGame[i].alt == 'undefined'
+                    ? ''
+                    : mOptions.selectsGame[i].alt;
             if (
                 !mOptions.selectsGame[i].modelFormat &&
                 mOptions.selectsGame[i].modelName
@@ -1200,16 +1209,37 @@ var $eXe3Dmol = {
         }
     },
 
-    updateModelA11y: function (modelName, instance) {
+    updateModelA11y: function (modelName, instance, altText) {
         const msgs = $eXe3Dmol.options[instance]
             ? $eXe3Dmol.options[instance].msgs
             : {};
         const noModel = msgs.msgNoImage || 'No 3D model';
-        const desc = modelName
-            ? (msgs.msgTypeGame || '3D Model') + ': ' + modelName
-            : noModel;
+        const alt = (altText || '').trim();
+        // A custom alternative text (when provided) takes precedence as the
+        // accessible description; otherwise fall back to the model name.
+        const desc = alt
+            ? alt
+            : modelName
+              ? (msgs.msgTypeGame || '3D Model') + ': ' + modelName
+              : noModel;
         $(`#dmolpModelPreview-${instance}`).attr('aria-label', desc);
         $(`#dmolpModelDesc-${instance}`).text(desc);
+    },
+
+    /**
+     * Show the per-question authorship caption centered below the model. When
+     * no author is set (or no model is rendered) the caption is cleared and
+     * hidden so the layout is unchanged.
+     */
+    updateModelAuthor: function (author, instance) {
+        const $author = $(`#dmolpModelAuthor-${instance}`);
+        if (!$author.length) return;
+        const text = (author || '').trim();
+        if (text) {
+            $author.text(text).show();
+        } else {
+            $author.text('').hide();
+        }
     },
 
     getViewer: function (instance) {
@@ -1283,6 +1313,10 @@ var $eXe3Dmol = {
         let modelFormat = (question.modelFormat || '').trim().toLowerCase();
         const modelName = (question.modelName || '').trim();
 
+        // Default to no author caption; only the successful render path below
+        // reveals it (the author belongs to the model image).
+        $eXe3Dmol.updateModelAuthor('', instance);
+
         if (!modelFormat && modelName) {
             modelFormat = $eXe3Dmol.getModelFormatByName(modelName);
         }
@@ -1336,7 +1370,8 @@ var $eXe3Dmol = {
                 viewer.render();
             }
             $cover.hide();
-            $eXe3Dmol.updateModelA11y(modelName, instance);
+            $eXe3Dmol.updateModelA11y(modelName, instance, question.alt);
+            $eXe3Dmol.updateModelAuthor(question.author, instance);
             $eXe3Dmol.renderAtomLegend(viewer, question, instance);
 
             // Sync toggle background button to match the question's bgDark

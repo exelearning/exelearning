@@ -113,4 +113,63 @@ describe('quick-questions-multiple-choice export', () => {
         expect(hasLatexSpy).toHaveBeenCalled();
         expect(updateLatexSpy).toHaveBeenCalledWith('#seleccionaWordDiv-0');
     });
+
+    describe('ramdonOptions', () => {
+        // Deterministic permutation so we can assert the remapped solution:
+        // every shuffle reverses the option order.
+        beforeEach(() => {
+            global.$exeDevices.iDevice.gamification.helpers.shuffleAds = vi.fn(
+                (arr) => [...arr].reverse()
+            );
+        });
+
+        it('shuffles select options and remaps the correct-answer set', () => {
+            const question = {
+                typeSelect: 0,
+                options: ['a', 'b', 'c', 'd'],
+                solution: 'AC',
+            };
+            $quickquestionsmultiplechoice.options[0] = { question };
+
+            $quickquestionsmultiplechoice.ramdonOptions(0);
+
+            expect(question.options).toEqual(['d', 'c', 'b', 'a']);
+            // 'a' moved to position D, 'c' moved to position B (order in the
+            // set is irrelevant for select questions).
+            expect(question.solution).toBe('BD');
+        });
+
+        it('shuffles order options while preserving the correct sequence', () => {
+            const question = {
+                typeSelect: 1,
+                options: ['a', 'b', 'c', 'd'],
+                solution: 'ABCD',
+            };
+            $quickquestionsmultiplechoice.options[0] = { question };
+
+            $quickquestionsmultiplechoice.ramdonOptions(0);
+
+            expect(question.options).toEqual(['d', 'c', 'b', 'a']);
+            // The correct order is still a,b,c,d, now sitting at positions
+            // D,C,B,A respectively.
+            expect(question.solution).toBe('DCBA');
+        });
+
+        it('leaves word questions untouched', () => {
+            const question = {
+                typeSelect: 2,
+                options: ['', '', '', ''],
+                solution: '',
+            };
+            $quickquestionsmultiplechoice.options[0] = { question };
+
+            $quickquestionsmultiplechoice.ramdonOptions(0);
+
+            expect(
+                global.$exeDevices.iDevice.gamification.helpers.shuffleAds
+            ).not.toHaveBeenCalled();
+            expect(question.options).toEqual(['', '', '', '']);
+            expect(question.solution).toBe('');
+        });
+    });
 });

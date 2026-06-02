@@ -300,6 +300,19 @@ describe('idevice-config-browser', () => {
             expect(files).toContain('simple-lightbox.min.js');
         });
 
+        it('includes three.min.js and OrbitControls.js for three-sixty-viewer', () => {
+            const files = getIdeviceExportFiles('three-sixty-viewer', '.js');
+            expect(files).toContain('three-sixty-viewer.js');
+            expect(files).toContain('three.min.js');
+            expect(files).toContain('OrbitControls.js');
+            // Dependencies first, main file last
+            expect(files[files.length - 1]).toBe('three-sixty-viewer.js');
+            // three.min.js MUST come before OrbitControls.js
+            const threeIdx = files.indexOf('three.min.js');
+            const orbitIdx = files.indexOf('OrbitControls.js');
+            expect(threeIdx).toBeLessThan(orbitIdx);
+        });
+
         it('includes model-viewer and Three.js dependencies for three-d-viewer', () => {
             const files = getIdeviceExportFiles('three-d-viewer', '.js');
             expect(files).toContain('three-d-viewer.js');
