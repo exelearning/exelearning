@@ -557,7 +557,7 @@ var $exeDevice = (function () {
             el.disabled = !isSTL;
             el.title = isSTL
                 ? _('Choose STL model color')
-                : _('Only STL files use this color; current file is not STL');
+                : _('Only STL files use this color; the current file is not STL');
             const hint = this.ideviceBody?.querySelector?.('#threeDModelColorHint');
             if (hint) hint.classList.toggle('text-muted', !isSTL);
         },

@@ -190,7 +190,7 @@ var $exeDevice = {
     setMessagesInfo: function () {
         const msgs = $exeDevice.msgs;
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgTypeChoose = _('Please select the correct answer for each option');
+        msgs.msgTypeChoose = _('Please select the correct answer for each question');
         msgs.msgECompleteQuestion = _('Please write the question');
         msgs.msgECompleteAllOptions = _('Please complete all options');
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');

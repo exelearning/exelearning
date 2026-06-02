@@ -66,7 +66,7 @@ describe('buildConfigParams', () => {
 
             expect(result.USER_PREFERENCES_CONFIG.defaultTheme).toBeDefined();
             expect(result.USER_PREFERENCES_CONFIG.defaultTheme.type).toBe('select');
-            expect(result.USER_PREFERENCES_CONFIG.defaultTheme.title).toBe('Default style for the new documents');
+            expect(result.USER_PREFERENCES_CONFIG.defaultTheme.title).toBe('Default style for new documents');
             // Default value is empty string -> "use the site default"
             expect(result.USER_PREFERENCES_CONFIG.defaultTheme.value).toBe('');
 
