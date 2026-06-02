@@ -252,11 +252,20 @@
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/images/\*
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/magnifier/export/mojomagnify.js
+    *   Copyright: Jacob Seidelin and other contributors
+    *   License: MIT
 *   Files: /public/files/perm/idevices/base/scrambled-list/export/scrambled-list.js and /public/files/perm/idevices/base/interactive-video/export/interactive-video.js
     *   HTML5 Sortable jQuery Plugin copyright: Ali Farhadi (maintained by Alexandru Badiu and Lukas Oppermann)
     *   License: MIT
-*   Files: /public/files/perm/idevices/base/magnifier/export/mojomagnify.js
-    *   Copyright: Jacob Seidelin and other contributors
+*   Files: /public/files/perm/idevices/base/three-d-viewer/export/three.module.min.js, ./OrbitControls.js and ./STLLoader.js
+    *   Three.js (Three.js Authors)
+    *   License: MIT
+*   File: /public/files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js
+    *   model-viewer (Google)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js and ./OrbitControls.js
+    *   Three.js (Three.js Authors)
     *   License: MIT
 *   Files: /public/files/perm/themes/flux/fonts/* (Fredoka Font)
     *   Copyright: Milena Brandao
