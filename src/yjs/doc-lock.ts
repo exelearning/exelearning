@@ -9,7 +9,7 @@
  * - Configurable timeout to prevent deadlocks
  * - Async/await friendly API
  */
-import type { DocLockConfig, LockEntry } from './types';
+import type { DocLockConfig } from './types';
 
 // ============================================================================
 // DEFAULT CONFIGURATION
@@ -24,7 +24,56 @@ const DEFAULT_CONFIG: DocLockConfig = {
 // ============================================================================
 
 let config: DocLockConfig = { ...DEFAULT_CONFIG };
-const locks = new Map<string, LockEntry>();
+
+/**
+ * A queued waiter for a held lock. Resolved (with its own release function)
+ * when the lock is handed off to it, or rejected on timeout.
+ */
+interface LockWaiter {
+    resolve: (release: () => void) => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout> | null;
+}
+
+/** Per-project mutex state: the current holder's metadata + a FIFO waiter queue. */
+interface MutexState {
+    acquiredAt: number;
+    queue: LockWaiter[];
+}
+
+const locks = new Map<string, MutexState>();
+
+/**
+ * Build a single-use release function for the current holder of `projectUuid`.
+ * On release it hands the lock to exactly one queued waiter (FIFO); if none are
+ * waiting it frees the lock. Calling the returned function more than once is a
+ * no-op, so a holder can never resurrect or double-release a lock that has
+ * already been handed off — which is what allowed multiple concurrent holders
+ * before.
+ */
+function makeRelease(projectUuid: string): () => void {
+    let released = false;
+    return () => {
+        if (released) {
+            return;
+        }
+        released = true;
+        const state = locks.get(projectUuid);
+        if (!state) {
+            return;
+        }
+        const next = state.queue.shift();
+        if (next) {
+            if (next.timer) {
+                clearTimeout(next.timer);
+            }
+            state.acquiredAt = Date.now();
+            next.resolve(makeRelease(projectUuid));
+        } else {
+            locks.delete(projectUuid);
+        }
+    };
+}
 
 // ============================================================================
 // CONFIGURATION
@@ -83,46 +132,30 @@ export class LockTimeoutError extends Error {
  * ```
  */
 export async function acquireLock(projectUuid: string): Promise<() => void> {
-    // Wait for existing lock to release (with timeout)
     const existing = locks.get(projectUuid);
-    if (existing) {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new LockTimeoutError(projectUuid, config.timeoutMs)), config.timeoutMs);
-        });
-
-        try {
-            await Promise.race([existing.promise, timeoutPromise]);
-        } catch (error) {
-            if (error instanceof LockTimeoutError) {
-                throw error;
-            }
-            // Other errors (e.g., from the existing promise) - continue to acquire
-        }
+    if (!existing) {
+        // Lock is free: take it immediately.
+        locks.set(projectUuid, { acquiredAt: Date.now(), queue: [] });
+        return makeRelease(projectUuid);
     }
 
-    // Create new lock
-    let resolveFunc!: () => void;
-    const promise = new Promise<void>(resolve => {
-        resolveFunc = resolve;
+    // Lock is held: queue and wait for our turn (FIFO) with a timeout. Exactly
+    // one queued waiter is woken per release, so there is never more than one
+    // holder at a time.
+    return new Promise<() => void>((resolve, reject) => {
+        const waiter: LockWaiter = { resolve, reject, timer: null };
+        waiter.timer = setTimeout(() => {
+            const state = locks.get(projectUuid);
+            if (state) {
+                const index = state.queue.indexOf(waiter);
+                if (index !== -1) {
+                    state.queue.splice(index, 1);
+                }
+            }
+            reject(new LockTimeoutError(projectUuid, config.timeoutMs));
+        }, config.timeoutMs);
+        existing.queue.push(waiter);
     });
-
-    const entry: LockEntry = {
-        promise,
-        resolve: resolveFunc,
-        acquiredAt: Date.now(),
-    };
-
-    locks.set(projectUuid, entry);
-
-    // Return release function
-    return () => {
-        const current = locks.get(projectUuid);
-        // Only release if this is still our lock
-        if (current?.resolve === resolveFunc) {
-            locks.delete(projectUuid);
-            resolveFunc();
-        }
-    };
 }
 
 /**
@@ -135,27 +168,8 @@ export function tryAcquireLock(projectUuid: string): (() => void) | null {
     if (locks.has(projectUuid)) {
         return null;
     }
-
-    let resolveFunc!: () => void;
-    const promise = new Promise<void>(resolve => {
-        resolveFunc = resolve;
-    });
-
-    const entry: LockEntry = {
-        promise,
-        resolve: resolveFunc,
-        acquiredAt: Date.now(),
-    };
-
-    locks.set(projectUuid, entry);
-
-    return () => {
-        const current = locks.get(projectUuid);
-        if (current?.resolve === resolveFunc) {
-            locks.delete(projectUuid);
-            resolveFunc();
-        }
-    };
+    locks.set(projectUuid, { acquiredAt: Date.now(), queue: [] });
+    return makeRelease(projectUuid);
 }
 
 /**
@@ -223,8 +237,16 @@ export function getStats(): {
  * Force release all locks (use with caution, mainly for testing)
  */
 export function releaseAll(): void {
-    for (const [, entry] of locks) {
-        entry.resolve();
+    for (const [, state] of locks) {
+        for (const waiter of state.queue) {
+            if (waiter.timer) {
+                clearTimeout(waiter.timer);
+            }
+            // Hand a no-op release to any pending waiter so awaiting callers
+            // resolve instead of hanging forever; all lock state is dropped below.
+            waiter.resolve(() => {});
+        }
+        state.queue.length = 0;
     }
     locks.clear();
 }
