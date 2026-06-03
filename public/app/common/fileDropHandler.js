@@ -24,13 +24,15 @@
 
 /**
  * Whether a filename is an openable eXeLearning project file.
+ * Accepts `.elpx`/`.elp` projects and `.zip` archives (an `.elpx` is a ZIP),
+ * matching the extensions the File menu open/import pickers already allow.
  * @param {string} name
  * @returns {boolean}
  */
 export function isOpenableProjectFile(name) {
     if (typeof name !== 'string') return false;
     const lower = name.toLowerCase();
-    return lower.endsWith('.elpx') || lower.endsWith('.elp');
+    return lower.endsWith('.elpx') || lower.endsWith('.elp') || lower.endsWith('.zip');
 }
 
 export default class FileDropHandler {
@@ -86,8 +88,11 @@ export default class FileDropHandler {
 
     /**
      * True when the drop should be left to another component instead of opening
-     * a project — currently any open modal (e.g. the File Manager has its own
-     * file dropzone for uploading assets).
+     * a project. This is the case when:
+     *   - any modal is open (e.g. the File Manager has its own file dropzone for
+     *     uploading assets), or
+     *   - the Styles or Preview side panel is open — those have their own UI and
+     *     the full-window "drop to open" overlay must not cover them.
      * @param {EventTarget} target
      * @returns {boolean}
      */
@@ -95,7 +100,20 @@ export default class FileDropHandler {
         if (target && typeof target.closest === 'function' && target.closest('.modal.show')) {
             return true;
         }
-        return !!document.querySelector('.modal.show');
+        if (document.querySelector('.modal.show')) return true;
+        return this._isPanelOpen();
+    }
+
+    /**
+     * True when the Styles or Preview side panel is currently open.
+     * @returns {boolean}
+     */
+    _isPanelOpen() {
+        if (typeof document === 'undefined') return false;
+        if (document.getElementById('stylessidenav')?.classList.contains('active')) return true;
+        if (document.getElementById('previewsidenav')?.classList.contains('active')) return true;
+        if (document.getElementById('workarea')?.getAttribute('data-preview-pinned') === 'true') return true;
+        return false;
     }
 
     /**
@@ -201,7 +219,7 @@ export default class FileDropHandler {
     _showInvalidAlert() {
         this.app?.modals?.alert?.show?.({
             title: _('Open project'),
-            body: _('Only .elpx or .elp project files can be opened by dragging them here.'),
+            body: _('Only .elpx, .elp or .zip project files can be opened by dragging them here.'),
             contentId: 'error',
         });
     }

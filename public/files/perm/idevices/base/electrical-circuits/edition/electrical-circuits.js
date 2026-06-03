@@ -169,7 +169,7 @@ var $exeDevice = {
         const msgs = $exeDevice.msgs;
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgTypeChoose = _(
-            'Please select the correct answer for each option'
+            'Please select the correct answer for each question'
         );
         msgs.msgECompleteQuestion = _('Please write the question');
         msgs.msgECompleteAllOptions = _('Please complete all options');
@@ -700,7 +700,7 @@ var $exeDevice = {
                                     <div id="elceTikzCodeGroup">
                                         <span id="elceTitleTikz">${_('Circuit code (TikZ)')}:</span>
                                         <div class="ELCE-ETikzInput d-flex flex-nowrap align-items-start gap-2 mb-3">
-                                            <textarea id="elceTikzCode" class="form-control" rows="4" placeholder="${_('Enter TikZ circuit code...')}"></textarea>
+                                            <textarea id="elceTikzCode" class="form-control" rows="4" placeholder="${_('Enter TikZ circuit code…')}"></textarea>
                                             <a href="#" id="elcePreviewTikz" class="ELCE-ENavigationButton" title="${_('Preview circuit')}">
                                                 <img src="${path}quextIEPlay.png" alt="${_('Preview')}" class="ELCE-ENavigationButton" />
                                             </a>
