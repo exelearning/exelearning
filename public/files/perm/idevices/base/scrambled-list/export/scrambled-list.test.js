@@ -150,6 +150,30 @@ describe('scrambled-list iDevice export', () => {
     });
   });
 
+  describe('sendScore', () => {
+    it('marks the activity finished and sends the terminal SCORM score', () => {
+      const previousSendScoreNew = $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+
+      const data = { id: 'scrambled-1' };
+
+      try {
+        $scrambledlist.sendScore(3, 4, data);
+      } finally {
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew = previousSendScoreNew;
+      }
+
+      expect(data.gameOver).toBe(true);
+      expect(data.gameStarted).toBe(false);
+      expect(data.scorerp).toBe(7.5);
+      expect(sendScoreNew).toHaveBeenCalledWith(
+        true,
+        expect.objectContaining({ gameOver: true, scorerp: 7.5 }),
+      );
+    });
+  });
+
   describe('setupTouchDrag', () => {
     it('exists as a function', () => {
       expect(typeof $scrambledlist.setupTouchDrag).toBe('function');

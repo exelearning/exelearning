@@ -518,6 +518,21 @@ var $interactivevideo = {
         $interactivevideo.previousScore = options.previousScore;
     },
 
+    finalizeScorm: function () {
+        const scorm = InteractiveVideo.scorm;
+        if (!scorm || !(scorm.isScorm > 0) || !$interactivevideo.mOptions) {
+            return;
+        }
+        // The activity is finished (every question answered). Flag it terminal
+        // so the shared SCORM helper records completed/passed instead of leaving
+        // lesson_status "incomplete" (#1831). Auto mode (isScorm == 1) re-commits
+        // now; manual mode (isScorm == 2) carries the flag on the next send.
+        $interactivevideo.mOptions.gameOver = true;
+        if (scorm.isScorm == 1) {
+            $interactivevideo.sendScore(true);
+        }
+    },
+
     updateScore: function (question, result) {
         if (question >= $interactivevideo.scoreSlides.length) return;
         var e = $interactivevideo.scoreSlides[question],
@@ -1263,6 +1278,7 @@ var $interactivevideo = {
                         '%</span>'
                 );
                 $('BODY').addClass('activity-completed');
+                $interactivevideo.finalizeScorm();
             }
         },
         toggle: function (e) {

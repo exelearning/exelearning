@@ -869,7 +869,12 @@ var $trueorfalse = {
         $trueorfalse.showMessage(type, message, instance);
         $trueorfalse.saveEvaluation(mOptions);
         $('#tofRebootTest-' + instance).show();
-        if (mOptions.isScorm == 1) {
+        // gameOver is the terminal action in test mode (Comprobar button or
+        // timer expiry), so persist the score for every SCORM mode (1 = auto,
+        // 2 = test/manual). It used to be gated to isScorm == 1, relying on the
+        // removed unload handler to commit the test-mode (isScorm == 2) score;
+        // without that handler the score would otherwise be lost (issue #1831).
+        if (mOptions.isScorm > 0) {
             $trueorfalse.initialScore =
                 typeof $trueorfalse.initialScore === 'undefined'
                     ? ''

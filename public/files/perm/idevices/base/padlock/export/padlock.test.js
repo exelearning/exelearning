@@ -42,6 +42,7 @@ describe('padlock iDevice export', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     $(window).off('unload.eXeCandado beforeunload.eXeCandado');
     document.body.innerHTML = '';
   });
@@ -181,6 +182,67 @@ describe('padlock iDevice export', () => {
       expect($padlock.sendScore).toHaveBeenCalledWith(false, 0);
       expect($padlock.saveEvaluation).toHaveBeenCalledWith(0);
       expect(updateEvaluationIcon).toHaveBeenCalledWith($padlock.options[0], $padlock.isInExe);
+    });
+  });
+
+  describe('answerActivity', () => {
+    it('marks the game over and sends the SCORM score when the correct solution is checked', () => {
+      document.body.innerHTML = `
+        <input id="candadoSolution-0">
+        <p id="candadoPInformation-0"></p>`;
+      const sendScoreNew = vi.fn();
+      global.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      global.$exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      $padlock.options[0] = {
+        candadoSolution: 'OPENME',
+        isScorm: 1,
+        main: 'candadoMainContainer-0',
+        msgs: { msgYouScore: 'Score' },
+        previousScore: '',
+        score: 0,
+      };
+      // showFeedback performs heavy DOM/LaTeX work; keep just the SCORM path.
+      vi.spyOn($padlock, 'showFeedback').mockImplementation((i) => {
+        $padlock.sendScore(true, i);
+      });
+      $('#candadoSolution-0').val('openme');
+
+      $padlock.answerActivity(0);
+
+      expect($padlock.options[0].gameOver).toBe(true);
+      expect($padlock.options[0].gameStarted).toBe(false);
+      expect(sendScoreNew).toHaveBeenCalledWith(
+        true,
+        expect.objectContaining({
+          gameOver: true,
+          gameStarted: false,
+          scorerp: 10,
+        }),
+      );
+    });
+
+    it('does not flag the game over for a wrong solution', () => {
+      document.body.innerHTML = `
+        <input id="candadoSolution-0">
+        <p id="candadoPInformation-0"></p>`;
+      const sendScoreNew = vi.fn();
+      global.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      $padlock.options[0] = {
+        candadoAttemps: 0,
+        candadoErrorMessage: '',
+        candadoErrors: 0,
+        candadoSolution: 'OPENME',
+        isScorm: 1,
+        main: 'candadoMainContainer-0',
+        msgs: { msgErrorCode: 'Wrong', msgFailures: 'try' },
+        score: 0,
+      };
+      $('#candadoSolution-0').val('nope');
+
+      $padlock.answerActivity(0);
+
+      expect($padlock.options[0].gameOver).toBeUndefined();
+      expect(sendScoreNew).not.toHaveBeenCalled();
     });
   });
 

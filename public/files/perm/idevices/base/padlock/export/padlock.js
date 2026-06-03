@@ -337,6 +337,14 @@ var $padlock = {
             return;
         }
 
+        // Flag the activity as an active attempt. The shared SCORM helper
+        // (sendScoreNew/showFinalScore in common.js) only persists the score
+        // when gameStarted or gameOver is set; without this the padlock score
+        // is never written to the LMS. A plain review reopen returns above, so
+        // it keeps both flags untouched and never downgrades a completed SCO.
+        mOptions.gameStarted = true;
+        mOptions.gameOver = false;
+
         if (mOptions.candadoTime === 0) {
             return;
         }
@@ -358,6 +366,8 @@ var $padlock = {
             $padlock.uptateTime(mOptions.counter, instance);
             if (mOptions.counter <= 0 || mOptions.candadoSolved) {
                 clearInterval(mOptions.counterClock);
+                mOptions.gameStarted = false;
+                mOptions.gameOver = true;
                 $padlock.showFeedback(instance);
             }
         }, 1000);
@@ -428,6 +438,8 @@ var $padlock = {
 
         if ($padlock.checkWord(answord, mOptions.candadoSolution)) {
             mOptions.score = 10;
+            mOptions.gameStarted = false;
+            mOptions.gameOver = true;
             $padlock.saveEvaluation(instance);
             $padlock.showFeedback(instance);
         } else {

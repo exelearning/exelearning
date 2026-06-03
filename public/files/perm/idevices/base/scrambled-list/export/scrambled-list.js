@@ -750,7 +750,12 @@ var $scrambledlist = {
      */
     sendScore: function (rightAnswers, totalOptions, data) {
         data.scorerp = (rightAnswers * 10) / totalOptions;
-        data.gameStarted = true;
+        // sendScore only runs at a terminal point (all correct, attempts
+        // exhausted, or the learner declined to retry), so mark the activity as
+        // finished. Without gameOver the shared SCORM helper records the score
+        // but keeps lesson_status "incomplete" instead of passed/failed (#1831).
+        data.gameStarted = false;
+        data.gameOver = true;
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
     },
     /**

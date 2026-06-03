@@ -288,5 +288,53 @@ describe('trueorfalse iDevice export', () => {
       expect(options.scorep).toBe(5);
       expect(saveEvaluation).toHaveBeenCalledWith(options, false);
     });
+
+    it('sends the SCORM score on Comprobar in test mode (isScorm = 2)', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousSendScoreNew = $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+
+      document.body.innerHTML = `
+        <button id="tofPCheckTest-tof-1"></button>
+        <button id="tofRebootTest-tof-1"></button>
+        <div id="tofPMessage-tof-1"></div>
+        <div id="tofPMultimedia"></div>
+        <div id="tofPGameContainer-tof-1">
+          <div class="TOFP-QuestionDiv">
+            <input class="TOFP-Answer" type="radio" value="1" checked />
+            <div class="TOFP-Feedback"><span class="TOFP-SolutionMessage"></span></div>
+          </div>
+          <div class="TOFP-QuestionDiv">
+            <input class="TOFP-Answer" type="radio" value="0" checked />
+            <div class="TOFP-Feedback"><span class="TOFP-SolutionMessage"></span></div>
+          </div>
+        </div>
+      `;
+
+      const options = {
+        id: 'tof-1',
+        questionsGame: [{ solution: '1' }, { solution: '0' }],
+        numberQuestions: 2,
+        msgs: { msgKO: 'KO', msgOk: 'OK', msgYouScore: 'Score' },
+        isScorm: 2,
+        isInExe: false,
+      };
+
+      try {
+        $trueorfalse.gameOver(options);
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew = previousSendScoreNew;
+      }
+
+      expect(options.gameOver).toBe(true);
+      expect(options.gameStarted).toBe(false);
+      expect(sendScoreNew).toHaveBeenCalledWith(
+        true,
+        expect.objectContaining({ gameOver: true, scorerp: 10 }),
+      );
+    });
   });
 });

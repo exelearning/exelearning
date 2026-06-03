@@ -552,6 +552,40 @@ describe('interactive-video iDevice export', () => {
     });
   });
 
+  describe('finalizeScorm', () => {
+    beforeEach(() => {
+      $interactivevideo.mOptions = {};
+      vi.spyOn($interactivevideo, 'sendScore').mockImplementation(() => {});
+    });
+
+    it('marks the activity over and re-commits the score in auto mode (isScorm 1)', () => {
+      global.InteractiveVideo = { scorm: { isScorm: 1 } };
+
+      $interactivevideo.finalizeScorm();
+
+      expect($interactivevideo.mOptions.gameOver).toBe(true);
+      expect($interactivevideo.sendScore).toHaveBeenCalledWith(true);
+    });
+
+    it('marks the activity over without auto-committing in manual mode (isScorm 2)', () => {
+      global.InteractiveVideo = { scorm: { isScorm: 2 } };
+
+      $interactivevideo.finalizeScorm();
+
+      expect($interactivevideo.mOptions.gameOver).toBe(true);
+      expect($interactivevideo.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when SCORM tracking is disabled (isScorm 0)', () => {
+      global.InteractiveVideo = { scorm: { isScorm: 0 } };
+
+      $interactivevideo.finalizeScorm();
+
+      expect($interactivevideo.mOptions.gameOver).toBeUndefined();
+      expect($interactivevideo.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
   describe('controls object', () => {
     it('has play, stop, pause, and seek methods', () => {
       expect(typeof $interactivevideo.controls.play).toBe('function');
