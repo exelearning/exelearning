@@ -39980,6 +39980,383 @@
      }
     }
    },
+   "GI": {
+    "denominacion": "GREC I i II",
+    "competencias_especificas": {
+     "ES-VC-BAT1-GI-CE01": {
+      "descripcion": "Analitzar els elements bàsics de la llengua grega, tot identificant i reflexionant sobre el funcionament lingüístic a través de la comparació amb el llatí i amb les llengües conegudes per l'alumnat.",
+      "explicacion_bloque_competencial": "Amb l'adquisició d'aquesta competència es pretén que l'alumnat entenga de manera progressiva la vinculació estreta en el funcionament gramatical i sintàctic de la llengua grega amb la llatina, de manera que mitjançant l'analogia i la comparació entre ambdues puga comprendre amb més facilitat el funcionament d’aquestes, el concepte de flexió i les construccions més característiques, així com aconseguir un coneixement essencial de la fonologia, morfologia, sintaxi i lèxic de la llengua grega. D'aquesta manera, l'alumnat aconsegueix activar aquests sabers bàsics de caràcter lingüístic com a eina per a la comprensió i no com a fi, per arribar a entendre la llengua com una entitat viva i no com la suma abstracta de diferents elements com són el vocabulari i la gramàtica. Amb l'aprofundiment en la comprensió del funcionament gramatical de la llengua grega, l'alumnat aconsegueix una reflexió personal sobre la seua pròpia llengua, aprén a manejar termes metalingüístics i amplia el repertori lèxic, la qual cosa comporta el desenvolupament de la seua maduresa i autonomia personal, i afavoreix les competències clau en comunicació lingüística i plurilingüe. Per al primer curs es considera oportú el maneig dels elements bàsics del sistema lingüístic a nivell nominal, pronominal, verbal i oracional, i comparar-lo amb la llengua llatina. En el segon curs, a més de la consolidació de tot l'anterior, es recomana l'aprofundiment en les excepcions de la flexió nominal i pronominal, en els aspectes més complexos de la conjugació verbal, personal i no personal, i els de la sintaxi oracional. Així, mitjançant aquesta competència, es pretén que al final del primer curs l'alumnat valore la importància del grec com a mitjà de transmissió de cultura tant oral com escrita. I al final del segon, que aprecie la diversitat lingüística i s'interesse per l'adquisició d'altres llengües estrangeres com a mitjà d'enriquiment personal i professional.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-GI-CE01-CR01",
+        "descripcion": "Identificar i analitzar els aspectes morfològics elementals del grec (declinacions i conjugacions) en frases i textos de dificultat graduada en textos clàssics grecs.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE01-CR02",
+        "descripcion": "Distingir i analitzar els aspectes sintàctics fonamentals del grec en frases i textos de dificultat graduada.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE01-CR03",
+        "descripcion": "Reconéixer i ajustar adequadament els casos de concordança morfològica i sintàctica tenint en compte la classificació i el context oracional.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE01-CR04",
+        "descripcion": "Identificar els temps verbals grecs més usuals en els textos tenint en compte la classificació i el context oracional.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE01-CR05",
+        "descripcion": "Valorar la importància del grec com a mitjà de transmissió de cultura i la comunicació escrita i oral.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT1-GI-CE02": {
+      "descripcion": "Identificar i valorar els principals elements lèxics grecs, els canvis i el llegat d’aquests en les llengües conegudes per l'alumnat, a través de l'aprenentatge de l'etimologia, els hel·lenismes, els neologismes, la composició i la derivació, tant de vocabulari quotidià com especialitzat.",
+      "explicacion_bloque_competencial": "Aquesta competència, aplicada des d'un enfocament plurilingüe, ajuda l'alumnat a ampliar el vocabulari de les llengües que coneix, ja que les relaciona entre si per mitjà de la identificació dels lexemes, prefixos i sufixos que conformen les paraules, i a analitzar els possibles canvis que s'hagen produït de manera diacrònica a nivell fonètic, morfològic o semàntic. D'altra banda, contribueix a millorar la comprensió lectora i l'expressió oral i escrita de l'alumnat en llengües romàniques o no romàniques, de manera que pot identificar i explicar la base etimològica d'una paraula, deduir el significat de neologismes o termes de llenguatge especialitzat, així com crear famílies lèxiques. D'aquesta manera, s'impulsa un aprenentatge interconnectat i deductiu, descobrint i valorant el paper de la llengua grega en la formació de les llengües romàniques i la contribució d’aquestes en aquelles més allunyades per mitjà del vocabulari específic de diversos camps científics i tècnics. Aquesta competència afavoreix el respecte per la diversitat lingüística i promou l'interés per altres cultures per a construir una identitat europea, a més de promoure les competències clau en comunicació lingüística i plurilingüe. Al final del primer curs es pretén que l'alumnat aplique les normes bàsiques d'evolució fonètica que permeten trobar les relacions lèxiques dels ètims grecs en les llengües del repertori individual. Al final del segon curs, ha d'haver aconseguit una major sistematització de la formació de derivats nominals i verbals en el grec i en les llengües que coneix, tenint en compte l'ús de la composició, prefixos i sufixos per a inferir-ne el significat.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-GI-CE02-CR01",
+        "descripcion": "Fer un ús pertinent dels hel·lenismes i els tecnicismes més comuns en un context adequat, utilitzant la transcripció fonètica.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE02-CR02",
+        "descripcion": "Identificar i sistematitzar la presència d'ètims grecs en les llengües romàniques i altres llengües del repertori lingüístic de l'alumnat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE02-CR03",
+        "descripcion": "Deduir el significat etimològic d'un terme, servint-se de la comparació amb altres llengües del seu repertori.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE02-CR04",
+        "descripcion": "Explicar la relació del grec amb les llengües modernes utilitzant els coneixements lingüístics del repertori de l'alumnat.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT1-GI-CE03": {
+      "descripcion": "Argumentar, interpretar, traduir i produir textos grecs, escrits i orals, de dificultat graduada a partir d'estratègies de deducció i inducció utilitzant el context lingüístic, històric, social i polític.",
+      "explicacion_bloque_competencial": "L'adquisició d'aquesta competència permet a l'alumnat la comprensió i l’expressió oral i escrita en llengua grega partint de textos de dificultat progressiva i contextualitzats des del punt de vista històric, polític, social i cultural, ja que la lectura de textos grecs implica un context allunyat de l'experiència personal. Per aquest motiu, és necessari usar eines d'interpretació que col·laboren a desenvolupar l'autonomia de l'alumnat a l'hora de llegir els textos, tant adaptats com originals, fugint de l’interés excessiu per l'anàlisi i desxifratge d'unitats gramaticals en lloc de valorar la comprensió global del text. La comprensió i la interpretació de textos grecs permet a l'alumnat consolidar els coneixements adquirits en altres matèries i relacionar-los de manera que valore la cultura hel·lènica com un dels pilars de la civilització occidental. Al seu torn, ser conscients d'aquesta vinculació impulsa la seua autoestima i li permet l'emissió de judicis de valor argumentats. Mitjançant aquesta competència específica es valora la importància de la cerca de fonts primàries adequades per a obtindre informació i es descobreix la pervivència i adaptació d'elements lingüístics i culturals del món hel·lé en el nostre present. També es potencien, alhora, les competències clau en comunicació lingüística i plurilingüe, a més de la digital i la ciutadana, en valorar i respectar la diversitat lingüística i cultural de la societat. El desenvolupament competencial d'aquest apartat ha d'observar atentament una gradació i progrés adequats. En el primer curs l'alumnat hauria d'aconseguir llegir, traduir, comprendre textos senzills i adaptats que es corresponguen amb els elements gramaticals treballats en la competència 1 i comprendre i produir missatges orals en grec com a manera de reforçar l'aprenentatge lingüístic per mitjà de l'oralitat i reconéixer la importància del grec com a vehicle de transmissió de cultura i comunicació. En el segon, interpretar i traduir textos adaptats i originals de diferents gèneres literaris amb una anàlisi valorativa de la versió que permeta considerar l'error com a motor de l’aprenentatge.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-GI-CE03-CR01",
+        "descripcion": "Aplicar els principals elements del sistema de la llengua grega per a la comprensió i expressió oral i escrita d’aquesta.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE03-CR02",
+        "descripcion": "Llegir textos i comprendre missatges (orals i escrits) de dificultat graduada en grec.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE03-CR03",
+        "descripcion": "Produir frases o textos senzills escrits i orals en grec, individualment o en grup, utilitzant les estructures i el lèxic apresos.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE03-CR04",
+        "descripcion": "Interpretar i traduir frases o textos grecs adaptats i de dificultat graduada, fent ús de tots els recursos i estratègies apreses.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE03-CR05",
+        "descripcion": "Valorar la importància del grec com a mitjà de transmissió de cultura i la comunicació escrita i oral.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT1-GI-CE04": {
+      "descripcion": "Identificar i valorar les contribucions del món grec en l'origen de la democràcia i de la ciutadania europea, i relacionar críticament el present i el passat.",
+      "explicacion_bloque_competencial": "Les matèries Grec I i II no només comporten l'estudi de la llengua, sinó també de la cultura per a poder contextualitzar-la, per la qual cosa amb aquesta competència es pretén que l'alumnat analitze les principals característiques de la civilització grega, les relacione amb la nostra cultura actual i valore la importància de l'herència hel·lènica en la nostra ciutadania democràtica europea. Aquesta anàlisi ha de promoure en l'alumnat estratègies de reflexió i inferència que potencien el seu desenvolupament personal i judici crític, ja que requereixen una anàlisi valorativa sobre el llegat grec, una investigació argumentada en fonts tant analògiques com digitals, un diàleg respectuós davant aspectes hui en dia ja superats i una valoració aliena al presentisme. Mitjançant l'estudi de textos grecs, l'alumnat ha de poder percebre la referència constant a la cultura grega i descobrir la immensa aportació d’aquesta a la identitat europea. Al final del primer curs, l'alumnat ha de ser capaç de reflexionar sobre la influència i llegat de la cultura grega en la civilització romana, en l'occidental i en el seu entorn més pròxim, i presentar els continguts en diversos formats. Al final del segon curs, ha d’aprofundir en la importància dels gèneres literaris en les manifestacions culturals posteriors, per mitjà d’investigacions senzilles de temes monogràfics. En ambdós cursos aquesta competència fomenta el debat respectuós cap a altres cultures i maneres de vida.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-GI-CE04-CR01",
+        "descripcion": "Identificar i debatre sobre els principals esdeveniments polítics, històrics i socials de la civilització hel·lena i relacionar-los amb la situació sociopolítica europea actual utilitzant fonts clàssiques i actuals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE04-CR02",
+        "descripcion": "Reconéixer la influència de la mitologia clàssica com a font d'inspiració de manifestacions literàries i artístiques.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE04-CR03",
+        "descripcion": "Elaborar i presentar continguts propis en diversos formats mitjançant la recerca d'informació adequada.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE04-CR04",
+        "descripcion": "Expressar respectuosament opinions argumentades sobre la importància de la multiculturalitat per al desenvolupament de la societat.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT1-GI-CE05": {
+      "descripcion": "Identificar i valorar el patrimoni, material i immaterial, de la civilització grega com a font de saber i d'inspiració de diferents manifestacions culturals.",
+      "explicacion_bloque_competencial": "Mitjançant aquesta competència l'alumnat aprén a reconéixer i valorar la presència grega, material i immaterial, com a part dels senyals d'identitat europea, mitjà transmissor de coneixement i font d'inspiració d'altres manifestacions culturals al llarg de la història.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-GI-CE05-CR01",
+        "descripcion": "Explorar la presència del llegat grec en l'entorn i localitzar exemples de la pervivència de l'antiguitat clàssica en la seua vida quotidiana.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE05-CR02",
+        "descripcion": "Valorar la presència de referents patrimonials arqueològics, arquitectònics i artístics grecs a la Comunitat Valenciana i en la península ibèrica.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE05-CR03",
+        "descripcion": "Dissenyar, planificar i realitzar activitats orientades al coneixement i l’estima de les manifestacions culturals del passat grec.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-GI-CE05-CR04",
+        "descripcion": "Mostrar respecte per les expressions culturals i els valors cívics del nostre passat com un element significatiu de la nostra identitat.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
+    "saberes_basicos": {
+     "bloques": {
+      "1. Sistema de la llengua grega": [
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-001",
+        "subtitulo_nivel_1": "Abecedari, pronunciació i accentuació de la llengua grega.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-002",
+        "subtitulo_nivel_1": "Tipus de paraules: variables i invariables.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-003",
+        "subtitulo_nivel_1": "Concepte de la llengua flexiva: nominal i pronominal.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-004",
+        "subtitulo_nivel_1": "Conjugació: El verb grec.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-005",
+        "subtitulo_nivel_1": "Els casos i els usos d’aquests.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-006",
+        "subtitulo_nivel_1": "La concordança i l'ordre de paraules.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-007",
+        "subtitulo_nivel_1": "L'oració: simples i compostes.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-008",
+        "subtitulo_nivel_1": "Formes nominals del verb.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-009",
+        "subtitulo_nivel_1": "Estratègies d'interpretació i traducció, errors freqüents i tècniques per a evitar-los.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-010",
+        "subtitulo_nivel_1": "Estratègies i eines, analògiques i digitals, individuals i cooperatives, per a l'autoavaluació, la coavaluació i l'autoreparació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-011",
+        "subtitulo_nivel_1": "Acceptació de l'error com a part del procés d'aprenentatge i actitud positiva de superació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-012",
+        "subtitulo_nivel_1": "Importància de la influència del grec en les llengües del repertori individual de l'alumnat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-013",
+        "subtitulo_nivel_1": "Recursos analògics i digitals per a l'adquisició de llengües: Portfolio europeu de les llengües (PEL), imatges, glossaris, diccionaris, etc.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB01-014",
+        "subtitulo_nivel_1": "Estratègies, eines i tècniques de retroversió de textos.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "2. El grec i el plurilingüisme: ètims, derivació, composició i hel·lenismes": [
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-001",
+        "subtitulo_nivel_1": "Origen i evolució dels sistemes d'escriptura. L'alfabet grec.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-002",
+        "subtitulo_nivel_1": "Regles de transcripció de l'alfabet grec a la llengua d'ensenyament.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-003",
+        "subtitulo_nivel_1": "Formants grecs (lexemes, sufixos i prefixos) en paraules de la llengua d'ensenyament i en termes específics de les ciències i la tècnica.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-004",
+        "subtitulo_nivel_1": "Hel·lenismes i tecnicismes d'ús freqüent, integrats en les llengües modernes i l’ús d’aquests en diferents tipus de textos (literaris, periodístics, publicitaris...)",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-005",
+        "subtitulo_nivel_1": "Influència del grec en les llengües d'ensenyament i en la resta de llengües que conformen el repertori lingüístic individual de l'alumnat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-006",
+        "subtitulo_nivel_1": "Lèxic específic bàsic per a la reflexió sobre la comunicació, la llengua i l’aprenentatge d’aquesta.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-007",
+        "subtitulo_nivel_1": "Interés per conéixer el significat etimològic de les paraules i la importància de l'ús adequat del vocabulari com a instrument bàsic en la comunicació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-008",
+        "subtitulo_nivel_1": "Valoració de la importància del grec per a la comprensió i expressió correctes en les diferents llengües del seu repertori lingüístic individual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-009",
+        "subtitulo_nivel_1": "Respecte per la diversitat lingüística.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB02-010",
+        "subtitulo_nivel_1": "Bibliografia i bibliografia web (lexicografia, repertoris i glossaris) en l'estudi i aprenentatge de la llengua grega com a base en la consolidació d'altres llengües estrangeres.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "3. Literatura grega: gèneres literaris i obres": [
+       {
+        "nombre": "ES-VC-BAT1-GI-SB03-001",
+        "subtitulo_nivel_1": "La llengua grega com a principal via de transmissió del món clàssic.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB03-002",
+        "subtitulo_nivel_1": "Respecte a l'autoria de les fonts d'informació consultades.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "4. Grècia i la seua pervivència": [
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-001",
+        "subtitulo_nivel_1": "Principals aspectes geogràfics i etapes històriques del món grec relacionats amb la comprensió de l'evolució d'Europa.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-002",
+        "subtitulo_nivel_1": "El món grec i la mar.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-003",
+        "subtitulo_nivel_1": "Evolució històrica de l'organització social de Grècia com a part essencial de la història i cultura de la societat actual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-004",
+        "subtitulo_nivel_1": "Aspectes fonamentals de la vida quotidiana i cultura gregues en la conformació de la nostra identitat com a societat i anàlisi crítica d'aquests.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-005",
+        "subtitulo_nivel_1": "Respecte per la diversitat cultural.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-006",
+        "subtitulo_nivel_1": "Interés per conéixer l'evolució cultural a través de l'estudi de la civilització grega.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-007",
+        "subtitulo_nivel_1": "Tècniques bàsiques de cerca i tractament de la informació històrica i geogràfica mitjançant les TIC.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-008",
+        "subtitulo_nivel_1": "Estratègies de creació pròpia, individuals o en grup, d'investigació sobre aspectes de la història i geografia grega fent ús de fonts d'informació fiables i de les noves tecnologies.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-009",
+        "subtitulo_nivel_1": "Estratègies i eines (analògiques i digitals) per a relacionar, comentar i interpretar el passat i el present a partir dels coneixements adquirits i de la pròpia experiència.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-010",
+        "subtitulo_nivel_1": "Relació de Grècia amb cultures antigues i la seua aportació a la cultura i al pensament de la societat occidental.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-011",
+        "subtitulo_nivel_1": "Les representacions i festivals teatrals, evolució i pervivència en l'actualitat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-012",
+        "subtitulo_nivel_1": "Les competicions atlètiques i la pervivència d’aquestes en l'actualitat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-013",
+        "subtitulo_nivel_1": "L'educació en l'antiga Grècia: els models educatius d'Atenes i Esparta i la comparació amb els sistemes actuals.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-014",
+        "subtitulo_nivel_1": "Les institucions polítiques gregues i la influència i pervivència d’aquestes en el sistema polític actual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-015",
+        "subtitulo_nivel_1": "Vestigis de la presència grega en la península Ibèrica.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-016",
+        "subtitulo_nivel_1": "Comparació i anàlisi contextualitzada d'aspectes de la societat grega relacionats amb els principals reptes del segle XXI.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-017",
+        "subtitulo_nivel_1": "Interés per conéixer l'origen grec de moltes de les nostres tradicions, costums i manifestacions culturals.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-GI-SB04-018",
+        "subtitulo_nivel_1": "Estratègies de creació pròpia individuals o grupals sobre el llegat de la cultura grega, fent ús de fonts d'informació fiables i de les noves tecnologies.",
+        "subtitulo_nivel_2": ""
+       }
+      ]
+     }
+    }
+   },
    "HF": {
     "denominacion": "HISTÒRIA DE LA FILOSOFIA",
     "competencias_especificas": {
@@ -41821,6 +42198,403 @@
        {
         "nombre": "ES-VC-BAT1-LU-SB02-002",
         "subtitulo_nivel_1": "Estratègies i valors − Expressió raonada d'opinions personals sobre obres literàries de literatura universal. − Expressió raonada d'interpretacions documentades sobre diferents aspectes de la literatura universal. − Expressió de les emocions a través de la lectura i de la creació literàries. − Elaboració acurada de treballs d'investigació al voltant de les obres de la literatura universal. − Participació constructiva i col·laborativa en tasques compartides de creació literària o en manifestacions escèniques. − Participació constructiva i col·laborativa en intercanvis comunicatius a propòsit de la lectura d'obres de la literatura universal. − Sentiment de gaudi personal en la lectura autònoma d'obres de la literatura universal. − Establiment acurat de relacions entre els textos literaris i altres textos literaris, no literaris, o amb altres obres artístiques.",
+        "subtitulo_nivel_2": ""
+       }
+      ]
+     }
+    }
+   },
+   "LI": {
+    "denominacion": "LLATÍ I i II",
+    "competencias_especificas": {
+     "ES-VC-BAT1-LI-CE01": {
+      "descripcion": "Analitzar els elements bàsics de la llengua llatina, tot identificant i reflexionant sobre el seu funcionament lingüístic a través de la comparació amb les llengües conegudes per l'alumnat.",
+      "explicacion_bloque_competencial": "Amb l'adquisició d'aquesta competència es pretén que l'alumnat entenga de manera progressiva l'estreta vinculació existent entre el funcionament gramatical i sintàctic de les llengües. També que puga assimilar de forma comparada el funcionament del llatí, el concepte de flexió i les seues construccions més característiques, així com aconseguir un coneixement essencial de la fonologia, morfologia, sintaxi i lèxic de la llengua llatina. D'aquesta manera, l'alumnat aconsegueix activar aquests sabers bàsics de caràcter lingüístic com a eina per a la comprensió i no com a fi, per a arribar a entendre la llengua com una entitat viva i no com la suma abstracta de diferents elements com són el vocabulari i la gramàtica. Amb l'aprofundiment en la comprensió del funcionament gramatical de la llengua llatina, l'alumnat aconsegueix una reflexió personal sobre la seua llengua, aprén a usar termes metalingüístics i amplia el seu repertori lèxic, la qual cosa comporta el desenvolupament de la seua maduresa i autonomia personal, i afavoreix les competències clau en comunicació lingüística i plurilingüe. Per al primer curs es considera oportú el maneig dels elements bàsics del sistema lingüístic a nivell nominal, pronominal, verbal i oracional. En el segon curs, a més de la consolidació de tot l'anterior, es recomana l'aprofundiment en les excepcions de la flexió nominal i pronominal, en els aspectes més complexos de la conjugació verbal, personal i no personal, i els de la sintaxi oracional. Així, mitjançant aquesta competència, es pretén que al final del primer curs l'alumnat valore la importància del llatí com a mitjà de transmissió de cultura, tant oral com escrita. I al final del segon, que aprecie la diversitat lingüística i s'interesse per l'adquisició d'altres llengües estrangeres com a mitjà d'enriquiment personal i professional.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-LI-CE01-CR01",
+        "descripcion": "1. Identificar i analitzar els aspectes morfològics elementals del llatí (declinacions i conjugacions) en frases i textos de dificultat graduada.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE01-CR02",
+        "descripcion": "2. Distingir i analitzar els aspectes sintàctics fonamentals del llatí en frases i textos de dificultat graduada.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE01-CR03",
+        "descripcion": "3. Reconéixer i ajustar adequadament els casos de concordança morfològica i sintàctica tenint en compte la seua classificació i el context oracional.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE01-CR04",
+        "descripcion": "4. Identificar els diferents temps verbals llatins tenint en compte la seua classificació i el context oracional.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE01-CR05",
+        "descripcion": "5. Valorar la importància del llatí com a mitjà de transmissió de cultura i la comunicació escrita i oral.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT1-LI-CE02": {
+      "descripcion": "Identificar i valorar els principals elements lèxics llatins, les seues variacions i el seu llegat en les llengües conegudes per l'alumnat, a través de l'aprenentatge de l'etimologia, els llatinismes, la composició i la derivació.",
+      "explicacion_bloque_competencial": ". Aquesta competència, aplicada des d'un enfocament plurilingüe, ajuda a l'alumnat a ampliar el vocabulari de les llengües que coneix, ja que les relaciona entre si, en identificar els lexemes, prefixos i sufixos que conformen les paraules, i a analitzar els possibles canvis que s'hagen produït de manera diacrònica a nivell fonètic, morfològic o semàntic. Així, l'alumnat pot identificar i explicar la base etimològica d'una paraula, deduir el significat de neologismes o termes de llenguatge especialitzat, així com crear famílies lèxiques. D'altra banda, contribueix a millorar la comprensió lectora i l'expressió oral i escrita de l'alumnat en llengües romàniques o no romàniques. D'aquesta manera, s'impulsa un aprenentatge interconnectat i deductiu, descobrint i valorant el paper de la llengua llatina com a origen de les llengües romàniques i la seua contribució en aquelles que no venen directament del llatí. Aquesta competència afavoreix el respecte per la diversitat lingüística i promou l'interés per altres cultures per a construir una identitat europea, a més de promoure les competències clau en comunicació lingüística i plurilingüe. Aquesta competència ha de desenvolupar-se al llarg dels dos cursos. Durant el primer curs es recomana el tractament dels elements més transparents i d'ús més freqüent de la llengua llatina respecte als del repertori de l'alumnat, així com la utilització d'unes normes bàsiques d'evolució fonètica que permeten a l'alumnat trobar les relacions lèxiques. En el segon curs ha de posar-se l'èmfasi en una major sistematització de la formació de derivats nominals i verbals en el llatí i en les llengües de l'alumnat, atés l'ús de prefixos i sufixos.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-LI-CE02-CR01",
+        "descripcion": "1. Fer un ús pertinent dels llatinismes i expressions llatines més comunes en un context adequat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE02-CR02",
+        "descripcion": "2. Identificar i sistematitzar la presència d'ètims llatins en les llengües romàniques i altres llengües del repertori lingüístic de l'alumnat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE02-CR03",
+        "descripcion": "3. Deduir el significat etimològic d'un terme d'ús comú, servint-se de la comparació amb altres llengües del seu repertori.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE02-CR04",
+        "descripcion": "4. Explicar la relació del llatí amb les llengües modernes utilitzant els coneixements lingüístics del repertori de l'alumnat.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT1-LI-CE03": {
+      "descripcion": "Argumentar, interpretar, traduir i produir textos llatins, escrits i orals, de dificultat graduada a partir d'estratègies de deducció i inducció, utilitzant el context lingüístic, històric, social i polític.",
+      "explicacion_bloque_competencial": ". La consecució d'aquesta competència permet a l'alumnat la comprensió i expressió oral i escrita en llengua llatina partint de textos de dificultat progressiva i contextualitzats des del punt de vista històric, polític, social i cultural, ja que la lectura de textos llatins implica un context allunyat de l'experiència personal. Per aquest motiu, és necessari usar eines d'interpretació que col·laboren a desenvolupar l'autonomia de l'alumnat a l'hora de llegir els textos, tant adaptats com originals, fugint de l'excessiu interés per l'anàlisi i desxifrat d'unitats gramaticals en lloc de valorar la comprensió global del text. La comprensió i interpretació de textos llatins permet a l'alumnat consolidar els coneixements adquirits en altres matèries i relacionar-los, de manera que valore la cultura llatina com a base de la civilització occidental. Al seu torn, ser conscients d'aquesta vinculació impulsa la seua autoestima i li permet l'emissió de judicis de valor argumentats. Mitjançant aquesta competència específica es valora la importància de la cerca de fonts primàries adequades per a obtindre informació, i es descobreix la pervivència i adaptació d'elements lingüístics i culturals del món romà en el nostre present. Així mateix, es potencien les competències clau en comunicació lingüística i plurilingüe, a més de la digital i la ciutadana, en valorar i respectar la diversitat lingüística i cultural de la societat. El desenvolupament competencial d'aquest apartat ha d'observar atentament una gradació i progrés adequats. En el primer curs l'alumnat hauria d'aconseguir llegir, traduir, comprendre textos senzills i adaptats, que es corresponguen amb els elements gramaticals treballats en la competència específica 1, i comprendre i produir missatges orals en llatí com a manera de reforçar l'aprenentatge lingüístic per mitjà de l'oralitat i reconéixer la importància del llatí com a vehicle de transmissió de cultura i comunicació. En segon, interpretar i traduir textos llatins adaptats i originals de diferents gèneres literaris, amb una anàlisi valorativa de la pròpia versió que permeta considerar l'error com a motor del seu aprenentatge.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-LI-CE03-CR01",
+        "descripcion": "1. Aplicar els principals elements del sistema de la llengua llatina per a la seua comprensió i expressió oral i escrita.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE03-CR02",
+        "descripcion": "2. Llegir textos i comprendre missatges orals i escrits de dificultat graduada en llatí.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE03-CR03",
+        "descripcion": "3. Produir frases o textos senzills escrits i orals en llatí, individualment o en grup, utilitzant les estructures i el lèxic apresos.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE03-CR04",
+        "descripcion": "4. Interpretar i traduir frases o textos llatins adaptats i de dificultat graduada, fent ús de tots els recursos i estratègies apreses.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE03-CR05",
+        "descripcion": "5. Valorar la importància del llatí com a mitjà de transmissió de cultura i la comunicació escrita i oral.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT1-LI-CE04": {
+      "descripcion": "Identificar i valorar les contribucions de la cultura llatina en l'origen de la ciutadania europea i relacionar críticament el present i el passat.",
+      "explicacion_bloque_competencial": ". Per mitjà d'aquesta competència l'alumnat és capaç de reconéixer i apreciar la importància de les contribucions sociopolítiques que el món romà ha realitzat a la nostra forma de convivència, tant a nivell local i autonòmic, com nacional i europeu. L'alumnat ha de ser conscient que l'ordenació del nostre sistema polític i legal, les assemblees representatives dels diferents nivells administratius, del local a l'europeu, i la pròpia configuració dels poders legislatiu, executiu i judicial, parteixen en gran manera del món romà. Tot això contribueix a una adquisició més profunda de la competència clau ciutadana, que ha de permetre a l'alumnat participar plenament en la vida social i cívica com a membres d'una ciutadania responsable. També li obri la possibilitat de prendre consciència dels esdeveniments mundials i el compromís actiu amb la sostenibilitat, i l'assoliment d'una ciutadania mundial amb una reflexió crítica sobre els grans problemes ètics del nostre temps. Mitjançant aquesta competència, es contribueix igualment al desenvolupament de les competències clau personal, social, i d'aprendre a aprendre, i emprenedora, ja que es treballa la importància de l'herència cultural del passat per a comprendre i reflexionar sobre el nostre present. Al final del primer curs, l'alumnat ha de ser capaç de reflexionar sobre la influència i llegat de la cultura romana en la civilització occidental i en el seu entorn més pròxim, i presentar continguts en diversos formats. Al final del segon, s’ha d’aprofundir en la importància dels gèneres literaris en les manifestacions culturals posteriors, per mitjà de senzilles investigacions de temes monogràfics. En tots dos cursos aquesta competència fomenta el debat respectuós cap a altres cultures i maneres de vida.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-LI-CE04-CR01",
+        "descripcion": "1. Identificar i debatre sobre els principals esdeveniments polítics, històrics i socials de la civilització llatina i relacionar-los amb la situació sociopolítica europea actual utilitzant fonts clàssiques i actuals.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE04-CR02",
+        "descripcion": "2. Reconéixer la influència de la mitologia clàssica com a font d'inspiració de manifestacions literàries i artístiques.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE04-CR03",
+        "descripcion": "3. Elaborar i presentar continguts propis en diversos formats mitjançant l'ús de cerca d'informació adequada.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE04-CR04",
+        "descripcion": "4. Expressar respectuosament opinions argumentades sobre la importància de la multiculturalitat per al desenvolupament de la societat.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT1-LI-CE05": {
+      "descripcion": "Identificar i valorar el patrimoni històric, arqueològic, artístic i cultural, material i immaterial, de la civilització llatina com a font de saber i d'inspiració de diferents manifestacions culturals.",
+      "explicacion_bloque_competencial": ". Per mitjà d'aquesta competència es capacita l'alumnat per a reconéixer la presència del patrimoni romà i valorar la seua pervivència, tot analitzant de manera crítica la seua validesa en l'actualitat.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT1-LI-CE05-CR01",
+        "descripcion": "1. Explorar la presència del llegat romà en l'entorn i localitzar exemples de la pervivència de l'antiguitat clàssica en la vida quotidiana.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE05-CR02",
+        "descripcion": "2. Valorar la presència de referents patrimonials arqueològics, arquitectònics i artístics romans en l'entorn més pròxim i en la península ibèrica.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE05-CR03",
+        "descripcion": "3. Dissenyar, planificar i realitzar activitats orientades al coneixement i estima de les manifestacions culturals del passat romà.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT1-LI-CE05-CR04",
+        "descripcion": "4. Mostrar respecte per les expressions culturals i els valors cívics del nostre passat com un element significatiu de la nostra identitat.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
+    "saberes_basicos": {
+     "bloques": {
+      "1. Sistema de la llengua llatina": [
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-001",
+        "subtitulo_nivel_1": "Abecedari, pronunciació i accentuació de la llengua llatina.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-002",
+        "subtitulo_nivel_1": "Tipus de paraules: variables i invariables.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-003",
+        "subtitulo_nivel_1": "Concepte de la llengua flexiva: nominal i pronominal.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-004",
+        "subtitulo_nivel_1": "Conjugació: El verb llatí.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-005",
+        "subtitulo_nivel_1": "Els casos i els seus usos.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-006",
+        "subtitulo_nivel_1": "La concordança i l'ordre de paraules.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-007",
+        "subtitulo_nivel_1": "L'oració: simples i compostes.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-008",
+        "subtitulo_nivel_1": "Formes nominals del verb.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-009",
+        "subtitulo_nivel_1": "Estratègies d'interpretació i traducció, errors freqüents i tècniques per a evitar-los.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-010",
+        "subtitulo_nivel_1": "Estratègies i eines, analògiques i digitals, individuals i cooperatives, per a l'autoavaluació, la coavaluació i l'autoreparació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-011",
+        "subtitulo_nivel_1": "Acceptació de l'error com a part del procés d'aprenentatge i actitud positiva de superació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-012",
+        "subtitulo_nivel_1": "Importància de l'evolució lingüística del llatí en les llengües del repertori individual de l'alumnat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-013",
+        "subtitulo_nivel_1": "Recursos analògics i digitals per a l'adquisició de llengües: Portfolio",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB01-014",
+        "subtitulo_nivel_1": "Europeu de les Llengües (PEL), imatges, glossaris, diccionaris, etc. Estratègies, eines i tècniques de retroversió de textos.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "2. El llatí i el plurilingüisme: ètims, derivació, composició i llatinismes": [
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-001",
+        "subtitulo_nivel_1": "Origen i evolució dels sistemes d'escriptura. L'alfabet llatí.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-002",
+        "subtitulo_nivel_1": "Etapes de l'evolució de la llengua llatina.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-003",
+        "subtitulo_nivel_1": "Anàlisi i comprensió de formants llatins (lexemes, sufixos i prefixos) en paraules de la llengua d'ensenyament i en termes específics de les ciències i la tècnica.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-004",
+        "subtitulo_nivel_1": "Expressions i llatinismes d'ús freqüent, integrades en les llengües modernes i el seu ús en diferents tipus de textos (literaris, periodístics, publicitaris...)",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-005",
+        "subtitulo_nivel_1": "Influència del llatí en l'evolució de les llengües d'ensenyament i de la resta de llengües que conformen el repertori lingüístic individual de l'alumnat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-006",
+        "subtitulo_nivel_1": "Paral·lelisme entre llengües romàniques i no romàniques.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-007",
+        "subtitulo_nivel_1": "Regles bàsiques en l'evolució fonètica del llatí a la llengua d'ensenyament.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-008",
+        "subtitulo_nivel_1": "Lèxic específic bàsic per a la reflexió sobre la comunicació, la llengua i el seu aprenentatge.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-009",
+        "subtitulo_nivel_1": "Interés per conéixer el significat etimològic de les paraules i la importància de l'ús adequat del vocabulari com a instrument bàsic en la comunicació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-010",
+        "subtitulo_nivel_1": "Valoració de la importància del llatí per a la correcta comprensió i expressió en les diferents llengües del seu repertori lingüístic individual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-011",
+        "subtitulo_nivel_1": "Respecte per la diversitat lingüística.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB02-012",
+        "subtitulo_nivel_1": "Ús de bibliografia i bibliografia web (lexicografia, repertoris, glossaris) en l'estudi i aprenentatge de la llengua llatina com a base en la consolidació d'altres llengües estrangeres.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "3. Literatura llatina: gèneres literaris i obres": [
+       {
+        "nombre": "ES-VC-BAT1-LI-SB03-001",
+        "subtitulo_nivel_1": "La llengua llatina com a principal via de transmissió del món clàssic.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB03-002",
+        "subtitulo_nivel_1": "Etapes i vies de transmissió de la literatura llatina.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB03-003",
+        "subtitulo_nivel_1": "Respecte a l'autoria de les fonts d'informació consultades.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "4. Roma i la seua pervivència": [
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-001",
+        "subtitulo_nivel_1": "Principals aspectes geogràfics i etapes històriques del món romà relacionats amb la comprensió de l'evolució d'Europa.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-002",
+        "subtitulo_nivel_1": "El Mare Nostrum/la mar Mediterrània com a cruïlla de cultures ahir i hui.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-003",
+        "subtitulo_nivel_1": "Evolució històrica de l'organització social de Roma com a part essencial de la història i cultura de la societat actual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-004",
+        "subtitulo_nivel_1": "Aspectes fonamentals de la vida quotidiana i cultura romanes en la conformació de la nostra identitat com a societat i anàlisi crítica d'aquests.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-005",
+        "subtitulo_nivel_1": "Respecte per la diversitat cultural.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-006",
+        "subtitulo_nivel_1": "Interés per conéixer l'evolució cultural a través de l'estudi de la civilització llatina.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-007",
+        "subtitulo_nivel_1": "Tècniques bàsiques de cerca i tractament de la informació històrica i geogràfica mitjançant les TIC.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-008",
+        "subtitulo_nivel_1": "Estratègies de creació pròpia, individuals o en grup, d'investigació sobre aspectes de la història i geografia romana fent ús de fonts d'informació fiables i de les noves tecnologies.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-009",
+        "subtitulo_nivel_1": "Estratègies i eines (analògiques i digitals) per a relacionar, comentar i interpretar el passat i el present a partir dels coneixements adquirits i de la pròpia experiència.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-010",
+        "subtitulo_nivel_1": "Relació de Roma amb cultures antigues i la seua aportació a la cultura i al pensament de la societat occidental.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-011",
+        "subtitulo_nivel_1": "La romanització: Hispània i la seua pervivència.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-012",
+        "subtitulo_nivel_1": "Obres públiques i urbanisme: llegat en l'actualitat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-013",
+        "subtitulo_nivel_1": "El dret romà i la seua importància en el sistema jurídic actual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-014",
+        "subtitulo_nivel_1": "Les institucions polítiques romanes i la seua influència i pervivència en el sistema polític actual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-015",
+        "subtitulo_nivel_1": "Elements més destacats del patrimoni romà en la península ibèrica amb especial atenció als de la Comunitat Valenciana.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-016",
+        "subtitulo_nivel_1": "Comparació i anàlisi contextualitzada d'aspectes de la societat romana relacionats amb els principals reptes del segle XXI.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-017",
+        "subtitulo_nivel_1": "Posada en valor, compromís de preservació i gaudi del patrimoni arqueològic romà com a bé social i senyal d'identitat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-018",
+        "subtitulo_nivel_1": "Interés per conéixer l'origen llatí de moltes de les nostres tradicions, costums i manifestacions culturals.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT1-LI-SB04-019",
+        "subtitulo_nivel_1": "Estratègies de creació pròpia individuals o grupals sobre el llegat de la cultura romana, fent ús de fonts d'informació fiables i de les noves tecnologies.",
         "subtitulo_nivel_2": ""
        }
       ]
@@ -54305,6 +55079,318 @@
      }
     }
    },
+   "GI": {
+    "denominacion": "GREC I i II",
+    "competencias_especificas": {
+     "ES-VC-BAT2-GI-CE01": {
+      "descripcion": "Analitzar els elements bàsics de la llengua grega, tot identificant i reflexionant sobre el funcionament lingüístic a través de la comparació amb el llatí i amb les llengües conegudes per l'alumnat.",
+      "explicacion_bloque_competencial": "Amb l'adquisició d'aquesta competència es pretén que l'alumnat entenga de manera progressiva la vinculació estreta en el funcionament gramatical i sintàctic de la llengua grega amb la llatina, de manera que mitjançant l'analogia i la comparació entre ambdues puga comprendre amb més facilitat el funcionament d’aquestes, el concepte de flexió i les construccions més característiques, així com aconseguir un coneixement essencial de la fonologia, morfologia, sintaxi i lèxic de la llengua grega. D'aquesta manera, l'alumnat aconsegueix activar aquests sabers bàsics de caràcter lingüístic com a eina per a la comprensió i no com a fi, per arribar a entendre la llengua com una entitat viva i no com la suma abstracta de diferents elements com són el vocabulari i la gramàtica. Amb l'aprofundiment en la comprensió del funcionament gramatical de la llengua grega, l'alumnat aconsegueix una reflexió personal sobre la seua pròpia llengua, aprén a manejar termes metalingüístics i amplia el repertori lèxic, la qual cosa comporta el desenvolupament de la seua maduresa i autonomia personal, i afavoreix les competències clau en comunicació lingüística i plurilingüe. Per al primer curs es considera oportú el maneig dels elements bàsics del sistema lingüístic a nivell nominal, pronominal, verbal i oracional, i comparar-lo amb la llengua llatina. En el segon curs, a més de la consolidació de tot l'anterior, es recomana l'aprofundiment en les excepcions de la flexió nominal i pronominal, en els aspectes més complexos de la conjugació verbal, personal i no personal, i els de la sintaxi oracional. Així, mitjançant aquesta competència, es pretén que al final del primer curs l'alumnat valore la importància del grec com a mitjà de transmissió de cultura tant oral com escrita. I al final del segon, que aprecie la diversitat lingüística i s'interesse per l'adquisició d'altres llengües estrangeres com a mitjà d'enriquiment personal i professional.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-GI-CE01-CR01",
+        "descripcion": "Identificar i analitzar en profunditat els aspectes morfològics del grec (excepcions i irregularitats de la declinació i conjugació) en textos clàssics grecs.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE01-CR02",
+        "descripcion": "Distingir i analitzar en profunditat els aspectes sintàctics del grec en textos clàssics.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE01-CR03",
+        "descripcion": "Reconéixer i classificar les oracions i les construccions sintàctiques gregues en textos clàssics hel·lens.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE01-CR04",
+        "descripcion": "Utilitzar de manera precisa la formació i funció de les formes personals i no personals del verb grec en textos clàssics.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE01-CR05",
+        "descripcion": "Valorar la llengua grega com a mitjà per a la comprensió i coneixement de l'origen de moltes paraules del lèxic de l'alumnat i com a porta d'accés a un vocabulari més específic de naturalesa filosòfica o científica.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT2-GI-CE02": {
+      "descripcion": "Identificar i valorar els principals elements lèxics grecs, els canvis i el llegat d’aquests en les llengües conegudes per l'alumnat, a través de l'aprenentatge de l'etimologia, els hel·lenismes, els neologismes, la composició i la derivació, tant de vocabulari quotidià com especialitzat.",
+      "explicacion_bloque_competencial": "Aquesta competència, aplicada des d'un enfocament plurilingüe, ajuda l'alumnat a ampliar el vocabulari de les llengües que coneix, ja que les relaciona entre si per mitjà de la identificació dels lexemes, prefixos i sufixos que conformen les paraules, i a analitzar els possibles canvis que s'hagen produït de manera diacrònica a nivell fonètic, morfològic o semàntic. D'altra banda, contribueix a millorar la comprensió lectora i l'expressió oral i escrita de l'alumnat en llengües romàniques o no romàniques, de manera que pot identificar i explicar la base etimològica d'una paraula, deduir el significat de neologismes o termes de llenguatge especialitzat, així com crear famílies lèxiques. D'aquesta manera, s'impulsa un aprenentatge interconnectat i deductiu, descobrint i valorant el paper de la llengua grega en la formació de les llengües romàniques i la contribució d’aquestes en aquelles més allunyades per mitjà del vocabulari específic de diversos camps científics i tècnics. Aquesta competència afavoreix el respecte per la diversitat lingüística i promou l'interés per altres cultures per a construir una identitat europea, a més de promoure les competències clau en comunicació lingüística i plurilingüe. Al final del primer curs es pretén que l'alumnat aplique les normes bàsiques d'evolució fonètica que permeten trobar les relacions lèxiques dels ètims grecs en les llengües del repertori individual. Al final del segon curs, ha d'haver aconseguit una major sistematització de la formació de derivats nominals i verbals en el grec i en les llengües que coneix, tenint en compte l'ús de la composició, prefixos i sufixos per a inferir-ne el significat.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-GI-CE02-CR01",
+        "descripcion": "Conéixer i aplicar les regles fonamentals per a deduir l'evolució de les paraules gregues a les llengües cooficials de la Comunitat Valenciana",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE02-CR02",
+        "descripcion": "Manejar adequadament els mecanismes de derivació i composició en les llengües conegudes per l'alumnat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE02-CR03",
+        "descripcion": "Inferir el significat d'alguns tecnicismes i neologismes aplicant els principals fonaments de la derivació i composició amb elements grecs.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE02-CR04",
+        "descripcion": "Adoptar una actitud de respecte cap a la diversitat com a riquesa cultural i lingüística reflexionant sobre els estereotips lingüístics.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT2-GI-CE03": {
+      "descripcion": "Argumentar, interpretar, traduir i produir textos grecs, escrits i orals, de dificultat graduada a partir d'estratègies de deducció i inducció utilitzant el context lingüístic, històric, social i polític.",
+      "explicacion_bloque_competencial": "L'adquisició d'aquesta competència permet a l'alumnat la comprensió i l’expressió oral i escrita en llengua grega partint de textos de dificultat progressiva i contextualitzats des del punt de vista històric, polític, social i cultural, ja que la lectura de textos grecs implica un context allunyat de l'experiència personal. Per aquest motiu, és necessari usar eines d'interpretació que col·laboren a desenvolupar l'autonomia de l'alumnat a l'hora de llegir els textos, tant adaptats com originals, fugint de l’interés excessiu per l'anàlisi i desxifratge d'unitats gramaticals en lloc de valorar la comprensió global del text. La comprensió i la interpretació de textos grecs permet a l'alumnat consolidar els coneixements adquirits en altres matèries i relacionar-los de manera que valore la cultura hel·lènica com un dels pilars de la civilització occidental. Al seu torn, ser conscients d'aquesta vinculació impulsa la seua autoestima i li permet l'emissió de judicis de valor argumentats. Mitjançant aquesta competència específica es valora la importància de la cerca de fonts primàries adequades per a obtindre informació i es descobreix la pervivència i adaptació d'elements lingüístics i culturals del món hel·lé en el nostre present. També es potencien, alhora, les competències clau en comunicació lingüística i plurilingüe, a més de la digital i la ciutadana, en valorar i respectar la diversitat lingüística i cultural de la societat. El desenvolupament competencial d'aquest apartat ha d'observar atentament una gradació i progrés adequats. En el primer curs l'alumnat hauria d'aconseguir llegir, traduir, comprendre textos senzills i adaptats que es corresponguen amb els elements gramaticals treballats en la competència 1 i comprendre i produir missatges orals en grec com a manera de reforçar l'aprenentatge lingüístic per mitjà de l'oralitat i reconéixer la importància del grec com a vehicle de transmissió de cultura i comunicació. En el segon, interpretar i traduir textos adaptats i originals de diferents gèneres literaris amb una anàlisi valorativa de la versió que permeta considerar l'error com a motor de l’aprenentatge.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-GI-CE03-CR01",
+        "descripcion": "Aplicar els coneixements sobre elements i construccions morfològiques i sintàctiques regulars i irregulars en la interpretació i traducció de textos clàssics.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE03-CR02",
+        "descripcion": "Ajustar el significat dels termes grecs tenint en compte la informació proporcionada en els textos i utilitzant els suports necessaris per a la seua traducció.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE03-CR03",
+        "descripcion": "Llegir passatges i textos grecs clàssics i posar-los en el context de la literatura grega.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE03-CR04",
+        "descripcion": "Interpretar i traduir textos hel·lens adaptats o originals de diferents gèneres literaris, i apreciar les semblances i coincidències amb altres llengües conegudes.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE03-CR05",
+        "descripcion": "Reflexionar sobre les traduccions pròpies proposant i argumentant els canvis a partir de la reflexió lingüística.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT2-GI-CE04": {
+      "descripcion": "Identificar i valorar les contribucions del món grec en l'origen de la democràcia i de la ciutadania europea, i relacionar críticament el present i el passat.",
+      "explicacion_bloque_competencial": "Les matèries Grec I i II no només comporten l'estudi de la llengua, sinó també de la cultura per a poder contextualitzar-la, per la qual cosa amb aquesta competència es pretén que l'alumnat analitze les principals característiques de la civilització grega, les relacione amb la nostra cultura actual i valore la importància de l'herència hel·lènica en la nostra ciutadania democràtica europea. Aquesta anàlisi ha de promoure en l'alumnat estratègies de reflexió i inferència que potencien el seu desenvolupament personal i judici crític, ja que requereixen una anàlisi valorativa sobre el llegat grec, una investigació argumentada en fonts tant analògiques com digitals, un diàleg respectuós davant aspectes hui en dia ja superats i una valoració aliena al presentisme. Mitjançant l'estudi de textos grecs, l'alumnat ha de poder percebre la referència constant a la cultura grega i descobrir la immensa aportació d’aquesta a la identitat europea. Al final del primer curs, l'alumnat ha de ser capaç de reflexionar sobre la influència i llegat de la cultura grega en la civilització romana, en l'occidental i en el seu entorn més pròxim, i presentar els continguts en diversos formats. Al final del segon curs, ha d’aprofundir en la importància dels gèneres literaris en les manifestacions culturals posteriors, per mitjà d’investigacions senzilles de temes monogràfics. En ambdós cursos aquesta competència fomenta el debat respectuós cap a altres cultures i maneres de vida.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-GI-CE04-CR01",
+        "descripcion": "Identificar i reflexionar sobre els elements essencials dels gèneres literaris grecs amb la finalitat de reconéixer les estructures bàsiques d’aquests i contrastar-los amb textos de la literatura actual.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE04-CR02",
+        "descripcion": "Revisar la presència d'elements de la mitologia clàssica en la literatura actual.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE04-CR03",
+        "descripcion": "Planificar i realitzar senzilles investigacions en formats analògics o digitals sobre les contribucions de la cultura hel·lena, utilitzant diverses fonts d'informació.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE04-CR04",
+        "descripcion": "Argumentar i debatre respectuosament sobre la importància de la cultura grega per al desenvolupament d'una societat democràtica i global.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT2-GI-CE05": {
+      "descripcion": "Identificar i valorar el patrimoni, material i immaterial, de la civilització grega com a font de saber i d'inspiració de diferents manifestacions culturals.",
+      "explicacion_bloque_competencial": "Mitjançant aquesta competència l'alumnat aprén a reconéixer i valorar la presència grega, material i immaterial, com a part dels senyals d'identitat europea, mitjà transmissor de coneixement i font d'inspiració d'altres manifestacions culturals al llarg de la història.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-GI-CE05-CR01",
+        "descripcion": "Investigar sobre el llegat patrimonial en l'art i la cultura heretat de la civilització grega.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE05-CR02",
+        "descripcion": "Identificar i explicar la importància de la tradició grega com a font d'inspiració en les manifestacions culturals i artístiques posteriors.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE05-CR03",
+        "descripcion": "Dissenyar, planificar i realitzar activitats sobre el llegat de la literatura grega per a percebre’n la presència en la nostra cultura actual.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-GI-CE05-CR04",
+        "descripcion": "Mostrar interés i respecte pel descobriment i posada en valor del llegat grec per a indagar sobre la vigència d’aquest en el món actual.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
+    "saberes_basicos": {
+     "bloques": {
+      "1. Sistema de la llengua grega": [
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-001",
+        "subtitulo_nivel_1": "Peculiaritats de la declinació grega.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-002",
+        "subtitulo_nivel_1": "Conjugació: El verb grec.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-003",
+        "subtitulo_nivel_1": "L'oració: simples i compostes.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-004",
+        "subtitulo_nivel_1": "Formes nominals del verb.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-005",
+        "subtitulo_nivel_1": "Estratègies d'interpretació i traducció, errors freqüents i tècniques per a evitar-los.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-006",
+        "subtitulo_nivel_1": "Recursos estilístics freqüents i la relació d’aquests amb el contingut del text.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-007",
+        "subtitulo_nivel_1": "Estratègies i eines, analògiques i digitals, individuals i cooperatives, per a l'autoavaluació, la coavaluació i l'autoreparació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-008",
+        "subtitulo_nivel_1": "Acceptació de l'error com a part del procés d'aprenentatge i actitud positiva de superació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-009",
+        "subtitulo_nivel_1": "Recursos analògics i digitals per a l'adquisició de llengües: Portfolio europeu de les llengües (PEL), imatges, glossaris, diccionaris, etc.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB01-010",
+        "subtitulo_nivel_1": "Estratègies, eines i tècniques de retroversió de textos.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "2. El grec i el plurilingüisme: ètims, derivació, composició i hel·lenismes": [
+       {
+        "nombre": "ES-VC-BAT2-GI-SB02-001",
+        "subtitulo_nivel_1": "Formants grecs (lexemes, sufixos i prefixos) en paraules de la llengua d'ensenyament i en termes específics de les ciències i la tècnica.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB02-002",
+        "subtitulo_nivel_1": "Influència del grec en les llengües d'ensenyament i en la resta de llengües que conformen el repertori lingüístic individual de l'alumnat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB02-003",
+        "subtitulo_nivel_1": "Lèxic específic bàsic per a la reflexió sobre la comunicació, la llengua i l’aprenentatge d’aquesta.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB02-004",
+        "subtitulo_nivel_1": "Interés per conéixer el significat etimològic de les paraules i la importància de l'ús adequat del vocabulari com a instrument bàsic en la comunicació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB02-005",
+        "subtitulo_nivel_1": "Valoració de la importància del grec per a la comprensió i expressió correctes en les diferents llengües del seu repertori lingüístic individual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB02-006",
+        "subtitulo_nivel_1": "Respecte per la diversitat lingüística.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB02-007",
+        "subtitulo_nivel_1": "Bibliografia i bibliografia web (lexicografia, repertoris i glossaris) en l'estudi i aprenentatge de la llengua grega com a base en la consolidació d'altres llengües estrangeres.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "3. Literatura grega: gèneres literaris i obres": [
+       {
+        "nombre": "ES-VC-BAT2-GI-SB03-001",
+        "subtitulo_nivel_1": "Principals gèneres literaris, obres i autores grecs, tant dones com homes: importància i influència en expressions artístiques posteriors.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB03-002",
+        "subtitulo_nivel_1": "Pervivència dels temes, motius i tradicions de la literatura grega en la producció cultural europea.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB03-003",
+        "subtitulo_nivel_1": "Analogies i diferències entre els gèneres literaris grecs i els de la literatura actual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB03-004",
+        "subtitulo_nivel_1": "Interés cap a la literatura i la lectura d’aquesta com a font de plaer i de coneixement del món.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB03-005",
+        "subtitulo_nivel_1": "Respecte a l'autoria de les fonts d'informació consultades.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "4. Grècia i la seua pervivència": [
+       {
+        "nombre": "ES-VC-BAT2-GI-SB04-001",
+        "subtitulo_nivel_1": "Respecte per la diversitat cultural.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB04-002",
+        "subtitulo_nivel_1": "Interés per conéixer l'evolució cultural a través de l'estudi de la civilització grega.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB04-003",
+        "subtitulo_nivel_1": "Tècniques bàsiques de cerca i tractament de la informació històrica i geogràfica mitjançant les TIC.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB04-004",
+        "subtitulo_nivel_1": "Estratègies de creació pròpia, individuals o en grup, d'investigació sobre aspectes de la història i geografia grega fent ús de fonts d'informació fiables i de les noves tecnologies.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB04-005",
+        "subtitulo_nivel_1": "Estratègies i eines (analògiques i digitals) per a relacionar, comentar i interpretar el passat i el present a partir dels coneixements adquirits i de la pròpia experiència.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB04-006",
+        "subtitulo_nivel_1": "Exemples rellevants de la influència de la mitologia clàssica en manifestacions artístiques i literàries.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB04-007",
+        "subtitulo_nivel_1": "La importància del discurs públic per a la vida política i social.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB04-008",
+        "subtitulo_nivel_1": "Interés per conéixer l'origen grec de moltes de les nostres tradicions, costums i manifestacions culturals.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-GI-SB04-009",
+        "subtitulo_nivel_1": "Estratègies de creació pròpia individuals o grupals sobre el llegat de la cultura grega, fent ús de fonts d'informació fiables i de les noves tecnologies.",
+        "subtitulo_nivel_2": ""
+       }
+      ]
+     }
+    }
+   },
    "HMC": {
     "denominacion": "HISTÒRIA DEL MÓN CONTEMPORANI",
     "competencias_especificas": {
@@ -55943,6 +57029,323 @@
        {
         "nombre": "ES-VC-BAT2-LU-SB02-002",
         "subtitulo_nivel_1": "Estratègies i valors − Expressió raonada d'opinions personals sobre obres literàries de literatura universal. − Expressió raonada d'interpretacions documentades sobre diferents aspectes de la literatura universal. − Expressió de les emocions a través de la lectura i de la creació literàries. − Elaboració acurada de treballs d'investigació al voltant de les obres de la literatura universal. − Participació constructiva i col·laborativa en tasques compartides de creació literària o en manifestacions escèniques. − Participació constructiva i col·laborativa en intercanvis comunicatius a propòsit de la lectura d'obres de la literatura universal. − Sentiment de gaudi personal en la lectura autònoma d'obres de la literatura universal. − Establiment acurat de relacions entre els textos literaris i altres textos literaris, no literaris, o amb altres obres artístiques.",
+        "subtitulo_nivel_2": ""
+       }
+      ]
+     }
+    }
+   },
+   "LI": {
+    "denominacion": "LLATÍ I i II",
+    "competencias_especificas": {
+     "ES-VC-BAT2-LI-CE01": {
+      "descripcion": "Analitzar els elements bàsics de la llengua llatina, tot identificant i reflexionant sobre el seu funcionament lingüístic a través de la comparació amb les llengües conegudes per l'alumnat.",
+      "explicacion_bloque_competencial": "Amb l'adquisició d'aquesta competència es pretén que l'alumnat entenga de manera progressiva l'estreta vinculació existent entre el funcionament gramatical i sintàctic de les llengües. També que puga assimilar de forma comparada el funcionament del llatí, el concepte de flexió i les seues construccions més característiques, així com aconseguir un coneixement essencial de la fonologia, morfologia, sintaxi i lèxic de la llengua llatina. D'aquesta manera, l'alumnat aconsegueix activar aquests sabers bàsics de caràcter lingüístic com a eina per a la comprensió i no com a fi, per a arribar a entendre la llengua com una entitat viva i no com la suma abstracta de diferents elements com són el vocabulari i la gramàtica. Amb l'aprofundiment en la comprensió del funcionament gramatical de la llengua llatina, l'alumnat aconsegueix una reflexió personal sobre la seua llengua, aprén a usar termes metalingüístics i amplia el seu repertori lèxic, la qual cosa comporta el desenvolupament de la seua maduresa i autonomia personal, i afavoreix les competències clau en comunicació lingüística i plurilingüe. Per al primer curs es considera oportú el maneig dels elements bàsics del sistema lingüístic a nivell nominal, pronominal, verbal i oracional. En el segon curs, a més de la consolidació de tot l'anterior, es recomana l'aprofundiment en les excepcions de la flexió nominal i pronominal, en els aspectes més complexos de la conjugació verbal, personal i no personal, i els de la sintaxi oracional. Així, mitjançant aquesta competència, es pretén que al final del primer curs l'alumnat valore la importància del llatí com a mitjà de transmissió de cultura, tant oral com escrita. I al final del segon, que aprecie la diversitat lingüística i s'interesse per l'adquisició d'altres llengües estrangeres com a mitjà d'enriquiment personal i professional.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-LI-CE01-CR01",
+        "descripcion": "1. Identificar i analitzar en profunditat els aspectes morfològics del llatí (excepcions i irregularitats de la declinació i conjugació) en textos clàssics llatins.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE01-CR02",
+        "descripcion": "2. Distingir i analitzar en profunditat els aspectes sintàctics del llatí en textos llatins clàssics.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE01-CR03",
+        "descripcion": "3. Reconéixer i classificar les oracions i les construccions sintàctiques llatines en textos clàssics llatins.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE01-CR04",
+        "descripcion": "4. Utilitzar de manera precisa la formació i funcions de les formes no personals del verb en textos clàssics llatins.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE01-CR05",
+        "descripcion": "5. Valorar la llengua llatina com a mitjà per a l'adquisició d'altres llengües estrangeres ajudant a l'enriquiment personal i professional.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT2-LI-CE02": {
+      "descripcion": "Identificar i valorar els principals elements lèxics llatins, les seues variacions i el seu llegat en les llengües conegudes per l'alumnat, a través de l'aprenentatge de l'etimologia, els llatinismes, la composició i la derivació.",
+      "explicacion_bloque_competencial": ". Aquesta competència, aplicada des d'un enfocament plurilingüe, ajuda a l'alumnat a ampliar el vocabulari de les llengües que coneix, ja que les relaciona entre si, en identificar els lexemes, prefixos i sufixos que conformen les paraules, i a analitzar els possibles canvis que s'hagen produït de manera diacrònica a nivell fonètic, morfològic o semàntic. Així, l'alumnat pot identificar i explicar la base etimològica d'una paraula, deduir el significat de neologismes o termes de llenguatge especialitzat, així com crear famílies lèxiques. D'altra banda, contribueix a millorar la comprensió lectora i l'expressió oral i escrita de l'alumnat en llengües romàniques o no romàniques. D'aquesta manera, s'impulsa un aprenentatge interconnectat i deductiu, descobrint i valorant el paper de la llengua llatina com a origen de les llengües romàniques i la seua contribució en aquelles que no venen directament del llatí. Aquesta competència afavoreix el respecte per la diversitat lingüística i promou l'interés per altres cultures per a construir una identitat europea, a més de promoure les competències clau en comunicació lingüística i plurilingüe. Aquesta competència ha de desenvolupar-se al llarg dels dos cursos. Durant el primer curs es recomana el tractament dels elements més transparents i d'ús més freqüent de la llengua llatina respecte als del repertori de l'alumnat, així com la utilització d'unes normes bàsiques d'evolució fonètica que permeten a l'alumnat trobar les relacions lèxiques. En el segon curs ha de posar-se l'èmfasi en una major sistematització de la formació de derivats nominals i verbals en el llatí i en les llengües de l'alumnat, atés l'ús de prefixos i sufixos.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-LI-CE02-CR01",
+        "descripcion": "1. Conéixer i aplicar les regles d'evolució fonètica del llatí per a deduir l'evolució de les paraules llatines a les llengües cooficials de la Comunitat Valenciana.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE02-CR02",
+        "descripcion": "2. Manejar adequadament els mecanismes de derivació en les llengües conegudes per l'alumnat.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE02-CR03",
+        "descripcion": "3. Inferir el significat d'alguns tecnicismes i neologismes aplicant els principals fonaments de la derivació i composició amb prefixos llatins.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE02-CR04",
+        "descripcion": "4. Adoptar una actitud de respecte cap a la diversitat com a riquesa cultural i lingüística reflexionant sobre els estereotips lingüístics.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT2-LI-CE03": {
+      "descripcion": "Argumentar, interpretar, traduir i produir textos llatins, escrits i orals, de dificultat graduada a partir d'estratègies de deducció i inducció, utilitzant el context lingüístic, històric, social i polític.",
+      "explicacion_bloque_competencial": ". La consecució d'aquesta competència permet a l'alumnat la comprensió i expressió oral i escrita en llengua llatina partint de textos de dificultat progressiva i contextualitzats des del punt de vista històric, polític, social i cultural, ja que la lectura de textos llatins implica un context allunyat de l'experiència personal. Per aquest motiu, és necessari usar eines d'interpretació que col·laboren a desenvolupar l'autonomia de l'alumnat a l'hora de llegir els textos, tant adaptats com originals, fugint de l'excessiu interés per l'anàlisi i desxifrat d'unitats gramaticals en lloc de valorar la comprensió global del text. La comprensió i interpretació de textos llatins permet a l'alumnat consolidar els coneixements adquirits en altres matèries i relacionar-los, de manera que valore la cultura llatina com a base de la civilització occidental. Al seu torn, ser conscients d'aquesta vinculació impulsa la seua autoestima i li permet l'emissió de judicis de valor argumentats. Mitjançant aquesta competència específica es valora la importància de la cerca de fonts primàries adequades per a obtindre informació, i es descobreix la pervivència i adaptació d'elements lingüístics i culturals del món romà en el nostre present. Així mateix, es potencien les competències clau en comunicació lingüística i plurilingüe, a més de la digital i la ciutadana, en valorar i respectar la diversitat lingüística i cultural de la societat. El desenvolupament competencial d'aquest apartat ha d'observar atentament una gradació i progrés adequats. En el primer curs l'alumnat hauria d'aconseguir llegir, traduir, comprendre textos senzills i adaptats, que es corresponguen amb els elements gramaticals treballats en la competència específica 1, i comprendre i produir missatges orals en llatí com a manera de reforçar l'aprenentatge lingüístic per mitjà de l'oralitat i reconéixer la importància del llatí com a vehicle de transmissió de cultura i comunicació. En segon, interpretar i traduir textos llatins adaptats i originals de diferents gèneres literaris, amb una anàlisi valorativa de la pròpia versió que permeta considerar l'error com a motor del seu aprenentatge.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-LI-CE03-CR01",
+        "descripcion": "1. Aplicar els coneixements sobre elements i construccions morfològiques i sintàctiques regulars i irregulars en la interpretació i traducció de textos clàssics.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE03-CR02",
+        "descripcion": "2. Ajustar el significat dels termes llatins tenint en compte la informació proporcionada en els textos i utilitzant els suports necessaris per a la seua traducció.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE03-CR03",
+        "descripcion": "3. Llegir passatges i textos clàssics posant-los en el context de la literatura llatina.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE03-CR04",
+        "descripcion": "4. Interpretar i traduir textos llatins adaptats o originals de diferents gèneres literaris, apreciant les semblances i coincidències amb altres llengües conegudes.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE03-CR05",
+        "descripcion": "5. Reflexionar sobre les pròpies traduccions i proposar i argumentar els canvis a partir de la reflexió lingüística.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT2-LI-CE04": {
+      "descripcion": "Identificar i valorar les contribucions de la cultura llatina en l'origen de la ciutadania europea i relacionar críticament el present i el passat.",
+      "explicacion_bloque_competencial": ". Per mitjà d'aquesta competència l'alumnat és capaç de reconéixer i apreciar la importància de les contribucions sociopolítiques que el món romà ha realitzat a la nostra forma de convivència, tant a nivell local i autonòmic, com nacional i europeu. L'alumnat ha de ser conscient que l'ordenació del nostre sistema polític i legal, les assemblees representatives dels diferents nivells administratius, del local a l'europeu, i la pròpia configuració dels poders legislatiu, executiu i judicial, parteixen en gran manera del món romà. Tot això contribueix a una adquisició més profunda de la competència clau ciutadana, que ha de permetre a l'alumnat participar plenament en la vida social i cívica com a membres d'una ciutadania responsable. També li obri la possibilitat de prendre consciència dels esdeveniments mundials i el compromís actiu amb la sostenibilitat, i l'assoliment d'una ciutadania mundial amb una reflexió crítica sobre els grans problemes ètics del nostre temps. Mitjançant aquesta competència, es contribueix igualment al desenvolupament de les competències clau personal, social, i d'aprendre a aprendre, i emprenedora, ja que es treballa la importància de l'herència cultural del passat per a comprendre i reflexionar sobre el nostre present. Al final del primer curs, l'alumnat ha de ser capaç de reflexionar sobre la influència i llegat de la cultura romana en la civilització occidental i en el seu entorn més pròxim, i presentar continguts en diversos formats. Al final del segon, s’ha d’aprofundir en la importància dels gèneres literaris en les manifestacions culturals posteriors, per mitjà de senzilles investigacions de temes monogràfics. En tots dos cursos aquesta competència fomenta el debat respectuós cap a altres cultures i maneres de vida.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-LI-CE04-CR01",
+        "descripcion": "1. Identificar i reflexionar sobre els elements essencials dels gèneres literaris llatins amb la finalitat de reconéixer les seues estructures bàsiques i contrastar-los amb textos de la literatura actual.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE04-CR02",
+        "descripcion": "2. Revisar la presència d'elements de la mitologia clàssica en la literatura actual.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE04-CR03",
+        "descripcion": "3. Planificar i realitzar senzilles investigacions en formats analògics o digitals sobre les contribucions de la cultura llatina, utilitzant diverses fonts d'informació.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE04-CR04",
+        "descripcion": "4. Argumentar i debatre respectuosament sobre la importància de la cultura llatina per al desenvolupament d'una societat democràtica i global.",
+        "competencias_clave": []
+       }
+      ]
+     },
+     "ES-VC-BAT2-LI-CE05": {
+      "descripcion": "Identificar i valorar el patrimoni històric, arqueològic, artístic i cultural, material i immaterial, de la civilització llatina com a font de saber i d'inspiració de diferents manifestacions culturals.",
+      "explicacion_bloque_competencial": ". Per mitjà d'aquesta competència es capacita l'alumnat per a reconéixer la presència del patrimoni romà i valorar la seua pervivència, tot analitzant de manera crítica la seua validesa en l'actualitat.",
+      "criterios_evaluacion": [
+       {
+        "codigo": "ES-VC-BAT2-LI-CE05-CR01",
+        "descripcion": "1. Investigar sobre el llegat patrimonial en l'art i la cultura heretat de la civilització llatina.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE05-CR02",
+        "descripcion": "2. Identificar i explicar la importància de la tradició romana com a font d'inspiració en les manifestacions culturals i artístiques posteriors.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE05-CR03",
+        "descripcion": "3. Dissenyar, planificar i realitzar activitats sobre el llegat de la literatura llatina per a percebre la seua presència en la nostra cultura actual.",
+        "competencias_clave": []
+       },
+       {
+        "codigo": "ES-VC-BAT2-LI-CE05-CR04",
+        "descripcion": "4. Mostrar interés i respecte per la preservació, conservació i restauració del patrimoni romà per a assegurar la seua sostenibilitat i futur.",
+        "competencias_clave": []
+       }
+      ]
+     }
+    },
+    "saberes_basicos": {
+     "bloques": {
+      "1. Sistema de la llengua llatina": [
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-001",
+        "subtitulo_nivel_1": "Peculiaritats de la declinació llatina.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-002",
+        "subtitulo_nivel_1": "Conjugació: El verb llatí.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-003",
+        "subtitulo_nivel_1": "L'oració: simples i compostes.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-004",
+        "subtitulo_nivel_1": "Formes nominals del verb.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-005",
+        "subtitulo_nivel_1": "Estratègies d'interpretació i traducció, errors freqüents i tècniques per a evitar-los.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-006",
+        "subtitulo_nivel_1": "Recursos estilístics freqüents i la seua relació amb el contingut del text.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-007",
+        "subtitulo_nivel_1": "Estratègies i eines, analògiques i digitals, individuals i cooperatives, per a l'autoavaluació, la coavaluació i l'autoreparació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-008",
+        "subtitulo_nivel_1": "Acceptació de l'error com a part del procés d'aprenentatge i actitud positiva de superació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-009",
+        "subtitulo_nivel_1": "Recursos analògics i digitals per a l'adquisició de llengües: Portfolio",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB01-010",
+        "subtitulo_nivel_1": "Europeu de les Llengües (PEL), imatges, glossaris, diccionaris, etc. Estratègies, eines i tècniques de retroversió de textos.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "2. El llatí i el plurilingüisme: ètims, derivació, composició i llatinismes": [
+       {
+        "nombre": "ES-VC-BAT2-LI-SB02-001",
+        "subtitulo_nivel_1": "Anàlisi i comprensió de formants llatins (lexemes, sufixos i prefixos) en paraules de la llengua d'ensenyament i en termes específics de les ciències i la tècnica.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB02-002",
+        "subtitulo_nivel_1": "Influència del llatí en l'evolució de les llengües d'ensenyament i de la resta de llengües que conformen el repertori lingüístic individual de l'alumnat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB02-003",
+        "subtitulo_nivel_1": "Paral·lelisme entre llengües romàniques i no romàniques.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB02-004",
+        "subtitulo_nivel_1": "Lèxic específic bàsic per a la reflexió sobre la comunicació, la llengua i el seu aprenentatge.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB02-005",
+        "subtitulo_nivel_1": "Interés per conéixer el significat etimològic de les paraules i la importància de l'ús adequat del vocabulari com a instrument bàsic en la comunicació.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB02-006",
+        "subtitulo_nivel_1": "Valoració de la importància del llatí per a la correcta comprensió i expressió en les diferents llengües del seu repertori lingüístic individual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB02-007",
+        "subtitulo_nivel_1": "Respecte per la diversitat lingüística.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB02-008",
+        "subtitulo_nivel_1": "Ús de bibliografia i bibliografia web (lexicografia, repertoris, glossaris) en l'estudi i aprenentatge de la llengua llatina com a base en la consolidació d'altres llengües estrangeres.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "3. Literatura llatina: gèneres literaris i obres": [
+       {
+        "nombre": "ES-VC-BAT2-LI-SB03-001",
+        "subtitulo_nivel_1": "Principals gèneres literaris, obres i autors llatins, tant dones com homes: importància i influència en expressions artístiques posteriors.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB03-002",
+        "subtitulo_nivel_1": "Influència de la literatura llatina en la producció cultural europea.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB03-003",
+        "subtitulo_nivel_1": "Analogies i diferències entre els gèneres literaris llatins i els de la literatura actual.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB03-004",
+        "subtitulo_nivel_1": "Interés cap a la literatura i la seua lectura com a font de plaer i de coneixement del món.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB03-005",
+        "subtitulo_nivel_1": "Respecte a l'autoria de les fonts d'informació consultades.",
+        "subtitulo_nivel_2": ""
+       }
+      ],
+      "4. Roma i la seua pervivència": [
+       {
+        "nombre": "ES-VC-BAT2-LI-SB04-001",
+        "subtitulo_nivel_1": "Respecte per la diversitat cultural.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB04-002",
+        "subtitulo_nivel_1": "Interés per conéixer l'evolució cultural a través de l'estudi de la civilització llatina.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB04-003",
+        "subtitulo_nivel_1": "Tècniques bàsiques de cerca i tractament de la informació històrica i geogràfica mitjançant les TIC.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB04-004",
+        "subtitulo_nivel_1": "Estratègies de creació pròpia, individuals o en grup, d'investigació sobre aspectes de la història i geografia romana fent ús de fonts d'informació fiables i de les noves tecnologies.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB04-005",
+        "subtitulo_nivel_1": "Estratègies i eines (analògiques i digitals) per a relacionar, comentar i interpretar el passat i el present a partir dels coneixements adquirits i de la pròpia experiència.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB04-006",
+        "subtitulo_nivel_1": "Exemples rellevants de la influència de la mitologia clàssica en manifestacions artístiques i literàries.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB04-007",
+        "subtitulo_nivel_1": "Posada en valor, compromís de preservació i gaudi del patrimoni arqueològic romà com a bé social i senyal d'identitat.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB04-008",
+        "subtitulo_nivel_1": "Interés per conéixer l'origen llatí de moltes de les nostres tradicions, costums i manifestacions culturals.",
+        "subtitulo_nivel_2": ""
+       },
+       {
+        "nombre": "ES-VC-BAT2-LI-SB04-009",
+        "subtitulo_nivel_1": "Estratègies de creació pròpia individuals o grupals sobre el llegat de la cultura romana, fent ús de fonts d'informació fiables i de les noves tecnologies.",
         "subtitulo_nivel_2": ""
        }
       ]
