@@ -435,7 +435,7 @@
       </trans-unit>
       <trans-unit id="7oKpSxb" resname="History">
         <source>History</source>
-        <target>Istorioa</target>
+        <target>Historia</target>
       </trans-unit>
       <trans-unit id="jgehxHV" resname="Computer Science">
         <source>Computer Science</source>
@@ -12243,7 +12243,7 @@
       </trans-unit>
       <trans-unit id="x22lyt6" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.</source>
-        <target>Formulak errendatuko dira nahiz eta aukera hau ez gaitu. Gaitu aukera hau MathJax liburutegi osoa sartzeko (8 Mb inguru), bestak beste irisgarritasun funtzionalitate aurreratuak eta testuingu.meniak.</target>
+        <target>Formulak errendatuko dira nahiz eta aukera hau ez gaitu. Gaitu aukera hau MathJax liburutegi osoa sartzeko (8 Mb inguru), bestak beste irisgarritasun funtzionalitate aurreratuak eta testuinguruko menuak.</target>
       </trans-unit>
       <trans-unit id="ibs15bt" resname="Global font">
         <source>Global font</source>
