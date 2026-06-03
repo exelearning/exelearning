@@ -765,7 +765,7 @@ var $exeDevicesEdition = {
                                 // Type 0: Select (multiple-choice)
                                 `0@${c_('Level')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}[#${c_('OptionC')}][#${c_('OptionD')}][#${c_('OptionE')}][#${c_('OptionF')}]`,
                                 // Type 1: Sort / order
-                                `1@${c_('Level')}#${c_('Question')}#${c_('Item1')}#${c_('Item2')}#${c_('Item3')}[#${c_('Item4')}][#${c_('Item5')}][#${c_('Item6')}]`,
+                                `1@${c_('Level')}#${c_('Question')}#Item1#Item2#Item3[#Item4][#Item5][#Item6]`,
                                 // Type 2: Word / definition
                                 `2@${c_('Level')}#${c_('Word')}#${c_('Definition')}`
                             ];
@@ -774,14 +774,14 @@ var $exeDevicesEdition = {
                                 // Type 0: single correct answer (letter B = OptionB)
                                 `0@0#B#${c_('What is the largest planet in the solar system?')}#${c_('Earth')}#${c_('Jupiter')}#${c_('Mars')}#${c_('Venus')}`,
                                 // Type 0: multiple correct answers (A and C)
-                                `0@1#AC#${c_('Which of the following are prime numbers?')}#${c_('2')}#${c_('4')}#${c_('5')}#${c_('9')}`,
+                                `0@1#AC#${c_('Which of the following are prime numbers?')}#2#4#5#9`,
                                 // Type 1: sort
                                 `1@2#${c_('Sort from largest to smallest')}#${c_('Elephant')}#${c_('Tiger')}#${c_('Cat')}#${c_('Mouse')}`,
                                 // Type 2: word/definition
                                 `2@0#${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`
                             ];
                             if (numLevels >= 4) {
-                                examples.push(`0@3#ABCD#${c_('Which of these are transcendental numbers?')}#${c_('Pi')}#${c_('e')}#${c_('Liouville constant')}#${c_('Champernowne constant')}`);
+                                examples.push(`0@3#ABCD#${c_('Which of these are transcendental numbers?')}#π#e#${c_('Liouville constant')}#${c_('Champernowne constant')}`);
                             }
                             if (numLevels === 5) {
                                 examples.push(`1@4#${c_('Sort these chemical elements from lowest to highest atomic number')}#${c_('Hydrogen')}#${c_('Carbon')}#${c_('Iron')}#${c_('Gold')}#${c_('Uranium')}`);
