@@ -609,6 +609,18 @@ export interface PageRenderOptions {
     /** Application version string (e.g., "v3.0.0") for generator meta tag */
     version?: string;
 
+    /**
+     * xAPI runtime config injected into <head> as `window.exeXapi` so the
+     * always-on emitter (exe_xapi.js) can build stable per-iDevice IRIs.
+     */
+    xapi?: {
+        odeId?: string;
+        baseIri?: string;
+        activityId?: string;
+        packageTitle?: string;
+        language?: string;
+    };
+
     // Page counter options
     totalPages?: number;
     currentPageIndex?: number;
