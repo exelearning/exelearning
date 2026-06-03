@@ -286,15 +286,20 @@ var $eXeSeleccionaMedias = {
         $(`#slcmpAudioDef-${instance}`).hide();
         $(`#slcmpQuestion-${instance}`).html(mOptions.phrase.definition).show();
 
-        if (num > 0) {
-            if (
-                mOptions.phrase.audioDefinition &&
-                mOptions.phrase.audioDefinition.length > 4
-            ) {
+        if (
+            mOptions.phrase.audioDefinition &&
+            mOptions.phrase.audioDefinition.length > 4
+        ) {
+            // Always expose the speaker icon when the statement has audio so
+            // the learner can play/replay it at will. Autoplay is reserved for
+            // navigation to a later question (num > 0); the first question
+            // (num === 0, also on page load and "play again") stays silent
+            // until the icon is clicked.
+            $(`#slcmpAudioDef-${instance}`).css('display', 'block');
+            if (num > 0) {
                 $exeDevices.iDevice.gamification.media.playSound(
                     mOptions.phrase.audioDefinition
                 );
-                $(`#slcmpAudioDef-${instance}`).css('display', 'block');
             }
         }
         $eXeSeleccionaMedias.showImage(num, instance);
@@ -1205,14 +1210,10 @@ var $eXeSeleccionaMedias = {
             $eXeSeleccionaMedias.uptateTime(mOptions.time * 60, instance);
         }
 
-        if (
-            typeof mOptions.phrase.audioDefinition != 'undefined' &&
-            mOptions.phrase.audioDefinition.length > 4
-        ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                mOptions.phrase.audioDefinition
-            );
-        }
+        // The statement audio is never auto-played on game start. The learner
+        // triggers it with the speaker icon (shown by showPhrase). This stops
+        // the first question from blasting its audio on page load, since the
+        // game auto-starts here when there is no timer and no access code.
 
         mOptions.gameStarted = true;
         $eXeSeleccionaMedias.activateHover(instance);

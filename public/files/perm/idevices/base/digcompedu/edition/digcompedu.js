@@ -158,7 +158,7 @@ var $exeDevice = {
             this.jsonPathTemplate.replace('{lang}', lang)
         );
 
-        const loadViaXHR = () =>
+        const loadViaXHR = (targetUrl) =>
             new Promise((resolve, reject) => {
                 if (typeof XMLHttpRequest === 'undefined') {
                     reject(
@@ -169,7 +169,7 @@ var $exeDevice = {
                     return;
                 }
                 const request = new XMLHttpRequest();
-                request.open('GET', url, true);
+                request.open('GET', targetUrl, true);
                 if (typeof request.overrideMimeType === 'function') {
                     request.overrideMimeType('application/json');
                 }
@@ -189,13 +189,13 @@ var $exeDevice = {
                     } else {
                         reject(
                             new Error(
-                                `Failed to load ${url}: ${request.status}`
+                                `Failed to load ${targetUrl}: ${request.status}`
                             )
                         );
                     }
                 };
                 request.onerror = function () {
-                    reject(new Error(`Network error while loading ${url}`));
+                    reject(new Error(`Network error while loading ${targetUrl}`));
                 };
                 request.send();
             });
@@ -206,25 +206,44 @@ var $exeDevice = {
                 !window.location ||
                 window.location.protocol !== 'file:');
 
-        const fetchPromise = shouldUseFetch
-            ? fetch(url, { cache: 'no-cache' })
-                  .then((response) => {
-                      if (!response.ok) {
-                          throw new Error(
-                              `Failed to load ${response.url || url}: ${response.status}`
-                          );
-                      }
-                      return response.json();
-                  })
-                  .catch((error) => {
-                      if (typeof XMLHttpRequest === 'function') {
-                          return loadViaXHR().catch((xhrError) => {
-                              throw xhrError || error;
-                          });
-                      }
-                      throw error;
-                  })
-            : loadViaXHR();
+        // Try <url>.gz first via DecompressionStream (production / static build),
+        // fall back to raw <url> for dev and browsers without the API.
+        const canDecompress =
+            shouldUseFetch && typeof DecompressionStream !== 'undefined';
+        const gzPromise = canDecompress
+            ? fetch(url + '.gz', { cache: 'no-cache' }).then((response) => {
+                  if (!response.ok) {
+                      throw new Error(`gz HTTP ${response.status}`);
+                  }
+                  const stream = response.body.pipeThrough(
+                      new DecompressionStream('gzip')
+                  );
+                  return new Response(stream).json();
+              })
+            : Promise.reject(new Error('DecompressionStream unavailable'));
+
+        const rawJsonPromise = () =>
+            shouldUseFetch
+                ? fetch(url, { cache: 'no-cache' })
+                      .then((response) => {
+                          if (!response.ok) {
+                              throw new Error(
+                                  `Failed to load ${response.url || url}: ${response.status}`
+                              );
+                          }
+                          return response.json();
+                      })
+                      .catch((error) => {
+                          if (typeof XMLHttpRequest === 'function') {
+                              return loadViaXHR(url).catch((xhrError) => {
+                                  throw xhrError || error;
+                              });
+                          }
+                          throw error;
+                      })
+                : loadViaXHR(url);
+
+        const fetchPromise = gzPromise.catch(() => rawJsonPromise());
 
         this.dataLoadPromises[lang] = fetchPromise
             .then((data) => {

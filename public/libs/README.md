@@ -80,6 +80,9 @@
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT
+*   Package: dompurify
+    *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
+    *   License: (MPL-2.0 OR Apache-2.0)
 *   Package: dotenv
     *   Copyright: 2015, Scott Motte
     *   License: BSD-2-Clause
@@ -94,6 +97,9 @@
     *   License: MIT
 *   Package: esbuild
     *   Copyright: Evan Wallace
+    *   License: MIT
+*   Package: fabric
+    *   Copyright: Juriy Zaytsev
     *   License: MIT
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta
@@ -152,9 +158,6 @@
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
     *   License: MIT
-*   Package: tikzjax
-    *   Copyright: Jim Fowler (kisonecat)
-    *   License: LPPL-1.3c
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0
@@ -243,17 +246,47 @@
 *   Files: /public/files/perm/idevices/\*/export/html2canvas.js
     *   Copyright: Niklas von Hertzen
     *   License: MIT
+*   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/electrical-circuits/electrical-circuits-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/fonts/* (Open Sans Font)
     *   Copyright: The Open Sans Project Authors. Designed by Steve Matteson
     *   License: SIL Open Font License version 1.1
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/images/\*
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/lomloe/lomloe-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/magnifier/export/mojomagnify.js
+    *   Copyright: Jacob Seidelin and other contributors
+    *   License: MIT
+*   File: public/files/perm/idevices/base/markdown-text/markdown-text-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/scrambled-list/export/scrambled-list.js and /public/files/perm/idevices/base/interactive-video/export/interactive-video.js
     *   HTML5 Sortable jQuery Plugin copyright: Ali Farhadi (maintained by Alexandru Badiu and Lukas Oppermann)
     *   License: MIT
-*   Files: /public/files/perm/idevices/base/magnifier/export/mojomagnify.js
-    *   Copyright: Jacob Seidelin and other contributors
+*   File: public/files/perm/idevices/base/slide/slide-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/three-d-viewer/three-d-viewer-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/three-d-viewer/export/three.module.min.js, ./OrbitControls.js and ./STLLoader.js
+    *   Three.js (Three.js Authors)
+    *   License: MIT
+*   File: /public/files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js
+    *   model-viewer (Google)
+    *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/three-sixty-viewer/three-sixty-viewer-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js and ./OrbitControls.js
+    *   Three.js (Three.js Authors)
     *   License: MIT
 *   Files: /public/files/perm/themes/flux/fonts/* (Fredoka Font)
     *   Copyright: Milena Brandao
@@ -339,6 +372,21 @@
 *   Files: /public/style/workarea/fonts/\Inter*
     *   Copyright: The Inter Project Authors. Designed by Rasmus Andersson
     *   License: SIL Open Font License version 1.1
-*   Files: /public/files/perm/idevices/base/3dmol/export/3Dmol-min.js and /public/files/perm/idevices/base/3dmol/edition/3Dmol-min.js
+*   File: /public/files/perm/idevices/base/3dmol/export/3Dmol-min.js (3Dmol.js)
     *   Copyright: 2014, University of Pittsburgh and contributors
-    *   License: BSD-3-Clause (https://github.com/3dmol/3Dmol.js/blob/master/LICENSE)
+    *   License: BSD-3-Clause
+*   Files: /public/files/perm/idevices/base/electrical-circuits/edition/tikzjax.js and /public/files/perm/idevices/base/electrical-circuits/export/tikzjax.js
+    *   Copyright: Jim Fowler (kisonecat)
+    *   License: LPPL-1.3c
+*   Files: /public/files/perm/idevices/base/electrical-circuits/edition/fonts/*.ttf and /public/files/perm/idevices/base/electrical-circuits/export/fonts/*.ttf (BaKoMa Fonts Collection)
+    *   Copyright: 1994, 1995, Basil K. Malyshev
+    *   License: BaKoMa Fonts Licence
+*   Package: circuitikz
+    *   Copyright: Massimo Redaelli, Stefan Erhardt, Stefan Lindner, Romano Giannetti
+    *   License: LPPL / GPL
+*   Package: amsmath
+    *   Copyright: American Mathematical Society and LaTeX3 Project
+    *   License: LPPL-1.3c
+*   Package: amssymb / amsfonts
+    *   Copyright: American Mathematical Society
+    *   License: SIL Open Font License

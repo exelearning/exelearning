@@ -3814,7 +3814,16 @@ window.$eXeLearningCustom = {
                     throw new Error(result.message || 'Upload failed');
                 }
 
-                showNotification('{{ t.theme_uploaded or "Theme uploaded successfully" }}', 'success');
+                // The backend returns { replaced: true, message, theme } when an
+                // existing site theme was overwritten by re-uploading a ZIP with
+                // the same internal name, so the admin gets clear feedback that
+                // the upload upgraded a theme rather than creating a duplicate.
+                if (result && result.replaced) {
+                    const replacedMsg = '{{ t.theme_replaced or "Theme replaced. Clients will load the new version on next refresh." }}';
+                    showNotification(result.message || replacedMsg, 'success');
+                } else {
+                    showNotification('{{ t.theme_uploaded or "Theme uploaded successfully" }}', 'success');
+                }
                 loadAdminThemes();
             } catch (error) {
                 showNotification(error.message, 'error');

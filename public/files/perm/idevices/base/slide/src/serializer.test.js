@@ -6,7 +6,7 @@
 
 /* eslint-disable no-undef */
 import { describe, it, expect } from 'vitest';
-import { buildEmptyPayload, buildPayload, isHexColor, parsePrevious } from './serializer.ts';
+import { buildEmptyPayload, buildPayload, clampDimensions, isHexColor, parsePrevious } from './serializer.ts';
 
 describe('parsePrevious', () => {
     it('returns blank slide for null', () => {
@@ -63,6 +63,26 @@ describe('parsePrevious', () => {
     it('does not throw on unexpected future versions', () => {
         expect(() => parsePrevious({ version: 99, engine: 'fabric', fabric: { ok: true } })).not.toThrow();
         expect(parsePrevious({ version: 99, engine: 'fabric', fabric: { ok: true } }).fabric).toBeNull();
+    });
+
+    it('flags unsupported future versions so callers can warn the user', () => {
+        const r = parsePrevious({ version: 99, engine: 'fabric', fabric: { ok: true } });
+        expect(r.unsupportedVersion).toBe(true);
+    });
+
+    it('does not flag the current version', () => {
+        const r = parsePrevious({ version: 3, engine: 'fabric', fabric: { objects: [] } });
+        expect(r.unsupportedVersion).toBe(false);
+    });
+
+    it('does not flag legacy versions without engine match (legacy import handled elsewhere)', () => {
+        const r = parsePrevious({ version: 1, html: '<p>x</p>' });
+        expect(r.unsupportedVersion).toBe(false);
+    });
+
+    it('does not flag missing-version payloads', () => {
+        expect(parsePrevious({}).unsupportedVersion).toBe(false);
+        expect(parsePrevious(null).unsupportedVersion).toBe(false);
     });
 });
 
@@ -135,6 +155,32 @@ describe('buildEmptyPayload', () => {
         expect(payload.width).toBe(1280);
         expect(payload.height).toBe(720);
         expect(payload.background).toBe('#ffffff');
+    });
+});
+
+describe('clampDimensions', () => {
+    // Single source of truth for width/height bounds so the editor's
+    // input clamp and the serializer's load-time clamp can never disagree.
+    it('clamps width below MIN_W up to MIN_W', () => {
+        expect(clampDimensions(50, 600).width).toBe(400);
+    });
+    it('clamps width above MAX_W down to MAX_W', () => {
+        expect(clampDimensions(9999, 600).width).toBe(1920);
+    });
+    it('clamps height below MIN_H up to MIN_H', () => {
+        expect(clampDimensions(800, 10).height).toBe(200);
+    });
+    it('clamps height above MAX_H down to MAX_H', () => {
+        expect(clampDimensions(800, 9999).height).toBe(1200);
+    });
+    it('rounds non-integer inputs', () => {
+        expect(clampDimensions(800.7, 600.4)).toEqual({ width: 801, height: 600 });
+    });
+    it('falls back to defaults on NaN / non-finite', () => {
+        expect(clampDimensions(Number.NaN, Number.POSITIVE_INFINITY)).toEqual({ width: 1280, height: 720 });
+    });
+    it('round-trips values already within bounds', () => {
+        expect(clampDimensions(1024, 768)).toEqual({ width: 1024, height: 768 });
     });
 });
 

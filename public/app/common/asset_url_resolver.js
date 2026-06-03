@@ -783,6 +783,52 @@
         return 'HTML websites from the Resources folder cannot be navigated in preview. Please export the project to view this content correctly.';
     }
 
+    /**
+     * Resolve the Electron API from this window or its parent (iframe contexts).
+     * @returns {Object|null} electronAPI bridge or null when not in Electron.
+     */
+    function getElectronAPI() {
+        if (typeof window === 'undefined') return null;
+        try {
+            if (window.electronAPI) return window.electronAPI;
+            if (window.parent && window.parent !== window && window.parent.electronAPI) {
+                return window.parent.electronAPI;
+            }
+        } catch (_e) {
+            // Cross-origin parent access blocked
+        }
+        return null;
+    }
+
+    /**
+     * Save a blob: asset through the Electron saveBufferAs IPC channel.
+     *
+     * Bypasses the will-download path in app/main.js, whose async handler
+     * shows a native save dialog on top of our own promptSave(), producing
+     * two simultaneous dialogs (issue #1875). Fetching the blob bytes and
+     * handing them to saveBufferAs keeps a single dialog per user action.
+     *
+     * @param {string} blobUrl - The blob: URL to save.
+     * @param {string} filename - Suggested file name.
+     * @returns {boolean} True if the Electron save path was used (caller must
+     *   then prevent the default navigation); false in non-Electron contexts.
+     */
+    function saveBlobViaElectron(blobUrl, filename) {
+        const electronAPI = getElectronAPI();
+        if (!electronAPI || typeof electronAPI.saveBufferAs !== 'function') {
+            return false;
+        }
+        const projectKey = (typeof window !== 'undefined' && window.__currentProjectId) || 'asset-download';
+        Promise.resolve()
+            .then(() => fetch(blobUrl))
+            .then((response) => response.arrayBuffer())
+            .then((buffer) => electronAPI.saveBufferAs(new Uint8Array(buffer), projectKey, filename))
+            .catch((err) => {
+                console.error('[AssetResolver] Electron saveBufferAs failed:', err);
+            });
+        return true;
+    }
+
     document.addEventListener('click', function(e) {
         const link = e.target.closest('a[href]');
         if (!link) return;
@@ -827,6 +873,22 @@
                         }
                     }
                 }
+            }
+
+            // In Electron, letting an <a download> with a blob: URL navigate
+            // triggers the will-download handler in app/main.js. That handler
+            // is async and shows our custom promptSave() dialog while Electron
+            // also shows its own default save dialog, so two dialogs appear at
+            // once (issue #1875). Route non-image blob downloads through the
+            // saveBufferAs IPC channel instead: will-download never fires and a
+            // single native dialog is shown. Images keep opening in the
+            // lightbox / new tab. This mirrors the bypass documented for the
+            // gamification iDevices in common_edition.js (downloadBlob).
+            const downloadFilename = href.startsWith('blob:') ? link.getAttribute('download') : null;
+            if (downloadFilename && saveBlobViaElectron(href, downloadFilename)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
             }
 
             link.setAttribute('target', '_blank');
