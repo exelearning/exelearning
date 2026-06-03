@@ -15057,6 +15057,294 @@
         <source>Only .elpx, .elp or .zip project files can be opened by dragging them here.</source>
         <target>~Arrossegant, només es poden obrir fitxers de projecte .elpx, .elp o .zip.</target>
       </trans-unit>
+      <trans-unit id="46ilu2z" resname="Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).">
+        <source>Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ijh8lt9" resname="Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).">
+        <source>Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="i8ihb14" resname="Level: 0 (low), 1 (medium) or 2 (high).">
+        <source>Level: 0 (low), 1 (medium) or 2 (high).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bbpljee" resname="OptionE">
+        <source>OptionE</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vtnu45s" resname="OptionF">
+        <source>OptionF</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xz34iyo" resname="Which of the following are prime numbers?">
+        <source>Which of the following are prime numbers?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u5zqieu" resname="Sort from largest to smallest">
+        <source>Sort from largest to smallest</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fb1eniw" resname="Elephant">
+        <source>Elephant</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x29bi0i" resname="Mouse">
+        <source>Mouse</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ckrttw0" resname="Which of these are transcendental numbers?">
+        <source>Which of these are transcendental numbers?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u9jgsip" resname="Liouville constant">
+        <source>Liouville constant</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="g3opkvq" resname="Champernowne constant">
+        <source>Champernowne constant</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qvlxuga" resname="Sort these chemical elements from lowest to highest atomic number">
+        <source>Sort these chemical elements from lowest to highest atomic number</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mgvvb8z" resname="Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:">
+        <source>Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kelu6px" resname="Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.">
+        <source>Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8nwqdvz" resname="Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.">
+        <source>Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mj2lg7q" resname="Type 2 (word/definition): 2@Level#Word#Definition.">
+        <source>Type 2 (word/definition): 2@Level#Word#Definition.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l1w5ihn" resname="Do not include the # character inside any field.">
+        <source>Do not include the # character inside any field.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d2eumxj" resname="balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)">
+        <source>balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4uj6sgy" resname="balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)">
+        <source>balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vefnuk5" resname="balanced across the 3 levels (0=low, 1=medium, 2=high)">
+        <source>balanced across the 3 levels (0=low, 1=medium, 2=high)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4cd95ns" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="g2bqaj7" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="idt0qsj" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dqcyy7e" resname="Your browser is not compatible with this type of activity.">
+        <source>Your browser is not compatible with this type of activity.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1bvhar4" resname="You must add at least one question.">
+        <source>You must add at least one question.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bizh92a" resname="You must have at least one question.">
+        <source>You must have at least one question.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bbdfhay" resname="Question %s: the question text cannot be empty.">
+        <source>Question %s: the question text cannot be empty.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pysxjdh" resname="Question %s: please fill in all answer options.">
+        <source>Question %s: please fill in all answer options.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="e6i0l51" resname="Question %s: please mark which option is the correct answer.">
+        <source>Question %s: please mark which option is the correct answer.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="24gqibf" resname="You must add at least %s questions.">
+        <source>You must add at least %s questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0zyyjfg" resname="Warning: the selected initial level has no questions. The quiz will start using the fallback level.">
+        <source>Warning: the selected initial level has no questions. The quiz will start using the fallback level.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5bcbb3i" resname="Please provide a name for every level.">
+        <source>Please provide a name for every level.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4xcljhy" resname="Level &quot;%s&quot; must have at least 2 questions.">
+        <source>Level "%s" must have at least 2 questions.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bivulu9" resname="Please indicate the time the solution will be displayed.">
+        <source>Please indicate the time the solution will be displayed.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l6ue8yh" resname="Question %s: please mark at least one correct answer.">
+        <source>Question %s: please mark at least one correct answer.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="egbn5j9" resname="Question %s: please provide the solution word or phrase.">
+        <source>Question %s: please provide the solution word or phrase.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x655xgj" resname="Question %s: please provide the definition.">
+        <source>Question %s: please provide the definition.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="m3n8lhm" resname="Question %s: please specify a unique order from 1 to %n for every option.">
+        <source>Question %s: please specify a unique order from 1 to %n for every option.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kthem7s" resname="Audio URL">
+        <source>Audio URL</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dn3c8nk" resname="Show audio options">
+        <source>Show audio options</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5p33q3e" resname="Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.">
+        <source>Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qes4rjh" resname="Number of levels">
+        <source>Number of levels</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cmpkgrb" resname="Level 1 name">
+        <source>Level 1 name</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="yct6t37" resname="Easy">
+        <source>Easy</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kyv4dgw" resname="Level 2 name">
+        <source>Level 2 name</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r41yptz" resname="Level 3 name">
+        <source>Level 3 name</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="byf2jqz" resname="Hard">
+        <source>Hard</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l6oyk1n" resname="Level 4 name">
+        <source>Level 4 name</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="84rp47o" resname="Expert">
+        <source>Expert</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="losg1o0" resname="Level 5 name">
+        <source>Level 5 name</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9yo8onl" resname="Master">
+        <source>Master</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="e107hs5" resname="Initial level">
+        <source>Initial level</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3t3qak5" resname="Set to 0 to disable the time limit.">
+        <source>Set to 0 to disable the time limit.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5amojxn" resname="Shuffle answer options at runtime">
+        <source>Shuffle answer options at runtime</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8hptn1z" resname="Case-sensitive answer matching (word type)">
+        <source>Case-sensitive answer matching (word type)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="k0ty05j" resname="Require correct accents (word type)">
+        <source>Require correct accents (word type)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bv7wd6n" resname="Level filter">
+        <source>Level filter</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mg3lzgg" resname="Reload image">
+        <source>Reload image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v5iwlnm" resname="Adaptative Quiz">
+        <source>Adaptative Quiz</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="akuzeko" resname="Click on an option to choose your answer.">
+        <source>Click on an option to choose your answer.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qxy5u4c" resname="Highest level reached">
+        <source>Highest level reached</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="03i7o4k" resname="Level up!">
+        <source>Level up!</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2m7rys4" resname="Level down">
+        <source>Level down</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="852pb3d" resname="Final report">
+        <source>Final report</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="if6iczi" resname="Excellent. You dominate the highest-level contents.">
+        <source>Excellent. You dominate the highest-level contents.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pp715tz" resname="Good job. You have achieved the intermediate level.">
+        <source>Good job. You have achieved the intermediate level.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="twbqvib" resname="You need a bit more practice. Review the basic contents.">
+        <source>You need a bit more practice. Review the basic contents.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jckvs5f" resname="Pause audio">
+        <source>Pause audio</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u2ztnn8" resname="Illustration">
+        <source>Illustration</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xqdg3p8" resname="Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.">
+        <source>Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5yysqlm" resname="Time&apos;s up!">
+        <source>Time's up!</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
