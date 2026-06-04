@@ -1159,9 +1159,9 @@ describe('common_edition.js', () => {
         expect(text).toContain('easiest');
         // Each level must mix the three question types
         expect(text).toContain('all three types');
-        expect(text).toContain('selecciona');
-        expect(text).toContain('ordena');
-        expect(text).toContain('palabra/definici');
+        expect(text).toContain('select/multiple-choice');
+        expect(text).toContain('sort/order');
+        expect(text).toContain('word/definition');
         // Must NOT contain a literal backslash-n sequence
         expect(text.indexOf('\\n')).toBe(-1);
         // Must split into multiple actual lines
