@@ -91,7 +91,7 @@
     "mime-types": "^3.0.2",
     "mysql2": "^3.18.2",
     "nunjucks": "^3.2.4",
-    "pdfjs-dist": "5.7.284",
+    "pdfjs-dist": "6.0.227",
     "uuid": "^14.0.0",
     "ws": "^8.19.0",
     "y-websocket": "^3.0.0",
