@@ -15,6 +15,7 @@ jobs:
       contents: write
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
@@ -149,8 +150,9 @@ jobs:
     needs: package
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]        
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Download installers
         uses: actions/download-artifact@v8
@@ -275,26 +277,52 @@ jobs:
           $port           = [int]($env:APP_PORT ?? 41309)
           $bootTimeout    = [int]($env:APP_BOOT_TIMEOUT ?? 300)
           $shotDelay      = [int]($env:SCREENSHOT_DELAY ?? 6)
+          $installTimeout = [int]($env:INSTALL_POLL_TIMEOUT ?? 240)
+          $installPoll    = [int]($env:INSTALL_POLL_INTERVAL ?? 2)
 
           # -------- Find installer and install silently --------
           $installer = Get-ChildItem installers\*Setup*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $installer) { throw "No Windows installer found in 'installers'." }
 
-          # /S = silent for NSIS oneClick; avoids UI + autolaunch races
+          # /S = silent for NSIS oneClick; avoids UI + autolaunch races.
+          # NOTE: electron-builder's NSIS installer extracts the app in a child
+          # process that can outlive the launcher it spawns, so -Wait sometimes
+          # returns before eXeLearning.exe exists on disk. Checking for the EXE
+          # only once right after this call is the root cause of the flaky
+          # "Installed EXE not found to launch." failures, so we poll below.
           Start-Process $installer.FullName -ArgumentList '/S' -Wait -NoNewWindow
 
-          # -------- Locate installed EXE --------
-          $exePath = @(
+          # -------- Locate installed EXE (poll to absorb the NSIS extraction race) --------
+          $candidatePaths = @(
             (Join-Path $env:LOCALAPPDATA 'Programs\eXeLearning\eXeLearning.exe'),
             (Join-Path ${env:ProgramFiles} 'eXeLearning\eXeLearning.exe'),
             (Join-Path ${env:ProgramFiles(x86)} 'eXeLearning\eXeLearning.exe')
-          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          )
+
+          $exePath = $null
+          $installDeadline = (Get-Date).AddSeconds($installTimeout)
+          do {
+            $exePath = $candidatePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+            if (-not $exePath) {
+              $exePath = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue |
+                Select-Object -First 1 | ForEach-Object FullName
+            }
+
+            if ($exePath) { break }
+
+            # Installer still extracting; wait for any lingering Setup processes
+            # then retry until the EXE shows up or we hit the install timeout.
+            Get-Process -Name '*Setup*' -ErrorAction SilentlyContinue | ForEach-Object {
+              try { $_.WaitForExit($installPoll * 1000) | Out-Null } catch {}
+            }
+            Start-Sleep -Seconds $installPoll
+          } until ((Get-Date) -ge $installDeadline)
 
           if (-not $exePath) {
-            $exePath = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue |
-              Select-Object -First 1 | ForEach-Object FullName
+            throw "Installed EXE not found to launch after $installTimeout s (NSIS silent install never produced eXeLearning.exe)."
           }
-          if (-not $exePath) { throw "Installed EXE not found to launch." }
+          Write-Host "Found installed EXE: $exePath"
 
           # -------- Launch with deterministic env for CI --------
           $psi = New-Object System.Diagnostics.ProcessStartInfo
