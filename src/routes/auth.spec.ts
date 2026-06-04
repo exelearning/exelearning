@@ -18,6 +18,7 @@ import { up as migration006Up } from '../db/migrations/006_impersonation_audit_l
 import { now } from '../db/types';
 import { createAuthRoutes, verifyToken, getJwtSecret, shouldAutoCreateUsers, type AuthDependencies } from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
+import { resetOidcDiscoveryCache } from '../services/oidc-discovery';
 
 let testDb: Kysely<Database>;
 let originalEnv: Record<string, string | undefined>;
@@ -53,6 +54,7 @@ describe('Auth Routes', () => {
             JWT_SECRET: process.env.JWT_SECRET,
             API_JWT_SECRET: process.env.API_JWT_SECRET,
             CAS_URL: process.env.CAS_URL,
+            OIDC_ISSUER: process.env.OIDC_ISSUER,
             OIDC_AUTHORIZATION_ENDPOINT: process.env.OIDC_AUTHORIZATION_ENDPOINT,
             AUTH_TEMP_EMAIL_DOMAIN: process.env.AUTH_TEMP_EMAIL_DOMAIN,
         };
@@ -60,6 +62,11 @@ describe('Auth Routes', () => {
         // Set test environment
         process.env.APP_AUTH_METHODS = 'password,guest';
         process.env.JWT_SECRET = 'test-secret-for-auth-tests';
+        // Disable OIDC Discovery by default so endpoint resolution stays hermetic.
+        // Bun autoloads `.env`, which sets a real `OIDC_ISSUER`; leaving it set
+        // would make the resolver perform real network discovery. The dedicated
+        // discovery tests below opt back in with a mocked `fetch`.
+        delete process.env.OIDC_ISSUER;
 
         testDb = new Kysely<Database>({
             dialect: new BunSqliteDialect({ url: ':memory:' }),
@@ -873,6 +880,74 @@ describe('Auth Routes', () => {
             const location = response.headers.get('location');
             expect(location).toContain('redirect_uri=');
             expect(location).toContain('oidc.example.com');
+        });
+    });
+
+    // OIDC Discovery wiring: OIDC_ISSUER should drive endpoint resolution.
+    // The resolver itself is unit-tested in services/oidc-discovery.spec.ts;
+    // these tests confirm auth routes consult it via the global fetch.
+    describe('GET /login/openid (OIDC Discovery)', () => {
+        const issuer = 'https://idp.discovery-test.example.com';
+        const originalFetch = globalThis.fetch;
+
+        function mockWellKnown() {
+            globalThis.fetch = (async (url: string | URL | Request) => {
+                const href = url.toString();
+                if (href.endsWith('/.well-known/openid-configuration')) {
+                    return {
+                        ok: true,
+                        status: 200,
+                        json: async () => ({
+                            issuer,
+                            authorization_endpoint: `${issuer}/authorize`,
+                            token_endpoint: `${issuer}/token`,
+                            userinfo_endpoint: `${issuer}/userinfo`,
+                            end_session_endpoint: `${issuer}/logout`,
+                        }),
+                    } as unknown as Response;
+                }
+                throw new Error(`Unexpected fetch in discovery test: ${href}`);
+            }) as unknown as typeof fetch;
+        }
+
+        beforeEach(() => {
+            resetOidcDiscoveryCache();
+        });
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+            delete process.env.OIDC_ISSUER;
+            delete process.env.OIDC_AUTHORIZATION_ENDPOINT;
+        });
+
+        it('redirects to the discovered authorization endpoint when only the issuer is set', async () => {
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_ISSUER = issuer;
+            delete process.env.OIDC_AUTHORIZATION_ENDPOINT;
+            mockWellKnown();
+
+            const response = await app.handle(new Request('http://localhost/login/openid'));
+
+            process.env.APP_AUTH_METHODS = 'password,guest';
+
+            expect(response.status).toBe(302);
+            expect(response.headers.get('location')).toContain(`${issuer}/authorize`);
+        });
+
+        it('prefers an explicit authorization endpoint over the discovered one', async () => {
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_ISSUER = issuer;
+            process.env.OIDC_AUTHORIZATION_ENDPOINT = 'https://explicit.example.com/authorize';
+            mockWellKnown();
+
+            const response = await app.handle(new Request('http://localhost/login/openid'));
+
+            process.env.APP_AUTH_METHODS = 'password,guest';
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') ?? '';
+            expect(location).toContain('explicit.example.com/authorize');
+            expect(location).not.toContain(issuer);
         });
     });
 
@@ -1879,18 +1954,77 @@ describe('Auth Routes', () => {
             expect(loginResponse.status).toBe(200);
         });
 
-        it('should redirect to OpenID logout when authMethod is openid', async () => {
+        // Mint a JWT with authMethod 'openid' so /logout takes the OIDC branch.
+        async function openidAuthCookie(): Promise<string> {
+            const { SignJWT } = await import('jose');
+            const secret = new TextEncoder().encode(getJwtSecret());
+            const token = await new SignJWT({
+                sub: 1,
+                email: 'oidclogout@example.com',
+                roles: ['ROLE_USER'],
+                authMethod: 'openid',
+            })
+                .setProtectedHeader({ alg: 'HS256' })
+                .setExpirationTime('1h')
+                .sign(secret);
+            return `auth=${token}`;
+        }
+
+        it('should redirect to the explicit OIDC end_session endpoint on logout', async () => {
             const prevEndSessionEndpoint = process.env.OIDC_END_SESSION_ENDPOINT;
             const prevClientId = process.env.OIDC_CLIENT_ID;
-
             process.env.OIDC_END_SESSION_ENDPOINT = 'https://oidc.example.com/logout';
             process.env.OIDC_CLIENT_ID = 'test-client';
 
-            // Just test that the environment variables are read properly
-            expect(process.env.OIDC_END_SESSION_ENDPOINT).toBe('https://oidc.example.com/logout');
+            const response = await app.handle(
+                new Request('http://localhost/logout', { headers: { cookie: await openidAuthCookie() } }),
+            );
 
-            process.env.OIDC_END_SESSION_ENDPOINT = prevEndSessionEndpoint;
-            process.env.OIDC_CLIENT_ID = prevClientId;
+            if (prevEndSessionEndpoint) process.env.OIDC_END_SESSION_ENDPOINT = prevEndSessionEndpoint;
+            else delete process.env.OIDC_END_SESSION_ENDPOINT;
+            if (prevClientId) process.env.OIDC_CLIENT_ID = prevClientId;
+            else delete process.env.OIDC_CLIENT_ID;
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') ?? '';
+            expect(location).toContain('oidc.example.com/logout');
+            expect(location).toContain('client_id=test-client');
+        });
+
+        it('should redirect to a discovered end_session endpoint on logout', async () => {
+            const issuer = 'https://idp.discovery-logout.example.com';
+            const originalFetch = globalThis.fetch;
+            resetOidcDiscoveryCache();
+            process.env.OIDC_ISSUER = issuer;
+            delete process.env.OIDC_END_SESSION_ENDPOINT;
+            process.env.OIDC_CLIENT_ID = 'test-client';
+            globalThis.fetch = (async (url: string | URL | Request) => {
+                if (url.toString().endsWith('/.well-known/openid-configuration')) {
+                    return {
+                        ok: true,
+                        status: 200,
+                        json: async () => ({
+                            issuer,
+                            authorization_endpoint: `${issuer}/authorize`,
+                            token_endpoint: `${issuer}/token`,
+                            userinfo_endpoint: `${issuer}/userinfo`,
+                            end_session_endpoint: `${issuer}/endsession`,
+                        }),
+                    } as unknown as Response;
+                }
+                throw new Error(`Unexpected fetch: ${url}`);
+            }) as unknown as typeof fetch;
+
+            const response = await app.handle(
+                new Request('http://localhost/logout', { headers: { cookie: await openidAuthCookie() } }),
+            );
+
+            globalThis.fetch = originalFetch;
+            delete process.env.OIDC_ISSUER;
+            delete process.env.OIDC_CLIENT_ID;
+
+            expect(response.status).toBe(302);
+            expect(response.headers.get('location') ?? '').toContain(`${issuer}/endsession`);
         });
 
         it('should handle SAML logout configuration', async () => {
