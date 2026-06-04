@@ -1125,6 +1125,24 @@ describe('common_edition.js', () => {
         expect(result.explanation).not.toContain('expert');
       });
 
+      it('getAllowedFormats(10) prompt resolves every %placeholder% (no leftover markers)', () => {
+        // The prompt is built from a single static translation key with %placeholders%
+        // (not a c_(`...${}...`) template, which the extractor skips and never translates).
+        // After substitution none of the markers may survive, or the user would see raw
+        // %total% / %distribution% tokens in the AI prompt.
+        const result = share().getAllowedFormats(10);
+        expect(result.prompt).not.toContain('%total%');
+        expect(result.prompt).not.toContain('%distribution%');
+        expect(result.prompt).not.toContain('%ladder%');
+        expect(result.prompt).not.toContain('%perLevel%');
+        // 3-level default: 3 × 20 = 60 questions, 20 per level.
+        expect(result.prompt).toContain('Create 60 mixed adaptative-quiz questions');
+        expect(result.prompt).toContain('around 20 questions per level');
+        // The distribution and difficulty-ladder fragments are interpolated in.
+        expect(result.prompt).toContain('balanced across the 3 levels');
+        expect(result.prompt).toContain('Difficulty must increase with the level');
+      });
+
       it('buildIAPromptText(10) joins lines with real newlines (no literal \\n)', () => {
         const text = share().buildIAPromptText(10);
         expect(text).toContain('Act as a highly experienced teacher.');
