@@ -128,6 +128,7 @@ var $adaptativequiz = {
         }
 
         this.addEvents(ldata.id);
+        $exeDevices.iDevice.gamification.math.updateLatex('.exe-adaptative-quiz-template');
 
         return true;
     },
@@ -593,6 +594,9 @@ var $adaptativequiz = {
         if (isHtml) $msg.html(content);
         else $msg.text(content);
         $msg.stop(true, true).show();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(content)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('#adaptativeQuizMessages-' + id)
+         }
     },
 
     /**
@@ -937,6 +941,10 @@ var $adaptativequiz = {
             .show();
         $('#adaptativeQuizRound-' + id).text(opts.roundCount + 1 + ' / ' + opts.numRound);
         this.updateLevelDisplay(id, opts);
+        const lhtml = $('#adaptativeQuizQuestionContainer-' + id).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(lhtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('#adaptativeQuizQuestionContainer-' + id);
+        }
     },
 
     startGame: function (id) {
@@ -1400,6 +1408,9 @@ var $adaptativequiz = {
         $('#adaptativeQuizReport-' + id)
             .html(html)
             .show();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
+                $exeDevices.iDevice.gamification.math.updateLatex('#adaptativeQuizReport-' + id)
+        }
     },
 
     endGame: function (id) {
