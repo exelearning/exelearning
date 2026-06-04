@@ -588,9 +588,9 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         // so the full 1º–3º block is shown unchanged. (Uses ES-GA rather than
         // ES because the module caches datasets by id across tests.)
         const codes = await listedCodAreas('ES-GA');
-        expect(codes).toContain('BIG');
-        expect(codes).toContain('FQX');
-        expect(codes).toContain('DIG');
+        expect(codes).toContain('LPM');
+        expect(codes).toContain('FiQu');
+        expect(codes).toContain('LCL');
     });
 });
 
