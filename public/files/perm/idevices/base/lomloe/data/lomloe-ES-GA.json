@@ -50351,8 +50351,8 @@
       }
     }
   },
-  "Educación secundaria obrigatoria": {
-    "1º Ensinanza secundaria obrigatoria": {
+  "ESO": {
+    "1º ESO": {
       "ES-GA-ESO1-BiXe": {
         "denominacion": "Bioloxía e xeoloxía",
         "competencias_especificas": {
@@ -57578,7 +57578,7 @@
         }
       }
     },
-    "2º Ensinanza secundaria obrigatoria": {
+    "2º ESO": {
       "ES-GA-ESO2-EdFi": {
         "denominacion": "Educación física",
         "competencias_especificas": {
@@ -64557,7 +64557,7 @@
         }
       }
     },
-    "3º Ensinanza secundaria obrigatoria": {
+    "3º ESO": {
       "ES-GA-ESO3-ACT": {
         "denominacion": "Ámbito científico-tecnolóxico",
         "competencias_especificas": {
@@ -77344,7 +77344,7 @@
         }
       }
     },
-    "4º Ensinanza secundaria obrigatoria": {
+    "4º ESO": {
       "ES-GA-ESO4-ACT": {
         "denominacion": "Ámbito científico-tecnolóxico",
         "competencias_especificas": {

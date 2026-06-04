@@ -588,9 +588,9 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         // so the full 1º–3º block is shown unchanged. (Uses ES-GA rather than
         // ES because the module caches datasets by id across tests.)
         const codes = await listedCodAreas('ES-GA');
-        expect(codes).toContain('LPM');
-        expect(codes).toContain('FiQu');
-        expect(codes).toContain('LCL');
+        expect(codes).toContain('BIG');
+        expect(codes).toContain('FQX');
+        expect(codes).toContain('DIG');
     });
 });
 
@@ -1473,7 +1473,7 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
         for (const etapa of [
             'Educación infantil',
             'Educación primaria',
-            'Educación secundaria obrigatoria',
+            'ESO',
             'Bacharelato',
         ]) {
             expect(data[etapa], `missing etapa ${etapa}`).toBeDefined();
@@ -1486,8 +1486,8 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
             '1º Educación primaria', '2º Educación primaria', '3º Educación primaria',
             '4º Educación primaria', '5º Educación primaria', '6º Educación primaria',
         ]);
-        expect(Object.keys(data['Educación secundaria obrigatoria'])).toEqual([
-            '1º Ensinanza secundaria obrigatoria', '2º Ensinanza secundaria obrigatoria', '3º Ensinanza secundaria obrigatoria', '4º Ensinanza secundaria obrigatoria',
+        expect(Object.keys(data['ESO'])).toEqual([
+            '1º ESO', '2º ESO', '3º ESO', '4º ESO',
         ]);
         expect(Object.keys(data['Bacharelato'])).toEqual(['1º Bacharelato', '2º Bacharelato']);
         expect(Object.keys(data['Educación infantil'])).toEqual([
