@@ -1473,7 +1473,7 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
         for (const etapa of [
             'Educación infantil',
             'Educación primaria',
-            'Educación secundaria obrigatoria'',
+            'Educación secundaria obrigatoria',
             'Bacharelato',
         ]) {
             expect(data[etapa], `missing etapa ${etapa}`).toBeDefined();
