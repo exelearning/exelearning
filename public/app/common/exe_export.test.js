@@ -306,6 +306,26 @@ describe('exe_export.js', () => {
     expect(window.unloadPage).toHaveBeenCalledWith(true);
   });
 
+  it('detects scorm data in JSON idevices that store isScorm directly', () => {
+    window.scorm = {};
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
+    window.$adaptativequiz = {};
+
+    const jsonNode = document.createElement('div');
+    jsonNode.className = 'idevice_node adaptative-quiz';
+    jsonNode.setAttribute('data-idevice-component-type', 'json');
+    jsonNode.setAttribute('data-idevice-type', 'adaptative-quiz');
+    jsonNode.setAttribute('data-idevice-json-data', JSON.stringify({ isScorm: 1 }));
+    document.body.appendChild(jsonNode);
+
+    window.$exeExport.initScorm();
+    window.dispatchEvent(new Event('unload'));
+
+    expect(window.loadPage).toHaveBeenCalledTimes(1);
+    expect(window.unloadPage).toHaveBeenCalledWith(true);
+  });
+
   it('normalizes search strings', () => {
     expect(window.$exeExport.searchBar.normalizeText('Árbol')).toBe('arbol');
   });
@@ -1014,6 +1034,41 @@ describe('exe_export.js', () => {
 
       expect(exportIdevice.renderView).not.toHaveBeenCalled();
       expect(exportIdevice.renderBehaviour).toHaveBeenCalled();
+    });
+
+    it('renders adaptative-quiz through renderView even when htmlView exists', () => {
+      const exportIdevice = {
+        renderView: vi.fn(() => '<p>Rendered quiz</p>'),
+        renderBehaviour: vi.fn(),
+        init: vi.fn(),
+      };
+      window.$adaptativequiz = exportIdevice;
+
+      const node = document.createElement('div');
+      node.id = 'idevice-adq';
+      node.className = 'idevice_node adaptative-quiz';
+      node.innerHTML = '<p>Stale htmlView</p>';
+      node.setAttribute('data-idevice-component-type', 'json');
+      node.setAttribute('data-idevice-type', 'adaptative-quiz');
+      node.setAttribute('data-idevice-template', '{content}');
+      node.setAttribute('data-idevice-json-data', JSON.stringify({ questionsGame: [] }));
+      document.body.appendChild(node);
+
+      const intervalName = 'interval_adaptative_quiz';
+      window[intervalName] = 127;
+      vi.spyOn(window, 'setTimeout').mockImplementation((fn) => {
+        fn();
+        return 0;
+      });
+
+      window.$exeExport.initJsonIdevice('adaptative-quiz', intervalName);
+
+      expect(exportIdevice.renderView).toHaveBeenCalled();
+      expect(exportIdevice.renderBehaviour).toHaveBeenCalledWith(
+        expect.objectContaining({ questionsGame: [], ideviceId: 'idevice-adq' }),
+        null,
+      );
+      expect(node.innerHTML).toBe('<p>Rendered quiz</p>');
     });
 
     it('does not set innerHTML when renderView returns falsy', () => {

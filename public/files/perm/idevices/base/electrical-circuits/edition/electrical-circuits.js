@@ -524,7 +524,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="elceShowMinimize">${_('Show minimized.')} </label>
-                            </div> 
+                            </div>
                             <div class="toggle-item mb-3" data-target="elceAnswersRamdon" id="elceAnswersRamdonDiv">
                                 <span class="toggle-control">
                                     <input type="checkbox" class="toggle-input" id="elceAnswersRamdon" />
@@ -551,7 +551,7 @@ var $exeDevice = {
                                     <input type="number" name="elceTimeShowSolution" id="elceTimeShowSolution" value="3" min="1" max="9" class="form-control" />
                                     <label for="elceTimeShowSolution">${_('Show solution time (seconds)')}</label>
                                 </div>
-                            </div>                            
+                            </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item toggle-related" data-target="elceHasFeedBack">
                                     <span class="toggle-control">
@@ -690,7 +690,7 @@ var $exeDevice = {
                                     <div id="elceScoreQuestionDiv" class="ELCE-ScoreQuestionDiv align-items-center gap-2 mb-3 d-none">
                                         <label for="elceScoreQuestion">${_('Score')}:</label>
                                         <input type="number" name="elceScoreQuestion" id="elceScoreQuestion" value="1" min="0" max="100" step="0.05" class="form-control"/>
-                                    </div>                                    
+                                    </div>
                                 </div>
                                 <div class="ELCE-EMultiMediaOption ">
                                     <div class="ELCE-EMultimedia" id="elceMultimedia">
@@ -710,7 +710,7 @@ var $exeDevice = {
                                         <label for="elceDescription">${_('Description')}:</label>
                                         <input type="text" class="form-control" id="elceDescription" value="" />
                                     </div>
-                                </div>                               
+                                </div>
                             </div>
                             <div class="ELCE-EContents" id="elceContents">
                                 <div id="elceSolitionOptions" class="ELCE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="elceSolutionSelect">A</span></span></div>
@@ -748,7 +748,7 @@ var $exeDevice = {
                                     <div class="ELCE-ESolutionWord"><label for="elceSolutionWord">${_('Word/Phrase')}:</label><input type="text" id="elceSolutionWord" class="form-control"/></div>
                                     <div class="ELCE-ESolutionWord"><label for="elceDefinitionWord">${_('Definition')}:</label><input type="text" id="elceDefinitionWord" class="form-control"/></div>
                                 </div>
-                            </div>                           
+                            </div>
                             <div class="ELCE-ENavigationButtons gap-2">
                                 <a href="#" id="elceAdd" class="ELCE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="ELCE-ENavigationButton" /></a>
                                 <a href="#" id="elceFirst" class="ELCE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="ELCE-ENavigationButton" /></a>
@@ -771,7 +771,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(10)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(11)}
 
             </div>`;
 
@@ -974,7 +974,7 @@ var $exeDevice = {
         }
 
         const textFeedBack = $exeDevice.getEditorContent('elceFeedBackEditor');
-   
+
         let html = '<div class="electrical-circuits-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
