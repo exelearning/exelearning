@@ -95,8 +95,7 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Galicia',
             file: '../data/lomloe-ES-GA.json',
-            available: true,
-            descriptorsPerCriterion: true
+            available: true
         },
         {
             id: 'ES-CN',
