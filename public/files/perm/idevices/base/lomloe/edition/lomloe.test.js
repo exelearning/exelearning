@@ -583,11 +583,18 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         expect(codes).not.toContain('FQX');
     });
 
+    const GA_SAMPLE = {
+        ESO: {
+            '1º ESO': {
+                BiXe: area('Bioloxía e Xeoloxía'),
+                TeDi: area('Tecnoloxía e Dixitalización'),
+                LGL: area('Lingua Galega e Literatura')
+            }
+        }
+    };
+
     it('datasets without a per-course distribution (e.g. Galicia, State) are not filtered', async () => {
-        // ES-GA is absent from ESO_COURSE_SUBJECTS, like the State (ES) floor,
-        // so the full 1º–3º block is shown unchanged. (Uses ES-GA rather than
-        // ES because the module caches datasets by id across tests.)
-        const codes = await listedCodAreas('ES-GA');
+        const codes = await listedCodAreas('ES-GA', GA_SAMPLE);
         expect(codes).toContain('BiXe');
         expect(codes).toContain('TeDi');
         expect(codes).toContain('LGL');
