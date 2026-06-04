@@ -541,7 +541,7 @@ describe('UserPreferences', () => {
       // defaultTheme template so setPreferences can populate the value.
       globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({
         userPreferencesConfig: {
-          defaultTheme: { value: '', type: 'select', title: 'Default style for the new documents' },
+          defaultTheme: { value: '', type: 'select', title: 'Default style for new documents' },
           locale: { value: 'en' },
         },
       });

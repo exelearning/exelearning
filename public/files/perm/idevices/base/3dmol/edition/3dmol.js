@@ -190,7 +190,7 @@ var $exeDevice = {
     setMessagesInfo: function () {
         const msgs = $exeDevice.msgs;
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgTypeChoose = _('Please select the correct answer for each option');
+        msgs.msgTypeChoose = _('Please select the correct answer for each question');
         msgs.msgECompleteQuestion = _('Please write the question');
         msgs.msgECompleteAllOptions = _('Please complete all options');
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
@@ -1518,7 +1518,7 @@ var $exeDevice = {
             author: '',
             alt: '',
             quextion: c_('How many hydroxyl groups (–OH) does a glucose molecule have?'),
-            options: [c_('5'), c_('4'), c_('3'), c_('6')],
+            options: ['5', '4', '3', '6'],
             solution: 'A',
             solutionQuestion: '',
             percentageShow: 35,
