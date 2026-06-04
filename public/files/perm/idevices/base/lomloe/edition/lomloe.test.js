@@ -1471,9 +1471,9 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
 
     it('exposes the four Galician etapa labels', () => {
         for (const etapa of [
-            'Educación Infantil',
-            'Educación Primaria',
-            'Educación Secundaria Obrigatoria',
+            'Educación infantil',
+            'Educación primaria',
+            'Educación secundaria obrigatoria'',
             'Bacharelato',
         ]) {
             expect(data[etapa], `missing etapa ${etapa}`).toBeDefined();
@@ -1482,16 +1482,16 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
     });
 
     it('uses Galician nivel labels (per-year for Primaria/ESO/Bacharelato, ciclo for Infantil)', () => {
-        expect(Object.keys(data['Educación Primaria'])).toEqual([
-            '1º de educación primaria', '2º de educación primaria', '3º de educación primaria',
-            '4º de educación primaria', '5º de educación primaria', '6º de educación primaria',
+        expect(Object.keys(data['Educación primaria'])).toEqual([
+            '1º Educación primaria', '2º Educación primaria', '3º Educación primaria',
+            '4º Educación primaria', '5º Educación primaria', '6º Educación primaria',
         ]);
-        expect(Object.keys(data['Educación Secundaria Obrigatoria'])).toEqual([
-            '1º de ESO', '2º de ESO', '3º de ESO', '4º de ESO',
+        expect(Object.keys(data['Educación secundaria obrigatoria'])).toEqual([
+            '1º Ensinanza secundaria obrigatoria', '2º Ensinanza secundaria obrigatoria', '3º Ensinanza secundaria obrigatoria', '4º Ensinanza secundaria obrigatoria',
         ]);
-        expect(Object.keys(data['Bacharelato'])).toEqual(['1º de bacharelato', '2º de bacharelato']);
-        expect(Object.keys(data['Educación Infantil'])).toEqual([
-            'Primeiro ciclo (0-3 anos)', 'Segundo ciclo (3-6 anos)',
+        expect(Object.keys(data['Bacharelato'])).toEqual(['1º Bacharelato', '2º Bacharelato']);
+        expect(Object.keys(data['Educación infantil'])).toEqual([
+            '4º Educación infantil', '5º Educación infantil', '6º Educación infantil',
         ]);
     });
 
