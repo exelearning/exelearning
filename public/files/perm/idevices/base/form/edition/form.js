@@ -105,6 +105,18 @@ var $exeDevice = {
         return this.questionsForm.findIndex((q) => q.id === id);
     },
 
+    getQuestionElementById(id) {
+        const formPreview = $exeDevice.ideviceBody.querySelector(
+            `#${$exeDevice.formPreviewId}`
+        );
+        if (!formPreview) return null;
+        return (
+            Array.from(formPreview.children).find(
+                (question) => question.dataset.id === id
+            ) || null
+        );
+    },
+
     normalizeTrueFalseAnswer(answer) {
         const normalizedAnswer =
             typeof answer === 'string' ? answer.trim().toLowerCase() : answer;
@@ -1689,6 +1701,8 @@ var $exeDevice = {
                     const questionIndex =
                         $exeDevice.getQuestionIndexById(questionId);
                     if (questionIndex !== -1) {
+                        const questionElement =
+                            $exeDevice.getQuestionElementById(questionId);
                         const updatedQuestion = $exeDevice.createQuestionObject(
                             $exeDevice.formPreviewId,
                             questionType
@@ -1701,11 +1715,12 @@ var $exeDevice = {
                                 `#${$exeDevice.formPreviewId}TextareaContainer`
                             )
                             .parentElement.remove();
-                        $exeDevice.manageHideQuestion('remove');
                         $exeDevice.renderQuestion(
                             updatedQuestion,
-                            questionIndex
+                            undefined,
+                            questionElement
                         );
+                        $exeDevice.dataIdQuestionBeforeEdit = '';
                         $exeDevice.active = questionIndex;
                     }
                 } else {
@@ -1743,8 +1758,8 @@ var $exeDevice = {
         }
     },
     manageHideQuestion(action = 'show') {
-        const hideQuestion = $exeDevice.ideviceBody.querySelector(
-            `[data-id="${$exeDevice.dataIdQuestionBeforeEdit}"]`
+        const hideQuestion = $exeDevice.getQuestionElementById(
+            $exeDevice.dataIdQuestionBeforeEdit
         );
         if (hideQuestion) {
             if (action === 'remove') hideQuestion.remove();
@@ -1859,13 +1874,20 @@ var $exeDevice = {
         return question;
     },
 
-    renderQuestion(question, index) {
+    renderQuestion(question, index, elementToReplace = null) {
         const formPreview = $exeDevice.ideviceBody.querySelector(
             `#${$exeDevice.formPreviewId}`
         );
         const html = this.generateQuestionHTML(question);
         let renderedQuestion;
-        if (typeof index !== 'undefined' && formPreview.children[index]) {
+        if (elementToReplace?.parentElement === formPreview) {
+            elementToReplace.insertAdjacentHTML('beforebegin', html);
+            renderedQuestion = elementToReplace.previousElementSibling;
+            elementToReplace.remove();
+        } else if (
+            typeof index !== 'undefined' &&
+            formPreview.children[index]
+        ) {
             const oldElement = formPreview.children[index];
             oldElement.outerHTML = html;
             renderedQuestion = formPreview.children[index];

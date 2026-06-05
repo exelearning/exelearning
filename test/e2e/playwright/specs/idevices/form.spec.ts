@@ -599,7 +599,9 @@ test.describe('Form iDevice', () => {
             await addFormIdeviceFromPanel(page);
 
             const uniqueQuestion = `Persistence test question ${Date.now()}`;
+            const followingQuestion = `Following persistence question ${Date.now()}`;
             await addTrueFalseQuestion(page, uniqueQuestion, true);
+            await addTrueFalseQuestion(page, followingQuestion, false);
 
             await saveFormIdevice(page);
             await workarea.save();
@@ -618,14 +620,29 @@ test.describe('Form iDevice', () => {
             expect(ideviceId).not.toBeNull();
             await editIdevice(page, ideviceId!);
 
-            const question = page
-                .locator('#formPreview .FormView_question')
-                .filter({ hasText: uniqueQuestion })
-                .first();
-            await expect(question).toBeVisible({ timeout: 10000 });
-            await question.locator('.QuestionLabel_edit').click();
+            const renderedQuestions = page.locator('#formPreview > .FormView_question');
+            await expect(renderedQuestions).toHaveCount(2);
+            const questionIds = await renderedQuestions.evaluateAll(questions =>
+                questions.map(question => question.getAttribute('data-id')),
+            );
+            expect(questionIds.every(Boolean)).toBe(true);
+
+            await renderedQuestions.first().locator('.QuestionLabel_edit').click();
 
             await expect(page.locator('#formPreviewTrueFalseRadioButtons #InputTrue')).toBeChecked();
+            await page.locator('#formPreviewTrueFalseRadioButtons #InputFalse').check();
+            await page.locator('#saveQuestion').click();
+
+            await expect(renderedQuestions).toHaveCount(2);
+            await expect
+                .poll(() =>
+                    renderedQuestions.evaluateAll(questions =>
+                        questions.map(question => question.getAttribute('data-id')),
+                    ),
+                )
+                .toEqual(questionIds);
+            await expect(renderedQuestions.first()).toBeVisible();
+            await expect(renderedQuestions.nth(1)).toBeVisible();
         });
     });
 });

@@ -428,6 +428,68 @@ describe('form iDevice edition', () => {
   // DOM Manipulation Tests
   // ============================================
 
+  describe('question editing', () => {
+    it('replaces the edited question without removing the following question', () => {
+      const editedQuestion = {
+        id: 'edited-question',
+        activityType: 'true-false',
+        baseText: '<p>Original question</p>',
+        answer: '1',
+      };
+      const followingQuestion = {
+        id: 'following-question',
+        activityType: 'true-false',
+        baseText: '<p>Following question</p>',
+        answer: '0',
+      };
+
+      document.body.innerHTML = `
+        <ul id="formPreview">
+          <li class="FormView_question" data-id="edited-question" style="display: none"></li>
+          <li class="FormView_question">
+            <div id="formPreviewTextareaContainer"></div>
+            <div id="saveQuestionContainer"></div>
+          </li>
+          <li class="FormView_question" data-id="following-question">Following question</li>
+        </ul>
+        <input id="frmEPercentageQuestions" value="100">
+        <span id="frmENumeroPercentaje"></span>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.questionsForm = [editedQuestion, followingQuestion];
+      $exeDevice.dataIdQuestionBeforeEdit = editedQuestion.id;
+      $exeDevice.strings = {
+        ...$exeDevice.strings,
+        msgEActivity: 'Activity',
+        msgETrue: 'True',
+        msgEFalse: 'False',
+      };
+      $exeDevice.createQuestionObject = vi.fn(() => ({
+        ...editedQuestion,
+        baseText: '<p>Updated question</p>',
+      }));
+      $exeDevice.addSortableBehaviour = vi.fn();
+      $exeDevice.disableArrowUpDown = vi.fn();
+      $exeDevice.behaviourButtonCloseQuestionInFormView = vi.fn();
+      $exeDevice.behaviourButtonEditQuestionInFormView = vi.fn();
+      $exeDevice.behaviourButtonMoveUpQuestionInFormView = vi.fn();
+      $exeDevice.behaviourButtonMoveDownQuestionInFormView = vi.fn();
+
+      $exeDevice.behaviourButtonSaveQuestion('true-false');
+      document.getElementById('saveQuestionContainer').click();
+
+      const renderedQuestions = [...document.querySelectorAll('#formPreview > .FormView_question')];
+      expect(renderedQuestions.map(question => question.dataset.id)).toEqual([
+        'edited-question',
+        'following-question',
+      ]);
+      expect(renderedQuestions[0].textContent).toContain('Updated question');
+      expect(renderedQuestions[1].textContent).toContain('Following question');
+      expect($exeDevice.questionsForm).toHaveLength(2);
+      expect($exeDevice.dataIdQuestionBeforeEdit).toBe('');
+    });
+  });
+
   describe('updateQuestionsNumber', () => {
     let originalGetQuestionsData;
 
