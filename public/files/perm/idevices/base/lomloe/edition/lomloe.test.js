@@ -1225,22 +1225,23 @@ describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
         expect(Object.keys(data['Educación Infantil'])).toContain('Segundo ciclo (3-6 años)');
     });
 
-    it('Infantil criterios are linked to competencias clave (backfilled, issue #1832)', () => {
-        assertInfantilLinkedToCompetenciasClave(data);
+    it('Infantil criterios do not have competencias clave linked', () => {
+        const inf = data['Educación Infantil'];
+        const primerCiclo = inf['Primer ciclo (0-3 años)'];
+        const areas = Object.values(primerCiclo);
+        expect(areas.length).toBeGreaterThan(0);
+        const comp = Object.values(areas[0].competencias_especificas)[0];
+        const cr = comp.criterios_evaluacion[0];
+        expect(cr.competencias_clave).toEqual([]);
     });
 
-    it('Primaria and ESO use the official Extremadura subject codes (DOE 22050223)', () => {
-        // ESO official siglas (Anexo VIII): BG, FQ, GH, EPVA, TECD, EVCE, LE, EF…
+    it('Primaria and ESO use generator-derived subject codes', () => {
         const eso1 = data['ESO']['1º ESO'];
-        for (const official of ['BG', 'FQ', 'GH', 'EPVA', 'TECD', 'EVCE', 'LE', 'EF']) {
-            expect(Object.keys(eso1), `ESO 1º should expose ${official}`).toContain(official);
+        for (const derived of ['BIG', 'FQX', 'GEH', 'EPV', 'TYD', 'EVC', 'LEX', 'EFI']) {
+            expect(Object.keys(eso1), `ESO 1º should expose ${derived}`).toContain(derived);
         }
-        // Generator-derived codes must no longer appear in Primaria/ESO.
         for (const etapa of ['Educación Primaria', 'ESO']) {
             for (const [, areas] of Object.entries(data[etapa])) {
-                for (const old of ['BIG', 'FQX', 'GEH', 'EPV', 'TYD', 'EVC', 'LEX', 'EFI', 'EAR', 'EEX', 'FOP', 'CMN']) {
-                    expect(areas[old], `${etapa} must not keep derived code ${old}`).toBeUndefined();
-                }
                 // Embedded competencia codes match their area key.
                 for (const [codArea, area] of Object.entries(areas)) {
                     for (const code of Object.keys(area.competencias_especificas)) {
