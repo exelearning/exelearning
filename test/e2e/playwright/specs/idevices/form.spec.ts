@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage, gotoWorkarea, editIdevice } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -164,12 +164,8 @@ async function addTrueFalseQuestion(page: Page, questionText: string, answer: bo
     }
 
     // Select True or False answer - look for radio buttons in the form
-    const trueRadio = page
-        .locator('input[type="radio"][value="true"], #formPreviewTrueFalseRadioButtons input[value="true"]')
-        .first();
-    const falseRadio = page
-        .locator('input[type="radio"][value="false"], #formPreviewTrueFalseRadioButtons input[value="false"]')
-        .first();
+    const trueRadio = page.locator('#formPreviewTrueFalseRadioButtons input[value="1"]').first();
+    const falseRadio = page.locator('#formPreviewTrueFalseRadioButtons input[value="0"]').first();
 
     if (answer && (await trueRadio.count()) > 0) {
         await trueRadio.check({ force: true });
@@ -575,10 +571,9 @@ test.describe('Form iDevice', () => {
             await page.waitForTimeout(500);
 
             // Find and click on "True" radio button
-            const trueRadio = iframe.locator('input[type="radio"][value="true"], label:has-text("True") input');
-            if ((await trueRadio.count()) > 0) {
-                await trueRadio.first().click();
-            }
+            const trueRadio = iframe.locator('input[type="radio"][value="1"]').first();
+            await expect(trueRadio).toBeVisible();
+            await trueRadio.check();
 
             // Click check button
             const checkBtn = iframe.locator('[id^="form-button-check-"]').first();
@@ -619,6 +614,19 @@ test.describe('Form iDevice', () => {
             // Verify iDevice is still there
             const idevice = page.locator('#node-content article .idevice_node.form').first();
             await expect(idevice).toBeVisible({ timeout: 15000 });
+
+            const ideviceId = await idevice.getAttribute('id');
+            expect(ideviceId).not.toBeNull();
+            await editIdevice(page, ideviceId!);
+
+            const question = page
+                .locator('#formPreview .FormView_question')
+                .filter({ hasText: uniqueQuestion })
+                .first();
+            await expect(question).toBeVisible({ timeout: 10000 });
+            await question.locator('.QuestionLabel_edit').click();
+
+            await expect(page.locator('#formPreviewTrueFalseRadioButtons #InputTrue')).toBeChecked();
         });
     });
 });

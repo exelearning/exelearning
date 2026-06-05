@@ -104,6 +104,18 @@ var $exeDevice = {
     getQuestionIndexById: function (id) {
         return this.questionsForm.findIndex((q) => q.id === id);
     },
+
+    normalizeTrueFalseAnswer(answer) {
+        const normalizedAnswer =
+            typeof answer === 'string' ? answer.trim().toLowerCase() : answer;
+        return normalizedAnswer === 1 ||
+            normalizedAnswer === true ||
+            normalizedAnswer === '1' ||
+            normalizedAnswer === 'true'
+            ? '1'
+            : '0';
+    },
+
     refreshTranslations: function () {
         this.ci18n = {
             msgScoreScorm: c_(
@@ -1827,13 +1839,12 @@ var $exeDevice = {
                     .getAttribute('selection-type');
                 break;
             case $exeDevice.ACTIVITY_TYPES.TRUE_FALSE:
-                const trueFalseAnswer = document.querySelector(
+                const trueFalseAnswer = container.querySelector(
                     'input[name="TrueFalseQuestion"]:checked'
                 );
-                question.answer =
-                    trueFalseAnswer && trueFalseAnswer.value === 'true'
-                        ? '1'
-                        : '0';
+                question.answer = $exeDevice.normalizeTrueFalseAnswer(
+                    trueFalseAnswer?.value
+                );
                 break;
             case $exeDevice.ACTIVITY_TYPES.FILL:
                 question.capitalization = container.querySelector(
@@ -1949,7 +1960,7 @@ var $exeDevice = {
     },
 
     getPreviewTextTrueFalseQuestion(question) {
-        const answer = question.answer === '1' ? 1 : 0;
+        const answer = this.normalizeTrueFalseAnswer(question.answer);
         return this.getProcessTextTrueFalseQuestion(question.baseText, answer);
     },
 
@@ -2161,7 +2172,7 @@ var $exeDevice = {
                             <input type="radio" 
                                        name="TrueFalseQuestion" 
                                        id="InputTrue" 
-                                       value="${this.strings.msgETrue}" 
+                                       value="1"
                                        checked>
                             <label for="InputTrue">                                
                                 ${this.strings.msgETrue}
@@ -2171,7 +2182,7 @@ var $exeDevice = {
                             <input type="radio" 
                                     name="TrueFalseQuestion" 
                                     id="InputFalse" 
-                                    value="${this.strings.msgEFalse}">
+                                    value="0">
                              <label for="InputFalse">
                                 ${this.strings.msgEFalse}
                             </label>
@@ -2606,7 +2617,7 @@ var $exeDevice = {
         }
 
         let newTextarea = $exeDevice.ideviceBody.querySelector(
-            `TEXTAREA[id^=${$exeDevice.formPreviewId}`
+            `TEXTAREA[id^="${$exeDevice.formPreviewId}"]`
         );
         newTextarea.innerHTML = questionData.baseText.replace(
             /<p>\s*(<br\s*\/?>)?\s*<\/p>/gi,
@@ -2614,7 +2625,7 @@ var $exeDevice = {
         );
         let falseBtn = $exeDevice.ideviceBody.querySelector('#InputFalse');
         let trueBtn = $exeDevice.ideviceBody.querySelector('#InputTrue');
-        if (questionData.answer === '0') {
+        if ($exeDevice.normalizeTrueFalseAnswer(questionData.answer) === '0') {
             falseBtn.checked = true;
         } else {
             trueBtn.checked = true;

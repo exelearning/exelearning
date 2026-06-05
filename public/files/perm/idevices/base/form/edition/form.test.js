@@ -192,6 +192,118 @@ describe('form iDevice edition', () => {
     });
   });
 
+  describe('true/false answer persistence', () => {
+    function renderTrueFalseEditor() {
+      $exeDevice.strings = {
+        ...$exeDevice.strings,
+        msgETrue: 'Verdadero',
+        msgEFalse: 'Falso',
+      };
+      document.body.innerHTML = `
+        <div id="formPreview">
+          <textarea id="formPreviewTextarea"></textarea>
+          ${$exeDevice.showTrueFalseRadioButtons('formPreviewTrueFalseRadioButtons')}
+        </div>
+      `;
+      $exeDevice.ideviceBody = document.body;
+      $exeDevice.getEditorTinyMCEValue = vi.fn(() => '<p>Question</p>');
+    }
+
+    it.each([
+      ['InputTrue', '1'],
+      ['InputFalse', '0'],
+    ])('round-trip preserves the selected %s answer', (radioId, expectedAnswer) => {
+      renderTrueFalseEditor();
+      document.getElementById(radioId).checked = true;
+
+      const savedQuestion = $exeDevice.createQuestionObject(
+        'formPreview',
+        $exeDevice.ACTIVITY_TYPES.TRUE_FALSE,
+      );
+
+      expect(savedQuestion.answer).toBe(expectedAnswer);
+
+      $exeDevice.questionsForm = [{ ...savedQuestion, id: 'question-id' }];
+      document.getElementById(radioId === 'InputTrue' ? 'InputFalse' : 'InputTrue').checked = true;
+      $exeDevice.setDataFromTrueFalseQuestion({
+        dataset: { id: 'question-id' },
+      });
+
+      expect(document.getElementById(radioId).checked).toBe(true);
+    });
+
+    it('reads the selected answer from the active question container', () => {
+      renderTrueFalseEditor();
+      const otherForm = document.createElement('form');
+      otherForm.innerHTML = '<input type="radio" name="TrueFalseQuestion" value="0" checked>';
+      document.body.prepend(otherForm);
+      document.getElementById('InputTrue').checked = true;
+
+      const savedQuestion = $exeDevice.createQuestionObject(
+        'formPreview',
+        $exeDevice.ACTIVITY_TYPES.TRUE_FALSE,
+      );
+
+      expect(savedQuestion.answer).toBe('1');
+    });
+
+    it.each([
+      [1, 'InputTrue'],
+      ['1', 'InputTrue'],
+      [true, 'InputTrue'],
+      ['true', 'InputTrue'],
+      [0, 'InputFalse'],
+      ['0', 'InputFalse'],
+      [false, 'InputFalse'],
+      ['false', 'InputFalse'],
+    ])('normalizes answer %s as %s', (legacyAnswer, expectedRadioId) => {
+      renderTrueFalseEditor();
+      $exeDevice.questionsForm = [
+        {
+          id: 'legacy-question',
+          activityType: 'true-false',
+          baseText: '<p>Legacy question</p>',
+          answer: legacyAnswer,
+        },
+      ];
+
+      $exeDevice.setDataFromTrueFalseQuestion({
+        dataset: { id: 'legacy-question' },
+      });
+
+      expect(document.getElementById(expectedRadioId).checked).toBe(true);
+    });
+
+    it.each([
+      [1, '1'],
+      ['1', '1'],
+      [0, '0'],
+      ['0', '0'],
+    ])('renders legacy answer %s correctly', (legacyAnswer, expectedAnswer) => {
+      $exeDevice.getProcessTextTrueFalseQuestion = vi.fn(() => 'question-html');
+
+      expect(
+        $exeDevice.getPreviewTextTrueFalseQuestion({
+          baseText: '<p>Legacy question</p>',
+          answer: legacyAnswer,
+        }),
+      ).toBe('question-html');
+      expect($exeDevice.getProcessTextTrueFalseQuestion).toHaveBeenCalledWith(
+        '<p>Legacy question</p>',
+        expectedAnswer,
+      );
+    });
+
+    it('uses stable answer values while keeping translated labels', () => {
+      renderTrueFalseEditor();
+
+      expect(document.querySelector('label[for="InputTrue"]').textContent).toContain('Verdadero');
+      expect(document.querySelector('label[for="InputFalse"]').textContent).toContain('Falso');
+      expect(document.getElementById('InputTrue').value).toBe('1');
+      expect(document.getElementById('InputFalse').value).toBe('0');
+    });
+  });
+
   describe('getTestQuestion', () => {
     it('parses single selection question', () => {
       // Format: solutionIndex#question#option1#option2#option3
