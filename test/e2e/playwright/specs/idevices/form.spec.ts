@@ -127,6 +127,26 @@ async function openQuestionsPanel(page: Page): Promise<void> {
     }
 }
 
+async function fillQuestionEditor(page: Page, questionText: string): Promise<void> {
+    const iframeSelector = '#formPreviewTextareaContainer .tox-edit-area__iframe';
+    const iframe = page.locator(iframeSelector).first();
+    const iframeReady = await iframe
+        .waitFor({ state: 'attached', timeout: 10000 })
+        .then(() => true)
+        .catch(() => false);
+
+    if (iframeReady) {
+        const body = page.frameLocator(iframeSelector).first().locator('body');
+        await body.waitFor({ state: 'visible', timeout: 10000 });
+        await body.fill(questionText);
+        return;
+    }
+
+    const textarea = page.locator('#formPreviewTextareaContainer textarea.exe-html-editor').first();
+    await textarea.waitFor({ state: 'visible', timeout: 10000 });
+    await textarea.fill(questionText);
+}
+
 /**
  * Helper to add a True/False question
  */
@@ -142,26 +162,7 @@ async function addTrueFalseQuestion(page: Page, questionText: string, answer: bo
     const textareaContainer = page.locator('#formPreviewTextareaContainer');
     await textareaContainer.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Wait for TinyMCE iframe to appear
-    await page.waitForTimeout(500);
-
-    // Find the TinyMCE editor iframe within the question container
-    const tinyMceIframe = page.locator('#formPreviewTextareaContainer .tox-edit-area__iframe').first();
-
-    if ((await tinyMceIframe.count()) > 0) {
-        // Type into TinyMCE using keyboard
-        const frame = page.frameLocator('#formPreviewTextareaContainer .tox-edit-area__iframe').first();
-        const body = frame.locator('body');
-        await body.click();
-        await page.waitForTimeout(300);
-        await page.keyboard.type(questionText, { delay: 10 });
-    } else {
-        // Fallback: try to find any textarea
-        const textarea = page.locator('#formPreviewTextareaContainer textarea').first();
-        if ((await textarea.count()) > 0) {
-            await textarea.fill(questionText);
-        }
-    }
+    await fillQuestionEditor(page, questionText);
 
     // Select True or False answer - look for radio buttons in the form
     const trueRadio = page.locator('#formPreviewTrueFalseRadioButtons input[value="1"]').first();
@@ -214,20 +215,7 @@ async function addSelectionQuestion(
     const textareaContainer = page.locator('#formPreviewTextareaContainer');
     await textareaContainer.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Wait for TinyMCE to initialize
-    await page.waitForTimeout(500);
-
-    // Find the TinyMCE editor iframe for the question text
-    const tinyMceIframes = page.locator('#formPreviewTextareaContainer .tox-edit-area__iframe');
-
-    if ((await tinyMceIframes.count()) > 0) {
-        // Type question into first TinyMCE using keyboard
-        const frame = page.frameLocator('#formPreviewTextareaContainer .tox-edit-area__iframe').first();
-        const body = frame.locator('body');
-        await body.click();
-        await page.waitForTimeout(300);
-        await page.keyboard.type(questionText, { delay: 10 });
-    }
+    await fillQuestionEditor(page, questionText);
 
     // If multiple selection, click the toggle button
     if (isMultiple) {
@@ -237,12 +225,8 @@ async function addSelectionQuestion(
         }
     }
 
-    // For the first option, find the TinyMCE for it (it's already created)
-    const optionEditors = page.locator('#formPreviewTextareaContainer .tox-tinymce');
-    const optionCount = await optionEditors.count();
-
-    // Fill the first option if there's more than one editor (question + option)
-    if (optionCount > 1 && options.length > 0) {
+    // Fill the first option, whether it uses TinyMCE or the plain textarea fallback
+    if (options.length > 0) {
         const optionFrames = page.locator('#formPreviewTextareaContainer .tox-edit-area__iframe');
         if ((await optionFrames.count()) > 1) {
             const frame = page.frameLocator('#formPreviewTextareaContainer .tox-edit-area__iframe').nth(1);
@@ -250,6 +234,8 @@ async function addSelectionQuestion(
             await body.click();
             await page.waitForTimeout(300);
             await page.keyboard.type(options[0].text, { delay: 10 });
+        } else {
+            await page.locator('#formPreviewTextareaContainer textarea.small-textarea').first().fill(options[0].text);
         }
 
         // Mark first option as correct if needed
@@ -277,6 +263,8 @@ async function addSelectionQuestion(
             await body.click();
             await page.waitForTimeout(300);
             await page.keyboard.type(options[i].text, { delay: 10 });
+        } else {
+            await page.locator('#formPreviewTextareaContainer textarea.small-textarea').nth(i).fill(options[i].text);
         }
 
         // Mark as correct if needed
@@ -463,6 +451,7 @@ test.describe('Form iDevice', () => {
         test('should render form correctly in preview', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
+            const symbolOptions = ['A < B', 'a = b && c>a y & b<a', 'b<a Adias'];
 
             const projectUuid = await createProject(page, 'Form Preview Test');
             await gotoWorkarea(page, projectUuid);
@@ -473,10 +462,13 @@ test.describe('Form iDevice', () => {
 
             // Add questions
             await addTrueFalseQuestion(page, 'Preview test question: True or False?', true);
-            await addSelectionQuestion(page, 'Preview test: Select the correct answer', [
-                { text: 'Option A', correct: false },
-                { text: 'Option B', correct: true },
-            ]);
+            await addSelectionQuestion(
+                page,
+                'Preview test: Select the correct answer',
+                symbolOptions.map((text, index) => ({ text, correct: index === 1 })),
+            );
+
+            await expect(page.locator('#formPreview .selection-buttons-container label')).toHaveText(symbolOptions);
 
             await saveFormIdevice(page);
             await workarea.save();
@@ -500,6 +492,13 @@ test.describe('Form iDevice', () => {
             const questions = iframe.locator('.FRMP-Question, [class*="question"]');
             const count = await questions.count();
             expect(count).toBeGreaterThanOrEqual(1);
+
+            await expect(iframe.locator('.selection-buttons-container label')).toHaveText(symbolOptions);
+            expect(
+                await iframe
+                    .locator('.selection-buttons-container input')
+                    .evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value)),
+            ).toEqual(symbolOptions);
         });
 
         test('should have check and reset buttons in preview', async ({ authenticatedPage, createProject }) => {

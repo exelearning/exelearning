@@ -192,6 +192,33 @@ describe('form iDevice edition', () => {
     });
   });
 
+  describe('selection option rendering', () => {
+    it('renders plain-text symbols without changing the stored answers', () => {
+      const answers = [
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ];
+
+      document.body.innerHTML = $exeDevice.getProcessTextSelectionQuestion(
+        '<p>Question</p>',
+        'radio',
+        answers,
+      );
+
+      const labels = [...document.querySelectorAll('.selection-buttons-container label')];
+      const inputs = [...document.querySelectorAll('.selection-buttons-container input')];
+
+      expect(labels.map(label => label.textContent)).toEqual(answers.map(answer => answer[1]));
+      expect(inputs.map(input => input.value)).toEqual(answers.map(answer => answer[1]));
+      expect(answers).toEqual([
+        [true, 'a = b && c>a y & b<a'],
+        [false, 'b<a Adias'],
+        [false, 'say "A<B"'],
+      ]);
+    });
+  });
+
   describe('true/false answer persistence', () => {
     function renderTrueFalseEditor() {
       $exeDevice.strings = {
