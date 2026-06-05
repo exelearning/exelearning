@@ -2,7 +2,8 @@
  * ElpxExporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { ElpxExporter } from './ElpxExporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -229,12 +230,66 @@ describe('ElpxExporter', () => {
     let zip: MockZipProvider;
     let exporter: ElpxExporter;
 
+    const runtimeJsonLatexPages = (): ExportPage[] => [
+        {
+            id: 'page-runtime-json',
+            title: 'Runtime JSON',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-runtime-json',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-runtime-json',
+                            type: 'adaptative-quiz',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
     beforeEach(() => {
         document = new MockDocument({}, samplePages);
         resources = new MockResourceProvider();
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new ElpxExporter(document, resources, assets, zip);
+    });
+
+    describe('MathJax for runtime JSON iDevices', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        it('bundles and references MathJax in the embedded HTML export', async () => {
+            document = new MockDocument({ addMathJax: false }, runtimeJsonLatexPages());
+            exporter = new ElpxExporter(document, resources, assets, zip);
+            let requestedFiles: string[] = [];
+            resources.fetchLibraryFiles = async files => {
+                requestedFiles = files;
+                return new Map(
+                    files.map(file => [
+                        file === 'exe_math' ? 'exe_math/tex-mml-svg.js' : file,
+                        Buffer.from('// mock lib'),
+                    ]),
+                );
+            };
+
+            await exporter.export();
+
+            expect(requestedFiles.some(file => file.includes('exe_math'))).toBe(true);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(true);
+            expect(zip.files.get('index.html') as string).toContain('libs/exe_math/tex-mml-svg.js');
+        });
     });
 
     describe('Basic Properties', () => {

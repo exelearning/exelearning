@@ -164,6 +164,12 @@ export class Epub3Exporter extends BaseExporter {
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX
+                //
+                // NOTE: Unlike the HTML5/SCORM/IMS/ELPX exporters, EPUB3 does NOT bundle
+                // MathJax for the runtime-JSON iDevices (adaptative-quiz, form, trueorfalse,
+                // scrambled-list). This is intentional: EPUB readers do not execute
+                // JavaScript, so those interactive iDevices never render their LaTeX at
+                // runtime here. EPUB3 always pre-renders visible LaTeX to SVG+MathML instead.
                 if (!meta.addMathJax) {
                     // Pre-render LaTeX in encrypted DataGame divs FIRST
                     if (options?.preRenderDataGameLatex) {

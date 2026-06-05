@@ -2,7 +2,8 @@
  * Html5Exporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Html5Exporter } from './Html5Exporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -1025,6 +1026,142 @@ describe('Html5Exporter', () => {
             const indexHtml = files.get('index.html');
             const indexHtmlText = decodePreviewFile(indexHtml);
             expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+    });
+
+    describe('MathJax for runtime JSON iDevices', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        const runtimeJsonLatexIdevices = ['adaptative-quiz', 'form', 'trueorfalse', 'scrambled-list'];
+        const propsWithLatex = {
+            questionsGame: [{ question: 'Solve \\(x^2 + 1 = 0\\)', options: [{ text: '\\(i\\)' }, { text: '1' }] }],
+        };
+        const propsWithoutLatex = {
+            questionsGame: [{ question: 'Capital of France?', options: [{ text: 'Paris' }, { text: 'Rome' }] }],
+        };
+
+        function pageWithIdevice(type: string, properties: Record<string, unknown>): ExportPage[] {
+            return [
+                {
+                    id: 'page-runtime-json',
+                    title: 'Runtime JSON',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-runtime-json',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-runtime-json',
+                                    type,
+                                    order: 0,
+                                    content: '',
+                                    properties,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+        }
+
+        function captureRequestedLibs(): { get: () => string[] } {
+            let requested: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requested = files;
+                return new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+            };
+            return { get: () => requested };
+        }
+
+        it('bundles exe_math on export for allowed JSON iDevices with LaTeX in properties', async () => {
+            for (const ideviceType of runtimeJsonLatexIdevices) {
+                resources = new MockResourceProvider();
+                zip = new MockZipProvider();
+                document = new MockDocument({ addMathJax: false }, pageWithIdevice(ideviceType, propsWithLatex));
+                exporter = new Html5Exporter(document, resources, assets, zip);
+                const requested = captureRequestedLibs();
+
+                await exporter.export({
+                    preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+                });
+
+                expect(requested.get().some(file => file.includes('exe_math'))).toBe(true);
+            }
+        });
+
+        it('bundles exe_math on preview for allowed JSON iDevices with LaTeX in properties', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('adaptative-quiz', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.generateForPreview({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(true);
+        });
+
+        it('does not force exe_math when allowed JSON iDevices have no LaTeX in properties', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('adaptative-quiz', propsWithoutLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.export({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('does not force exe_math for JSON iDevices outside the allow-list', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('image-gallery', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.export({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('does not force exe_math for non-JSON iDevices with LaTeX in properties', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('3dmol', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const requested = captureRequestedLibs();
+
+            await exporter.export({
+                preRenderLatex: async html => ({ html, hasLatex: false, latexRendered: false, count: 0 }),
+            });
+
+            expect(requested.get().some(file => file.includes('exe_math'))).toBe(false);
+        });
+
+        it('skips LaTeX pre-render and adds the MathJax script for runtime JSON LaTeX pages', async () => {
+            document = new MockDocument({ addMathJax: false }, pageWithIdevice('adaptative-quiz', propsWithLatex));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            captureRequestedLibs();
+
+            let preRenderCalled = false;
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            expect(preRenderCalled).toBe(false);
+            expect(indexHtmlText).toContain('libs/exe_math/tex-mml-svg.js');
         });
     });
 

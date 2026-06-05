@@ -54,6 +54,7 @@ export class PageExporter extends Html5Exporter {
 
             // Get all iDevice types used in the project
             const usedIdevices = this.getUsedIdevices(pages);
+            const includeMathJax = meta.addMathJax === true || this.pagesHaveRuntimeJsonLatex(pages);
 
             // 4. Fetch and add theme
             const { themeFilesMap, faviconInfo } = await this.prepareThemeData(themeName);
@@ -105,7 +106,15 @@ export class PageExporter extends Html5Exporter {
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
 
             // 1. Generate single-page HTML with all content
-            const html = this.generateSinglePageHtml(pages, meta, usedIdevices, faviconInfo, [], false, navLabels);
+            const html = this.generateSinglePageHtml(
+                pages,
+                meta,
+                usedIdevices,
+                faviconInfo,
+                [],
+                includeMathJax,
+                navLabels,
+            );
             this.zip.addFile('index.html', html);
 
             // 2. Add base CSS (fetch from content/css)
@@ -149,7 +158,7 @@ export class PageExporter extends Html5Exporter {
             // This is crucial for things like MathJax, Tooltips, etc.
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                includeMathJax: meta.addMathJax === true, // MATHJAX is included if requested
+                includeMathJax,
             });
 
             try {
@@ -181,7 +190,7 @@ export class PageExporter extends Html5Exporter {
                 usedIdevices,
                 faviconInfo,
                 patterns.map(p => p.name),
-                meta.addMathJax === true,
+                includeMathJax,
                 navLabels,
             );
             this.zip.addFile(options?.filename || 'index.html', singlePageHtml);

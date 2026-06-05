@@ -9,6 +9,7 @@
 import type {
     ExportDocument,
     ExportPage,
+    ExportComponent,
     ExportMetadata,
     ExportAsset,
     ResourceProvider,
@@ -24,6 +25,10 @@ import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
+import { getIdeviceConfig } from '../../../services/idevice-config';
+
+const RUNTIME_LATEX_PATTERN = /\\\(|\\\[|\\begin\{|\$\$/;
+const RUNTIME_JSON_LATEX_IDEVICES = new Set(['adaptative-quiz', 'form', 'trueorfalse', 'scrambled-list']);
 
 /**
  * Abstract base class for exporters
@@ -1027,6 +1032,39 @@ export abstract class BaseExporter {
             this.iteratePageContentFragments(pages),
             options,
         );
+    }
+
+    protected pagesHaveRuntimeJsonLatex(pages: ExportPage[]): boolean {
+        return pages.some(page => this.pageHasRuntimeJsonLatex(page));
+    }
+
+    protected pageHasRuntimeJsonLatex(page: ExportPage): boolean {
+        for (const block of page.blocks || []) {
+            for (const component of block.components || []) {
+                if (this.componentHasRuntimeJsonLatex(component)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    protected componentHasRuntimeJsonLatex(component: ExportComponent): boolean {
+        const properties = component?.properties;
+        if (!properties || typeof properties !== 'object') {
+            return false;
+        }
+
+        const config = getIdeviceConfig(component.type || 'text');
+        if (config.componentType !== 'json' || !RUNTIME_JSON_LATEX_IDEVICES.has(config.cssClass)) {
+            return false;
+        }
+
+        try {
+            return RUNTIME_LATEX_PATTERN.test(JSON.stringify(properties));
+        } catch {
+            return false;
+        }
     }
 
     // =========================================================================

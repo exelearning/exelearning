@@ -9,6 +9,12 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import { Html5Exporter } from '../../src/shared/export/exporters/Html5Exporter';
+import { Scorm12Exporter } from '../../src/shared/export/exporters/Scorm12Exporter';
+import { Scorm2004Exporter } from '../../src/shared/export/exporters/Scorm2004Exporter';
+import { ImsExporter } from '../../src/shared/export/exporters/ImsExporter';
+import { PageExporter } from '../../src/shared/export/exporters/PageExporter';
+import { ElpxExporter } from '../../src/shared/export/exporters/ElpxExporter';
+import { FileSystemResourceProvider } from '../../src/shared/export/providers/FileSystemResourceProvider';
 import { FflateZipProvider } from '../../src/shared/export/providers/FflateZipProvider';
 import type {
     ExportDocument,
@@ -20,6 +26,7 @@ import type {
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../src/services/idevice-config';
 import { extractZip } from '../../src/services/zip';
 import { parseFromFile } from '../../src/services/xml/xml-parser';
+import { unzipSync } from 'fflate';
 
 // Path to real iDevices
 const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
@@ -212,6 +219,103 @@ const createDocumentWithLatexInTextJson = (): ExportDocument => ({
             ],
         },
     ],
+});
+
+const createDocumentWithLatexInRuntimeJsonIdevice = (): ExportDocument => ({
+    getMetadata: (): ExportMetadata => ({
+        title: 'Runtime JSON LaTeX Test',
+        author: 'Test',
+        description: '',
+        language: 'en',
+        license: 'CC-BY-SA',
+        keywords: '',
+        theme: 'base',
+        addMathJax: false,
+    }),
+    getNavigation: (): ExportPage[] => [
+        {
+            id: 'page-1',
+            title: 'Runtime JSON LaTeX',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-1',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'adaptative-quiz-1',
+                            type: 'adaptative-quiz',
+                            order: 0,
+                            content: '',
+                            properties: {
+                                questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }],
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+});
+
+describe('Runtime JSON iDevice LaTeX Export Integration', () => {
+    const exporters = [
+        [
+            'HTML5',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new Html5Exporter(document, resources, assets, zip),
+        ],
+        [
+            'SCORM 1.2',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new Scorm12Exporter(document, resources, assets, zip),
+        ],
+        [
+            'SCORM 2004',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new Scorm2004Exporter(document, resources, assets, zip),
+        ],
+        [
+            'IMS',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new ImsExporter(document, resources, assets, zip),
+        ],
+        [
+            'Single Page',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new PageExporter(document, resources, assets, zip),
+        ],
+        [
+            'ELPX',
+            (document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: FflateZipProvider) =>
+                new ElpxExporter(document, resources, assets, zip),
+        ],
+    ] as const;
+
+    beforeAll(() => {
+        loadIdeviceConfigs(REAL_IDEVICES_PATH);
+    });
+
+    afterAll(() => {
+        resetIdeviceConfigCache();
+    });
+
+    for (const [format, createExporter] of exporters) {
+        it(`${format} includes and references MathJax`, async () => {
+            const document = createDocumentWithLatexInRuntimeJsonIdevice();
+            const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+            const assets = createMockAssetProvider();
+            const result = await createExporter(document, resources, assets, new FflateZipProvider()).export();
+
+            expect(result.success, `${format} export should succeed`).toBe(true);
+            const files = unzipSync(result.data!);
+            expect(files['libs/exe_math/tex-mml-svg.js'], `${format} should bundle MathJax`).toBeDefined();
+            const indexHtml = new TextDecoder().decode(files['index.html']);
+            expect(indexHtml, `${format} should reference MathJax`).toContain('libs/exe_math/tex-mml-svg.js');
+        });
+    }
 });
 
 describe('LaTeX Pre-rendering Export Integration', () => {

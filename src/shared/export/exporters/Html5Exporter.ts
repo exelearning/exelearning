@@ -134,9 +134,8 @@ export class Html5Exporter extends BaseExporter {
                     navLabels,
                 );
 
-                // Pre-render LaTeX ONLY if addMathJax is false
-                // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
-                if (!meta.addMathJax) {
+                // Pre-render LaTeX only when MathJax is not needed at runtime.
+                if (!meta.addMathJax && !this.pageHasRuntimeJsonLatex(page)) {
                     // Pre-render LaTeX in encrypted DataGame divs FIRST
                     // (game iDevices store questions in encrypted JSON)
                     const preRenderDataGameLatex =
@@ -284,7 +283,7 @@ export class Html5Exporter extends BaseExporter {
             // Note: exe-package:elp is still in the content at this point (transformation happens in PageRenderer)
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                includeMathJax: meta.addMathJax === true,
+                includeMathJax: meta.addMathJax === true || this.pagesHaveRuntimeJsonLatex(pages),
                 skipMathJax: latexWasRendered && !meta.addMathJax,
             });
 
@@ -434,7 +433,7 @@ export class Html5Exporter extends BaseExporter {
             addPagination: meta.addPagination ?? false,
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
-            addMathJax: meta.addMathJax ?? false,
+            addMathJax: meta.addMathJax === true || this.pageHasRuntimeJsonLatex(page),
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes
@@ -609,8 +608,8 @@ export class Html5Exporter extends BaseExporter {
                     navLabels,
                 );
 
-                // Pre-render LaTeX ONLY if addMathJax is false
-                if (!meta.addMathJax) {
+                // Pre-render LaTeX only when MathJax is not needed at runtime.
+                if (!meta.addMathJax && !this.pageHasRuntimeJsonLatex(page)) {
                     const preRenderDataGameLatex =
                         options?.preRenderDataGameLatex || this.getBrowserLatexPreRenderer()?.preRenderDataGameLatex;
                     if (preRenderDataGameLatex) {
@@ -725,7 +724,7 @@ export class Html5Exporter extends BaseExporter {
             // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                includeMathJax: meta.addMathJax === true,
+                includeMathJax: meta.addMathJax === true || this.pagesHaveRuntimeJsonLatex(pages),
                 skipMathJax: latexWasRendered && !meta.addMathJax,
             });
 

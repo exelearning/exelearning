@@ -264,6 +264,7 @@ export class ElpxExporter extends Html5Exporter {
             // 1.7 Detect and fetch additional required libraries based on content
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                includeMathJax: meta.addMathJax === true || this.pagesHaveRuntimeJsonLatex(pages),
             });
 
             try {
